@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+Import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -27,7 +27,6 @@ import {
   Alert,
   Checkbox,
   Tooltip,
-  Snackbar,
 } from "@mui/material";
 import {
   KeyboardArrowDown,
@@ -45,7 +44,7 @@ import dayjs from "dayjs";
 const PAGE_SIZE = 10;
 
 export default function LoanList() {
-  const { loans, loadingLoans, deleteLoan, addPayment, updateLoan, getPaymentsByLoanId, settings, loadingSettings } = useFirestore();
+  const { loans, loadingLoans, deleteLoan, addPayment, updateLoan, getPaymentsByLoanId } = useFirestore();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -53,78 +52,42 @@ export default function LoanList() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [monthFilter, setMonthFilter] = useState(dayjs().format("YYYY-MM"));
   const [page, setPage] = useState(1);
-  const useInfiniteScroll = isMobile;
+  const [useInfiniteScroll] = useState(isMobile); // This state will now reflect initial mobile check
   const [expandedRow, setExpandedRow] = useState(null);
 
   // Modals and their states
   const [confirmDelete, setConfirmDelete] = useState({ open: false, loanId: null });
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false); // New state for delete loading
 
   const [paymentModal, setPaymentModal] = useState({ open: false, loanId: null });
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentError, setPaymentError] = useState("");
-  const [isAddingPayment, setIsAddingPayment] = useState(false);
+  const [isAddingPayment, setIsAddingPayment] = useState(false); // New state for payment loading
 
   const [editModal, setEditModal] = useState({ open: false, loan: null });
   const [editData, setEditData] = useState({
     borrower: "",
+    phone: "",
     principal: "",
+    interest: "",
+    startDate: "",
+    dueDate: "",
   });
-  const [editErrors, setEditErrors] = useState({});
-  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editErrors, setEditErrors] = useState({}); // Object for specific edit field errors
+  const [isSavingEdit, setIsSavingEdit] = useState(false); // New state for edit saving loading
 
-  // State for live preview of interest and total repayable
-  const [previewInterest, setPreviewInterest] = useState(0);
-  const [previewTotalRepayable, setPreviewTotalRepayable] = useState(0);
-
-  const [historyModal, setHistoryModal] = useState({ open: false, loanId: null, payments: [], loading: false });
+  const [historyModal, setHistoryModal] = useState({ open: false, loanId: null, payments: [], loading: false }); // Added loading for history
 
   const [selectedLoanIds, setSelectedLoanIds] = useState([]);
-  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
-  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false); // New state for bulk delete confirmation
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false); // New state for bulk delete loading
 
-  // Snackbar for notifications
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: "",
-    severity: "success",
-  });
-
-  const handleCloseSnackbar = (event, reason) => {
-    if (reason === "clickaway") {
-      return;
-    }
-    setSnackbar({ ...snackbar, open: false });
-  };
-
-  // Memoized interest rate from settings
-  const currentWeeklyInterestRate = useMemo(() => {
-    return settings?.interestRate ? Number(settings.interestRate) / 100 : 0.05; // Fallback to 5% if not set
-  }, [settings]);
-
-  // Effect to recalculate preview values whenever editData.principal or relevant loan/settings data changes
-  useEffect(() => {
-    if (editModal.open && editModal.loan) {
-      const principal = parseFloat(editData.principal);
-      const originalDurationWeeks = editModal.loan.durationWeeks || 0;
-
-      if (!isNaN(principal) && principal > 0 && originalDurationWeeks > 0 && currentWeeklyInterestRate > 0) {
-        const calculatedInterest = principal * currentWeeklyInterestRate * originalDurationWeeks;
-        const calculatedTotalRepayable = principal + calculatedInterest;
-        setPreviewInterest(calculatedInterest);
-        setPreviewTotalRepayable(calculatedTotalRepayable);
-      } else {
-        setPreviewInterest(0);
-        setPreviewTotalRepayable(0);
-      }
-    }
-  }, [editData.principal, editModal.open, editModal.loan, currentWeeklyInterestRate]);
 
   const calcStatus = (loan) => {
-    if (loan.status) return loan.status;
+    if (loan.status) return loan.status; // Prefer explicit status if set
     const now = dayjs();
     const due = dayjs(loan.dueDate);
-    if (loan.isPaid || (loan.repaidAmount >= loan.totalRepayable && loan.totalRepayable > 0)) return "Paid";
+    if (loan.isPaid || (loan.repaidAmount >= loan.totalRepayable && loan.totalRepayable > 0)) return "Paid"; // Ensure totalRepayable is not zero to avoid false positives
     if (due.isBefore(now, "day")) return "Overdue";
     return "Active";
   };
@@ -132,12 +95,16 @@ export default function LoanList() {
   const filteredLoans = useMemo(() => {
     return loans
       .filter((loan) => {
+        // Filter by month
         if (monthFilter && !dayjs(loan.startDate).format("YYYY-MM").startsWith(monthFilter)) return false;
+        // Filter by status
         if (statusFilter !== "all" && calcStatus(loan).toLowerCase() !== statusFilter) return false;
+        // Filter by search term
         if (
           searchTerm &&
           !(
-            loan.borrower.toLowerCase().includes(searchTerm.toLowerCase())
+            loan.borrower.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            loan.phone.toLowerCase().includes(searchTerm.toLowerCase())
           )
         )
           return false;
@@ -147,36 +114,38 @@ export default function LoanList() {
   }, [loans, searchTerm, statusFilter, monthFilter]);
 
   const displayedLoans = useMemo(() => {
-    if (useInfiniteScroll) {
+    if (useInfiniteScroll && isMobile) {
       return filteredLoans.slice(0, page * PAGE_SIZE);
     } else {
       const start = (page - 1) * PAGE_SIZE;
       return filteredLoans.slice(start, start + PAGE_SIZE);
     }
-  }, [filteredLoans, page, useInfiniteScroll]);
+  }, [filteredLoans, page, useInfiniteScroll, isMobile]);
 
   const handleScroll = useCallback(() => {
     if (
       window.innerHeight + window.scrollY + 50 >=
       document.documentElement.scrollHeight
     ) {
-      if (useInfiniteScroll && displayedLoans.length < filteredLoans.length && !loadingLoans) {
+      if (useInfiniteScroll && displayedLoans.length < filteredLoans.length && !loadingLoans) { // Check !loadingLoans to prevent multiple fetches
         setPage((p) => p + 1);
       }
     }
-  }, [displayedLoans.length, filteredLoans.length, useInfiniteScroll, loadingLoans]);
+  }, [displayedLoans.length, filteredLoans.length, useInfiniteScroll, loadingLoans]); // Add loadingLoans to dependency
 
   useEffect(() => {
-    if (useInfiniteScroll) {
+    // Only attach scroll listener if infinite scroll is active and it's a mobile device
+    if (useInfiniteScroll && isMobile) {
       window.addEventListener("scroll", handleScroll);
       return () => window.removeEventListener("scroll", handleScroll);
     }
-  }, [handleScroll, useInfiniteScroll]);
+  }, [handleScroll, useInfiniteScroll, isMobile]);
 
+  // Reset pagination/selection when filters change
   useEffect(() => {
     setPage(1);
     setExpandedRow(null);
-    setSelectedLoanIds([]);
+    setSelectedLoanIds([]); // Clear selection when filters change
   }, [searchTerm, statusFilter, monthFilter, useInfiniteScroll]);
 
   const totals = useMemo(() => {
@@ -208,15 +177,14 @@ export default function LoanList() {
 
   const handleDelete = async () => {
     if (confirmDelete.loanId) {
-      setIsDeleting(true);
+      setIsDeleting(true); // Set loading for single delete
       try {
         await deleteLoan(confirmDelete.loanId);
         setConfirmDelete({ open: false, loanId: null });
         setSelectedLoanIds((prev) => prev.filter(id => id !== confirmDelete.loanId));
-        setSnackbar({ open: true, message: "Loan deleted successfully!", severity: "success" });
       } catch (error) {
         console.error("Error deleting loan:", error);
-        setSnackbar({ open: true, message: "Failed to delete loan.", severity: "error" });
+        // Optionally show a notification
       } finally {
         setIsDeleting(false);
       }
@@ -226,13 +194,14 @@ export default function LoanList() {
   const handleBulkDelete = async () => {
     setIsBulkDeleting(true);
     try {
-      await Promise.all(selectedLoanIds.map(id => deleteLoan(id)));
+      // Assuming deleteLoan in useFirestore can handle an array of IDs
+      // You would likely have a specific `deleteLoans` function in FirestoreProvider for batch deletes
+      await Promise.all(selectedLoanIds.map(id => deleteLoan(id))); // Simple approach, consider batch delete for many
       setSelectedLoanIds([]);
       setConfirmBulkDelete(false);
-      setSnackbar({ open: true, message: `${selectedLoanIds.length} loans deleted successfully!`, severity: "success" });
     } catch (error) {
       console.error("Error bulk deleting loans:", error);
-      setSnackbar({ open: true, message: "Failed to bulk delete loans.", severity: "error" });
+      // Optionally show a notification
     } finally {
       setIsBulkDeleting(false);
     }
@@ -241,19 +210,24 @@ export default function LoanList() {
   const openEditModal = (loan) => {
     setEditData({
       borrower: loan.borrower,
+      phone: loan.phone,
       principal: loan.principal,
+      interest: loan.interest,
+      startDate: loan.startDate,
+      dueDate: loan.dueDate,
     });
-    setEditErrors({});
+    setEditErrors({}); // Clear previous errors
     setEditModal({ open: true, loan });
-    // Initialize preview values with current loan's values
-    setPreviewInterest(Number(loan.interest));
-    setPreviewTotalRepayable(Number(loan.totalRepayable));
   };
 
   const handleEditSubmit = async () => {
     const errors = {};
     if (!editData.borrower) errors.borrower = "Borrower name is required.";
-    if (isNaN(parseFloat(editData.principal)) || parseFloat(editData.principal) <= 0) errors.principal = "Valid positive principle required.";
+    if (!editData.phone) errors.phone = "Phone number is required.";
+    if (isNaN(parseFloat(editData.principal)) || parseFloat(editData.principal) < 0) errors.principal = "Valid principal required.";
+    if (isNaN(parseFloat(editData.interest)) || parseFloat(editData.interest) < 0) errors.interest = "Valid interest required.";
+    if (!editData.startDate) errors.startDate = "Start date is required.";
+    if (!editData.dueDate) errors.dueDate = "Due date is required.";
 
     setEditErrors(errors);
 
@@ -261,44 +235,24 @@ export default function LoanList() {
       return;
     }
 
-    if (loadingSettings) {
-      setEditErrors({ form: "Settings are still loading. Please wait." });
-      return;
-    }
-
-    const originalDurationWeeks = editModal.loan.durationWeeks || 0;
-    if (originalDurationWeeks <= 0) {
-      setEditErrors({ form: "Loan duration is invalid. Cannot recalculate interest." });
-      return;
-    }
-
-    if (currentWeeklyInterestRate === 0 && settings?.interestRate !== 0) {
-        setEditErrors({ form: "Interest rate not configured. Please set it in settings." });
-        return;
-    }
-
-    const principal = parseFloat(editData.principal);
-
-    const recalculatedInterest = principal * currentWeeklyInterestRate * originalDurationWeeks;
-    const recalculatedTotalRepayable = principal + recalculatedInterest;
-
     const updatedLoan = {
       ...editModal.loan,
       borrower: editData.borrower,
-      principal: principal,
-      interest: recalculatedInterest,
-      totalRepayable: recalculatedTotalRepayable,
+      phone: editData.phone,
+      principal: parseFloat(editData.principal),
+      interest: parseFloat(editData.interest),
+      totalRepayable: parseFloat(editData.principal) + parseFloat(editData.interest),
+      startDate: editData.startDate,
+      dueDate: editData.dueDate,
     };
 
-    setIsSavingEdit(true);
+    setIsSavingEdit(true); // Set loading for edit
     try {
       await updateLoan(editModal.loan.id, updatedLoan);
       setEditModal({ open: false, loan: null });
-      setSnackbar({ open: true, message: "Loan updated successfully!", severity: "success" });
     } catch (error) {
       console.error("Error updating loan:", error);
-      setEditErrors({ form: "Failed to update loan. Please try again." });
-      setSnackbar({ open: true, message: "Failed to update loan.", severity: "error" });
+      setEditErrors({ form: "Failed to update loan. Please try again." }); // General form error
     } finally {
       setIsSavingEdit(false);
     }
@@ -317,15 +271,13 @@ export default function LoanList() {
       return;
     }
 
-    setIsAddingPayment(true);
+    setIsAddingPayment(true); // Set loading for payment
     try {
       await addPayment(paymentModal.loanId, amountNum);
       setPaymentModal({ open: false, loanId: null });
-      setSnackbar({ open: true, message: "Payment added successfully!", severity: "success" });
     } catch (error) {
       console.error("Error adding payment:", error);
       setPaymentError("Failed to add payment. Please try again.");
-      setSnackbar({ open: true, message: "Failed to add payment.", severity: "error" });
     } finally {
       setIsAddingPayment(false);
     }
@@ -339,7 +291,7 @@ export default function LoanList() {
     } catch (error) {
       console.error("Error fetching payment history:", error);
       setHistoryModal((prev) => ({ ...prev, payments: [], loading: false }));
-      setSnackbar({ open: true, message: "Failed to fetch payment history.", severity: "error" });
+      // Optionally show an error message in the modal
     }
   };
 
@@ -360,7 +312,7 @@ export default function LoanList() {
         alignItems="center"
       >
         <TextField
-          label="Search Borrower"
+          label="Search"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           size="small"
@@ -413,10 +365,10 @@ export default function LoanList() {
         )}
       </Stack>
 
-      {(loadingLoans || loadingSettings) ? (
+      {loadingLoans ? (
         <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
           <CircularProgress />
-          <Typography ml={2} color="text.secondary">Loading data...</Typography>
+          <Typography ml={2} color="text.secondary">Loading loans...</Typography>
         </Box>
       ) : (
         <>
@@ -467,11 +419,10 @@ export default function LoanList() {
                           <Typography noWrap>Outstanding: ZMW {outstanding.toFixed(2)}</Typography>
                           <Typography noWrap>Start: {loan.startDate}</Typography>
                           <Typography noWrap>Due: {loan.dueDate}</Typography>
-                          <Typography noWrap>Duration: {loan.durationWeeks || 'N/A'} Weeks</Typography>
                           <Typography noWrap>Status: {calcStatus(loan)}</Typography>
                           <Stack direction="row" spacing={0.5} mt={1} justifyContent="flex-start">
                             <Tooltip title="Edit">
-                              <IconButton size="small" onClick={() => openEditModal(loan)} aria-label="edit" disabled={loadingSettings || currentWeeklyInterestRate === 0}>
+                              <IconButton size="small" onClick={() => openEditModal(loan)} aria-label="edit">
                                 <Edit fontSize="small" />
                               </IconButton>
                             </Tooltip>
@@ -542,7 +493,6 @@ export default function LoanList() {
                     </TableCell>
                     <TableCell sx={{ width: 100 }}>Start Date</TableCell>
                     <TableCell sx={{ width: 100 }}>Due Date</TableCell>
-                    <TableCell sx={{ width: 90 }}>Duration (Weeks)</TableCell>
                     <TableCell sx={{ width: 90 }}>Status</TableCell>
                     <TableCell align="center" sx={{ width: 120 }}>
                       Actions
@@ -589,91 +539,107 @@ export default function LoanList() {
                         </TableCell>
                         <TableCell sx={{ py: 0.5 }}>{loan.startDate}</TableCell>
                         <TableCell sx={{ py: 0.5 }}>{loan.dueDate}</TableCell>
-                        <TableCell sx={{ py: 0.5 }}>{loan.durationWeeks || 'N/A'}</TableCell>
                         <TableCell sx={{ py: 0.5 }}>{calcStatus(loan)}</TableCell>
                         <TableCell align="center" sx={{ py: 0.5 }}>
                           <Tooltip title="Edit">
-                            <IconButton size="small" onClick={() => openEditModal(loan)} aria-label="edit" disabled={loadingSettings || currentWeeklyInterestRate === 0}>
-                                <Edit fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Delete">
-                              <IconButton size="small" color="error" onClick={() => setConfirmDelete({ open: true, loanId: loan.id })} aria-label="delete">
-                                <Delete fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Add Payment">
-                              <IconButton size="small" onClick={() => openPaymentModal(loan.id)} aria-label="payment">
-                                <Payment fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="View History">
-                              <IconButton size="small" onClick={() => openHistoryModal(loan.id)} aria-label="history">
-                                <History fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                  <TableFooter>
-                    <TableRow>
-                      <TableCell colSpan={4} align="right" sx={{ fontWeight: "bold", py: 0.5 }}>
-                        Totals:
-                      </TableCell>
-                      <TableCell align="right" sx={{ fontWeight: "bold", py: 0.5 }}>
-                        {totals.principal.toFixed(2)}
-                      </TableCell>
-                      <TableCell align="right" sx={{ fontWeight: "bold", py: 0.5 }}>
-                        {totals.interest.toFixed(2)}
-                      </TableCell>
-                      <TableCell align="right" sx={{ fontWeight: "bold", py: 0.5 }}>
-                        {totals.totalRepayable.toFixed(2)}
-                      </TableCell>
-                      <TableCell align="right" sx={{ fontWeight: "bold", py: 0.5 }}>
-                        {totals.outstanding.toFixed(2)}
-                      </TableCell>
-                      <TableCell colSpan={5} />
-                    </TableRow>
-                  </TableFooter>
-                </Table>
+                            <IconButton
+                              size="small"
+                              onClick={() => openEditModal(loan)}
+                              aria-label="edit"
+                            >
+                              <Edit fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => setConfirmDelete({ open: true, loanId: loan.id })}
+                              aria-label="delete"
+                            >
+                              <Delete fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Add Payment">
+                            <IconButton
+                              size="small"
+                              onClick={() => openPaymentModal(loan.id)}
+                              aria-label="add payment"
+                            >
+                              <Payment fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="View History">
+                            <IconButton
+                              size="small"
+                              onClick={() => openHistoryModal(loan.id)}
+                              aria-label="view history"
+                            >
+                              <History fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+                <TableFooter>
+                  <TableRow>
+                    <TableCell colSpan={4} align="right" sx={{ fontWeight: "bold", py: 0.5 }}>
+                      Totals:
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: "bold", py: 0.5 }}>
+                      {totals.principal.toFixed(2)}
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: "bold", py: 0.5 }}>
+                      {totals.interest.toFixed(2)}
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: "bold", py: 0.5 }}>
+                      {totals.totalRepayable.toFixed(2)}
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: "bold", py: 0.5 }}>
+                      {totals.outstanding.toFixed(2)}
+                    </TableCell>
+                    <TableCell colSpan={4} />
+                  </TableRow>
+                </TableFooter>
+              </Table>
 
-                {!useInfiniteScroll && (
-                  <Stack direction="row" justifyContent="center" spacing={1} mt={1} mb={2}>
-                    <Button
-                      size="small"
-                      disabled={page === 1}
-                      onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                    >
-                      Previous
-                    </Button>
-                    <Typography
-                      variant="body2"
-                      sx={{ alignSelf: "center", minWidth: 70, textAlign: "center" }}
-                    >
-                      Page {page} / {Math.ceil(filteredLoans.length / PAGE_SIZE)}
-                    </Typography>
-                    <Button
-                      size="small"
-                      disabled={page === Math.ceil(filteredLoans.length / PAGE_SIZE)}
-                      onClick={() =>
-                        setPage((p) => Math.min(p + 1, Math.ceil(filteredLoans.length / PAGE_SIZE)))
-                      }
-                    >
-                      Next
-                    </Button>
-                  </Stack>
-                )}
-              </>
-            )}
-            {!loadingLoans && filteredLoans.length === 0 && (
-              <Typography variant="body1" align="center" mt={4} color="text.secondary">
-                No loans found for the selected filters.
-              </Typography>
-            )}
-          </>
-        )}
+              {!useInfiniteScroll && (
+                <Stack direction="row" justifyContent="center" spacing={1} mt={1} mb={2}>
+                  <Button
+                    size="small"
+                    disabled={page === 1}
+                    onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                  >
+                    Previous
+                  </Button>
+                  <Typography
+                    variant="body2"
+                    sx={{ alignSelf: "center", minWidth: 70, textAlign: "center" }}
+                  >
+                    Page {page} / {Math.ceil(filteredLoans.length / PAGE_SIZE)}
+                  </Typography>
+                  <Button
+                    size="small"
+                    disabled={page === Math.ceil(filteredLoans.length / PAGE_SIZE)}
+                    onClick={() =>
+                      setPage((p) => Math.min(p + 1, Math.ceil(filteredLoans.length / PAGE_SIZE)))
+                    }
+                  >
+                    Next
+                  </Button>
+                </Stack>
+              )}
+            </>
+          )}
+          {!loadingLoans && filteredLoans.length === 0 && (
+            <Typography variant="body1" align="center" mt={4} color="text.secondary">
+              No loans found for the selected filters.
+            </Typography>
+          )}
+        </>
+      )}
 
       {/* Confirm Delete Dialog */}
       <Dialog
@@ -732,7 +698,7 @@ export default function LoanList() {
             value={paymentAmount}
             onChange={(e) => {
               setPaymentAmount(e.target.value);
-              setPaymentError("");
+              setPaymentError(""); // Clear error on change
             }}
             size="small"
             autoFocus
@@ -760,11 +726,7 @@ export default function LoanList() {
       >
         <DialogTitle fontSize="1.1rem">Edit Loan</DialogTitle>
         <DialogContent sx={{ pb: 1 }}>
-          {(editErrors.form || (currentWeeklyInterestRate === 0 && settings?.interestRate !== 0)) && (
-             <Alert severity="error" sx={{ mb: 1 }}>
-               {editErrors.form || (currentWeeklyInterestRate === 0 && "Interest rate is 0%. Please configure it in settings to enable proper recalculation.")}
-             </Alert>
-          )}
+          {editErrors.form && <Alert severity="error" sx={{ mb: 1 }}>{editErrors.form}</Alert>}
           <Stack spacing={1}>
             <TextField
               label="Borrower"
@@ -776,43 +738,63 @@ export default function LoanList() {
               helperText={editErrors.borrower}
             />
             <TextField
+              label="Phone"
+              value={editData.phone}
+              onChange={(e) => { setEditData({ ...editData, phone: e.target.value }); setEditErrors(prev => ({ ...prev, phone: '' })); }}
+              size="small"
+              fullWidth
+              error={!!editErrors.phone}
+              helperText={editErrors.phone}
+            />
+            <TextField
               label="Principal (ZMW)"
               type="number"
               value={editData.principal}
-              onChange={(e) => {
-                setEditData({ ...editData, principal: e.target.value });
-                setEditErrors(prev => ({ ...prev, principal: '' }));
-              }}
+              onChange={(e) => { setEditData({ ...editData, principal: e.target.value }); setEditErrors(prev => ({ ...prev, principal: '' })); }}
               size="small"
               fullWidth
               error={!!editErrors.principal}
               helperText={editErrors.principal}
             />
-            {/* Live Preview Display */}
-            {editModal.open && editModal.loan && currentWeeklyInterestRate > 0 && editModal.loan.durationWeeks > 0 && !isNaN(parseFloat(editData.principal)) && parseFloat(editData.principal) > 0 ? (
-                <Box mt={1} sx={{ bgcolor: theme.palette.action.hover, p: 1.5, borderRadius: 1 }}>
-                    <Typography variant="body2" color="text.secondary">
-                        **Preview:**
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                        Interest: **ZMW {previewInterest.toFixed(2)}**
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                        New Total Repayable: **ZMW {previewTotalRepayable.toFixed(2)}**
-                    </Typography>
-                </Box>
-            ) : (currentWeeklyInterestRate === 0 && settings?.interestRate !== 0) && (
-                <Typography variant="caption" color="error" mt={1}>
-                    Cannot preview: Interest rate is 0%. Set it in settings.
-                </Typography>
-            )}
+            <TextField
+              label="Interest (ZMW)"
+              type="number"
+              value={editData.interest}
+              onChange={(e) => { setEditData({ ...editData, interest: e.target.value }); setEditErrors(prev => ({ ...prev, interest: '' })); }}
+              size="small"
+              fullWidth
+              error={!!editErrors.interest}
+              helperText={editErrors.interest}
+            />
+            <TextField
+              label="Start Date"
+              type="date"
+              value={editData.startDate}
+              onChange={(e) => { setEditData({ ...editData, startDate: e.target.value }); setEditErrors(prev => ({ ...prev, startDate: '' })); }}
+              InputLabelProps={{ shrink: true }}
+              size="small"
+              fullWidth
+              error={!!editErrors.startDate}
+              helperText={editErrors.startDate}
+            />
+            <TextField
+              label="Due Date"
+              type="date"
+              value={editData.dueDate}
+              onChange={(e) => { setEditData({ ...editData, dueDate: e.target.value }); setEditErrors(prev => ({ ...prev, dueDate: '' })); }}
+              InputLabelProps={{ shrink: true }}
+              size="small"
+              fullWidth
+              error={!!editErrors.dueDate}
+              helperText={editErrors.dueDate}
+            />
           </Stack>
         </DialogContent>
         <DialogActions sx={{ pb: 1 }}>
-          <Button size="small" onClick={() => setEditModal({ open: false, loan: null })} disabled={isSavingEdit || loadingSettings}>
+          <Button size="small" onClick={() => setEditModal({ open: false, loan: null })} disabled={isSavingEdit}>
             Cancel
           </Button>
-          <Button size="small" variant="contained" onClick={handleEditSubmit} disabled={isSavingEdit || loadingSettings || currentWeeklyInterestRate === 0}>
+          <Button size="small" variant="contained" onClick={handleEditSubmit} disabled={isSavingEdit}>
             {isSavingEdit ? <CircularProgress size={20} color="inherit" /> : 'Save'}
           </Button>
         </DialogActions>
@@ -859,18 +841,6 @@ export default function LoanList() {
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* Snackbar for general notifications */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 }
