@@ -15,6 +15,7 @@ import {
   TextField,
   Badge,
   Button,
+  Popover,
 } from "@mui/material";
 import PhoneIcon from "@mui/icons-material/Phone";
 import BuildIcon from "@mui/icons-material/Build";
@@ -31,7 +32,7 @@ import { useFirestore } from "../contexts/FirestoreProvider";
 import dayjs from "dayjs";
 
 export default function AppBarTop() {
-  const { user } = useAuth();
+  const { user } = useAuth(); // 'user' directly contains displayName from Firebase Auth
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -44,36 +45,47 @@ export default function AppBarTop() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
-  //const [notificationAnchor, setNotificationAnchor] = useState(null);
+  const [notificationAnchor, setNotificationAnchor] = useState(null);
+  const openNotifications = Boolean(notificationAnchor);
+  const notificationsId = openNotifications ? "notifications-popover" : undefined;
+
   const [dateTime, setDateTime] = useState(dayjs());
 
-  const userRole = user?.displayName || user?.email?.split("@")[0] || "Agent";
+  // --- MODIFIED LINE HERE ---
+  const userDisplayLabel = user?.displayName || user?.email?.split("@")[0] || "User"; // Changed "Agent" to "User"
+  // --- END MODIFIED LINE ---
 
+
+  // Update date and time every minute
   useEffect(() => {
     const interval = setInterval(() => setDateTime(dayjs()), 60000);
     return () => clearInterval(interval);
   }, []);
 
+  // Generate notifications based on loan data
   useEffect(() => {
     if (!loans) return;
-    const now = new Date();
+    const now = dayjs();
+    const notes = [];
+
     const upcoming = loans.filter(
       (l) =>
-        l.status === "Active" &&
-        new Date(l.dueDate) >= now &&
-        new Date(l.dueDate) <= new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
+        l.status !== "Paid" &&
+        dayjs(l.dueDate).isAfter(now, "day") &&
+        dayjs(l.dueDate).diff(now, "day") < 3
     );
+
     const overdue = loans.filter(
-      (l) => l.status === "Active" && new Date(l.dueDate) < now
+      (l) => l.status !== "Paid" && dayjs(l.dueDate).isBefore(now, "day")
     );
-    const notes = [];
-    if (upcoming.length) {
+
+    if (upcoming.length > 0) {
       notes.push({
         id: "upcoming",
         message: `${upcoming.length} loan(s) due within 3 days`,
       });
     }
-    if (overdue.length) {
+    if (overdue.length > 0) {
       notes.push({
         id: "overdue",
         message: `${overdue.length} overdue loan(s)`,
@@ -82,36 +94,53 @@ export default function AppBarTop() {
     setNotifications(notes);
   }, [loans]);
 
+  // Handlers for menu and dialogs
   const handleLogout = async () => {
     handleMenuClose();
     try {
       await signOut(auth);
       navigate("/login");
+      toast.success("Logged out successfully!");
     } catch (error) {
       toast.error("Logout failed. Please try again.");
+      console.error("Logout error:", error);
     }
   };
 
   const handleMenuClick = (e) => setAnchorEl(e.currentTarget);
   const handleMenuClose = () => setAnchorEl(null);
+
   const handleSettingsClick = () => {
     handleMenuClose();
     isMobile ? setSettingsOpen(true) : navigate("/settings");
   };
   const closeSettingsDialog = () => setSettingsOpen(false);
+
   const handleHelpClick = () => setHelpOpen(true);
   const handleHelpClose = () => setHelpOpen(false);
+
+  // Search bar functionality
   const toggleSearch = () => {
     setSearchOpen((prev) => !prev);
     setSearchTerm("");
   };
   const performSearch = () => {
-    navigate(`/loans?search=${encodeURIComponent(searchTerm.trim())}`);
-    toggleSearch();
+    if (searchTerm.trim()) {
+      navigate(`/loans?search=${encodeURIComponent(searchTerm.trim())}`);
+      toggleSearch();
+    }
   };
   const handleKeyDown = (e) => {
     if (e.key === "Enter") performSearch();
     if (e.key === "Escape") toggleSearch();
+  };
+
+  // Notification Popover handlers
+  const handleNotificationsClick = (event) => {
+    setNotificationAnchor(event.currentTarget);
+  };
+  const handleNotificationsClose = () => {
+    setNotificationAnchor(null);
   };
 
   return (
@@ -137,6 +166,7 @@ export default function AppBarTop() {
             {dateTime.format("ddd, MMM D, YYYY h:mm A")}
           </Typography>
 
+          {/* Search Button / TextField */}
           {!searchOpen ? (
             <Tooltip title="Search">
               <IconButton color="inherit" onClick={toggleSearch}>
@@ -157,10 +187,19 @@ export default function AppBarTop() {
                 mr: 1,
                 bgcolor: "background.paper",
                 borderRadius: 1,
+                "& .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "transparent",
+                },
+                "&:hover .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "transparent",
+                },
+                "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "transparent",
+                },
               }}
               InputProps={{
                 endAdornment: (
-                  <IconButton size="small" onClick={toggleSearch}>
+                  <IconButton size="small" onClick={toggleSearch} sx={{ color: "text.secondary" }}>
                     <CloseIcon />
                   </IconButton>
                 ),
@@ -168,51 +207,123 @@ export default function AppBarTop() {
             />
           )}
 
+          {/* Notifications Icon with Badge */}
           <Tooltip title="Notifications">
-            <IconButton color="inherit">
+            <IconButton
+              color="inherit"
+              aria-describedby={notificationsId}
+              onClick={handleNotificationsClick}
+            >
               <Badge badgeContent={notifications.length} color="error">
                 <NotificationsIcon />
               </Badge>
             </IconButton>
           </Tooltip>
 
+          {/* Help & Support Icon */}
           <Tooltip title="Help & Support">
             <IconButton onClick={handleHelpClick} color="inherit">
               <PhoneIcon />
             </IconButton>
           </Tooltip>
 
+          {/* User Role Display - UPDATED TO REFLECT userDisplayLabel */}
           <Typography
             variant="body2"
             sx={{ ml: 2, mr: 1, display: { xs: "none", sm: "block" }, fontWeight: "600" }}
           >
-            Agent: {userRole}
+            User: {userDisplayLabel} {/* Changed from Agent: {userRole} */}
           </Typography>
 
+          {/* Main Menu Icon */}
           <Tooltip title="Menu">
             <IconButton onClick={handleMenuClick} color="inherit">
               <BuildIcon />
             </IconButton>
           </Tooltip>
 
+          {/* User Menu */}
           <Menu
             anchorEl={anchorEl}
             open={openMenu}
             onClose={handleMenuClose}
             PaperProps={{ sx: { mt: 1.5 } }}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
           >
-            <MenuItem disabled>{user?.displayName || user?.email}</MenuItem>
+            <MenuItem disabled sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
+              {user?.displayName || user?.email}
+            </MenuItem>
             <MenuItem onClick={handleSettingsClick}>Settings</MenuItem>
-            <MenuItem onClick={() => navigate("/profile")}>Profile</MenuItem>
-            <MenuItem onClick={() => navigate("/change-password")}>Change Password</MenuItem>
+            <MenuItem onClick={() => { handleMenuClose(); navigate("/profile"); }}>Profile</MenuItem>
+            <MenuItem onClick={() => { handleMenuClose(); navigate("/change-password"); }}>Change Password</MenuItem>
             <MenuItem onClick={handleLogout}>Logout</MenuItem>
           </Menu>
         </Toolbar>
       </AppBar>
 
-      {/* Settings Dialog */}
+      {/* Notifications Popover */}
+      <Popover
+        id={notificationsId}
+        open={openNotifications}
+        anchorEl={notificationAnchor}
+        onClose={handleNotificationsClose}
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: "right",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "right",
+        }}
+        PaperProps={{
+          sx: {
+            mt: 1,
+            maxHeight: "80vh",
+            overflowY: "auto",
+            minWidth: 250,
+          },
+        }}
+      >
+        <Box p={2}>
+          <Typography variant="h6" mb={1}>
+            Notifications
+          </Typography>
+          {notifications.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              No new notifications.
+            </Typography>
+          ) : (
+            <>
+              {notifications.map((note) => (
+                <MenuItem
+                  key={note.id}
+                  onClick={() => {
+                    navigate("/loans");
+                    handleNotificationsClose();
+                  }}
+                  sx={{ whiteSpace: "normal", py: 1 }}
+                >
+                  <Typography variant="body2">{note.message}</Typography>
+                </MenuItem>
+              ))}
+              <MenuItem
+                onClick={() => {
+                  navigate("/activity");
+                  handleNotificationsClose();
+                }}
+                sx={{ mt: 1, justifyContent: 'center' }}
+              >
+                <Typography variant="button" color="primary">View all activity</Typography>
+              </MenuItem>
+            </>
+          )}
+        </Box>
+      </Popover>
+
+      {/* Settings Dialog (for mobile) */}
       <Dialog fullScreen open={settingsOpen} onClose={closeSettingsDialog}>
-        <SettingsPage />
+        <SettingsPage onClose={closeSettingsDialog} />
       </Dialog>
 
       {/* Help Dialog */}
@@ -236,4 +347,3 @@ export default function AppBarTop() {
     </>
   );
 }
-

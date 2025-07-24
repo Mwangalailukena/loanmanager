@@ -13,6 +13,7 @@ import {
   LinearProgress,
   Fab,
   Zoom,
+  Skeleton, // Import Skeleton for loading state
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import PaidIcon from "@mui/icons-material/Payments";
@@ -22,6 +23,7 @@ import WarningIcon from "@mui/icons-material/Warning";
 import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import BarChartIcon from "@mui/icons-material/BarChart";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator"; // Import for drag handle
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useFirestore } from "../contexts/FirestoreProvider";
@@ -39,6 +41,21 @@ const cardVariants = {
 };
 
 const STORAGE_KEY = "dashboardCardOrder";
+
+// Define default card IDs as a static constant outside the component
+const DEFAULT_CARD_IDS = [
+  "totalLoans",
+  "paidLoans",
+  "activeLoans",
+  "overdueLoans",
+  "investedCapital",
+  "availableCapital",
+  "totalCollected",
+  "totalOutstanding",
+  "expectedProfit",
+  "actualProfit",
+  "averageLoan",
+];
 
 const iconMap = {
   totalLoans: <MonetizationOnIcon fontSize="large" color="primary" />,
@@ -64,65 +81,65 @@ export default function Dashboard() {
   const [cardsOrder, setCardsOrder] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // This useEffect now handles both loading state and initial card order setup
+  // when loan data becomes available.
   useEffect(() => {
-    if (!loans) return;
-    setLoading(false);
+    const timer = setTimeout(() => {
+      if (loans) {
+        setLoading(false);
+      }
+    }, 500); // A small delay to show the skeleton effect
 
-    const now = new Date();
-    const upcomingThreshold = new Date(now);
-    upcomingThreshold.setDate(now.getDate() + 3);
+    if (loans) {
+      // --- Initializing cardsOrder when loans data is ready ---
+      const savedOrder = localStorage.getItem(STORAGE_KEY);
+      if (savedOrder) {
+        // Parse the saved order. Filter out any IDs that might no longer be valid.
+        const parsedOrder = JSON.parse(savedOrder);
+        const validOrder = parsedOrder.filter(id => DEFAULT_CARD_IDS.includes(id));
+        // Add any new default cards that weren't in the saved order at the end
+        const finalOrder = [...new Set([...validOrder, ...DEFAULT_CARD_IDS])];
+        setCardsOrder(finalOrder);
+      } else {
+        // If no saved order, use the static default order
+        setCardsOrder(DEFAULT_CARD_IDS);
+      }
+      // --- End cardsOrder initialization ---
 
-    const upcomingLoans = loans.filter(
-      (loan) =>
-        loan.status === "Active" &&
-        new Date(loan.dueDate) <= upcomingThreshold &&
-        new Date(loan.dueDate) >= now
-    );
+      const now = new Date();
+      const upcomingThreshold = new Date(now);
+      upcomingThreshold.setDate(now.getDate() + 3);
 
-    const overdueLoansList = loans.filter(
-      (loan) => loan.status === "Active" && new Date(loan.dueDate) < now
-    );
+      const upcomingLoans = loans.filter(
+        (loan) =>
+          loan.status === "Active" &&
+          new Date(loan.dueDate) <= upcomingThreshold &&
+          new Date(loan.dueDate) >= now
+      );
 
-    if (upcomingLoans.length > 0) {
-      toast.info(`You have ${upcomingLoans.length} loan(s) due within 3 days!`);
+      const overdueLoansList = loans.filter(
+        (loan) => loan.status === "Active" && new Date(loan.dueDate) < now
+      );
+
+      if (upcomingLoans.length > 0) {
+        toast.info(`You have ${upcomingLoans.length} loan(s) due within 3 days!`);
+      }
+      if (overdueLoansList.length > 0) {
+        toast.error(`You have ${overdueLoansList.length} overdue loan(s)! Please take action.`);
+      }
     }
-    if (overdueLoansList.length > 0) {
-      toast.error(`You have ${overdueLoansList.length} overdue loan(s)! Please take action.`);
-    }
-  }, [loans]);
 
-  useEffect(() => {
-    const savedOrder = localStorage.getItem(STORAGE_KEY);
-    if (savedOrder) {
-      setCardsOrder(JSON.parse(savedOrder));
-    }
-  }, []);
+    return () => clearTimeout(timer);
+  }, [loans]); // Depend on loans as loan data availability triggers this logic
 
-  if (loading) {
-    return (
-      <Box p={2}>
-        <Typography variant="h4" gutterBottom>
-          Dashboard Loading...
-        </Typography>
-        <Stack spacing={2}>
-          {[...Array(6)].map((_, i) => (
-            <LinearProgress key={i} />
-          ))}
-        </Stack>
-      </Box>
-    );
-  }
+  // Removed the previous useEffect for cardsOrder initialization (was at line 116)
+  // as its logic is now merged into the useEffect above.
 
-  if (!loans || loans.length === 0) {
-    return (
-      <Box p={2}>
-        <Typography variant="h5">No loans available.</Typography>
-      </Box>
-    );
-  }
+  // Calculate metrics
+  const loansForCalculations = loans || []; // Ensure loans is not null/undefined for calculations
 
-  // Filter loans by selected month
-  const loansThisMonth = loans.filter((loan) =>
+  // Filter loans by selected month for calculation
+  const loansThisMonth = loansForCalculations.filter((loan) =>
     loan.startDate.startsWith(selectedMonth)
   );
 
@@ -133,7 +150,7 @@ export default function Dashboard() {
     (l) => l.status === "Active" && new Date(l.dueDate) < new Date()
   ).length;
 
-  const initialCapital = Number(settings?.initialCapital) || 60000;
+  const initialCapital = Number(settings?.initialCapital) || 60000; // Default if not set
 
   const totalDisbursed = loansThisMonth.reduce(
     (sum, loan) => sum + Number(loan.principal || 0),
@@ -174,6 +191,7 @@ export default function Dashboard() {
     loansThisMonth.length > 0 ? Math.round(totalDisbursed / loansThisMonth.length) : 0;
 
   // Cards default data with extra fields for progress bars
+  // Re-define defaultCards inside component to use calculated values
   const defaultCards = [
     {
       id: "totalLoans",
@@ -290,11 +308,12 @@ export default function Dashboard() {
   ];
 
   // Compose cards based on stored order or default order
+  // Filter defaultCards based on cardsOrder. This will update if selectedMonth changes.
   const cardsToRender = cardsOrder.length
     ? cardsOrder
         .map((id) => defaultCards.find((c) => c.id === id))
-        .filter(Boolean)
-    : defaultCards;
+        .filter(Boolean) // Filter out any card IDs that might no longer exist
+    : defaultCards; // Fallback to default if cardsOrder is empty for some reason
 
   const onDragEnd = (result) => {
     if (!result.destination) return;
@@ -302,8 +321,10 @@ export default function Dashboard() {
     const [moved] = newOrder.splice(result.source.index, 1);
     newOrder.splice(result.destination.index, 0, moved);
 
-    setCardsOrder(newOrder.map((c) => c.id));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newOrder.map((c) => c.id)));
+    const newCardsOrderIds = newOrder.map((c) => c.id);
+    setCardsOrder(newCardsOrderIds);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newCardsOrderIds));
+    toast.success("Dashboard layout saved!"); // Confirmation toast
   };
 
   const handleCardClick = (filter) => {
@@ -312,6 +333,58 @@ export default function Dashboard() {
     if (selectedMonth) params.set("month", selectedMonth);
     navigate(`/loans?${params.toString()}`);
   };
+
+  if (loading) {
+    return (
+      <Box p={isMobile ? 1 : 2}>
+        <Typography variant={isMobile ? "h5" : "h4"} gutterBottom>
+          Dashboard
+        </Typography>
+        <Grid container spacing={isMobile ? 1 : 2}>
+          {[...Array(isMobile ? 6 : 10)].map((_, i) => ( // Adjust number of skeletons
+            <Grid item xs={6} sm={4} md={3} lg={2} key={i}>
+              <Card sx={{ p: isMobile ? 1.5 : 2, height: isMobile ? 90 : 120 }}>
+                <Skeleton variant="text" width="70%" height={isMobile ? 20 : 25} />
+                <Skeleton variant="text" width="90%" height={isMobile ? 30 : 40} />
+                <Skeleton variant="rectangular" width="100%" height={isMobile ? 6 : 8} sx={{ mt: 1 }} />
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      </Box>
+    );
+  }
+
+  if (!loans || loans.length === 0) {
+    return (
+      <Box
+        p={isMobile ? 1 : 2}
+        display="flex"
+        flexDirection="column"
+        alignItems="center"
+        justifyContent="center"
+        minHeight="70vh" // Give it some height for centering
+        textAlign="center"
+      >
+        <Typography variant="h5" color="text.secondary" gutterBottom>
+          No loans available yet!
+        </Typography>
+        <Typography variant="body1" color="text.secondary" mb={3}>
+          Start by adding your first loan to see your financial overview here.
+        </Typography>
+        <Fab
+          color="primary"
+          aria-label="Add Loan"
+          onClick={() => navigate("/add-loan")}
+          variant="extended" // Use extended for text label
+          sx={{ mt: 2 }}
+        >
+          <AddIcon sx={{ mr: 1 }} />
+          Add First Loan
+        </Fab>
+      </Box>
+    );
+  }
 
   return (
     <Box p={isMobile ? 1 : 2}>
@@ -359,7 +432,7 @@ export default function Dashboard() {
                           variants={cardVariants}
                           ref={providedDraggable.innerRef}
                           {...providedDraggable.draggableProps}
-                          {...providedDraggable.dragHandleProps}
+                          // dragHandleProps are now on the DragIndicatorIcon
                           style={{
                             ...providedDraggable.draggableProps.style,
                             marginBottom: 8,
@@ -369,7 +442,7 @@ export default function Dashboard() {
                             <Card
                               sx={{
                                 p: 1.5,
-                                cursor: "grab",
+                                cursor: "pointer", // Change to pointer as drag handle is separate
                                 borderLeft: `6px solid ${theme.palette[color].main}`,
                                 position: "relative",
                                 boxShadow: pulse
@@ -389,6 +462,15 @@ export default function Dashboard() {
                                 mb={0.5}
                                 gap={1}
                               >
+                                {/* Drag Indicator Icon - Only on mobile, acts as handle */}
+                                {isMobile && (
+                                  <Box
+                                    sx={{ cursor: "grab" }}
+                                    {...providedDraggable.dragHandleProps}
+                                  >
+                                    <DragIndicatorIcon sx={{ color: theme.palette.text.secondary }} />
+                                  </Box>
+                                )}
                                 {React.cloneElement(icon, { fontSize: "medium" })}
                                 <Typography
                                   variant="subtitle2"
@@ -439,7 +521,7 @@ export default function Dashboard() {
                           lg={2}
                           ref={providedDraggable.innerRef}
                           {...providedDraggable.draggableProps}
-                          {...providedDraggable.dragHandleProps}
+                          {...providedDraggable.dragHandleProps} // Drag handle remains on the Grid item for desktop
                           style={{
                             ...providedDraggable.draggableProps.style,
                           }}
@@ -454,7 +536,7 @@ export default function Dashboard() {
                               <Card
                                 sx={{
                                   p: 2,
-                                  cursor: "grab",
+                                  cursor: "grab", // Still grab cursor for desktop (entire card is draggable)
                                   borderLeft: `6px solid ${theme.palette[color].main}`,
                                   position: "relative",
                                   boxShadow: pulse
@@ -474,7 +556,7 @@ export default function Dashboard() {
                                   mb={1}
                                   gap={1}
                                 >
-                                  {icon}
+                                  {icon} {/* Desktop icons use the original size from iconMap */}
                                   <Typography
                                     variant="subtitle1"
                                     color="textSecondary"
@@ -516,7 +598,7 @@ export default function Dashboard() {
           onClick={() => navigate("/add-loan")}
           sx={{
             position: "fixed",
-            bottom: isMobile ? 80 : 24,  // slightly above bottom nav on mobile
+            bottom: isMobile ? 80 : 24, // slightly above bottom nav on mobile
             right: 24,
             zIndex: 1300,
           }}
@@ -542,4 +624,3 @@ export default function Dashboard() {
     </Box>
   );
 }
-
