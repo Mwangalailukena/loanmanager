@@ -5,6 +5,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import Dashboard from './pages/Dashboard';
 import LoanList from './pages/LoanList';
 import AddLoanForm from './pages/AddLoanForm';
+// Assuming AddPaymentPage is the new page for adding payments
+import AddPaymentPage from './pages/AddPaymentPage'; // <--- NEW IMPORT: Import the AddPaymentPage
 import ActivityPage from './pages/ActivityPage';
 import SettingsPage from './pages/SettingsPage';
 import Profile from './pages/Profile';
@@ -20,7 +22,7 @@ import BottomNavBar from './components/BottomNavBar';
 import Sidebar from './components/Sidebar';
 import AppBarTop from './components/AppBarTop';
 
-import InstallPrompt from './components/InstallPrompt'; // <-- Added install prompt import
+import InstallPrompt from './components/InstallPrompt';
 
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -76,6 +78,15 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        {/* New Route for AddPaymentPage */}
+        <Route
+          path="/add-payment" {/* <--- ROUTE DEFINITION */}
+          element={
+            <ProtectedRoute>
+              <AddPaymentPage /> {/* <--- COMPONENT TO RENDER */}
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/activity"
           element={
@@ -123,7 +134,7 @@ function App() {
       <AuthProvider>
         <FirestoreProvider>
           <AppRoutes />
-          <InstallPrompt /> {/* <-- Insert custom install prompt here */}
+          <InstallPrompt />
           <ToastContainer
             position="top-center"
             autoClose={5000}
@@ -142,4 +153,3 @@ function App() {
 }
 
 export default App;
-
