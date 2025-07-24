@@ -11,11 +11,8 @@ import {
   TextField,
   Tooltip,
   LinearProgress,
-  Fab,
-  Zoom,
   Skeleton, // Import Skeleton for loading state
 } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
 import PaidIcon from "@mui/icons-material/Payments";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PendingIcon from "@mui/icons-material/Pending";
@@ -49,11 +46,12 @@ const DEFAULT_CARD_IDS = [
   "activeLoans",
   "overdueLoans",
   "investedCapital",
+  "disbursedCapital", // Added new card ID
   "availableCapital",
   "totalCollected",
   "totalOutstanding",
-  "expectedProfit",
-  "actualProfit",
+  "expectedInterest", // Renamed ID
+  "actualInterest",   // Renamed ID
   "averageLoan",
 ];
 
@@ -63,11 +61,12 @@ const iconMap = {
   activeLoans: <PendingIcon fontSize="large" color="info" />,
   overdueLoans: <WarningIcon fontSize="large" color="error" />,
   investedCapital: <AccountBalanceWalletIcon fontSize="large" color="primary" />,
+  disbursedCapital: <MonetizationOnIcon fontSize="large" color="warning" />, // Icon for new card
   availableCapital: <AccountBalanceWalletIcon fontSize="large" color="success" />,
   totalCollected: <PaidIcon fontSize="large" color="info" />,
   totalOutstanding: <WarningIcon fontSize="large" color="warning" />,
-  expectedProfit: <BarChartIcon fontSize="large" color="info" />,
-  actualProfit: <CheckCircleIcon fontSize="large" color="success" />,
+  expectedInterest: <BarChartIcon fontSize="large" color="info" />, // Icon for renamed card
+  actualInterest: <CheckCircleIcon fontSize="large" color="success" />,   // Icon for renamed card
   averageLoan: <MonetizationOnIcon fontSize="large" color="primary" />,
 };
 
@@ -132,8 +131,6 @@ export default function Dashboard() {
     return () => clearTimeout(timer);
   }, [loans]); // Depend on loans as loan data availability triggers this logic
 
-  // Removed the previous useEffect for cardsOrder initialization (was at line 116)
-  // as its logic is now merged into the useEffect above.
 
   // Calculate metrics
   const loansForCalculations = loans || []; // Ensure loans is not null/undefined for calculations
@@ -173,12 +170,12 @@ export default function Dashboard() {
       return sum + (principal + interest - repaid);
     }, 0);
 
-  const totalExpectedProfit = loansThisMonth.reduce(
+  const totalExpectedInterest = loansThisMonth.reduce(
     (sum, loan) => sum + Number(loan.interest || 0),
     0
   );
 
-  const actualProfit = loansThisMonth
+  const actualInterest = loansThisMonth
     .filter(
       (loan) =>
         loan.status === "Paid" &&
@@ -245,6 +242,16 @@ export default function Dashboard() {
       icon: iconMap.investedCapital,
     },
     {
+      id: "disbursedCapital", // New card
+      label: "Disbursed Capital",
+      value: `ZMW ${totalDisbursed.toLocaleString()}`,
+      color: "warning",
+      filter: "all",
+      tooltip: "Total principal amount disbursed this month",
+      progress: initialCapital > 0 ? totalDisbursed / initialCapital : null,
+      icon: iconMap.disbursedCapital,
+    },
+    {
       id: "availableCapital",
       label: "Available Capital",
       value: `ZMW ${availableCapital.toLocaleString()}`,
@@ -275,25 +282,25 @@ export default function Dashboard() {
       icon: iconMap.totalOutstanding,
     },
     {
-      id: "expectedProfit",
-      label: "Expected Profit",
-      value: `ZMW ${totalExpectedProfit.toLocaleString()}`,
+      id: "expectedInterest", // Renamed label and ID
+      label: "Expected Interest",
+      value: `ZMW ${totalExpectedInterest.toLocaleString()}`,
       color: "info",
       filter: "all",
-      tooltip: "Total expected profit from interest",
+      tooltip: "Total expected interest from all loans",
       progress: null,
-      icon: iconMap.expectedProfit,
+      icon: iconMap.expectedInterest,
     },
     {
-      id: "actualProfit",
-      label: "Actual Profit",
-      value: `ZMW ${actualProfit.toLocaleString()}`,
+      id: "actualInterest", // Renamed label and ID
+      label: "Actual Interest",
+      value: `ZMW ${actualInterest.toLocaleString()}`,
       color: "success",
       filter: "paid",
-      tooltip: "Profit earned from fully repaid loans",
+      tooltip: "Interest earned from fully repaid loans",
       progress:
-        totalExpectedProfit > 0 ? actualProfit / totalExpectedProfit : null,
-      icon: iconMap.actualProfit,
+        totalExpectedInterest > 0 ? actualInterest / totalExpectedInterest : null,
+      icon: iconMap.actualInterest,
     },
     {
       id: "averageLoan",
@@ -372,16 +379,7 @@ export default function Dashboard() {
         <Typography variant="body1" color="text.secondary" mb={3}>
           Start by adding your first loan to see your financial overview here.
         </Typography>
-        <Fab
-          color="primary"
-          aria-label="Add Loan"
-          onClick={() => navigate("/add-loan")}
-          variant="extended" // Use extended for text label
-          sx={{ mt: 2 }}
-        >
-          <AddIcon sx={{ mr: 1 }} />
-          Add First Loan
-        </Fab>
+        {/* Removed FAB - if you want to add an "Add Loan" button here, you'd add it below */}
       </Box>
     );
   }
@@ -589,23 +587,6 @@ export default function Dashboard() {
           }
         </Droppable>
       </DragDropContext>
-
-      {/* Floating Add Loan Button */}
-      <Zoom in={true} timeout={500} style={{ transitionDelay: "500ms" }}>
-        <Fab
-          color="primary"
-          aria-label="Add Loan"
-          onClick={() => navigate("/add-loan")}
-          sx={{
-            position: "fixed",
-            bottom: isMobile ? 80 : 24, // slightly above bottom nav on mobile
-            right: 24,
-            zIndex: 1300,
-          }}
-        >
-          <AddIcon />
-        </Fab>
-      </Zoom>
 
       {/* Pulse keyframes */}
       <style>{`
