@@ -10,7 +10,7 @@ import {
   Alert,
 } from "@mui/material";
 import { useFirestore } from "../contexts/FirestoreProvider";
-import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 const interestOptions = [
   { label: "1 Week", value: 1 },
@@ -21,7 +21,6 @@ const interestOptions = [
 
 export default function AddLoanForm() {
   const { addLoan, addActivityLog, settings } = useFirestore();
-  const navigate = useNavigate();
 
   const [borrower, setBorrower] = useState("");
   const [phone, setPhone] = useState("");
@@ -76,7 +75,6 @@ export default function AddLoanForm() {
     const dueDateStr = dueDate.toISOString().slice(0, 10);
 
     try {
-      // Add the loan first
       await addLoan({
         borrower,
         phone,
@@ -90,14 +88,21 @@ export default function AddLoanForm() {
         interestDuration,
       });
 
-      // Log activity (non-blocking)
-      addActivityLog({
+      await addActivityLog({
         action: "Loan Created",
         details: `Loan created for ${borrower} (ZMW ${principal})`,
         timestamp: new Date().toISOString(),
-      }).catch((logErr) => console.warn("Activity log failed:", logErr));
+      });
 
-      navigate("/loans");
+      toast.success("Loan added successfully!");
+
+      // Clear form fields
+      setBorrower("");
+      setPhone("");
+      setAmount("");
+      setInterestDuration(1);
+      setError("");
+
     } catch (err) {
       console.error("Loan creation failed:", err);
       setError("Failed to add loan. Please try again.");

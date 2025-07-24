@@ -1,3 +1,4 @@
+// src/App.js
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
@@ -6,6 +7,8 @@ import LoanList from './pages/LoanList';
 import AddLoanForm from './pages/AddLoanForm';
 import ActivityPage from './pages/ActivityPage';
 import SettingsPage from './pages/SettingsPage';
+import Profile from './pages/Profile';
+import ChangePassword from './pages/ChangePassword';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
@@ -15,51 +18,113 @@ import { AuthProvider } from './contexts/AuthProvider';
 import ProtectedRoute from './components/ProtectedRoute';
 import BottomNavBar from './components/BottomNavBar';
 import Sidebar from './components/Sidebar';
+import AppBarTop from './components/AppBarTop';
 
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
+import { Toolbar } from '@mui/material';
+
 import './App.css';
 
-const Layout = ({ children }) => {
-  const location = useLocation();
-
-  const hideNav = ['/login', '/register', '/forgot-password'].includes(location.pathname);
+const AppLayout = ({ children }) => {
+  const { pathname } = useLocation();
+  const hideLayout = ['/login', '/register', '/forgot-password'].includes(pathname);
 
   return (
-    <div style={{ display: 'flex' }}>
-      {!hideNav && <Sidebar />}
-      <main style={{ flexGrow: 1, paddingBottom: '56px' }}>
-        {children}
-      </main>
-      {!hideNav && <BottomNavBar />}
+    <div style={{ display: 'flex', minHeight: '100vh', flexDirection: 'column' }}>
+      {!hideLayout && <AppBarTop />}
+      {!hideLayout && <Toolbar />}
+      <div style={{ flex: 1, display: 'flex' }}>
+        {!hideLayout && <Sidebar />}
+        <main style={{ flexGrow: 1, paddingBottom: !hideLayout ? '56px' : 0 }}>
+          {children}
+        </main>
+      </div>
+      {!hideLayout && <BottomNavBar />}
     </div>
   );
 };
 
+function AppRoutes() {
+  return (
+    <AppLayout>
+      <Routes>
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/loans"
+          element={
+            <ProtectedRoute>
+              <LoanList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/add-loan"
+          element={
+            <ProtectedRoute>
+              <AddLoanForm />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/activity"
+          element={
+            <ProtectedRoute>
+              <ActivityPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <SettingsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/change-password"
+          element={
+            <ProtectedRoute>
+              <ChangePassword />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+    </AppLayout>
+  );
+}
+
 function App() {
   return (
-    <AuthProvider>
-      <FirestoreProvider>
-        <Router>
-          {/* Layout uses useLocation, so it must be inside Router */}
-          <Layout>
-            <Routes>
-              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/loans" element={<ProtectedRoute><LoanList /></ProtectedRoute>} />
-              <Route path="/add-loan" element={<ProtectedRoute><AddLoanForm /></ProtectedRoute>} />
-              <Route path="/activity" element={<ProtectedRoute><ActivityPage /></ProtectedRoute>} />
-              <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
-            </Routes>
-          </Layout>
+    <Router>
+      <AuthProvider>
+        <FirestoreProvider>
+          <AppRoutes />
           <ToastContainer position="bottom-center" />
-        </Router>
-      </FirestoreProvider>
-    </AuthProvider>
+        </FirestoreProvider>
+      </AuthProvider>
+    </Router>
   );
 }
 

@@ -1,4 +1,3 @@
-// src/contexts/authProvider.js
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
   getAuth,
@@ -8,7 +7,7 @@ import {
   signInWithPopup,
   GoogleAuthProvider,
   sendPasswordResetEmail,
-  createUserWithEmailAndPassword,  // <-- import this
+  createUserWithEmailAndPassword,
 } from 'firebase/auth';
 import app from '../firebase';
 
@@ -29,28 +28,33 @@ export const AuthProvider = ({ children }) => {
     return () => unsubscribe();
   }, [auth]);
 
-  // Login with email/password
   const login = (email, password) => signInWithEmailAndPassword(auth, email, password);
 
-  // Register new user with email/password
   const register = (email, password) => createUserWithEmailAndPassword(auth, email, password);
 
-  // Login with Google
   const loginWithGoogle = () => signInWithPopup(auth, new GoogleAuthProvider());
 
-  // Send reset password email
   const resetPassword = (email) => sendPasswordResetEmail(auth, email);
 
-  // Logout
   const logout = () => signOut(auth);
+
+  const refreshUser = () => {
+    if (auth.currentUser) {
+      return auth.currentUser.reload().then(() => {
+        setCurrentUser({ ...auth.currentUser });
+      });
+    }
+    return Promise.resolve();
+  };
 
   const value = {
     currentUser,
     login,
-    register,           // <-- add register here
+    register,
     loginWithGoogle,
     resetPassword,
     logout,
+    refreshUser,
   };
 
   return (

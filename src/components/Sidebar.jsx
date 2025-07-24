@@ -1,3 +1,4 @@
+// src/components/Sidebar.jsx
 import React from "react";
 import { Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar } from "@mui/material";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -6,7 +7,7 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import AddIcon from "@mui/icons-material/Add";
 import ListAltIcon from "@mui/icons-material/ListAlt";
 import HistoryIcon from "@mui/icons-material/History";
-import SettingsIcon from "@mui/icons-material/Settings";
+// Removed SettingsIcon import
 
 const drawerWidth = 220;
 
@@ -19,7 +20,7 @@ const Sidebar = () => {
     { text: "Add Loan", icon: <AddIcon />, path: "/add-loan" },
     { text: "Loan Records", icon: <ListAltIcon />, path: "/loans" },
     { text: "Activity", icon: <HistoryIcon />, path: "/activity" },
-    { text: "Settings", icon: <SettingsIcon />, path: "/settings" },
+    // Removed { text: "Settings", icon: <SettingsIcon />, path: "/settings" },
   ];
 
   return (

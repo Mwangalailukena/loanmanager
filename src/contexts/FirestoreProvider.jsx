@@ -14,7 +14,7 @@ import {
   setDoc,
   serverTimestamp,
 } from "firebase/firestore";
-import { db } from "../firebase";  // Make sure this is your firebase config export
+import { db } from "../firebase";  // Your firebase config export
 
 const FirestoreContext = createContext();
 
@@ -29,11 +29,10 @@ export function FirestoreProvider({ children }) {
   });
   const [activityLogs, setActivityLogs] = useState([]);
 
-  // Add activity log function here, before usage
-  const addActivity = async (description) => {
+  // Renamed addActivity to addActivityLog
+  const addActivityLog = async (logEntry) => {
     await addDoc(collection(db, "activityLogs"), {
-      description,
-      date: new Date().toISOString(),
+      ...logEntry,
       createdAt: serverTimestamp(),
     });
   };
@@ -93,7 +92,7 @@ export function FirestoreProvider({ children }) {
       updatedAt: serverTimestamp(),
     };
     const docRef = await addDoc(collection(db, "loans"), loanWithTimestamps);
-    await addActivity(`Loan added for ${loan.borrower}`);
+    await addActivityLog({ description: `Loan added for ${loan.borrower}`, date: new Date().toISOString() });
     return docRef;
   };
 
@@ -102,13 +101,13 @@ export function FirestoreProvider({ children }) {
     const docRef = doc(db, "loans", id);
     const updatesWithTimestamp = { ...updates, updatedAt: serverTimestamp() };
     await updateDoc(docRef, updatesWithTimestamp);
-    await addActivity(`Loan updated (ID: ${id})`);
+    await addActivityLog({ description: `Loan updated (ID: ${id})`, date: new Date().toISOString() });
   };
 
   // Delete a loan
   const deleteLoan = async (id) => {
     await deleteDoc(doc(db, "loans", id));
-    await addActivity(`Loan deleted (ID: ${id})`);
+    await addActivityLog({ description: `Loan deleted (ID: ${id})`, date: new Date().toISOString() });
   };
 
   // Add a payment and update loan status/amount
@@ -133,7 +132,7 @@ export function FirestoreProvider({ children }) {
 
       // Update loan repayment and status
       await updateLoan(loanId, { repaidAmount, status });
-      await addActivity(`Payment of ZMW ${amount} added for loan ID ${loanId}`);
+      await addActivityLog({ description: `Payment of ZMW ${amount} added for loan ID ${loanId}`, date: new Date().toISOString() });
     }
   };
 
@@ -151,7 +150,7 @@ export function FirestoreProvider({ children }) {
     const updatesWithTimestamp = { ...newSettings, updatedAt: serverTimestamp() };
     await setDoc(docRef, updatesWithTimestamp, { merge: true });
     setSettings((prev) => ({ ...prev, ...newSettings }));
-    await addActivity("Settings updated");
+    await addActivityLog({ description: "Settings updated", date: new Date().toISOString() });
   };
 
   return (
@@ -167,6 +166,7 @@ export function FirestoreProvider({ children }) {
         addPayment,
         getPaymentsByLoanId,
         updateSettings,
+        addActivityLog,  // expose this for components
       }}
     >
       {children}

@@ -1,11 +1,25 @@
 // src/pages/SettingsPage.jsx
 import React, { useState, useEffect } from "react";
-import { Box, Typography, TextField, Button, Stack, Alert } from "@mui/material";
+import {
+  Box,
+  Typography,
+  TextField,
+  Button,
+  Stack,
+  Alert,
+  Tabs,
+  Tab,
+} from "@mui/material";
 import { useFirestore } from "../contexts/FirestoreProvider";
+
+function TabPanel({ children, value, index }) {
+  return value === index ? <Box sx={{ mt: 2 }}>{children}</Box> : null;
+}
 
 export default function SettingsPage() {
   const { settings, updateSettings } = useFirestore();
 
+  const [tabIndex, setTabIndex] = useState(0);
   const [interestRates, setInterestRates] = useState({
     oneWeek: "",
     twoWeeks: "",
@@ -26,6 +40,10 @@ export default function SettingsPage() {
     }
   }, [settings]);
 
+  const handleTabChange = (_, newValue) => {
+    setTabIndex(newValue);
+  };
+
   const handleChange = (field) => (e) => {
     setInterestRates({ ...interestRates, [field]: e.target.value });
   };
@@ -37,7 +55,9 @@ export default function SettingsPage() {
     for (const key in interestRates) {
       const val = parseFloat(interestRates[key]);
       if (isNaN(val) || val < 0) {
-        setMessage("Please enter valid non-negative numbers for all interest rates.");
+        setMessage(
+          "Please enter valid non-negative numbers for all interest rates."
+        );
         return;
       }
     }
@@ -71,57 +91,75 @@ export default function SettingsPage() {
       </Typography>
 
       {message && (
-        <Alert severity={message.includes("successfully") ? "success" : "error"} onClose={() => setMessage("")} sx={{ mb: 2 }}>
+        <Alert
+          severity={message.includes("successfully") ? "success" : "error"}
+          onClose={() => setMessage("")}
+          sx={{ mb: 2 }}
+        >
           {message}
         </Alert>
       )}
 
+      <Tabs value={tabIndex} onChange={handleTabChange} centered>
+        <Tab label="Capital" />
+        <Tab label="Interest Rates" />
+      </Tabs>
+
       <form onSubmit={handleSubmit}>
-        <Stack spacing={3}>
+        <TabPanel value={tabIndex} index={0}>
           <TextField
             label="Initial Capital (ZMW)"
             type="number"
             value={initialCapital}
             onChange={(e) => setInitialCapital(e.target.value)}
             required
+            fullWidth
             inputProps={{ min: 0 }}
           />
-          <TextField
-            label="Interest Rate for 1 Week (%)"
-            type="number"
-            value={interestRates.oneWeek}
-            onChange={handleChange("oneWeek")}
-            required
-            inputProps={{ min: 0 }}
-          />
-          <TextField
-            label="Interest Rate for 2 Weeks (%)"
-            type="number"
-            value={interestRates.twoWeeks}
-            onChange={handleChange("twoWeeks")}
-            required
-            inputProps={{ min: 0 }}
-          />
-          <TextField
-            label="Interest Rate for 3 Weeks (%)"
-            type="number"
-            value={interestRates.threeWeeks}
-            onChange={handleChange("threeWeeks")}
-            required
-            inputProps={{ min: 0 }}
-          />
-          <TextField
-            label="Interest Rate for 4 Weeks (%)"
-            type="number"
-            value={interestRates.fourWeeks}
-            onChange={handleChange("fourWeeks")}
-            required
-            inputProps={{ min: 0 }}
-          />
-          <Button variant="contained" type="submit">
+        </TabPanel>
+
+        <TabPanel value={tabIndex} index={1}>
+          <Stack spacing={3}>
+            <TextField
+              label="Interest Rate for 1 Week (%)"
+              type="number"
+              value={interestRates.oneWeek}
+              onChange={handleChange("oneWeek")}
+              required
+              inputProps={{ min: 0 }}
+            />
+            <TextField
+              label="Interest Rate for 2 Weeks (%)"
+              type="number"
+              value={interestRates.twoWeeks}
+              onChange={handleChange("twoWeeks")}
+              required
+              inputProps={{ min: 0 }}
+            />
+            <TextField
+              label="Interest Rate for 3 Weeks (%)"
+              type="number"
+              value={interestRates.threeWeeks}
+              onChange={handleChange("threeWeeks")}
+              required
+              inputProps={{ min: 0 }}
+            />
+            <TextField
+              label="Interest Rate for 4 Weeks (%)"
+              type="number"
+              value={interestRates.fourWeeks}
+              onChange={handleChange("fourWeeks")}
+              required
+              inputProps={{ min: 0 }}
+            />
+          </Stack>
+        </TabPanel>
+
+        <Box mt={3}>
+          <Button variant="contained" type="submit" fullWidth>
             Save Settings
           </Button>
-        </Stack>
+        </Box>
       </form>
     </Box>
   );
