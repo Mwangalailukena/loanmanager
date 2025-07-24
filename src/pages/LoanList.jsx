@@ -73,7 +73,7 @@ export default function LoanList() {
   const [editErrors, setEditErrors] = useState({});
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
-  // NEW: State for live preview of interest and total repayable
+  // State for live preview of interest and total repayable
   const [previewInterest, setPreviewInterest] = useState(0);
   const [previewTotalRepayable, setPreviewTotalRepayable] = useState(0);
 
@@ -102,7 +102,7 @@ export default function LoanList() {
     return settings?.interestRate ? Number(settings.interestRate) / 100 : 0.05; // Fallback to 5% if not set
   }, [settings]);
 
-  // NEW: Effect to recalculate preview values whenever editData.principal or relevant loan/settings data changes
+  // Effect to recalculate preview values whenever editData.principal or relevant loan/settings data changes
   useEffect(() => {
     if (editModal.open && editModal.loan) {
       const principal = parseFloat(editData.principal);
@@ -761,3 +761,116 @@ export default function LoanList() {
         <DialogTitle fontSize="1.1rem">Edit Loan</DialogTitle>
         <DialogContent sx={{ pb: 1 }}>
           {(editErrors.form || (currentWeeklyInterestRate === 0 && settings?.interestRate !== 0)) && (
+             <Alert severity="error" sx={{ mb: 1 }}>
+               {editErrors.form || (currentWeeklyInterestRate === 0 && "Interest rate is 0%. Please configure it in settings to enable proper recalculation.")}
+             </Alert>
+          )}
+          <Stack spacing={1}>
+            <TextField
+              label="Borrower"
+              value={editData.borrower}
+              onChange={(e) => { setEditData({ ...editData, borrower: e.target.value }); setEditErrors(prev => ({ ...prev, borrower: '' })); }}
+              size="small"
+              fullWidth
+              error={!!editErrors.borrower}
+              helperText={editErrors.borrower}
+            />
+            <TextField
+              label="Principal (ZMW)"
+              type="number"
+              value={editData.principal}
+              onChange={(e) => {
+                setEditData({ ...editData, principal: e.target.value });
+                setEditErrors(prev => ({ ...prev, principal: '' }));
+              }}
+              size="small"
+              fullWidth
+              error={!!editErrors.principal}
+              helperText={editErrors.principal}
+            />
+            {/* Live Preview Display */}
+            {editModal.open && editModal.loan && currentWeeklyInterestRate > 0 && editModal.loan.durationWeeks > 0 && !isNaN(parseFloat(editData.principal)) && parseFloat(editData.principal) > 0 ? (
+                <Box mt={1} sx={{ bgcolor: theme.palette.action.hover, p: 1.5, borderRadius: 1 }}>
+                    <Typography variant="body2" color="text.secondary">
+                        **Preview:**
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                        Interest: **ZMW {previewInterest.toFixed(2)}**
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                        New Total Repayable: **ZMW {previewTotalRepayable.toFixed(2)}**
+                    </Typography>
+                </Box>
+            ) : (currentWeeklyInterestRate === 0 && settings?.interestRate !== 0) && (
+                <Typography variant="caption" color="error" mt={1}>
+                    Cannot preview: Interest rate is 0%. Set it in settings.
+                </Typography>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ pb: 1 }}>
+          <Button size="small" onClick={() => setEditModal({ open: false, loan: null })} disabled={isSavingEdit || loadingSettings}>
+            Cancel
+          </Button>
+          <Button size="small" variant="contained" onClick={handleEditSubmit} disabled={isSavingEdit || loadingSettings || currentWeeklyInterestRate === 0}>
+            {isSavingEdit ? <CircularProgress size={20} color="inherit" /> : 'Save'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Payment History Modal */}
+      <Dialog
+        open={historyModal.open}
+        onClose={() => setHistoryModal({ open: false, loanId: null, payments: [], loading: false })}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle fontSize="1.1rem">Payment History</DialogTitle>
+        <DialogContent dividers sx={{ maxHeight: 300 }}>
+          {historyModal.loading ? (
+            <Box display="flex" justifyContent="center" alignItems="center" minHeight="100px">
+              <CircularProgress size={24} />
+              <Typography ml={2} color="text.secondary">Loading history...</Typography>
+            </Box>
+          ) : historyModal.payments.length === 0 ? (
+            <Typography>No payments recorded for this loan.</Typography>
+          ) : (
+            <Table size="small" stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Date</TableCell>
+                  <TableCell align="right">Amount (ZMW)</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {historyModal.payments.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell>{dayjs(p.date).format("DD MMM YYYY, h:mm A")}</TableCell>
+                    <TableCell align="right">{Number(p.amount).toFixed(2)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ pb: 1 }}>
+          <Button size="small" onClick={() => setHistoryModal({ open: false, loanId: null, payments: [], loading: false })}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar for general notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </Box>
+  );
+}
