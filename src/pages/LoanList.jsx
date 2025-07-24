@@ -60,17 +60,17 @@ export default function LoanList() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [monthFilter, setMonthFilter] = useState(dayjs().format("YYYY-MM"));
   const [page, setPage] = useState(1);
-  const [useInfiniteScroll] = useState(isMobile); // This state will now reflect initial mobile check
+  const [useInfiniteScroll] = useState(isMobile);
   const [expandedRow, setExpandedRow] = useState(null);
 
   // Modals and their states
   const [confirmDelete, setConfirmDelete] = useState({ open: false, loanId: null });
-  const [isDeleting, setIsDeleting] = useState(false); // New state for delete loading
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [paymentModal, setPaymentModal] = useState({ open: false, loanId: null });
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentError, setPaymentError] = useState("");
-  const [isAddingPayment, setIsAddingPayment] = useState(false); // New state for payment loading
+  const [isAddingPayment, setIsAddingPayment] = useState(false);
 
   const [editModal, setEditModal] = useState({ open: false, loan: null });
   const [editData, setEditData] = useState({
@@ -79,16 +79,16 @@ export default function LoanList() {
     principal: "",
     interestDuration: 1, // Changed from 'interest' to 'interestDuration'
     startDate: "",
-    dueDate: "",
+    dueDate: "", // This will be calculated
   });
-  const [editErrors, setEditErrors] = useState({}); // Object for specific edit field errors
-  const [isSavingEdit, setIsSavingEdit] = useState(false); // New state for edit saving loading
+  const [editErrors, setEditErrors] = useState({});
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
-  const [historyModal, setHistoryModal] = useState({ open: false, loanId: null, payments: [], loading: false }); // Added loading for history
+  const [historyModal, setHistoryModal] = useState({ open: false, loanId: null, payments: [], loading: false });
 
   const [selectedLoanIds, setSelectedLoanIds] = useState([]);
-  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false); // New state for bulk delete confirmation
-  const [isBulkDeleting, setIsBulkDeleting] = useState(false); // New state for bulk delete loading
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   // Define interestRates and calculateInterest function
   const interestRates = settings.interestRates || {
@@ -100,12 +100,11 @@ export default function LoanList() {
 
   const calculateInterest = (principal, weeks) => principal * (interestRates[weeks] || 0);
 
-
   const calcStatus = (loan) => {
-    if (loan.status) return loan.status; // Prefer explicit status if set
+    if (loan.status) return loan.status;
     const now = dayjs();
     const due = dayjs(loan.dueDate);
-    if (loan.isPaid || (loan.repaidAmount >= loan.totalRepayable && loan.totalRepayable > 0)) return "Paid"; // Ensure totalRepayable is not zero to avoid false positives
+    if (loan.isPaid || (loan.repaidAmount >= loan.totalRepayable && loan.totalRepayable > 0)) return "Paid";
     if (due.isBefore(now, "day")) return "Overdue";
     return "Active";
   };
@@ -113,11 +112,8 @@ export default function LoanList() {
   const filteredLoans = useMemo(() => {
     return loans
       .filter((loan) => {
-        // Filter by month
         if (monthFilter && !dayjs(loan.startDate).format("YYYY-MM").startsWith(monthFilter)) return false;
-        // Filter by status
         if (statusFilter !== "all" && calcStatus(loan).toLowerCase() !== statusFilter) return false;
-        // Filter by search term
         if (
           searchTerm &&
           !(
@@ -158,11 +154,10 @@ export default function LoanList() {
     }
   }, [handleScroll, useInfiniteScroll, isMobile]);
 
-  // Reset pagination/selection when filters change
   useEffect(() => {
     setPage(1);
     setExpandedRow(null);
-    setSelectedLoanIds([]); // Clear selection when filters change
+    setSelectedLoanIds([]);
   }, [searchTerm, statusFilter, monthFilter, useInfiniteScroll]);
 
   const totals = useMemo(() => {
@@ -194,14 +189,13 @@ export default function LoanList() {
 
   const handleDelete = async () => {
     if (confirmDelete.loanId) {
-      setIsDeleting(true); // Set loading for single delete
+      setIsDeleting(true);
       try {
         await deleteLoan(confirmDelete.loanId);
         setConfirmDelete({ open: false, loanId: null });
         setSelectedLoanIds((prev) => prev.filter(id => id !== confirmDelete.loanId));
       } catch (error) {
         console.error("Error deleting loan:", error);
-        // Optionally show a notification
       } finally {
         setIsDeleting(false);
       }
@@ -216,22 +210,24 @@ export default function LoanList() {
       setConfirmBulkDelete(false);
     } catch (error) {
       console.error("Error bulk deleting loans:", error);
-      // Optionally show a notification
     } finally {
       setIsBulkDeleting(false);
     }
   };
 
   const openEditModal = (loan) => {
+    // Calculate due date based on existing loan's startDate and interestDuration for initial display
+    const initialDueDate = dayjs(loan.startDate).add((loan.interestDuration || 1) * 7, 'day').format("YYYY-MM-DD");
+
     setEditData({
       borrower: loan.borrower,
       phone: loan.phone,
       principal: loan.principal,
-      interestDuration: loan.interestDuration || 1, // Populate interestDuration
+      interestDuration: loan.interestDuration || 1,
       startDate: loan.startDate,
-      dueDate: loan.dueDate,
+      dueDate: initialDueDate, // Initialize dueDate with the calculated value
     });
-    setEditErrors({}); // Clear previous errors
+    setEditErrors({});
     setEditModal({ open: true, loan });
   };
 
@@ -240,9 +236,7 @@ export default function LoanList() {
     if (!editData.borrower) errors.borrower = "Borrower name is required.";
     if (!editData.phone) errors.phone = "Phone number is required.";
     if (isNaN(parseFloat(editData.principal)) || parseFloat(editData.principal) < 0) errors.principal = "Valid principal required.";
-    // No direct validation for interest here, as it's now calculated based on duration
     if (!editData.startDate) errors.startDate = "Start date is required.";
-    if (!editData.dueDate) errors.dueDate = "Due date is required."; // Still check if date string is empty
 
     setEditErrors(errors);
     if (Object.keys(errors).length > 0) {
@@ -252,33 +246,30 @@ export default function LoanList() {
     const principalAmount = parseFloat(editData.principal);
     const selectedDuration = editData.interestDuration;
 
-    // --- Calculation Logic Borrowed from EditLoanForm ---
     const calculatedInterestAmount = calculateInterest(principalAmount, selectedDuration);
     const calculatedTotalRepayable = principalAmount + calculatedInterestAmount;
 
-    // Recalculate dueDate based on duration if startDate is also being edited
-    // Otherwise, keep the existing dueDate from editData if it's considered editable independently
-    const newDueDate = dayjs(editData.startDate).add(selectedDuration * 7, 'day').format("YYYY-MM-DD");
-    // --- End Calculation Logic ---
+    // The dueDate is always recalculated based on startDate and interestDuration
+    const finalDueDate = dayjs(editData.startDate).add(selectedDuration * 7, 'day').format("YYYY-MM-DD");
 
     const updatedLoan = {
-      ...editModal.loan, // Retain original loan ID and other non-edited fields
+      ...editModal.loan,
       borrower: editData.borrower,
       phone: editData.phone,
       principal: principalAmount,
-      interest: calculatedInterestAmount, // Store the calculated interest amount
-      totalRepayable: calculatedTotalRepayable, // Store the calculated total repayable
+      interest: calculatedInterestAmount,
+      totalRepayable: calculatedTotalRepayable,
       startDate: editData.startDate,
-      dueDate: newDueDate, // Use the newly calculated due date
-      interestDuration: selectedDuration, // Store the selected duration
+      dueDate: finalDueDate, // Use the final calculated due date
+      interestDuration: selectedDuration,
     };
-    setIsSavingEdit(true); // Set loading for edit
+    setIsSavingEdit(true);
     try {
       await updateLoan(editModal.loan.id, updatedLoan);
       setEditModal({ open: false, loan: null });
     } catch (error) {
       console.error("Error updating loan:", error);
-      setEditErrors({ form: "Failed to update loan. Please try again." }); // General form error
+      setEditErrors({ form: "Failed to update loan. Please try again." });
     } finally {
       setIsSavingEdit(false);
     }
@@ -297,7 +288,7 @@ export default function LoanList() {
       return;
     }
 
-    setIsAddingPayment(true); // Set loading for payment
+    setIsAddingPayment(true);
     try {
       await addPayment(paymentModal.loanId, amountNum);
       setPaymentModal({ open: false, loanId: null });
@@ -317,7 +308,6 @@ export default function LoanList() {
     } catch (error) {
       console.error("Error fetching payment history:", error);
       setHistoryModal((prev) => ({ ...prev, payments: [], loading: false }));
-      // Optionally show an error message in the modal
     }
   };
 
@@ -684,7 +674,7 @@ export default function LoanList() {
             value={paymentAmount}
             onChange={(e) => {
               setPaymentAmount(e.target.value);
-              setPaymentError(""); // Clear error on change
+              setPaymentError("");
             }}
             size="small"
             autoFocus
@@ -738,7 +728,13 @@ export default function LoanList() {
               label="Interest Duration"
               value={editData.interestDuration}
               onChange={(e) => {
-                setEditData({ ...editData, interestDuration: Number(e.target.value) });
+                  const newDuration = Number(e.target.value);
+                  const calculatedDueDate = dayjs(editData.startDate).add(newDuration * 7, 'day').format("YYYY-MM-DD");
+                  setEditData({
+                      ...editData,
+                      interestDuration: newDuration,
+                      dueDate: calculatedDueDate,
+                  });
               }}
               fullWidth
               size="small"
@@ -753,7 +749,16 @@ export default function LoanList() {
               label="Start Date"
               type="date"
               value={editData.startDate}
-              onChange={(e) => { setEditData({ ...editData, startDate: e.target.value }); setEditErrors(prev => ({ ...prev, startDate: '' })); }}
+              onChange={(e) => {
+                  const newStartDate = e.target.value;
+                  const calculatedDueDate = dayjs(newStartDate).add(editData.interestDuration * 7, 'day').format("YYYY-MM-DD");
+                  setEditData({
+                      ...editData,
+                      startDate: newStartDate,
+                      dueDate: calculatedDueDate,
+                  });
+                  setEditErrors(prev => ({ ...prev, startDate: '' }));
+              }}
               InputLabelProps={{ shrink: true }}
               size="small"
               fullWidth
@@ -764,12 +769,10 @@ export default function LoanList() {
               label="Due Date"
               type="date"
               value={editData.dueDate}
-              onChange={(e) => { setEditData({ ...editData, dueDate: e.target.value }); setEditErrors(prev => ({ ...prev, dueDate: '' })); }}
               InputLabelProps={{ shrink: true }}
               size="small"
               fullWidth
-              error={!!editErrors.dueDate}
-              helperText={editErrors.dueDate}
+              InputProps={{ readOnly: true }} // Makes the field read-only
             />
           </Stack>
         </DialogContent>
@@ -816,4 +819,3 @@ export default function LoanList() {
     </Box>
   );
 }
-
