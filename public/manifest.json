@@ -1,14 +1,14 @@
 {
-  "short_name": "LoanManager",
+  "short_name": "Loan Manager",
   "name": "Loan Management PWA",
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "/icons/Browser.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "/icons/Appsplash.png",
       "sizes": "512x512",
       "type": "image/png"
     }

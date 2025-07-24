@@ -20,6 +20,8 @@ import BottomNavBar from './components/BottomNavBar';
 import Sidebar from './components/Sidebar';
 import AppBarTop from './components/AppBarTop';
 
+import InstallPrompt from './components/InstallPrompt'; // <-- Added install prompt import
+
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -121,12 +123,12 @@ function App() {
       <AuthProvider>
         <FirestoreProvider>
           <AppRoutes />
-          {/* MODIFIED: Changed ToastContainer position from "bottom-center" to "top-center" */}
+          <InstallPrompt /> {/* <-- Insert custom install prompt here */}
           <ToastContainer
-            position="top-center" // <<-- THIS IS THE CHANGE
-            autoClose={5000}     // Toasts disappear after 5 seconds
+            position="top-center"
+            autoClose={5000}
             hideProgressBar={false}
-            newestOnTop={true}   // If you want new toasts on top of old ones
+            newestOnTop={true}
             closeOnClick
             rtl={false}
             pauseOnFocusLoss
@@ -140,3 +142,4 @@ function App() {
 }
 
 export default App;
+
