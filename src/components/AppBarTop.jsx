@@ -5,8 +5,8 @@ import {
   Toolbar,
   Typography,
   IconButton,
-  Menu,
-  MenuItem,
+  Menu, // Keep Menu
+  MenuItem, // Keep MenuItem
   Tooltip,
   Box,
   Dialog,
@@ -15,13 +15,25 @@ import {
   TextField,
   Badge,
   Button,
-  Popover,
+  Popover, // Keep Popover
+  // No longer need SettingsIcon, HistoryIcon imports if moving them to ListItemIcon
+  ListItemIcon, // New: for icons in menu items
+  ListItemText, // New: for text in menu items
 } from "@mui/material";
+
+// New: Import specific icons for menu items
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import SettingsIcon from "@mui/icons-material/Settings";
+import HistoryIcon from "@mui/icons-material/History";
+import ExitToAppIcon from "@mui/icons-material/ExitToApp";
+
+// Keep existing icons
 import PhoneIcon from "@mui/icons-material/Phone";
 import BuildIcon from "@mui/icons-material/Build";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
+
 import { useAuth } from "../contexts/AuthProvider";
 import { useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
@@ -32,7 +44,7 @@ import { useFirestore } from "../contexts/FirestoreProvider";
 import dayjs from "dayjs";
 
 export default function AppBarTop() {
-  const { user } = useAuth(); // 'user' directly contains displayName from Firebase Auth
+  const { user } = useAuth();
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -40,21 +52,18 @@ export default function AppBarTop() {
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [anchorEl, setAnchorEl] = useState(null);
+  const [anchorEl, setAnchorEl] = useState(null); // For the main menu (BuildIcon)
   const openMenu = Boolean(anchorEl);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false); // For mobile settings dialog
+  const [helpOpen, setHelpOpen] = useState(false); // For help dialog
   const [notifications, setNotifications] = useState([]);
-  const [notificationAnchor, setNotificationAnchor] = useState(null);
+  const [notificationAnchor, setNotificationAnchor] = useState(null); // For notification popover
   const openNotifications = Boolean(notificationAnchor);
   const notificationsId = openNotifications ? "notifications-popover" : undefined;
 
   const [dateTime, setDateTime] = useState(dayjs());
 
-  // --- MODIFIED LINE HERE ---
-  const userDisplayLabel = user?.displayName || user?.email?.split("@")[0] || "User"; // Changed "Agent" to "User"
-  // --- END MODIFIED LINE ---
-
+  const userDisplayLabel = user?.displayName || user?.email?.split("@")[0] || "User";
 
   // Update date and time every minute
   useEffect(() => {
@@ -112,9 +121,26 @@ export default function AppBarTop() {
 
   const handleSettingsClick = () => {
     handleMenuClose();
+    // Opens a full-screen dialog on mobile, navigates to /settings on larger screens
     isMobile ? setSettingsOpen(true) : navigate("/settings");
   };
   const closeSettingsDialog = () => setSettingsOpen(false);
+
+  // New handler for Activity (navigates directly)
+  const handleActivityClick = () => {
+    handleMenuClose(); // Close the menu
+    navigate("/activity"); // Navigate to the activity page
+  };
+
+  const handleProfileClick = () => {
+    handleMenuClose();
+    navigate("/profile");
+  };
+
+  const handleChangePasswordClick = () => {
+    handleMenuClose();
+    navigate("/change-password");
+  };
 
   const handleHelpClick = () => setHelpOpen(true);
   const handleHelpClose = () => setHelpOpen(false);
@@ -227,12 +253,12 @@ export default function AppBarTop() {
             </IconButton>
           </Tooltip>
 
-          {/* User Role Display - UPDATED TO REFLECT userDisplayLabel */}
+          {/* User Role Display */}
           <Typography
             variant="body2"
             sx={{ ml: 2, mr: 1, display: { xs: "none", sm: "block" }, fontWeight: "600" }}
           >
-            User: {userDisplayLabel} {/* Changed from Agent: {userRole} */}
+            User: {userDisplayLabel}
           </Typography>
 
           {/* Main Menu Icon */}
@@ -242,7 +268,7 @@ export default function AppBarTop() {
             </IconButton>
           </Tooltip>
 
-          {/* User Menu */}
+          {/* User Menu - UPDATED STRUCTURE */}
           <Menu
             anchorEl={anchorEl}
             open={openMenu}
@@ -251,18 +277,40 @@ export default function AppBarTop() {
             anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
             transformOrigin={{ vertical: 'top', horizontal: 'right' }}
           >
+            {/* Display User Email/Name */}
             <MenuItem disabled sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
-              {user?.displayName || user?.email}
+              <ListItemText>{user?.displayName || user?.email}</ListItemText>
             </MenuItem>
-            <MenuItem onClick={handleSettingsClick}>Settings</MenuItem>
-            <MenuItem onClick={() => { handleMenuClose(); navigate("/profile"); }}>Profile</MenuItem>
-            <MenuItem onClick={() => { handleMenuClose(); navigate("/change-password"); }}>Change Password</MenuItem>
-            <MenuItem onClick={handleLogout}>Logout</MenuItem>
+            {/* Profile */}
+            <MenuItem onClick={handleProfileClick}>
+                <ListItemIcon><AccountCircleIcon fontSize="small" /></ListItemIcon>
+                <ListItemText>Profile</ListItemText>
+            </MenuItem>
+            {/* Change Password */}
+            <MenuItem onClick={handleChangePasswordClick}>
+                <ListItemIcon><BuildIcon fontSize="small" /></ListItemIcon> {/* Re-using BuildIcon, consider a more specific icon */}
+                <ListItemText>Change Password</ListItemText>
+            </MenuItem>
+            {/* Settings */}
+            <MenuItem onClick={handleSettingsClick}>
+                <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
+                <ListItemText>Settings</ListItemText>
+            </MenuItem>
+            {/* Activity Logs - NEWLY ADDED */}
+            <MenuItem onClick={handleActivityClick}>
+                <ListItemIcon><HistoryIcon fontSize="small" /></ListItemIcon>
+                <ListItemText>Activity Logs</ListItemText>
+            </MenuItem>
+            {/* Logout */}
+            <MenuItem onClick={handleLogout}>
+                <ListItemIcon><ExitToAppIcon fontSize="small" /></ListItemIcon>
+                <ListItemText>Logout</ListItemText>
+            </MenuItem>
           </Menu>
         </Toolbar>
       </AppBar>
 
-      {/* Notifications Popover */}
+      {/* Notifications Popover (No changes here, already links to /activity) */}
       <Popover
         id={notificationsId}
         open={openNotifications}
@@ -299,7 +347,7 @@ export default function AppBarTop() {
                 <MenuItem
                   key={note.id}
                   onClick={() => {
-                    navigate("/loans");
+                    navigate("/loans"); // Or a more specific page related to the notification
                     handleNotificationsClose();
                   }}
                   sx={{ whiteSpace: "normal", py: 1 }}
@@ -309,7 +357,7 @@ export default function AppBarTop() {
               ))}
               <MenuItem
                 onClick={() => {
-                  navigate("/activity");
+                  navigate("/activity"); // Already present, links to /activity
                   handleNotificationsClose();
                 }}
                 sx={{ mt: 1, justifyContent: 'center' }}
