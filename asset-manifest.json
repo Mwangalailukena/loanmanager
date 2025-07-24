@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/Mwangalailukena/loanmanager/static/css/main.022957e7.css",
+    "main.js": "/Mwangalailukena/loanmanager/static/js/main.19d9664c.js",
+    "index.html": "/Mwangalailukena/loanmanager/index.html",
+    "main.022957e7.css.map": "/Mwangalailukena/loanmanager/static/css/main.022957e7.css.map",
+    "main.19d9664c.js.map": "/Mwangalailukena/loanmanager/static/js/main.19d9664c.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.022957e7.css",
+    "static/js/main.19d9664c.js"
+  ]
+}
