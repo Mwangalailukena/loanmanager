@@ -121,7 +121,18 @@ function App() {
       <AuthProvider>
         <FirestoreProvider>
           <AppRoutes />
-          <ToastContainer position="bottom-center" />
+          {/* MODIFIED: Changed ToastContainer position from "bottom-center" to "top-center" */}
+          <ToastContainer
+            position="top-center" // <<-- THIS IS THE CHANGE
+            autoClose={5000}     // Toasts disappear after 5 seconds
+            hideProgressBar={false}
+            newestOnTop={true}   // If you want new toasts on top of old ones
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+          />
         </FirestoreProvider>
       </AuthProvider>
     </Router>
@@ -129,4 +140,3 @@ function App() {
 }
 
 export default App;
-
