@@ -52,17 +52,17 @@ export default function LoanList() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [monthFilter, setMonthFilter] = useState(dayjs().format("YYYY-MM"));
   const [page, setPage] = useState(1);
-  const [useInfiniteScroll] = useState(isMobile);
+  const [useInfiniteScroll] = useState(isMobile); // This state will now reflect initial mobile check
   const [expandedRow, setExpandedRow] = useState(null);
 
   // Modals and their states
   const [confirmDelete, setConfirmDelete] = useState({ open: false, loanId: null });
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false); // New state for delete loading
 
   const [paymentModal, setPaymentModal] = useState({ open: false, loanId: null });
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentError, setPaymentError] = useState("");
-  const [isAddingPayment, setIsAddingPayment] = useState(false);
+  const [isAddingPayment, setIsAddingPayment] = useState(false); // New state for payment loading
 
   const [editModal, setEditModal] = useState({ open: false, loan: null });
   const [editData, setEditData] = useState({
@@ -73,21 +73,21 @@ export default function LoanList() {
     startDate: "",
     dueDate: "",
   });
-  const [editErrors, setEditErrors] = useState({});
-  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editErrors, setEditErrors] = useState({}); // Object for specific edit field errors
+  const [isSavingEdit, setIsSavingEdit] = useState(false); // New state for edit saving loading
 
-  const [historyModal, setHistoryModal] = useState({ open: false, loanId: null, payments: [], loading: false });
+  const [historyModal, setHistoryModal] = useState({ open: false, loanId: null, payments: [], loading: false }); // Added loading for history
 
   const [selectedLoanIds, setSelectedLoanIds] = useState([]);
-  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
-  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false); // New state for bulk delete confirmation
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false); // New state for bulk delete loading
 
 
   const calcStatus = (loan) => {
-    if (loan.status) return loan.status;
+    if (loan.status) return loan.status; // Prefer explicit status if set
     const now = dayjs();
     const due = dayjs(loan.dueDate);
-    if (loan.isPaid || (loan.repaidAmount >= loan.totalRepayable && loan.totalRepayable > 0)) return "Paid";
+    if (loan.isPaid || (loan.repaidAmount >= loan.totalRepayable && loan.totalRepayable > 0)) return "Paid"; // Ensure totalRepayable is not zero to avoid false positives
     if (due.isBefore(now, "day")) return "Overdue";
     return "Active";
   };
@@ -95,8 +95,11 @@ export default function LoanList() {
   const filteredLoans = useMemo(() => {
     return loans
       .filter((loan) => {
+        // Filter by month
         if (monthFilter && !dayjs(loan.startDate).format("YYYY-MM").startsWith(monthFilter)) return false;
+        // Filter by status
         if (statusFilter !== "all" && calcStatus(loan).toLowerCase() !== statusFilter) return false;
+        // Filter by search term
         if (
           searchTerm &&
           !(
@@ -124,23 +127,25 @@ export default function LoanList() {
       window.innerHeight + window.scrollY + 50 >=
       document.documentElement.scrollHeight
     ) {
-      if (useInfiniteScroll && displayedLoans.length < filteredLoans.length && !loadingLoans) {
+      if (useInfiniteScroll && displayedLoans.length < filteredLoans.length && !loadingLoans) { // Check !loadingLoans to prevent multiple fetches
         setPage((p) => p + 1);
       }
     }
-  }, [displayedLoans.length, filteredLoans.length, useInfiniteScroll, loadingLoans]);
+  }, [displayedLoans.length, filteredLoans.length, useInfiniteScroll, loadingLoans]); // Add loadingLoans to dependency
 
   useEffect(() => {
+    // Only attach scroll listener if infinite scroll is active and it's a mobile device
     if (useInfiniteScroll && isMobile) {
       window.addEventListener("scroll", handleScroll);
       return () => window.removeEventListener("scroll", handleScroll);
     }
   }, [handleScroll, useInfiniteScroll, isMobile]);
 
+  // Reset pagination/selection when filters change
   useEffect(() => {
     setPage(1);
     setExpandedRow(null);
-    setSelectedLoanIds([]);
+    setSelectedLoanIds([]); // Clear selection when filters change
   }, [searchTerm, statusFilter, monthFilter, useInfiniteScroll]);
 
   const totals = useMemo(() => {
@@ -172,13 +177,14 @@ export default function LoanList() {
 
   const handleDelete = async () => {
     if (confirmDelete.loanId) {
-      setIsDeleting(true);
+      setIsDeleting(true); // Set loading for single delete
       try {
         await deleteLoan(confirmDelete.loanId);
         setConfirmDelete({ open: false, loanId: null });
         setSelectedLoanIds((prev) => prev.filter(id => id !== confirmDelete.loanId));
       } catch (error) {
         console.error("Error deleting loan:", error);
+        // Optionally show a notification
       } finally {
         setIsDeleting(false);
       }
@@ -188,11 +194,14 @@ export default function LoanList() {
   const handleBulkDelete = async () => {
     setIsBulkDeleting(true);
     try {
-      await Promise.all(selectedLoanIds.map(id => deleteLoan(id)));
+      // Assuming deleteLoan in useFirestore can handle an array of IDs
+      // You would likely have a specific `deleteLoans` function in FirestoreProvider for batch deletes
+      await Promise.all(selectedLoanIds.map(id => deleteLoan(id))); // Simple approach, consider batch delete for many
       setSelectedLoanIds([]);
       setConfirmBulkDelete(false);
     } catch (error) {
       console.error("Error bulk deleting loans:", error);
+      // Optionally show a notification
     } finally {
       setIsBulkDeleting(false);
     }
@@ -207,7 +216,7 @@ export default function LoanList() {
       startDate: loan.startDate,
       dueDate: loan.dueDate,
     });
-    setEditErrors({});
+    setEditErrors({}); // Clear previous errors
     setEditModal({ open: true, loan });
   };
 
@@ -237,13 +246,13 @@ export default function LoanList() {
       dueDate: editData.dueDate,
     };
 
-    setIsSavingEdit(true);
+    setIsSavingEdit(true); // Set loading for edit
     try {
       await updateLoan(editModal.loan.id, updatedLoan);
       setEditModal({ open: false, loan: null });
     } catch (error) {
       console.error("Error updating loan:", error);
-      setEditErrors({ form: "Failed to update loan. Please try again." });
+      setEditErrors({ form: "Failed to update loan. Please try again." }); // General form error
     } finally {
       setIsSavingEdit(false);
     }
@@ -262,7 +271,7 @@ export default function LoanList() {
       return;
     }
 
-    setIsAddingPayment(true);
+    setIsAddingPayment(true); // Set loading for payment
     try {
       await addPayment(paymentModal.loanId, amountNum);
       setPaymentModal({ open: false, loanId: null });
@@ -282,6 +291,7 @@ export default function LoanList() {
     } catch (error) {
       console.error("Error fetching payment history:", error);
       setHistoryModal((prev) => ({ ...prev, payments: [], loading: false }));
+      // Optionally show an error message in the modal
     }
   };
 
@@ -302,7 +312,7 @@ export default function LoanList() {
         alignItems="center"
       >
         <TextField
-          label="Search Borrower"
+          label="Search"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           size="small"
@@ -409,7 +419,6 @@ export default function LoanList() {
                           <Typography noWrap>Outstanding: ZMW {outstanding.toFixed(2)}</Typography>
                           <Typography noWrap>Start: {loan.startDate}</Typography>
                           <Typography noWrap>Due: {loan.dueDate}</Typography>
-                          <Typography noWrap>Duration: {loan.durationWeeks || 'N/A'} Weeks</Typography>
                           <Typography noWrap>Status: {calcStatus(loan)}</Typography>
                           <Stack direction="row" spacing={0.5} mt={1} justifyContent="flex-start">
                             <Tooltip title="Edit">
@@ -484,7 +493,6 @@ export default function LoanList() {
                     </TableCell>
                     <TableCell sx={{ width: 100 }}>Start Date</TableCell>
                     <TableCell sx={{ width: 100 }}>Due Date</TableCell>
-                    <TableCell sx={{ width: 90 }}>Duration (Weeks)</TableCell>
                     <TableCell sx={{ width: 90 }}>Status</TableCell>
                     <TableCell align="center" sx={{ width: 120 }}>
                       Actions
@@ -531,7 +539,6 @@ export default function LoanList() {
                         </TableCell>
                         <TableCell sx={{ py: 0.5 }}>{loan.startDate}</TableCell>
                         <TableCell sx={{ py: 0.5 }}>{loan.dueDate}</TableCell>
-                        <TableCell sx={{ py: 0.5 }}>{loan.durationWeeks || 'N/A'}</TableCell>
                         <TableCell sx={{ py: 0.5 }}>{calcStatus(loan)}</TableCell>
                         <TableCell align="center" sx={{ py: 0.5 }}>
                           <Tooltip title="Edit">
@@ -593,7 +600,7 @@ export default function LoanList() {
                     <TableCell align="right" sx={{ fontWeight: "bold", py: 0.5 }}>
                       {totals.outstanding.toFixed(2)}
                     </TableCell>
-                    <TableCell colSpan={5} />
+                    <TableCell colSpan={4} />
                   </TableRow>
                 </TableFooter>
               </Table>
@@ -691,7 +698,7 @@ export default function LoanList() {
             value={paymentAmount}
             onChange={(e) => {
               setPaymentAmount(e.target.value);
-              setPaymentError("");
+              setPaymentError(""); // Clear error on change
             }}
             size="small"
             autoFocus
