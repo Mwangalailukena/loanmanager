@@ -6,6 +6,7 @@ import {
   Box,
   Toolbar,
   CssBaseline,
+  Slide,
 } from '@mui/material';
 import Sidebar from './Sidebar';
 import BottomNavBar from './BottomNavBar';
@@ -13,29 +14,34 @@ import AppBarTop from './AppBarTop';
 
 const AppLayout = ({ children }) => {
   const theme = useTheme();
-  const isDesktop = useMediaQuery(theme.breakpoints.up('sm')); // 'sm' breakpoint is 600px and above
+  const isDesktop = useMediaQuery(theme.breakpoints.up('sm')); // 600px and above
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
       <CssBaseline />
 
-      {/* Sidebar only visible on desktop */}
-      {isDesktop && <Sidebar />}
+      {/* Animate Sidebar for desktop */}
+      <Slide direction="right" in={isDesktop} mountOnEnter unmountOnExit>
+        <Box>
+          <Sidebar />
+        </Box>
+      </Slide>
 
       <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-        {/* AppBarTop visible on all screen sizes */}
         <AppBarTop />
-
-        {/* Toolbar spacer to offset AppBar height */}
         <Toolbar />
 
-        {/* Main content area */}
+        {/* Main content */}
         <Box component="main" sx={{ flexGrow: 1, p: { xs: 2, sm: 3 } }}>
           {children}
         </Box>
 
-        {/* Bottom navigation only visible on mobile */}
-        {!isDesktop && <BottomNavBar />}
+        {/* Animate BottomNavBar for mobile */}
+        <Slide direction="up" in={!isDesktop} mountOnEnter unmountOnExit>
+          <Box>
+            <BottomNavBar />
+          </Box>
+        </Slide>
       </Box>
     </Box>
   );
