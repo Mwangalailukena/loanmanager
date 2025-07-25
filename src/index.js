@@ -3,8 +3,17 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 
+// Import your ThemeProvider context from where you defined it
+import { ThemeProvider } from './contexts/ThemeProvider';
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App />);
+root.render(
+  <React.StrictMode>
+    <ThemeProvider>
+      <App />
+    </ThemeProvider>
+  </React.StrictMode>
+);
 
 // Register the service worker with update & success callbacks
 serviceWorkerRegistration.register({

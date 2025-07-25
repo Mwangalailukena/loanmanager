@@ -1,4 +1,3 @@
-// src/pages/SettingsPage.jsx
 import React, { useState, useEffect } from "react";
 import {
   Box,
@@ -28,11 +27,17 @@ export default function SettingsPage() {
   });
   const [initialCapital, setInitialCapital] = useState("");
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (settings) {
       if (settings.interestRates) {
-        setInterestRates(settings.interestRates);
+        setInterestRates({
+          oneWeek: settings.interestRates.oneWeek?.toString() || "0",
+          twoWeeks: settings.interestRates.twoWeeks?.toString() || "0",
+          threeWeeks: settings.interestRates.threeWeeks?.toString() || "0",
+          fourWeeks: settings.interestRates.fourWeeks?.toString() || "0",
+        });
       }
       if (settings.initialCapital !== undefined) {
         setInitialCapital(settings.initialCapital.toString());
@@ -52,14 +57,14 @@ export default function SettingsPage() {
     e.preventDefault();
 
     // Validate interest rates
+    const numericInterestRates = {};
     for (const key in interestRates) {
       const val = parseFloat(interestRates[key]);
       if (isNaN(val) || val < 0) {
-        setMessage(
-          "Please enter valid non-negative numbers for all interest rates."
-        );
+        setMessage("Please enter valid non-negative numbers for all interest rates.");
         return;
       }
+      numericInterestRates[key] = val;
     }
 
     // Validate initial capital
@@ -69,23 +74,42 @@ export default function SettingsPage() {
       return;
     }
 
-    // Prepare updated settings
+    if (capitalValue > 1_000_000) {
+      setMessage("Initial Capital seems too high. Please review.");
+      return;
+    }
+
     const updatedSettings = {
-      interestRates,
+      interestRates: numericInterestRates,
       initialCapital: capitalValue,
     };
 
     try {
+      setLoading(true);
       await updateSettings(updatedSettings);
       setMessage("Settings saved successfully.");
     } catch (error) {
+      console.error("Error updating settings:", error);
       setMessage("Failed to save settings. Please try again.");
-      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReset = () => {
+    if (settings) {
+      setInterestRates({
+        oneWeek: settings.interestRates?.oneWeek?.toString() || "0",
+        twoWeeks: settings.interestRates?.twoWeeks?.toString() || "0",
+        threeWeeks: settings.interestRates?.threeWeeks?.toString() || "0",
+        fourWeeks: settings.interestRates?.fourWeeks?.toString() || "0",
+      });
+      setInitialCapital(settings.initialCapital?.toString() || "");
     }
   };
 
   return (
-    <Box maxWidth={500} mx="auto" p={3}>
+    <Box maxWidth={500} mx="auto" px={2}>
       <Typography variant="h4" gutterBottom>
         Settings
       </Typography>
@@ -155,9 +179,18 @@ export default function SettingsPage() {
           </Stack>
         </TabPanel>
 
-        <Box mt={3}>
-          <Button variant="contained" type="submit" fullWidth>
-            Save Settings
+        <Box mt={3} display="flex" gap={2}>
+          <Button
+            variant="contained"
+            type="submit"
+            fullWidth
+            disabled={loading}
+          >
+            {loading ? "Saving..." : "Save Settings"}
+          </Button>
+
+          <Button variant="outlined" onClick={handleReset} fullWidth>
+            Reset
           </Button>
         </Box>
       </form>
