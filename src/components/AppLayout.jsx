@@ -1,49 +1,36 @@
-// src/components/AppLayout.jsx
 import React from 'react';
-import {
-  useMediaQuery,
-  useTheme,
-  Box,
-  Toolbar,
-  CssBaseline,
-  Slide,
-} from '@mui/material';
-import Sidebar from './Sidebar';
-import BottomNavBar from './BottomNavBar';
+import { useLocation } from 'react-router-dom';
+import { Toolbar } from '@mui/material';
 import AppBarTop from './AppBarTop';
+import BottomNavBar from './BottomNavBar';
+import Sidebar from './Sidebar';
 
-const AppLayout = ({ children }) => {
-  const theme = useTheme();
-  const isDesktop = useMediaQuery(theme.breakpoints.up('sm')); // 600px and above
+const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
+  const { pathname } = useLocation();
+  const hideLayout = ['/login', '/register', '/forgot-password'].includes(pathname);
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
-      <CssBaseline />
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+      {!hideLayout && <AppBarTop darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} />}
+      {!hideLayout && <Toolbar />} {/* space for fixed AppBar */}
 
-      {/* Animate Sidebar for desktop */}
-      <Slide direction="right" in={isDesktop} mountOnEnter unmountOnExit>
-        <Box>
-          <Sidebar />
-        </Box>
-      </Slide>
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        {!hideLayout && <Sidebar />}
 
-      <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-        <AppBarTop />
-        <Toolbar />
-
-        {/* Main content */}
-        <Box component="main" sx={{ flexGrow: 1, p: { xs: 2, sm: 3 } }}>
+        <main
+          style={{
+            flexGrow: 1,
+            overflowY: 'auto',
+            padding: '16px',
+            paddingBottom: hideLayout ? 0 : '72px', // leave space for BottomNavBar
+          }}
+        >
           {children}
-        </Box>
+        </main>
+      </div>
 
-        {/* Animate BottomNavBar for mobile */}
-        <Slide direction="up" in={!isDesktop} mountOnEnter unmountOnExit>
-          <Box>
-            <BottomNavBar />
-          </Box>
-        </Slide>
-      </Box>
-    </Box>
+      {!hideLayout && <BottomNavBar />}
+    </div>
   );
 };
 
