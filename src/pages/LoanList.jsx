@@ -494,7 +494,7 @@ export default function LoanList() {
                       Total Repayable
                     </TableCell>
                     <TableCell align="right" sx={{ width: 110 }}>
-                      Outstanding
+                      Total Outstanding
                     </TableCell>
                     <TableCell sx={{ width: 100 }}>Start Date</TableCell>
                     <TableCell sx={{ width: 100 }}>Due Date</TableCell>
