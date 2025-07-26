@@ -1,14 +1,11 @@
-// public/sw.js
-
 importScripts('https://storage.googleapis.com/workbox-cdn/releases/6.5.4/workbox-sw.js');
 
 if (workbox) {
   console.log('✅ Workbox loaded');
 
-  // Precache files injected by Workbox during build (e.g. from manifest)
+  // Your existing caching setup
   workbox.precaching.precacheAndRoute(self.__WB_MANIFEST || []);
 
-  // Cache CSS/JS files from CDN or app shell
   workbox.routing.registerRoute(
     ({ request }) =>
       request.destination === 'script' ||
@@ -19,7 +16,6 @@ if (workbox) {
     })
   );
 
-  // Cache images with Cache First strategy
   workbox.routing.registerRoute(
     ({ request }) => request.destination === 'image',
     new workbox.strategies.CacheFirst({
@@ -27,13 +23,28 @@ if (workbox) {
       plugins: [
         new workbox.expiration.ExpirationPlugin({
           maxEntries: 50,
-          maxAgeSeconds: 7 * 24 * 60 * 60, // 7 Days
+          maxAgeSeconds: 7 * 24 * 60 * 60,
         }),
       ],
     })
   );
 
-  // Fallback page when offline
+  // Background Sync plugin for POST requests
+  const bgSyncPlugin = new workbox.backgroundSync.BackgroundSyncPlugin('postQueue', {
+    maxRetentionTime: 24 * 60, // Retry for max of 24 hours
+  });
+
+  workbox.routing.registerRoute(
+    ({ url, request }) =>
+      request.method === 'POST' &&
+      url.pathname.startsWith('/api/'), // Adjust this to your API path
+    new workbox.strategies.NetworkOnly({
+      plugins: [bgSyncPlugin],
+    }),
+    'POST'
+  );
+
+  // Offline fallback page
   workbox.routing.setCatchHandler(async ({ event }) => {
     if (event.request.destination === 'document') {
       return caches.match('/offline.html');
@@ -41,10 +52,8 @@ if (workbox) {
     return Response.error();
   });
 
-  // Offline fallback page (put this in your public/ folder)
-  workbox.precaching.precacheAndRoute([
-    { url: '/offline.html', revision: '1' },
-  ]);
+  workbox.precaching.precacheAndRoute([{ url: '/offline.html', revision: '1' }]);
+
 } else {
   console.log('❌ Workbox failed to load');
 }
