@@ -1,32 +1,51 @@
-self.addEventListener("sync", (event) => {
-  if (event.tag === "sync-loans") {
-    event.waitUntil(syncOfflineLoans());
-  }
-});
+// public/sw.js
 
-async function syncOfflineLoans() {
-  const db = await openDB("loan-manager-db", 1);
-  const tx = db.transaction("loanQueue", "readwrite");
-  const store = tx.objectStore("loanQueue");
+importScripts('https://storage.googleapis.com/workbox-cdn/releases/6.5.4/workbox-sw.js');
 
-  const allLoans = await store.getAll();
+if (workbox) {
+  console.log('✅ Workbox loaded');
 
-  for (const loan of allLoans) {
-    try {
-      const response = await fetch("/api/sync-loan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(loan),
-      });
+  // Precache files injected by Workbox during build (e.g. from manifest)
+  workbox.precaching.precacheAndRoute(self.__WB_MANIFEST || []);
 
-      if (response.ok) {
-        await store.delete(loan.id);
-      }
-    } catch (err) {
-      console.error("Sync failed for loan:", loan, err);
+  // Cache CSS/JS files from CDN or app shell
+  workbox.routing.registerRoute(
+    ({ request }) =>
+      request.destination === 'script' ||
+      request.destination === 'style' ||
+      request.destination === 'font',
+    new workbox.strategies.StaleWhileRevalidate({
+      cacheName: 'static-resources',
+    })
+  );
+
+  // Cache images with Cache First strategy
+  workbox.routing.registerRoute(
+    ({ request }) => request.destination === 'image',
+    new workbox.strategies.CacheFirst({
+      cacheName: 'images',
+      plugins: [
+        new workbox.expiration.ExpirationPlugin({
+          maxEntries: 50,
+          maxAgeSeconds: 7 * 24 * 60 * 60, // 7 Days
+        }),
+      ],
+    })
+  );
+
+  // Fallback page when offline
+  workbox.routing.setCatchHandler(async ({ event }) => {
+    if (event.request.destination === 'document') {
+      return caches.match('/offline.html');
     }
-  }
+    return Response.error();
+  });
 
-  await tx.done;
+  // Offline fallback page (put this in your public/ folder)
+  workbox.precaching.precacheAndRoute([
+    { url: '/offline.html', revision: '1' },
+  ]);
+} else {
+  console.log('❌ Workbox failed to load');
 }
 

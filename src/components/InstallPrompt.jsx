@@ -1,50 +1,39 @@
-// src/components/InstallPrompt.jsx
-import React, { useEffect, useState } from 'react';
-import { Button, Snackbar } from '@mui/material';
+import { useEffect, useState } from "react";
 
 const InstallPrompt = () => {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [showInstall, setShowInstall] = useState(false);
 
   useEffect(() => {
-    const handleBeforeInstallPrompt = (e) => {
+    const handler = (e) => {
       e.preventDefault();
-      setDeferredPrompt(e);
-      setShowInstall(true);
+      setDeferredPrompt(e); // Save for later
     };
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener("beforeinstallprompt", handler);
 
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    };
+    return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
   const handleInstallClick = () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    deferredPrompt.userChoice.then((choiceResult) => {
-      if (choiceResult.outcome === 'accepted') {
-        console.log('User accepted the install prompt');
-      } else {
-        console.log('User dismissed the install prompt');
-      }
-      setShowInstall(false);
-      setDeferredPrompt(null);
-    });
+    if (deferredPrompt) {
+      deferredPrompt.prompt(); // ✅ Trigger the prompt
+      deferredPrompt.userChoice.then((choiceResult) => {
+        if (choiceResult.outcome === "accepted") {
+          console.log("User accepted the install prompt");
+        } else {
+          console.log("User dismissed the install prompt");
+        }
+        setDeferredPrompt(null);
+      });
+    }
   };
 
   return (
-    <Snackbar
-      open={showInstall}
-      message="Install Loan Manager?"
-      anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      action={
-        <Button color="inherit" size="small" onClick={handleInstallClick}>
-          Install
-        </Button>
-      }
-    />
+    deferredPrompt && (
+      <button onClick={handleInstallClick}>
+        Install App
+      </button>
+    )
   );
 };
 

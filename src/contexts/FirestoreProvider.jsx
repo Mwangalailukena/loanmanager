@@ -1,3 +1,4 @@
+// src/contexts/FirestoreProvider.js
 import React, { createContext, useContext, useEffect, useState } from "react";
 import {
   collection,
@@ -14,7 +15,7 @@ import {
   setDoc,
   serverTimestamp,
 } from "firebase/firestore";
-import { db } from "../firebase";  // Your firebase config export
+import { db } from "../firebase";
 
 const FirestoreContext = createContext();
 
@@ -29,7 +30,6 @@ export function FirestoreProvider({ children }) {
   });
   const [activityLogs, setActivityLogs] = useState([]);
 
-  // Renamed addActivity to addActivityLog
   const addActivityLog = async (logEntry) => {
     await addDoc(collection(db, "activityLogs"), {
       ...logEntry,
@@ -37,7 +37,6 @@ export function FirestoreProvider({ children }) {
     });
   };
 
-  // Real-time listener for loans collection
   useEffect(() => {
     const q = query(collection(db, "loans"), orderBy("startDate", "desc"));
     const unsub = onSnapshot(q, (snap) => {
@@ -46,7 +45,6 @@ export function FirestoreProvider({ children }) {
     return unsub;
   }, []);
 
-  // Real-time listener for payments collection
   useEffect(() => {
     const q = query(collection(db, "payments"), orderBy("date", "desc"));
     const unsub = onSnapshot(q, (snap) => {
@@ -55,7 +53,6 @@ export function FirestoreProvider({ children }) {
     return unsub;
   }, []);
 
-  // Load settings once on mount
   useEffect(() => {
     const fetchSettings = async () => {
       const docRef = doc(db, "settings", "config");
@@ -63,7 +60,6 @@ export function FirestoreProvider({ children }) {
       if (docSnap.exists()) {
         setSettings(docSnap.data());
       } else {
-        // Create default settings if not exist
         await setDoc(docRef, {
           initialCapital: 50000,
           interestRates: { 1: 0.15, 2: 0.2, 3: 0.3, 4: 0.3 },
@@ -75,7 +71,6 @@ export function FirestoreProvider({ children }) {
     fetchSettings();
   }, []);
 
-  // Real-time listener for activityLogs collection
   useEffect(() => {
     const q = query(collection(db, "activityLogs"), orderBy("date", "desc"));
     const unsub = onSnapshot(q, (snap) => {
@@ -84,7 +79,6 @@ export function FirestoreProvider({ children }) {
     return unsub;
   }, []);
 
-  // Add a new loan
   const addLoan = async (loan) => {
     const loanWithTimestamps = {
       ...loan,
@@ -92,28 +86,33 @@ export function FirestoreProvider({ children }) {
       updatedAt: serverTimestamp(),
     };
     const docRef = await addDoc(collection(db, "loans"), loanWithTimestamps);
-    await addActivityLog({ description: `Loan added for ${loan.borrower}`, date: new Date().toISOString() });
+    await addActivityLog({
+      description: `Loan added for ${loan.borrower}`,
+      date: new Date().toISOString(),
+    });
     return docRef;
   };
 
-  // Update an existing loan
   const updateLoan = async (id, updates) => {
     const docRef = doc(db, "loans", id);
     const updatesWithTimestamp = { ...updates, updatedAt: serverTimestamp() };
     await updateDoc(docRef, updatesWithTimestamp);
-    await addActivityLog({ description: `Loan updated (ID: ${id})`, date: new Date().toISOString() });
+    await addActivityLog({
+      description: `Loan updated (ID: ${id})`,
+      date: new Date().toISOString(),
+    });
   };
 
-  // Delete a loan
   const deleteLoan = async (id) => {
     await deleteDoc(doc(db, "loans", id));
-    await addActivityLog({ description: `Loan deleted (ID: ${id})`, date: new Date().toISOString() });
+    await addActivityLog({
+      description: `Loan deleted (ID: ${id})`,
+      date: new Date().toISOString(),
+    });
   };
 
-  // Add a payment and update loan status/amount
   const addPayment = async (loanId, amount) => {
     const date = new Date().toISOString();
-    // Add payment record
     await addDoc(collection(db, "payments"), {
       loanId,
       amount,
@@ -121,7 +120,6 @@ export function FirestoreProvider({ children }) {
       createdAt: serverTimestamp(),
     });
 
-    // Fetch fresh loan data
     const loanDocRef = doc(db, "loans", loanId);
     const loanSnap = await getDoc(loanDocRef);
 
@@ -130,27 +128,34 @@ export function FirestoreProvider({ children }) {
       const repaidAmount = (loan.repaidAmount || 0) + amount;
       const status = repaidAmount >= loan.totalRepayable ? "Paid" : "Active";
 
-      // Update loan repayment and status
       await updateLoan(loanId, { repaidAmount, status });
-      await addActivityLog({ description: `Payment of ZMW ${amount} added for loan ID ${loanId}`, date: new Date().toISOString() });
+      await addActivityLog({
+        description: `Payment of ZMW ${amount} added for loan ID ${loanId}`,
+        date: new Date().toISOString(),
+      });
     }
   };
 
-  // Fetch payments by loan ID
   const getPaymentsByLoanId = async (loanId) => {
     const paymentsRef = collection(db, "payments");
-    const q = query(paymentsRef, where("loanId", "==", loanId), orderBy("date", "desc"));
+    const q = query(
+      paymentsRef,
+      where("loanId", "==", loanId),
+      orderBy("date", "desc")
+    );
     const snapshot = await getDocs(q);
     return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   };
 
-  // Update app settings
   const updateSettings = async (newSettings) => {
     const docRef = doc(db, "settings", "config");
     const updatesWithTimestamp = { ...newSettings, updatedAt: serverTimestamp() };
     await setDoc(docRef, updatesWithTimestamp, { merge: true });
     setSettings((prev) => ({ ...prev, ...newSettings }));
-    await addActivityLog({ description: "Settings updated", date: new Date().toISOString() });
+    await addActivityLog({
+      description: "Settings updated",
+      date: new Date().toISOString(),
+    });
   };
 
   return (
@@ -166,7 +171,7 @@ export function FirestoreProvider({ children }) {
         addPayment,
         getPaymentsByLoanId,
         updateSettings,
-        addActivityLog,  // expose this for components
+        addActivityLog,
       }}
     >
       {children}
