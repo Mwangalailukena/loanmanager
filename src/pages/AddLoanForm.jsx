@@ -120,8 +120,8 @@ export default function AddLoanForm() {
       isValid = false;
     }
 
-    if (!/^\+?\d{8,15}$/.test(phone.trim())) {
-      setPhoneError("Enter a valid phone number (digits only, optional +).");
+    if (!/^\d{10}$/.test(phone.trim())) {
+      setPhoneError("Phone number must be exactly 10 digits.");
       isValid = false;
     }
 
@@ -232,8 +232,8 @@ export default function AddLoanForm() {
             errors.push(`Row ${lineNumber}: Invalid or missing 'Borrower Name'.`);
             continue;
           }
-          if (!phoneNumber || !/^\+?\d{8,15}$/.test(phoneNumber)) {
-            errors.push(`Row ${lineNumber}: Invalid or missing 'Phone Number'.`);
+          if (!phoneNumber || !/^\d{10}$/.test(phoneNumber)) {
+            errors.push(`Row ${lineNumber}: Invalid 'Phone Number'. It must be 10 digits.`);
             continue;
           }
           if (isNaN(loanAmount) || loanAmount <= 0) {
@@ -360,7 +360,7 @@ export default function AddLoanForm() {
             onChange={(e) => setPhone(e.target.value)}
             fullWidth
             required
-            inputProps={{ maxLength: 15 }}
+            inputProps={{ maxLength: 10 }}
             error={!!phoneError}
             helperText={phoneError}
           />
@@ -393,10 +393,18 @@ export default function AddLoanForm() {
           {displayPrincipal > 0 && (
             <Box sx={{ p: 1, bgcolor: "action.hover", borderRadius: 1 }}>
               <Typography variant="body2" color="text.secondary">
-                Calculated Interest: ZMW {displayInterest.toFixed(2).toLocaleString()}
+                Calculated Interest: ZMW{" "}
+                {displayInterest.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
               </Typography>
               <Typography variant="body1" fontWeight="bold">
-                Total Repayable: ZMW {displayTotalRepayable.toFixed(2).toLocaleString()}
+                Total Repayable: ZMW{" "}
+                {displayTotalRepayable.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
               </Typography>
             </Box>
           )}
@@ -467,4 +475,3 @@ export default function AddLoanForm() {
     </Box>
   );
 }
-
