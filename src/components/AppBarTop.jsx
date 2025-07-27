@@ -37,8 +37,8 @@ import { useFirestore } from "../contexts/FirestoreProvider";
 import { useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
 import { auth } from "../firebase";
-import SettingsPage from "../pages/SettingsPage";
-import HelpDialog from "./HelpDialog";
+import SettingsPage from "../pages/SettingsPage"; // Assuming SettingsPage takes an onClose prop
+import HelpDialog from "./HelpDialog"; // Assuming HelpDialog takes open and onClose props
 import dayjs from "dayjs";
 
 function stringToInitials(name = "") {
@@ -79,10 +79,11 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
       (loan) =>
         loan.status !== "Paid" &&
         dayjs(loan.dueDate).isAfter(now) &&
-        dayjs(loan.dueDate).diff(now, "day") < 3
+        dayjs(loan.dueDate).diff(now, "day") < 3 &&
+        dayjs(loan.dueDate).diff(now, 'day') >= 0 // Ensure it's not overdue but within 3 days
     );
     const overdue = loans.filter(
-      (loan) => loan.status !== "Paid" && dayjs(loan.dueDate).isBefore(now)
+      (loan) => loan.status !== "Paid" && dayjs(loan.dueDate).isBefore(now, 'day')
     );
 
     const notes = [];
@@ -169,17 +170,30 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
 
   return (
     <>
-      <AppBar position="fixed" elevation={1} sx={{ zIndex: theme.zIndex.drawer + 1 }}>
-        <Toolbar>
+      <AppBar
+        position="fixed"
+        elevation={0} // Reduced elevation for a softer look
+        sx={{
+          zIndex: theme.zIndex.drawer + 1,
+          bgcolor: theme.palette.background.paper, // Use paper background for consistency
+          borderBottom: `1px solid ${theme.palette.divider}`, // Subtle bottom border
+        }}
+      >
+        <Toolbar sx={{ px: isMobile ? 2 : 3 }}> {/* Adjusted horizontal padding */}
           {isMobile && (
-            <IconButton color="inherit" edge="start" sx={{ mr: 1 }}>
+            <IconButton color="inherit" edge="start" sx={{ mr: 1, color: theme.palette.text.primary }}> {/* Inherit color for menu icon */}
               <MenuIcon />
             </IconButton>
           )}
 
           <Typography
             variant="h6"
-            sx={{ flexGrow: 1, cursor: "pointer" }}
+            sx={{
+              flexGrow: 1,
+              cursor: "pointer",
+              fontWeight: 600, // Make title bolder
+              color: theme.palette.text.primary, // Ensure title color is consistent
+            }}
             onClick={() => navigate("/dashboard")}
           >
             Loan Manager
@@ -188,7 +202,7 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
           {/* Search bar toggle */}
           {!searchOpen ? (
             <Tooltip title="Search loans">
-              <IconButton color="inherit" onClick={toggleSearch}>
+              <IconButton color="inherit" onClick={toggleSearch} sx={{ color: theme.palette.text.secondary }}> {/* Inherit color for search icon */}
                 <SearchIcon />
               </IconButton>
             </Tooltip>
@@ -203,15 +217,26 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
               autoFocus
               sx={{
                 width: isMobile ? "60vw" : 250,
-                bgcolor: "background.paper",
-                borderRadius: 1,
+                bgcolor: theme.palette.action.hover, // A slightly different background for the search bar
+                borderRadius: 2, // Rounded corners for search
                 mr: 1,
-                "& .MuiOutlinedInput-notchedOutline": { borderColor: "transparent" },
+                "& .MuiOutlinedInput-root": {
+                  paddingRight: theme.spacing(1), // Adjust padding
+                  borderRadius: 2, // Ensure inner input is also rounded
+                  "& fieldset": { borderColor: "transparent !important" }, // Hide default border
+                },
+                "& input": {
+                  color: theme.palette.text.primary, // Ensure text is readable
+                },
+                "& ::placeholder": {
+                  color: theme.palette.text.secondary, // Placeholder color
+                  opacity: 1, // Ensure placeholder is visible
+                },
               }}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
-                    <IconButton onClick={toggleSearch} size="small">
+                    <IconButton onClick={toggleSearch} size="small" sx={{ color: theme.palette.text.secondary }}>
                       <CloseIcon />
                     </IconButton>
                   </InputAdornment>
@@ -222,7 +247,7 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
 
           {/* Notifications */}
           <Tooltip title="Notifications">
-            <IconButton color="inherit" onClick={handleNotificationsClick} sx={{ position: 'relative' }}>
+            <IconButton color="inherit" onClick={handleNotificationsClick} sx={{ position: 'relative', color: theme.palette.text.secondary }}>
               <NotificationsIcon
                 color={notifications.length > 0 ? "error" : "inherit"}
               />
@@ -245,7 +270,7 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
 
           {/* Dark Mode Toggle */}
           <Tooltip title={`Switch to ${darkMode ? "light" : "dark"} mode`}>
-            <IconButton onClick={onToggleDarkMode} color="inherit" sx={{ ml: 1 }}>
+            <IconButton onClick={onToggleDarkMode} color="inherit" sx={{ ml: 1, color: theme.palette.text.secondary }}>
               {darkMode ? <Brightness7Icon /> : <Brightness4Icon />}
             </IconButton>
           </Tooltip>
@@ -253,7 +278,14 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
           {/* Account Menu */}
           <Tooltip title="Account">
             <IconButton onClick={handleMenuClick} size="small" sx={{ ml: 1 }}>
-              <Avatar sx={{ width: 32, height: 32 }}>
+              <Avatar sx={{
+                width: 36, // Slightly larger avatar
+                height: 36,
+                bgcolor: theme.palette.primary.main, // Consistent primary color
+                color: theme.palette.primary.contrastText, // Text color for contrast
+                fontSize: '0.875rem', // Adjust font size
+                fontWeight: 600, // Make initials bolder
+              }}>
                 {stringToInitials(user?.displayName || "U")}
               </Avatar>
             </IconButton>
@@ -267,39 +299,66 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
         open={openMenu}
         onClose={handleMenuClose}
         onClick={handleMenuClose}
+        PaperProps={{
+          elevation: 4, // More pronounced shadow for menus
+          sx: {
+            overflow: 'visible',
+            filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+            mt: 1.5,
+            borderRadius: 2, // Rounded menu corners
+            '& .MuiAvatar-root': {
+              width: 32,
+              height: 32,
+              ml: -0.5,
+              mr: 1,
+            },
+            '&::before': {
+              content: '""',
+              display: 'block',
+              position: 'absolute',
+              top: 0,
+              right: 14,
+              width: 10,
+              height: 10,
+              bgcolor: 'background.paper',
+              transform: 'translateY(-50%) rotate(45deg)',
+              zIndex: 0,
+            },
+          },
+        }}
         transformOrigin={{ horizontal: "right", vertical: "top" }}
         anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
       >
         <MenuItem onClick={handleSettingsClick}>
           <ListItemIcon>
-            <SettingsIcon fontSize="small" />
+            <SettingsIcon fontSize="small" sx={{ color: theme.palette.text.secondary }} />
           </ListItemIcon>
-          Settings
+          <Typography variant="body2" color="text.primary">Settings</Typography>
         </MenuItem>
         <MenuItem onClick={handleChangePasswordClick}>
           <ListItemIcon>
-            <LockResetIcon fontSize="small" />
+            <LockResetIcon fontSize="small" sx={{ color: theme.palette.text.secondary }} />
           </ListItemIcon>
-          Change Password
+          <Typography variant="body2" color="text.primary">Change Password</Typography>
         </MenuItem>
         <MenuItem onClick={handleActivityClick}>
           <ListItemIcon>
-            <History fontSize="small" />
+            <History fontSize="small" sx={{ color: theme.palette.text.secondary }} />
           </ListItemIcon>
-          Activity Log
+          <Typography variant="body2" color="text.primary">Activity Log</Typography>
         </MenuItem>
         <MenuItem onClick={openHelpDialog}>
           <ListItemIcon>
-            <HelpOutline fontSize="small" />
+            <HelpOutline fontSize="small" sx={{ color: theme.palette.text.secondary }} />
           </ListItemIcon>
-          Help
+          <Typography variant="body2" color="text.primary">Help</Typography>
         </MenuItem>
-        <Divider />
+        <Divider sx={{ my: 0.5 }} />
         <MenuItem onClick={handleLogout}>
           <ListItemIcon>
-            <Logout fontSize="small" />
+            <Logout fontSize="small" color="error" />
           </ListItemIcon>
-          Logout
+          <Typography variant="body2" color="error">Logout</Typography>
         </MenuItem>
       </Menu>
 
@@ -310,13 +369,22 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
         onClose={closeNotifications}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
-        PaperProps={{ sx: { width: 320, maxHeight: "60vh", overflowY: "auto", p: 2 } }}
+        PaperProps={{
+            sx: {
+                width: 320,
+                maxHeight: "60vh",
+                overflowY: "auto",
+                p: 2,
+                borderRadius: 2, // Rounded popover corners
+                boxShadow: theme.shadows[4], // Consistent shadow
+            }
+        }}
       >
-        <Typography variant="h6" mb={1}>
+        <Typography variant="h6" mb={1} sx={{ fontWeight: 600 }}>
           Notifications
         </Typography>
         {notifications.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.secondary" sx={{ py: 1, textAlign: 'center' }}>
             No new notifications.
           </Typography>
         ) : (
@@ -324,9 +392,9 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
             <MenuItem
               key={id}
               onClick={() => handleNotificationItemClick(link)}
-              sx={{ whiteSpace: "normal" }}
+              sx={{ whiteSpace: "normal", borderRadius: 1, mb: 0.5, '&:last-child': { mb: 0 } }} // Rounded and spaced menu items
             >
-              {message}
+              <Typography variant="body2" color="text.primary">{message}</Typography>
             </MenuItem>
           ))
         )}
@@ -336,9 +404,9 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
               navigate("/activity");
               closeNotifications();
             }}
-            sx={{ justifyContent: "center", mt: 1 }}
+            sx={{ justifyContent: "center", mt: 1, bgcolor: theme.palette.action.hover, borderRadius: 1 }} // Style "View all" button
           >
-            View all activity
+            <Typography variant="body2" color="text.secondary">View all activity</Typography>
           </MenuItem>
         )}
       </Popover>
@@ -349,15 +417,20 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
         open={settingsOpen}
         onClose={closeSettingsDialog}
         TransitionComponent={Transition}
+        // Since it's fullScreen, border radius on the dialog paper itself
+        // is less noticeable, but any content inside SettingsPage should adopt rounding.
       >
         <SettingsPage onClose={closeSettingsDialog} />
       </Dialog>
 
       {/* Help Dialog */}
-      <HelpDialog open={helpOpen} onClose={closeHelpDialog} />
+      <HelpDialog
+        open={helpOpen}
+        onClose={closeHelpDialog}
+        sx={{ "& .MuiDialog-paper": { borderRadius: 3 } }} // Apply border radius to the help dialog
+      />
     </>
   );
 };
 
 export default AppBarTop;
-
