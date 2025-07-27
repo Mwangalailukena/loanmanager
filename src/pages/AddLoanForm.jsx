@@ -1,4 +1,5 @@
 // src/pages/AddLoanForm.jsx
+import { getDoc } from "firebase/firestore";
 import React, { useState, useEffect } from "react";
 import {
   Box,
@@ -134,68 +135,70 @@ export default function AddLoanForm() {
     return isValid;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError("");
+  setLoading(true);
 
-    const isValid = validateFields();
-    if (!isValid) {
-      setLoading(false);
-      return;
-    }
+  const isValid = validateFields();
+  if (!isValid) {
+    setLoading(false);
+    return;
+  }
 
-    const principal = Number(amount);
-    const interest = calculateInterest(principal, interestDuration);
-    const totalRepayable = principal + interest;
+  const principal = Number(amount);
+  const interest = calculateInterest(principal, interestDuration);
+  const totalRepayable = principal + interest;
 
-    const startDate = dayjs().format("YYYY-MM-DD");
-    const dueDate = dayjs().add(interestDuration * 7, "day").format("YYYY-MM-DD");
+  const startDate = dayjs().format("YYYY-MM-DD");
+  const dueDate = dayjs().add(interestDuration * 7, "day").format("YYYY-MM-DD");
 
-    try {
-      const loanDocRef = await addLoan({
-        borrower,
-        phone,
-        principal,
-        interest,
-        totalRepayable,
-        startDate,
-        dueDate,
-        status: "Active",
-        repaidAmount: 0,
-        interestDuration,
-      });
+  try {
+    const loanDocRef = await addLoan({
+      borrower,
+      phone,
+      principal,
+      interest,
+      totalRepayable,
+      startDate,
+      dueDate,
+      status: "Active",
+      repaidAmount: 0,
+      interestDuration,
+    });
 
-      await addActivityLog({
-        action: "Loan Created",
-        details: `Loan created for ${borrower} (ZMW ${principal.toLocaleString()})`,
-        timestamp: new Date().toISOString(),
-      });
+    // 👇 Fetch snapshot to check metadata (e.g., offline support)
+    const docSnap = await getDoc(loanDocRef);
+    const isOffline = docSnap.metadata?.hasPendingWrites ?? false;
 
-      // Offline detection
-      const docSnap = await loanDocRef.get();
-      const isOffline = docSnap.metadata.hasPendingWrites;
+    await addActivityLog({
+      action: "Loan Created",
+      details: `Loan created for ${borrower} (ZMW ${principal.toLocaleString()}) [Loan ID: ${loanDocRef.id}]`,
+      timestamp: new Date().toISOString(),
+    });
 
-      toast.success(
-        isOffline
-          ? "Loan added (offline). Will sync when online."
-          : "Loan added successfully!"
-      );
+    toast.success(
+      isOffline
+        ? "Loan added (offline). Will sync when online."
+        : `Loan added successfully! Loan ID: ${loanDocRef.id}`
+    );
 
-      setBorrower("");
-      setPhone("");
-      setAmount("");
-      setInterestDuration(1);
-      setBorrowerError("");
-      setPhoneError("");
-      setAmountError("");
-    } catch (err) {
-      console.error("Loan creation failed:", err);
-      setError("Failed to add loan. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    // Reset form
+    setBorrower("");
+    setPhone("");
+    setAmount("");
+    setInterestDuration(1);
+    setBorrowerError("");
+    setPhoneError("");
+    setAmountError("");
+  } catch (err) {
+    console.error("Loan creation failed:", err);
+    setError("Failed to add loan. Please try again.");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   // Real-time display calculations
   const displayPrincipal = Number(amount);
@@ -475,3 +478,4 @@ export default function AddLoanForm() {
     </Box>
   );
 }
+
