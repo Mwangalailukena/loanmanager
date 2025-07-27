@@ -484,7 +484,6 @@ export default function Dashboard() {
                         lg={2}
                         ref={providedDraggable.innerRef}
                         {...providedDraggable.draggableProps}
-                        {...providedDraggable.dragHandleProps}
                         style={{ ...providedDraggable.draggableProps.style }}
                       >
                         <motion.div
@@ -492,6 +491,9 @@ export default function Dashboard() {
                           initial="hidden"
                           animate="visible"
                           variants={cardVariants}
+                          whileHover={{ rotate: 1, scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          style={{ height: "100%" }}
                         >
                           <Tooltip title={tooltip} arrow>
                             <Card
@@ -502,13 +504,18 @@ export default function Dashboard() {
                                 position: "relative",
                                 boxShadow: pulse ? `0 0 12px ${theme.palette.error.main}` : undefined,
                                 animation: pulse ? "pulse 2s infinite" : undefined,
-                                "&:hover": { boxShadow: `0 0 12px ${theme.palette[color].main}` },
+                                transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+                                "&:hover": { boxShadow: `0 0 12px ${theme.palette[color].main}`, transform: "translateY(-4px)" },
+                                height: "100%",
+                                display: "flex",
+                                flexDirection: "column",
+                                justifyContent: "space-between",
                               }}
                               onClick={() => handleCardClick(filter)}
                               elevation={3}
                             >
                               <Box display="flex" alignItems="center" mb={isMobile ? 0.5 : 1} gap={1}>
-                                {/* Mobile-specific drag handle icon, otherwise entire card is draggable */}
+                                {/* Mobile-specific drag handle icon */}
                                 {isMobile && (
                                   <Box
                                     sx={{ cursor: "grab" }}
@@ -576,7 +583,6 @@ export default function Dashboard() {
                         lg={2}
                         ref={providedDraggable.innerRef}
                         {...providedDraggable.draggableProps}
-                        {...providedDraggable.dragHandleProps}
                         style={{ ...providedDraggable.draggableProps.style }}
                       >
                         <motion.div
@@ -584,6 +590,9 @@ export default function Dashboard() {
                           initial="hidden"
                           animate="visible"
                           variants={cardVariants}
+                          whileHover={{ rotate: 1, scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          style={{ height: "100%" }}
                         >
                           <Tooltip title={tooltip} arrow>
                             <Card
@@ -594,13 +603,18 @@ export default function Dashboard() {
                                 position: "relative",
                                 boxShadow: pulse ? `0 0 12px ${theme.palette.error.main}` : undefined,
                                 animation: pulse ? "pulse 2s infinite" : undefined,
-                                "&:hover": { boxShadow: `0 0 12px ${theme.palette[color].main}` },
+                                transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+                                "&:hover": { boxShadow: `0 0 12px ${theme.palette[color].main}`, transform: "translateY(-4px)" },
+                                height: "100%",
+                                display: "flex",
+                                flexDirection: "column",
+                                justifyContent: "space-between",
                               }}
                               onClick={() => handleCardClick(filter)}
                               elevation={3}
                             >
                               <Box display="flex" alignItems="center" mb={isMobile ? 0.5 : 1} gap={1}>
-                                {/* Mobile-specific drag handle icon, otherwise entire card is draggable */}
+                                {/* Mobile-specific drag handle icon */}
                                 {isMobile && (
                                   <Box
                                     sx={{ cursor: "grab" }}
