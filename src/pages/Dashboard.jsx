@@ -12,7 +12,7 @@ import {
   LinearProgress,
   Fab,
   Zoom,
-  Skeleton, // Import Skeleton for loading state
+  Skeleton,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import PaidIcon from "@mui/icons-material/Payments";
@@ -22,7 +22,7 @@ import WarningIcon from "@mui/icons-material/Warning";
 import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import BarChartIcon from "@mui/icons-material/BarChart";
-import DragIndicatorIcon from "@mui/icons-material/DragIndicator"; // Import for drag handle
+// import DragIndicatorIcon from "@mui/icons-material/DragIndicator"; // Removed this for cleaner visual, rely on cursor
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useFirestore } from "../contexts/FirestoreProvider";
@@ -66,18 +66,18 @@ const EXECUTIVE_SUMMARY_IDS = [
 ];
 
 const iconMap = {
-  totalLoans: <MonetizationOnIcon fontSize="large" color="primary" />,
-  paidLoans: <CheckCircleIcon fontSize="large" color="success" />,
-  activeLoans: <PendingIcon fontSize="large" color="info" />,
-  overdueLoans: <WarningIcon fontSize="large" color="error" />,
-  totalDisbursed: <MonetizationOnIcon fontSize="large" color="primary" />,
-  investedCapital: <AccountBalanceWalletIcon fontSize="large" color="primary" />,
-  availableCapital: <AccountBalanceWalletIcon fontSize="large" color="success" />,
-  totalCollected: <PaidIcon fontSize="large" color="info" />,
-  totalOutstanding: <WarningIcon fontSize="large" color="warning" />,
-  expectedProfit: <BarChartIcon fontSize="large" color="info" />,
-  actualProfit: <CheckCircleIcon fontSize="large" color="success" />,
-  averageLoan: <MonetizationOnIcon fontSize="large" color="primary" />,
+  totalLoans: <MonetizationOnIcon fontSize="large" />,
+  paidLoans: <CheckCircleIcon fontSize="large" />,
+  activeLoans: <PendingIcon fontSize="large" />,
+  overdueLoans: <WarningIcon fontSize="large" />,
+  totalDisbursed: <MonetizationOnIcon fontSize="large" />,
+  investedCapital: <AccountBalanceWalletIcon fontSize="large" />,
+  availableCapital: <AccountBalanceWalletIcon fontSize="large" />,
+  totalCollected: <PaidIcon fontSize="large" />,
+  totalOutstanding: <WarningIcon fontSize="large" />,
+  expectedProfit: <BarChartIcon fontSize="large" />,
+  actualProfit: <CheckCircleIcon fontSize="large" />,
+  averageLoan: <MonetizationOnIcon fontSize="large" />,
 };
 
 export default function Dashboard() {
@@ -193,7 +193,7 @@ export default function Dashboard() {
       id: "investedCapital",
       label: "Invested Capital",
       value: `ZMW ${initialCapital.toLocaleString()}`,
-      color: "primary",
+      color: "primary", // Keep primary
       filter: "all",
       tooltip: "Initial capital invested into loans",
       progress: null,
@@ -203,7 +203,7 @@ export default function Dashboard() {
       id: "availableCapital",
       label: "Available Capital",
       value: `ZMW ${availableCapital.toLocaleString()}`,
-      color: "success",
+      color: "success", // Keep success
       filter: "all",
       tooltip: "Capital currently available to issue new loans",
       progress: initialCapital > 0 ? availableCapital / initialCapital : null,
@@ -213,7 +213,7 @@ export default function Dashboard() {
       id: "totalDisbursed",
       label: "Total Disbursed",
       value: `ZMW ${totalDisbursed.toLocaleString()}`,
-      color: "primary",
+      color: "primary", // Keep primary
       filter: "all",
       tooltip: "Total principal amount disbursed this month",
       progress: null,
@@ -223,7 +223,7 @@ export default function Dashboard() {
       id: "totalCollected",
       label: "Total Collected",
       value: `ZMW ${totalCollected.toLocaleString()}`,
-      color: "info",
+      color: "info", // Keep info
       filter: "paid",
       tooltip: "Total amount collected from repayments this month",
       progress: totalDisbursed > 0 ? totalCollected / totalDisbursed : null,
@@ -382,19 +382,47 @@ export default function Dashboard() {
     navigate(`/loans?${params.toString()}`);
   };
 
+  // Skeleton for loading state
   if (loading) {
     return (
-      <Box p={isMobile ? 1 : 2}>
+      <Box p={isMobile ? 2 : 4}> {/* Increased padding */}
         <Typography variant={isMobile ? "h5" : "h4"} gutterBottom>
           Dashboard
         </Typography>
-        <Grid container spacing={isMobile ? 1 : 2}>
-          {[...Array(isMobile ? 6 : 10)].map((_, i) => (
-            <Grid item xs={6} sm={4} md={3} lg={2} key={i}>
-              <Card sx={{ p: isMobile ? 1.5 : 2, height: isMobile ? 90 : 120 }}>
-                <Skeleton variant="text" width="70%" height={isMobile ? 20 : 25} />
-                <Skeleton variant="text" width="90%" height={isMobile ? 30 : 40} />
-                <Skeleton variant="rectangular" width="100%" height={isMobile ? 6 : 8} sx={{ mt: 1 }} />
+        <Box mb={isMobile ? 2 : 3} maxWidth={isMobile ? "100%" : 180}>
+          <Skeleton variant="rectangular" height={40} width="100%" />
+        </Box>
+        <Typography variant="h6" gutterBottom mt={2} mb={1}>
+          <Skeleton variant="text" width="40%" />
+        </Typography>
+        <Grid container spacing={isMobile ? 2 : 3}> {/* Increased spacing */}
+          {[...Array(isMobile ? 4 : 4)].map((_, i) => ( // 4 for executive summary
+            <Grid item xs={6} sm={4} md={3} lg={2} key={`exec-skel-${i}`}>
+              <Card sx={{ p: isMobile ? 2 : 3, borderRadius: 3, boxShadow: theme.shadows[2], height: "100%" }}> {/* Increased padding, rounded corners, subtle shadow */}
+                <Box display="flex" alignItems="center" mb={1} gap={1}>
+                  <Skeleton variant="circular" width={isMobile ? 32 : 40} height={isMobile ? 32 : 40} />
+                  <Skeleton variant="text" width="60%" height={isMobile ? 20 : 25} />
+                </Box>
+                <Skeleton variant="text" width="80%" height={isMobile ? 30 : 40} />
+                <Skeleton variant="rectangular" width="100%" height={isMobile ? 6 : 8} sx={{ mt: 1, borderRadius: 2 }} /> {/* Rounded progress skeleton */}
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+
+        <Typography variant="h6" gutterBottom mt={4} mb={1}> {/* More margin top */}
+          <Skeleton variant="text" width="30%" />
+        </Typography>
+        <Grid container spacing={isMobile ? 2 : 3}> {/* Increased spacing */}
+          {[...Array(isMobile ? 6 : 8)].map((_, i) => ( // More for metrics
+            <Grid item xs={6} sm={4} md={3} lg={2} key={`metrics-skel-${i}`}>
+              <Card sx={{ p: isMobile ? 2 : 3, borderRadius: 3, boxShadow: theme.shadows[2], height: "100%" }}> {/* Increased padding, rounded corners, subtle shadow */}
+                <Box display="flex" alignItems="center" mb={1} gap={1}>
+                  <Skeleton variant="circular" width={isMobile ? 32 : 40} height={isMobile ? 32 : 40} />
+                  <Skeleton variant="text" width="60%" height={isMobile ? 20 : 25} />
+                </Box>
+                <Skeleton variant="text" width="80%" height={isMobile ? 30 : 40} />
+                <Skeleton variant="rectangular" width="100%" height={isMobile ? 6 : 8} sx={{ mt: 1, borderRadius: 2 }} />
               </Card>
             </Grid>
           ))}
@@ -403,10 +431,11 @@ export default function Dashboard() {
     );
   }
 
+  // No loans state
   if (!loans || loans.length === 0) {
     return (
       <Box
-        p={isMobile ? 1 : 2}
+        p={isMobile ? 2 : 4} // Increased padding
         display="flex"
         flexDirection="column"
         alignItems="center"
@@ -425,7 +454,7 @@ export default function Dashboard() {
           aria-label="Add Loan"
           onClick={() => navigate("/add-loan")}
           variant="extended"
-          sx={{ mt: 2 }}
+          sx={{ mt: 2, borderRadius: 10 }} // More rounded button
         >
           <AddIcon sx={{ mr: 1 }} />
           Add First Loan
@@ -435,13 +464,13 @@ export default function Dashboard() {
   }
 
   return (
-    <Box p={isMobile ? 1 : 2}>
-      <Typography variant={isMobile ? "h5" : "h4"} gutterBottom>
+    <Box p={isMobile ? 2 : 4} sx={{ background: theme.palette.background.default }}> {/* Added background for overall feel */}
+      <Typography variant={isMobile ? "h5" : "h4"} gutterBottom sx={{ fontWeight: 600 }}> {/* Bolder title */}
         Dashboard
       </Typography>
 
       {/* Month picker */}
-      <Box mb={isMobile ? 2 : 3} maxWidth={isMobile ? "100%" : 180}>
+      <Box mb={isMobile ? 3 : 4} maxWidth={isMobile ? "100%" : 200}> {/* Increased mb, slightly wider */}
         <TextField
           label="Filter by Month"
           type="month"
@@ -449,12 +478,18 @@ export default function Dashboard() {
           value={selectedMonth}
           onChange={(e) => setSelectedMonth(e.target.value)}
           fullWidth
+          InputLabelProps={{ shrink: true }} // Always show label as if input is focused
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 2, // Rounded input field
+            },
+          }}
         />
       </Box>
 
       <DragDropContext onDragEnd={onDragEnd}>
         {/* Executive Summary Section */}
-        <Typography variant="h6" gutterBottom mt={2} mb={1}>
+        <Typography variant="h6" gutterBottom mt={2} mb={isMobile ? 2 : 3} sx={{ fontWeight: 600 }}>
           Executive Summary
         </Typography>
         <Droppable
@@ -464,10 +499,10 @@ export default function Dashboard() {
           {(provided) => (
             <Grid
               container
-              spacing={isMobile ? 1 : 2}
+              spacing={isMobile ? 2 : 3} // Increased spacing
               {...provided.droppableProps}
               ref={provided.innerRef}
-              sx={{ mb: 4 }} // Add margin bottom to separate sections
+              sx={{ mb: isMobile ? 4 : 6 }} // Add more margin bottom to separate sections
             >
               {executiveSummaryCards.map(
                 (
@@ -484,6 +519,13 @@ export default function Dashboard() {
                         lg={2}
                         ref={providedDraggable.innerRef}
                         {...providedDraggable.draggableProps}
+                        // We are removing the dragHandleProps from the Grid and
+                        // instead applying it to the content Box within the Card
+                        // so that the entire card is clickable, but drag is only via the content.
+                        // For a cleaner look like the examples, we'll make the whole card draggable.
+                        // So, we'll keep `providedDraggable.dragHandleProps` on the Card itself or a wrapper
+                        // if you want the whole card to be draggable, or on a specific handle element.
+                        // For now, let's keep it on the motion.div wrapper to make the whole card draggable.
                         style={{ ...providedDraggable.draggableProps.style }}
                       >
                         <motion.div
@@ -491,45 +533,47 @@ export default function Dashboard() {
                           initial="hidden"
                           animate="visible"
                           variants={cardVariants}
-                          whileHover={{ rotate: 1, scale: 1.02 }}
+                          whileHover={{ scale: 1.02, boxShadow: theme.shadows[4] }} // More subtle hover
                           whileTap={{ scale: 0.98 }}
                           style={{ height: "100%" }}
+                          {...providedDraggable.dragHandleProps} // Make the whole motion.div (card) draggable
                         >
                           <Tooltip title={tooltip} arrow>
                             <Card
                               sx={{
-                                p: isMobile ? 1.5 : 2,
+                                p: isMobile ? 2 : 3, // Increased padding
                                 cursor: "grab",
-                                borderLeft: `6px solid ${theme.palette[color].main}`,
-                                position: "relative",
-                                boxShadow: pulse ? `0 0 12px ${theme.palette.error.main}` : undefined,
+                                borderRadius: 3, // Very rounded corners
+                                // Removed borderLeft for a cleaner, more image-like aesthetic.
+                                // Instead, use a subtle background color or gradient if desired,
+                                // or rely on the icon color for emphasis.
+                                // For now, we'll keep it simple: no borderLeft.
+                                // boxShadow: pulse ? `0 0 15px ${theme.palette.error.light}` : theme.shadows[2], // More subtle shadow
+                                boxShadow: theme.shadows[2], // Default subtle shadow
                                 animation: pulse ? "pulse 2s infinite" : undefined,
                                 transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
-                                "&:hover": { boxShadow: `0 0 12px ${theme.palette[color].main}`, transform: "translateY(-4px)" },
+                                "&:hover": {
+                                  boxShadow: pulse ? `0 0 15px ${theme.palette.error.light}` : theme.shadows[4], // Stronger shadow on hover
+                                  transform: "translateY(-4px)"
+                                },
                                 height: "100%",
                                 display: "flex",
                                 flexDirection: "column",
                                 justifyContent: "space-between",
+                                backgroundColor: theme.palette.background.paper, // Ensure cards have a distinct background
                               }}
                               onClick={() => handleCardClick(filter)}
-                              elevation={3}
+                              elevation={0} // We'll manage boxShadow manually for finer control
                             >
-                              <Box display="flex" alignItems="center" mb={isMobile ? 0.5 : 1} gap={1}>
-                                {/* Mobile-specific drag handle icon */}
-                                {isMobile && (
-                                  <Box
-                                    sx={{ cursor: "grab" }}
-                                    {...providedDraggable.dragHandleProps}
-                                  >
-                                    <DragIndicatorIcon sx={{ color: theme.palette.text.secondary }} />
-                                  </Box>
-                                )}
-                                {/* Render the icon, adjust size for mobile if necessary */}
-                                {isMobile ? React.cloneElement(icon, { fontSize: "medium" }) : icon}
-                                <Typography variant={isMobile ? "subtitle2" : "subtitle1"} color="textSecondary" flexGrow={1}>
+                              <Box display="flex" flexDirection="column" alignItems="flex-start" mb={isMobile ? 1 : 1.5}>
+                                {React.cloneElement(icon, {
+                                  fontSize: isMobile ? "medium" : "large",
+                                  sx: { color: theme.palette[color].main, mb: 1 }, // Icon on top, colored
+                                })}
+                                <Typography variant={isMobile ? "subtitle2" : "subtitle1"} color="textSecondary" sx={{ fontWeight: 500 }}>
                                   {label}
                                 </Typography>
-                                <Typography variant={isMobile ? "subtitle1" : "h6"} fontWeight="bold">
+                                <Typography variant={isMobile ? "h6" : "h5"} fontWeight="bold" color="text.primary">
                                   {value}
                                 </Typography>
                               </Box>
@@ -537,7 +581,15 @@ export default function Dashboard() {
                                 <LinearProgress
                                   variant="determinate"
                                   value={Math.min(progress * 100, 100)}
-                                  sx={{ height: isMobile ? 6 : 8, borderRadius: isMobile ? 3 : 4 }}
+                                  sx={{
+                                    height: isMobile ? 6 : 8,
+                                    borderRadius: 4, // More rounded progress bar
+                                    backgroundColor: theme.palette[color].light, // Lighter track color
+                                    "& .MuiLinearProgress-bar": {
+                                      backgroundColor: theme.palette[color].main, // Main bar color
+                                      borderRadius: 4,
+                                    },
+                                  }}
                                 />
                               )}
                             </Card>
@@ -554,7 +606,7 @@ export default function Dashboard() {
         </Droppable>
 
         {/* Metrics Section */}
-        <Typography variant="h6" gutterBottom mt={2} mb={1}>
+        <Typography variant="h6" gutterBottom mt={2} mb={isMobile ? 2 : 3} sx={{ fontWeight: 600 }}>
           Metrics
         </Typography>
         <Droppable
@@ -564,7 +616,7 @@ export default function Dashboard() {
           {(provided) => (
             <Grid
               container
-              spacing={isMobile ? 1 : 2}
+              spacing={isMobile ? 2 : 3} // Increased spacing
               {...provided.droppableProps}
               ref={provided.innerRef}
             >
@@ -590,45 +642,42 @@ export default function Dashboard() {
                           initial="hidden"
                           animate="visible"
                           variants={cardVariants}
-                          whileHover={{ rotate: 1, scale: 1.02 }}
+                          whileHover={{ scale: 1.02, boxShadow: theme.shadows[4] }} // More subtle hover
                           whileTap={{ scale: 0.98 }}
                           style={{ height: "100%" }}
+                          {...providedDraggable.dragHandleProps} // Make the whole motion.div (card) draggable
                         >
                           <Tooltip title={tooltip} arrow>
                             <Card
                               sx={{
-                                p: isMobile ? 1.5 : 2,
+                                p: isMobile ? 2 : 3, // Increased padding
                                 cursor: "grab",
-                                borderLeft: `6px solid ${theme.palette[color].main}`,
-                                position: "relative",
-                                boxShadow: pulse ? `0 0 12px ${theme.palette.error.main}` : undefined,
+                                borderRadius: 3, // Very rounded corners
+                                boxShadow: theme.shadows[2], // Default subtle shadow
                                 animation: pulse ? "pulse 2s infinite" : undefined,
                                 transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
-                                "&:hover": { boxShadow: `0 0 12px ${theme.palette[color].main}`, transform: "translateY(-4px)" },
+                                "&:hover": {
+                                  boxShadow: pulse ? `0 0 15px ${theme.palette.error.light}` : theme.shadows[4], // Stronger shadow on hover
+                                  transform: "translateY(-4px)"
+                                },
                                 height: "100%",
                                 display: "flex",
                                 flexDirection: "column",
                                 justifyContent: "space-between",
+                                backgroundColor: theme.palette.background.paper, // Ensure cards have a distinct background
                               }}
                               onClick={() => handleCardClick(filter)}
-                              elevation={3}
+                              elevation={0}
                             >
-                              <Box display="flex" alignItems="center" mb={isMobile ? 0.5 : 1} gap={1}>
-                                {/* Mobile-specific drag handle icon */}
-                                {isMobile && (
-                                  <Box
-                                    sx={{ cursor: "grab" }}
-                                    {...providedDraggable.dragHandleProps}
-                                  >
-                                    <DragIndicatorIcon sx={{ color: theme.palette.text.secondary }} />
-                                  </Box>
-                                )}
-                                {/* Render the icon, adjust size for mobile if necessary */}
-                                {isMobile ? React.cloneElement(icon, { fontSize: "medium" }) : icon}
-                                <Typography variant={isMobile ? "subtitle2" : "subtitle1"} color="textSecondary" flexGrow={1}>
+                              <Box display="flex" flexDirection="column" alignItems="flex-start" mb={isMobile ? 1 : 1.5}>
+                                {React.cloneElement(icon, {
+                                  fontSize: isMobile ? "medium" : "large",
+                                  sx: { color: theme.palette[color].main, mb: 1 }, // Icon on top, colored
+                                })}
+                                <Typography variant={isMobile ? "subtitle2" : "subtitle1"} color="textSecondary" sx={{ fontWeight: 500 }}>
                                   {label}
                                 </Typography>
-                                <Typography variant={isMobile ? "subtitle1" : "h6"} fontWeight="bold">
+                                <Typography variant={isMobile ? "h6" : "h5"} fontWeight="bold" color="text.primary">
                                   {value}
                                 </Typography>
                               </Box>
@@ -636,7 +685,15 @@ export default function Dashboard() {
                                 <LinearProgress
                                   variant="determinate"
                                   value={Math.min(progress * 100, 100)}
-                                  sx={{ height: isMobile ? 6 : 8, borderRadius: isMobile ? 3 : 4 }}
+                                  sx={{
+                                    height: isMobile ? 6 : 8,
+                                    borderRadius: 4, // More rounded progress bar
+                                    backgroundColor: theme.palette[color].light, // Lighter track color
+                                    "& .MuiLinearProgress-bar": {
+                                      backgroundColor: theme.palette[color].main, // Main bar color
+                                      borderRadius: 4,
+                                    },
+                                  }}
                                 />
                               )}
                             </Card>
@@ -661,9 +718,11 @@ export default function Dashboard() {
           onClick={() => navigate("/add-loan")}
           sx={{
             position: "fixed",
-            bottom: isMobile ? 80 : 24, // slightly above bottom nav on mobile
-            right: 24,
+            bottom: isMobile ? 80 : 32, // Adjusted further from bottom on mobile
+            right: isMobile ? 24 : 32, // Adjusted further from right on mobile
             zIndex: 1300,
+            boxShadow: theme.shadows[6], // More prominent shadow for FAB
+            borderRadius: "50%", // Ensure it's perfectly round
           }}
         >
           <AddIcon />
