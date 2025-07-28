@@ -3,7 +3,7 @@ import {
   AppBar,
   Toolbar,
   IconButton,
-  Typography, // Make sure Typography is imported
+  Typography,
   Menu,
   MenuItem,
   Tooltip,
@@ -37,8 +37,8 @@ import { useFirestore } from "../contexts/FirestoreProvider";
 import { useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
 import { auth } from "../firebase";
-import SettingsPage from "../pages/SettingsPage";
-import HelpDialog from "./HelpDialog";
+import SettingsPage from "../pages/SettingsPage"; // Ensure this path is correct
+import HelpDialog from "./HelpDialog"; // Ensure this path is correct
 import dayjs from "dayjs";
 
 function stringToInitials(name = "") {
@@ -71,6 +71,7 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
   const openMenu = Boolean(anchorEl);
   const openNotifications = Boolean(notificationAnchor);
 
+  // Effect to generate notifications based on loan due dates
   useEffect(() => {
     if (!loans) return;
     const now = dayjs();
@@ -111,6 +112,7 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
 
   const handleSettingsClick = () => {
     handleMenuClose();
+    // Open settings in a dialog if on mobile, otherwise navigate to settings page
     if (isMobile) {
       setSettingsOpen(true);
     } else if (window.location.pathname !== "/settings") {
@@ -187,10 +189,8 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
             sx={{
               flexGrow: 1,
               cursor: "pointer",
-              // --- CHANGES START HERE ---
               fontWeight: 700, // Make it bold
-              color: theme.palette.primary.main, // Use the primary color from your theme (which is typically blue)
-              // --- CHANGES END HERE ---
+              color: theme.palette.primary.main, // Make it blue using theme's primary color
             }}
             onClick={() => navigate("/dashboard")}
           >
@@ -291,6 +291,7 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
         </Toolbar>
       </AppBar>
 
+      {/* Account Menu */}
       <Menu
         anchorEl={anchorEl}
         open={openMenu}
@@ -369,6 +370,7 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
         </MenuItem>
       </Menu>
 
+      {/* Notifications Popover */}
       <Popover
         open={openNotifications}
         anchorEl={notificationAnchor}
@@ -421,15 +423,21 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
         )}
       </Popover>
 
+      {/* Settings Dialog (non-fullscreen) */}
       <Dialog
-        fullScreen
         open={settingsOpen}
         onClose={closeSettingsDialog}
         TransitionComponent={Transition}
+        maxWidth="sm" // Dialog will take max width of 'sm' breakpoint
+        fullWidth // Dialog will stretch to full width up to maxWidth
+        PaperProps={{
+          sx: { borderRadius: 3, mx: 2 } // Apply border radius and horizontal margin for better look on mobile
+        }}
       >
-        <SettingsPage onClose={closeSettingsDialog} />
+        <SettingsPage onClose={closeSettingsDialog} /> {/* Pass onClose prop to SettingsPage */}
       </Dialog>
 
+      {/* Help Dialog */}
       <HelpDialog open={helpOpen} onClose={closeHelpDialog} sx={{ "& .MuiDialog-paper": { borderRadius: 3 } }} />
     </>
   );
