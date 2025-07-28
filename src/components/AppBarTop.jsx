@@ -3,7 +3,7 @@ import {
   AppBar,
   Toolbar,
   IconButton,
-  Typography,
+  Typography, // Make sure Typography is imported
   Menu,
   MenuItem,
   Tooltip,
@@ -187,8 +187,10 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
             sx={{
               flexGrow: 1,
               cursor: "pointer",
-              fontWeight: 600,
-              color: theme.palette.text.primary,
+              // --- CHANGES START HERE ---
+              fontWeight: 700, // Make it bold
+              color: theme.palette.primary.main, // Use the primary color from your theme (which is typically blue)
+              // --- CHANGES END HERE ---
             }}
             onClick={() => navigate("/dashboard")}
           >
