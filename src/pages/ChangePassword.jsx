@@ -6,19 +6,15 @@ import {
   Button,
   Alert,
   Stack,
-  // New imports for Dialog header
-  AppBar,
-  Toolbar,
-  IconButton,
-  useTheme,
-  useMediaQuery,
+  // Removed AppBar, Toolbar, IconButton as they are not used internally for a dialog
+  // Removed useTheme, useMediaQuery as isMobile is not used either
 } from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close"; // Import CloseIcon for the dialog header
+// Removed CloseIcon as it's not used internally anymore
 import { auth } from "../firebase";
 import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
 
-// Add onClose prop for when ChangePasswordPage is rendered inside a Dialog
-export default function ChangePasswordPage({ onClose }) {
+// Add onClose prop for when ChangePassword is rendered inside a Dialog
+export default function ChangePassword({ onClose }) { // Ensure component is named ChangePassword
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -26,8 +22,9 @@ export default function ChangePasswordPage({ onClose }) {
   const [successMsg, setSuccessMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const theme = useTheme(); // Use theme for responsiveness
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm")); // Check if on mobile
+  // Removed theme and isMobile declarations as they are no longer used
+  // const theme = useTheme();
+  // const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const user = auth.currentUser;
 
@@ -69,8 +66,7 @@ export default function ChangePasswordPage({ onClose }) {
       // Optional: Close dialog after successful password change
       // if (onClose) onClose();
     } catch (error) {
-      console.error("Password change error:", error); // Log error for debugging
-      // Provide more user-friendly messages for common errors
+      console.error("Password change error:", error);
       if (error.code === 'auth/wrong-password') {
         setErrorMsg('Invalid current password. Please try again.');
       } else if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-email') {
@@ -115,11 +111,11 @@ export default function ChangePasswordPage({ onClose }) {
             label="Current Password"
             type="password"
             required
-            fullWidth // Ensure it takes full width
+            fullWidth
             value={currentPassword}
             onChange={(e) => { setCurrentPassword(e.target.value); setErrorMsg(""); setSuccessMsg(""); }}
             autoComplete="current-password"
-            margin="normal" // Consistent spacing
+            margin="normal"
           />
           <TextField
             label="New Password"
