@@ -1,13 +1,20 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
-import { Toolbar } from '@mui/material';
+import { Toolbar, useTheme, useMediaQuery } from '@mui/material';
 import AppBarTop from './AppBarTop';
 import BottomNavBar from './BottomNavBar';
 import Sidebar from './Sidebar';
 
 const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   const { pathname } = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
   const hideLayout = ['/login', '/register', '/forgot-password'].includes(pathname);
+
+  // Heights for fixed bars
+  const topBarHeight = isMobile ? 56 : 64; // MUI AppBar default heights
+  const bottomNavHeight = isMobile && !hideLayout ? 64 : 0; // Your BottomNavBar height on mobile
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
@@ -22,7 +29,9 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
             flexGrow: 1,
             overflowY: 'auto',
             padding: '16px',
-            paddingBottom: hideLayout ? 0 : '72px', // leave space for BottomNavBar
+            paddingTop: !hideLayout ? `${topBarHeight + 8}px` : undefined, // dynamic top padding
+            paddingBottom: !hideLayout ? `${bottomNavHeight + 8}px` : undefined, // dynamic bottom padding
+            boxSizing: 'border-box',
           }}
         >
           {children}
@@ -35,4 +44,3 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
 };
 
 export default AppLayout;
-
