@@ -1,7 +1,11 @@
+// src/AppRoutes.jsx
 import React from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { Toolbar, useTheme, useMediaQuery } from '@mui/material';
+import { Routes, Route, Navigate } from 'react-router-dom';
 
+// Import the correct AppLayout component from its dedicated file
+import AppLayout from './components/AppLayout';
+
+// Import your page components
 import Dashboard from './pages/Dashboard';
 import LoanList from './pages/LoanList';
 import AddLoanForm from './pages/AddLoanForm';
@@ -14,49 +18,23 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 
+// Import your ProtectedRoute component
 import ProtectedRoute from './components/ProtectedRoute';
-import BottomNavBar from './components/BottomNavBar';
-import Sidebar from './components/Sidebar';
-import AppBarTop from './components/AppBarTop';
 
-const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
-  const { pathname } = useLocation();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const hideLayout = ['/login', '/register', '/forgot-password'].includes(pathname);
-
-  // Heights for fixed bars
-  const topBarHeight = isMobile ? 56 : 64; // MUI AppBar default heights
-  const bottomNavHeight = isMobile && !hideLayout ? 64 : 0; // BottomNavBar height on mobile
-
-  return (
-    <div style={{ display: 'flex', minHeight: '100vh', flexDirection: 'column' }}>
-      {!hideLayout && <AppBarTop darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} />}
-      {!hideLayout && <Toolbar />}
-      <div style={{ flex: 1, display: 'flex' }}>
-        {!hideLayout && <Sidebar />}
-        <main
-          style={{
-            flexGrow: 1,
-            overflowY: 'auto',
-            padding: '16px',
-            paddingTop: !hideLayout ? `${topBarHeight + 8}px` : undefined,
-            paddingBottom: !hideLayout ? `${bottomNavHeight + 8}px` : undefined,
-            boxSizing: 'border-box',
-          }}
-        >
-          {children}
-        </main>
-      </div>
-      {!hideLayout && <BottomNavBar />}
-    </div>
-  );
-};
-
+// This component defines your application's routes
 function AppRoutes({ darkMode, onToggleDarkMode }) {
   return (
+    // AppLayout wraps all routes to provide consistent UI shell
+    // The AppLayout component itself has logic to hide parts of the layout
+    // for specific routes like /login, /register, etc.
     <AppLayout darkMode={darkMode} onToggleDarkMode={onToggleDarkMode}>
       <Routes>
+        {/* Public Routes - these paths will trigger `hideLayout` in AppLayout */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+
+        {/* Protected Routes - These components will be rendered inside AppLayout's <main> area */}
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/loans" element={<ProtectedRoute><LoanList /></ProtectedRoute>} />
         <Route path="/add-loan" element={<ProtectedRoute><AddLoanForm /></ProtectedRoute>} />
@@ -65,9 +43,8 @@ function AppRoutes({ darkMode, onToggleDarkMode }) {
         <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/change-password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
+
+        {/* Catch-all route: Redirects any unmatched path to /dashboard */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </AppLayout>
