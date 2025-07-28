@@ -1,11 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 // These Material-UI imports are no longer needed here as your CustomThemeProvider handles them internally
 // import { ThemeProvider, createTheme } from '@mui/material/styles';
 // import CssBaseline from '@mui/material/CssBaseline';
 import { BrowserRouter as Router } from 'react-router-dom';
 
 // Import your custom ThemeProvider and useThemeContext from the correct file path.
-// This is the crucial line that was corrected.
 import { ThemeProvider as CustomThemeProvider, useThemeContext } from './contexts/ThemeProvider.jsx';
 
 import { FirestoreProvider } from './contexts/FirestoreProvider';
@@ -18,6 +17,12 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 import useOfflineStatus from './hooks/useOfflineStatus';
+
+// Import the SplashScreen component
+import SplashScreen from './components/SplashScreen'; // Make sure this path is correct
+
+// Define the total duration for the splash screen in milliseconds
+const SPLASH_SCREEN_DURATION = 3000; // 3 seconds (adjust as needed)
 
 // This component is created to properly use React Hooks (like useThemeContext)
 // as it will be rendered *inside* your CustomThemeProvider.
@@ -78,13 +83,50 @@ function AppContent() {
 
 // This is your root App component.
 function App() {
+  const [showSplash, setShowSplash] = useState(true);
+  const [splashAnimationFinished, setSplashAnimationFinished] = useState(false);
+
+  useEffect(() => {
+    // Simulate any initial data loading or authentication here.
+    // Replace this setTimeout with your actual app initialization logic (e.g., API calls, Firebase init).
+    // The total time of this timeout should roughly match SPLASH_SCREEN_DURATION.
+    const loadAppContent = async () => {
+      // Example: Simulate an async operation like loading user data or configs
+      // await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate 1.5s of actual loading
+      // console.log("App content data loaded.");
+
+      // Ensure the splash screen is shown for at least SPLASH_SCREEN_DURATION
+      setTimeout(() => {
+        setShowSplash(false);
+      }, SPLASH_SCREEN_DURATION);
+    };
+
+    loadAppContent();
+  }, []); // Run once on component mount
+
+  // This callback is triggered when the CSS fade-out animation of the splash screen completes
+  const handleSplashFadeOutComplete = () => {
+    setSplashAnimationFinished(true);
+  };
+
   return (
-    // Wrap your entire application with your CustomThemeProvider.
-    // This provider sets up the Material-UI theme (with your custom colors)
-    // and applies the CssBaseline (which sets the global background color).
-    <CustomThemeProvider>
-      <AppContent /> {/* Render the rest of your application inside the theme provider */}
-    </CustomThemeProvider>
+    <>
+      {showSplash && (
+        <SplashScreen
+          onFadeOutComplete={handleSplashFadeOutComplete}
+          duration={SPLASH_SCREEN_DURATION} // Pass duration to SplashScreen for progress bar
+        />
+      )}
+
+      {/* Only render the main app content if splash screen is no longer shown
+          AND its fade-out animation has completed.
+          Wrap your CustomThemeProvider here to ensure it applies to AppContent. */}
+      {!showSplash && splashAnimationFinished && (
+        <CustomThemeProvider>
+          <AppContent /> {/* Render the rest of your application inside the theme provider */}
+        </CustomThemeProvider>
+      )}
+    </>
   );
 }
 
