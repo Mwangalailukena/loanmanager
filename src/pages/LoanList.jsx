@@ -27,6 +27,7 @@ import {
   Alert,
   Checkbox,
   Tooltip,
+  Snackbar,
 } from "@mui/material";
 import {
   KeyboardArrowDown,
@@ -43,7 +44,6 @@ import dayjs from "dayjs";
 
 const PAGE_SIZE = 10;
 
-// Define interestOptions here, as it's needed for the select field
 const interestOptions = [
   { label: "1 Week", value: 1 },
   { label: "2 Weeks", value: 2 },
@@ -63,7 +63,6 @@ export default function LoanList() {
   const [useInfiniteScroll] = useState(isMobile);
   const [expandedRow, setExpandedRow] = useState(null);
 
-  // Modals and their states
   const [confirmDelete, setConfirmDelete] = useState({ open: false, loanId: null });
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -71,15 +70,16 @@ export default function LoanList() {
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentError, setPaymentError] = useState("");
   const [isAddingPayment, setIsAddingPayment] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   const [editModal, setEditModal] = useState({ open: false, loan: null });
   const [editData, setEditData] = useState({
     borrower: "",
     phone: "",
     principal: "",
-    interestDuration: 1, // Changed from 'interest' to 'interestDuration'
+    interestDuration: 1,
     startDate: "",
-    dueDate: "", // This will be calculated
+    dueDate: "",
   });
   const [editErrors, setEditErrors] = useState({});
   const [isSavingEdit, setIsSavingEdit] = useState(false);
@@ -90,9 +90,8 @@ export default function LoanList() {
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
-  // Define interestRates and calculateInterest function
   const interestRates = settings.interestRates || {
-    1: 0.15, // Default rates if settings are not loaded
+    1: 0.15,
     2: 0.2,
     3: 0.3,
     4: 0.3,
@@ -216,7 +215,6 @@ export default function LoanList() {
   };
 
   const openEditModal = (loan) => {
-    // Calculate due date based on existing loan's startDate and interestDuration for initial display
     const initialDueDate = dayjs(loan.startDate).add((loan.interestDuration || 1) * 7, 'day').format("YYYY-MM-DD");
 
     setEditData({
@@ -225,7 +223,7 @@ export default function LoanList() {
       principal: loan.principal,
       interestDuration: loan.interestDuration || 1,
       startDate: loan.startDate,
-      dueDate: initialDueDate, // Initialize dueDate with the calculated value
+      dueDate: initialDueDate,
     });
     setEditErrors({});
     setEditModal({ open: true, loan });
@@ -249,7 +247,6 @@ export default function LoanList() {
     const calculatedInterestAmount = calculateInterest(principalAmount, selectedDuration);
     const calculatedTotalRepayable = principalAmount + calculatedInterestAmount;
 
-    // The dueDate is always recalculated based on startDate and interestDuration
     const finalDueDate = dayjs(editData.startDate).add(selectedDuration * 7, 'day').format("YYYY-MM-DD");
 
     const updatedLoan = {
@@ -260,7 +257,7 @@ export default function LoanList() {
       interest: calculatedInterestAmount,
       totalRepayable: calculatedTotalRepayable,
       startDate: editData.startDate,
-      dueDate: finalDueDate, // Use the final calculated due date
+      dueDate: finalDueDate,
       interestDuration: selectedDuration,
     };
     setIsSavingEdit(true);
@@ -288,10 +285,20 @@ export default function LoanList() {
       return;
     }
 
+    // Find the loan being paid
+    const loan = loans.find(l => l.id === paymentModal.loanId);
+    const outstanding = (loan?.totalRepayable || 0) - (loan?.repaidAmount || 0);
+
+    if (amountNum > outstanding) {
+      setPaymentError(`Payment cannot exceed outstanding amount (ZMW ${outstanding.toFixed(2)}).`);
+      return;
+    }
+
     setIsAddingPayment(true);
     try {
       await addPayment(paymentModal.loanId, amountNum);
       setPaymentModal({ open: false, loanId: null });
+      setPaymentSuccess(true);
     } catch (error) {
       console.error("Error adding payment:", error);
       setPaymentError("Failed to add payment. Please try again.");
@@ -388,6 +395,7 @@ export default function LoanList() {
               <AnimatePresence>
                 {displayedLoans.map((loan, index) => {
                   const outstanding = (loan.totalRepayable || 0) - (loan.repaidAmount || 0);
+                  const isPaid = calcStatus(loan).toLowerCase() === "paid";
                   return (
                     <motion.div
                       key={loan.id}
@@ -428,19 +436,25 @@ export default function LoanList() {
                           <Typography noWrap>Status: {calcStatus(loan)}</Typography>
                           <Stack direction="row" spacing={0.5} mt={1} justifyContent="flex-start">
                             <Tooltip title="Edit">
-                              <IconButton size="small" onClick={() => openEditModal(loan)} aria-label="edit">
-                                <Edit fontSize="small" />
-                              </IconButton>
+                              <span>
+                                <IconButton size="small" onClick={() => openEditModal(loan)} aria-label="edit" disabled={isPaid}>
+                                  <Edit fontSize="small" />
+                                </IconButton>
+                              </span>
                             </Tooltip>
                             <Tooltip title="Delete">
-                              <IconButton size="small" color="error" onClick={() => setConfirmDelete({ open: true, loanId: loan.id })} aria-label="delete">
-                                <Delete fontSize="small" />
-                              </IconButton>
+                              <span>
+                                <IconButton size="small" color="error" onClick={() => setConfirmDelete({ open: true, loanId: loan.id })} aria-label="delete" disabled={isPaid}>
+                                  <Delete fontSize="small" />
+                                </IconButton>
+                              </span>
                             </Tooltip>
                             <Tooltip title="Add Payment">
-                              <IconButton size="small" onClick={() => openPaymentModal(loan.id)} aria-label="payment">
-                                <Payment fontSize="small" />
-                              </IconButton>
+                              <span>
+                                <IconButton size="small" onClick={() => openPaymentModal(loan.id)} aria-label="payment" disabled={isPaid}>
+                                  <Payment fontSize="small" />
+                                </IconButton>
+                              </span>
                             </Tooltip>
                             <Tooltip title="View History">
                               <IconButton size="small" onClick={() => openHistoryModal(loan.id)} aria-label="history">
@@ -508,6 +522,7 @@ export default function LoanList() {
                   {displayedLoans.map((loan, idx) => {
                     const outstanding = (loan.totalRepayable || 0) - (loan.repaidAmount || 0);
                     const isSelected = selectedLoanIds.includes(loan.id);
+                    const isPaid = calcStatus(loan).toLowerCase() === "paid";
                     return (
                       <TableRow
                         key={loan.id}
@@ -547,32 +562,41 @@ export default function LoanList() {
                         <TableCell sx={{ py: 0.5 }}>{calcStatus(loan)}</TableCell>
                         <TableCell align="center" sx={{ py: 0.5 }}>
                           <Tooltip title="Edit">
-                            <IconButton
-                              size="small"
-                              onClick={() => openEditModal(loan)}
-                              aria-label="edit"
-                            >
-                              <Edit fontSize="small" />
-                            </IconButton>
+                            <span>
+                              <IconButton
+                                size="small"
+                                onClick={() => openEditModal(loan)}
+                                aria-label="edit"
+                                disabled={isPaid}
+                              >
+                                <Edit fontSize="small" />
+                              </IconButton>
+                            </span>
                           </Tooltip>
                           <Tooltip title="Delete">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => setConfirmDelete({ open: true, loanId: loan.id })}
-                              aria-label="delete"
-                            >
-                              <Delete fontSize="small" />
-                            </IconButton>
+                            <span>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => setConfirmDelete({ open: true, loanId: loan.id })}
+                                aria-label="delete"
+                                disabled={isPaid}
+                              >
+                                <Delete fontSize="small" />
+                              </IconButton>
+                            </span>
                           </Tooltip>
                           <Tooltip title="Add Payment">
-                            <IconButton
-                              size="small"
-                              onClick={() => openPaymentModal(loan.id)}
-                              aria-label="add payment"
-                            >
-                              <Payment fontSize="small" />
-                            </IconButton>
+                            <span>
+                              <IconButton
+                                size="small"
+                                onClick={() => openPaymentModal(loan.id)}
+                                aria-label="add payment"
+                                disabled={isPaid}
+                              >
+                                <Payment fontSize="small" />
+                              </IconButton>
+                            </span>
                           </Tooltip>
                           <Tooltip title="View History">
                             <IconButton
@@ -772,7 +796,7 @@ export default function LoanList() {
               InputLabelProps={{ shrink: true }}
               size="small"
               fullWidth
-              InputProps={{ readOnly: true }} // Makes the field read-only
+              InputProps={{ readOnly: true }}
             />
           </Stack>
         </DialogContent>
@@ -816,6 +840,14 @@ export default function LoanList() {
           <Button size="small" onClick={() => setHistoryModal({ open: false, loanId: null, payments: [], loading: false })}> Close </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Snackbar for payment confirmation */}
+      <Snackbar
+        open={paymentSuccess}
+        autoHideDuration={3000}
+        onClose={() => setPaymentSuccess(false)}
+        message="Payment added successfully!"
+      />
     </Box>
   );
 }
