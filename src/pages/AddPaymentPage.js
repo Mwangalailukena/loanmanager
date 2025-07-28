@@ -1,4 +1,3 @@
-// src/pages/AddPaymentPage.jsx
 import React, { useState, useEffect, useMemo } from "react";
 import {
   Box,
@@ -14,12 +13,8 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
-  Paper,
+  Paper, // Make sure Paper is imported
 } from "@mui/material";
-// Removed DatePicker related imports
-// import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-// import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-// import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { toast } from "react-toastify";
 //import dayjs from "dayjs"; // Still needed for internal date handling and display
@@ -29,7 +24,6 @@ export default function AddPaymentPage() {
 
   const [selectedLoan, setSelectedLoan] = useState(null); // This will hold the loan object
   const [paymentAmount, setPaymentAmount] = useState("");
-  // Removed paymentDate state: const [paymentDate, setPaymentDate] = useState(dayjs());
   const [generalError, setGeneralError] = useState(""); // General form error
   const [fieldErrors, setFieldErrors] = useState({}); // Specific field errors
   const [loading, setLoading] = useState(false); // For form submission
@@ -56,7 +50,6 @@ export default function AddPaymentPage() {
   // Reset errors when relevant fields change
   useEffect(() => { clearFieldError('loan'); setGeneralError(''); }, [selectedLoan]);
   useEffect(() => { clearFieldError('amount'); setGeneralError(''); }, [paymentAmount]);
-  // Removed useEffect for paymentDate: useEffect(() => { setGeneralError(''); }, [paymentDate]);
 
   const validateForm = () => {
     let isValid = true;
@@ -105,7 +98,6 @@ export default function AddPaymentPage() {
       // Reset form
       setSelectedLoan(null);
       setPaymentAmount("");
-      // Removed paymentDate reset: setPaymentDate(dayjs());
       setFieldErrors({}); // Clear all errors
       setGeneralError("");
 
@@ -128,10 +120,18 @@ export default function AddPaymentPage() {
   const prospectiveRemaining = remainingBalance - Number(paymentAmount || 0);
 
   return (
-    // LocalizationProvider is no longer strictly needed without DatePicker,
-    // but can be kept if other date components are used elsewhere or for future plans.
-    // For now, I'll remove it as it's directly tied to DatePicker.
-    <Box maxWidth={500} mx="auto" mt={3} p={2}>
+    // Wrap the content in a Paper component for a card-like appearance and border
+    <Paper
+      elevation={2} // Add a subtle shadow
+      sx={{
+        maxWidth: 500,
+        mx: "auto",
+        mt: 3,
+        p: 3, // Increased padding slightly for better spacing inside the border
+        border: (theme) => `2px solid ${theme.palette.primary.main}`, // Blue border
+        borderRadius: 2, // Rounded corners for the paper
+      }}
+    >
       <Typography variant="h5" sx={{ mb: 3 }}>
         Add Payment
       </Typography>
@@ -278,7 +278,6 @@ export default function AddPaymentPage() {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
-    // Removed closing LocalizationProvider tag
+    </Paper>
   );
 }
