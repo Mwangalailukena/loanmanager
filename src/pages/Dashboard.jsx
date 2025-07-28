@@ -11,8 +11,7 @@ import {
   LinearProgress,
   Fab,
   Zoom,
-  Skeleton,
-  Divider, // Divider might still be useful for visual separation inside if desired, but removed here for cleaner integration
+  Skeleton, // Divider might still be useful for visual separation inside if desired, but removed here for cleaner integration
   IconButton,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
