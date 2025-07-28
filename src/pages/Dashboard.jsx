@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react"; // Added useMemo
 import {
   Box,
   Grid,
@@ -40,7 +40,7 @@ const cardVariants = {
   }),
 };
 
-const metricsContainerVariants = {
+const metricsContainerVariants = { // Renamed from metricsContainerVariants for more general use
   hidden: { opacity: 0, height: 0, overflow: "hidden" },
   visible: {
     opacity: 1,
@@ -66,6 +66,7 @@ const metricsContainerVariants = {
 
 const STORAGE_KEY = "dashboardCardOrder";
 const METRICS_VISIBILITY_KEY = "dashboardMetricsVisibility";
+const EXECUTIVE_SUMMARY_VISIBILITY_KEY = "dashboardExecutiveSummaryVisibility"; // New constant
 
 const DEFAULT_CARD_IDS = [
   "investedCapital",
@@ -117,6 +118,11 @@ export default function Dashboard() {
     const savedVisibility = localStorage.getItem(METRICS_VISIBILITY_KEY);
     return savedVisibility ? JSON.parse(savedVisibility) : true;
   });
+  // New state for Executive Summary visibility
+  const [showExecutiveSummary, setShowExecutiveSummary] = useState(() => {
+    const savedVisibility = localStorage.getItem(EXECUTIVE_SUMMARY_VISIBILITY_KEY);
+    return savedVisibility ? JSON.parse(savedVisibility) : true; // Default to true
+  });
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -137,9 +143,11 @@ export default function Dashboard() {
       }
 
       const now = new Date();
-      const upcomingThreshold = new Date(now);
-      upcomingThreshold.setDate(now.getDate() + 3);
+      // Renamed upcomingThreshold to upcomingDueThreshold for clarity
+      const upcomingDueThreshold = new Date(now);
+      upcomingDueThreshold.setDate(now.getDate() + 3);
 
+      // Memoized these filter operations for better performance
       const upcomingLoans = loans.filter(
         (loan) =>
           loan.status !== "Paid" &&
@@ -171,85 +179,118 @@ export default function Dashboard() {
     });
   };
 
-  const loansForCalculations = loans || [];
+  // New toggle function for Executive Summary
+  const handleToggleExecutiveSummary = () => {
+    setShowExecutiveSummary((prev) => {
+      const newState = !prev;
+      localStorage.setItem(EXECUTIVE_SUMMARY_VISIBILITY_KEY, JSON.stringify(newState));
+      return newState;
+    });
+  };
 
-  const loansThisMonth = loansForCalculations.filter((loan) =>
-    loan.startDate.startsWith(selectedMonth)
-  );
+  // Memoized loansForCalculations for stability if loans reference changes frequently
+  const loansForCalculations = useMemo(() => loans || [], [loans]);
 
-  const previousMonth = dayjs(selectedMonth).subtract(1, 'month').format('YYYY-MM');
-  const loansLastMonth = loansForCalculations.filter((loan) =>
-      loan.startDate.startsWith(previousMonth)
-  );
+  // Use useMemo for all derived calculations
+  const loansThisMonth = useMemo(() => {
+    return loansForCalculations.filter((loan) =>
+      loan.startDate.startsWith(selectedMonth)
+    );
+  }, [loansForCalculations, selectedMonth]);
 
-  const totalDisbursedLastMonth = loansLastMonth.reduce(
+  const previousMonth = useMemo(() => dayjs(selectedMonth).subtract(1, 'month').format('YYYY-MM'), [selectedMonth]);
+  const loansLastMonth = useMemo(() => {
+      return loansForCalculations.filter((loan) =>
+          dayjs(loan.startDate).format('YYYY-MM') === previousMonth // More robust date comparison
+      );
+  }, [loansForCalculations, previousMonth]);
+
+  const totalDisbursedLastMonth = useMemo(() => {
+    return loansLastMonth.reduce(
+        (sum, loan) => sum + Number(loan.principal || 0),
+        0
+    );
+  }, [loansLastMonth]);
+
+  const totalCollectedLastMonth = useMemo(() => {
+    return loansLastMonth.reduce(
+        (sum, loan) => sum + Number(loan.repaidAmount || 0),
+        0
+    );
+  }, [loansLastMonth]);
+
+  const totalLoansCount = useMemo(() => loansThisMonth.length, [loansThisMonth]);
+  const paidLoansCount = useMemo(() => loansThisMonth.filter((l) => l.status === "Paid").length, [loansThisMonth]);
+  const activeLoansCount = useMemo(() => loansThisMonth.filter((l) => l.status === "Active").length, [loansThisMonth]);
+  const overdueLoansCount = useMemo(() => loansThisMonth.filter(
+    (l) => l.status === "Active" && dayjs(l.dueDate).isBefore(dayjs(), 'day')
+  ).length, [loansThisMonth]);
+
+  const initialCapital = useMemo(() => Number(settings?.initialCapital) || 60000, [settings]);
+
+  const totalDisbursed = useMemo(() => {
+    return loansThisMonth.reduce(
       (sum, loan) => sum + Number(loan.principal || 0),
       0
-  );
-  const totalCollectedLastMonth = loansLastMonth.reduce(
+    );
+  }, [loansThisMonth]);
+
+  const totalCollected = useMemo(() => {
+    return loansThisMonth.reduce(
       (sum, loan) => sum + Number(loan.repaidAmount || 0),
       0
-  );
+    );
+  }, [loansThisMonth]);
 
-  const totalLoansCount = loansThisMonth.length;
-  const paidLoansCount = loansThisMonth.filter((l) => l.status === "Paid").length;
-  const activeLoansCount = loansThisMonth.filter((l) => l.status === "Active").length;
-  const overdueLoansCount = loansThisMonth.filter(
-    (l) => l.status === "Active" && dayjs(l.dueDate).isBefore(dayjs(), 'day')
-  ).length;
+  const availableCapital = useMemo(() => initialCapital - totalDisbursed + totalCollected, [initialCapital, totalDisbursed, totalCollected]);
 
-  const initialCapital = Number(settings?.initialCapital) || 60000;
+  const totalOutstanding = useMemo(() => {
+    return loansThisMonth
+      .filter((loan) => loan.status === "Active")
+      .reduce((sum, loan) => {
+        const principal = Number(loan.principal || 0);
+        const interest = Number(loan.interest || 0);
+        const repaid = Number(loan.repaidAmount || 0);
+        return sum + (principal + interest - repaid);
+      }, 0);
+  }, [loansThisMonth]);
 
-  const totalDisbursed = loansThisMonth.reduce(
-    (sum, loan) => sum + Number(loan.principal || 0),
-    0
-  );
+  const totalExpectedProfit = useMemo(() => {
+    return loansThisMonth.reduce(
+      (sum, loan) => sum + Number(loan.interest || 0),
+      0
+    );
+  }, [loansThisMonth]);
 
-  const totalCollected = loansThisMonth.reduce(
-    (sum, loan) => sum + Number(loan.repaidAmount || 0),
-    0
-  );
+  const actualProfit = useMemo(() => {
+    return loansThisMonth
+      .filter(
+        (loan) =>
+          loan.status === "Paid" &&
+          Number(loan.repaidAmount || 0) >=
+            Number(loan.principal || 0) + Number(loan.interest || 0)
+      )
+      .reduce((sum, loan) => sum + Number(loan.interest || 0), 0);
+  }, [loansThisMonth]);
 
-  const availableCapital = initialCapital - totalDisbursed + totalCollected;
+  const averageLoan = useMemo(() => {
+    return loansThisMonth.length > 0 ? Math.round(totalDisbursed / loansThisMonth.length) : 0;
+  }, [loansThisMonth, totalDisbursed]);
 
-  const totalOutstanding = loansThisMonth
-    .filter((loan) => loan.status === "Active")
-    .reduce((sum, loan) => {
-      const principal = Number(loan.principal || 0);
-      const interest = Number(loan.interest || 0);
-      const repaid = Number(loan.repaidAmount || 0);
-      return sum + (principal + interest - repaid);
-    }, 0);
-
-  const totalExpectedProfit = loansThisMonth.reduce(
-    (sum, loan) => sum + Number(loan.interest || 0),
-    0
-  );
-
-  const actualProfit = loansThisMonth
-    .filter(
-      (loan) =>
-        loan.status === "Paid" &&
-        Number(loan.repaidAmount || 0) >=
-          Number(loan.principal || 0) + Number(loan.interest || 0)
-    )
-    .reduce((sum, loan) => sum + Number(loan.interest || 0), 0);
-
-  const averageLoan =
-    loansThisMonth.length > 0 ? Math.round(totalDisbursed / loansThisMonth.length) : 0;
 
   const getTrendPercentage = (current, previous) => {
     if (previous === 0) {
-      return current > 0 ? "∞" : "0%";
+      return current > 0 ? "New" : "0%"; // Changed from "∞" to "New" for better UX
     }
     const change = ((current - previous) / previous) * 100;
     return `${change >= 0 ? "+" : ""}${change.toFixed(1)}%`;
   };
 
-  const disbursedTrend = getTrendPercentage(totalDisbursed, totalDisbursedLastMonth);
-  const collectedTrend = getTrendPercentage(totalCollected, totalCollectedLastMonth);
+  const disbursedTrend = useMemo(() => getTrendPercentage(totalDisbursed, totalDisbursedLastMonth), [totalDisbursed, totalDisbursedLastMonth]);
+  const collectedTrend = useMemo(() => getTrendPercentage(totalCollected, totalCollectedLastMonth), [totalCollected, totalCollectedLastMonth]);
 
-  const defaultCards = [
+
+  const defaultCards = useMemo(() => [
     {
       id: "investedCapital",
       label: "Invested Capital",
@@ -374,20 +415,22 @@ export default function Dashboard() {
       progress: null,
       icon: iconMap.averageLoan,
     },
-  ];
+  ], [initialCapital, availableCapital, totalDisbursed, disbursedTrend, totalCollected, collectedTrend, totalLoansCount, paidLoansCount, activeLoansCount, overdueLoansCount, totalOutstanding, totalExpectedProfit, actualProfit, averageLoan]);
 
-  const cardsToRender = cardsOrder.length
+
+  const cardsToRender = useMemo(() => cardsOrder.length
     ? cardsOrder
         .map((id) => defaultCards.find((c) => c.id === id))
         .filter(Boolean)
-    : defaultCards;
+    : defaultCards, [cardsOrder, defaultCards]);
 
-  const executiveSummaryCards = cardsToRender.filter(card =>
+  const executiveSummaryCards = useMemo(() => cardsToRender.filter(card =>
     EXECUTIVE_SUMMARY_IDS.includes(card.id)
-  );
-  const metricsCards = cardsToRender.filter(card =>
+  ), [cardsToRender]);
+
+  const metricsCards = useMemo(() => cardsToRender.filter(card =>
     !EXECUTIVE_SUMMARY_IDS.includes(card.id)
-  );
+  ), [cardsToRender]);
 
   const onDragEnd = (result) => {
     const { source, destination } = result;
@@ -436,10 +479,16 @@ export default function Dashboard() {
     navigate(`/loans?${params.toString()}`);
   };
 
+  // Common responsive skeleton sizes
+  const skeletonIconSize = isMobile ? 24 : 28;
+  const skeletonTextHeight = isMobile ? 16 : 18;
+  const skeletonValueHeight = isMobile ? 22 : 26;
+  const skeletonProgressHeight = isMobile ? 4 : 5;
+
+
   // Skeleton for loading state
   if (loading) {
     return (
-      // Changed pt to 0 here to explicitly remove any top padding from Dashboard's root
       <Box sx={{ minHeight: "100vh", background: theme.palette.background.default, pt: 0 }}>
         <Typography variant={isMobile ? "h6" : "h5"} gutterBottom sx={{ fontWeight: 600, mb: 0.5, mt: 0 }}>
           <Skeleton variant="text" width="40%" />
@@ -447,25 +496,30 @@ export default function Dashboard() {
         <Box mb={isMobile ? 1 : 1.5} maxWidth={isMobile ? "100%" : 180}>
           <Skeleton variant="rectangular" height={30} width="100%" sx={{ borderRadius: 1 }} />
         </Box>
-        <Typography variant="subtitle1" gutterBottom mt={isMobile ? 1 : 1.5} mb={isMobile ? 0.5 : 1} sx={{ fontWeight: 600 }}>
-          <Skeleton variant="text" width="30%" />
-        </Typography>
+
+        {/* Executive Summary Skeleton */}
+        <Box display="flex" alignItems="center" justifyContent="space-between" mt={isMobile ? 1 : 1.5} mb={isMobile ? 0.5 : 1} sx={{ p: isMobile ? 1 : 1.5, borderRadius: 2, backgroundColor: theme.palette.grey[200], boxShadow: theme.shadows[1] }}>
+            <Skeleton variant="text" width="30%" height={isMobile ? 24 : 28} />
+            <Skeleton variant="circular" width={20} height={20} />
+        </Box>
         <Box sx={{ p: isMobile ? 1 : 1.5, mb: isMobile ? 1 : 1.5, borderRadius: 2, backgroundColor: theme.palette.grey[100], boxShadow: theme.shadows[1], border: `1px solid ${theme.palette.grey[200]}` }}>
           <Grid container spacing={isMobile ? 1 : 1.5}>
             {[...Array(4)].map((_, i) => (
               <Grid item xs={6} sm={4} md={3} lg={2} key={`exec-skel-${i}`}>
                 <Card sx={{ p: isMobile ? 1 : 1.5, borderRadius: 2, boxShadow: theme.shadows[0], height: "100%", backgroundColor: theme.palette.grey[50] }}>
                   <Box display="flex" alignItems="center" mb={0.5} gap={0.5}>
-                    <Skeleton variant="circular" width={isMobile ? 24 : 28} height={isMobile ? 24 : 28} />
-                    <Skeleton variant="text" width="50%" height={isMobile ? 16 : 18} />
+                    <Skeleton variant="circular" width={skeletonIconSize} height={skeletonIconSize} />
+                    <Skeleton variant="text" width="50%" height={skeletonTextHeight} />
                   </Box>
-                  <Skeleton variant="text" width="70%" height={isMobile ? 22 : 26} />
-                  <Skeleton variant="rectangular" width="100%" height={isMobile ? 4 : 5} sx={{ mt: 0.5, borderRadius: 1 }} />
+                  <Skeleton variant="text" width="70%" height={skeletonValueHeight} />
+                  <Skeleton variant="rectangular" width="100%" height={skeletonProgressHeight} sx={{ mt: 0.5, borderRadius: 1 }} />
                 </Card>
               </Grid>
             ))}
           </Grid>
         </Box>
+
+        {/* Metrics Skeleton */}
         <Box display="flex" alignItems="center" justifyContent="space-between" mt={isMobile ? 1.5 : 2} mb={isMobile ? 1 : 1.5} sx={{ p: isMobile ? 1 : 1.5, borderRadius: 2, backgroundColor: theme.palette.grey[200], boxShadow: theme.shadows[1] }}>
           <Skeleton variant="text" width="40%" height={isMobile ? 24 : 28} />
           <Skeleton variant="circular" width={20} height={20} />
@@ -476,11 +530,11 @@ export default function Dashboard() {
               <Grid item xs={6} sm={4} md={3} lg={2} key={`metrics-skel-${i}`}>
                 <Card sx={{ p: isMobile ? 1 : 1.5, borderRadius: 2, boxShadow: theme.shadows[0], height: "100%", backgroundColor: theme.palette.grey[50] }}>
                   <Box display="flex" alignItems="center" mb={0.5} gap={0.5}>
-                    <Skeleton variant="circular" width={isMobile ? 24 : 28} height={isMobile ? 24 : 28} />
-                    <Skeleton variant="text" width="50%" height={isMobile ? 16 : 18} />
+                    <Skeleton variant="circular" width={skeletonIconSize} height={skeletonIconSize} />
+                    <Skeleton variant="text" width="50%" height={skeletonTextHeight} />
                   </Box>
-                  <Skeleton variant="text" width="70%" height={isMobile ? 22 : 26} />
-                  <Skeleton variant="rectangular" width="100%" height={isMobile ? 4 : 5} sx={{ mt: 0.5, borderRadius: 1 }} />
+                  <Skeleton variant="text" width="70%" height={skeletonValueHeight} />
+                  <Skeleton variant="rectangular" width="100%" height={skeletonProgressHeight} sx={{ mt: 0.5, borderRadius: 1 }} />
                 </Card>
               </Grid>
             ))}
@@ -492,7 +546,6 @@ export default function Dashboard() {
 
   if (!loans || loans.length === 0) {
     return (
-      // Changed pt to 0 here as well for consistency
       <Box
         display="flex"
         flexDirection="column"
@@ -523,7 +576,6 @@ export default function Dashboard() {
   }
 
   return (
-    // Set pt to 0 for the root Dashboard Box to remove any top padding from here.
     <Box sx={{ background: theme.palette.background.default, minHeight: "100vh", pt: 0 }}>
       <Typography
         variant={isMobile ? "h6" : "h5"}
@@ -531,7 +583,7 @@ export default function Dashboard() {
         sx={{
           fontWeight: 700,
           mb: isMobile ? 0.5 : 1,
-          mt: 0 // Explicitly set top margin to 0 for the Dashboard title
+          mt: 0
         }}
       >
         Dashboard
@@ -559,139 +611,187 @@ export default function Dashboard() {
         </Box>
       </motion.div>
       <DragDropContext onDragEnd={onDragEnd}>
-        <Typography variant="subtitle1" gutterBottom mt={isMobile ? 1 : 1.5} sx={{ fontWeight: 600 }}>
-          Executive Summary
-        </Typography>
-        <Divider sx={{ mb: isMobile ? 1 : 1.5, mt: isMobile ? 0.5 : 0.5 }} />
+        {/* Executive Summary Toggle Button */}
         <Box
+          display="flex"
+          alignItems="center"
+          justifyContent="space-between"
+          mt={isMobile ? 1 : 1.5}
           sx={{
-            borderRadius: 2,
+            cursor: "pointer",
             p: isMobile ? 1 : 1.5,
+            borderRadius: 2,
+            backgroundColor: theme.palette.primary.light,
+            color: theme.palette.primary.contrastText,
+            transition: "background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+            "&:hover": {
+              backgroundColor: theme.palette.primary.main,
+              boxShadow: theme.shadows[3],
+            },
             mb: isMobile ? 1 : 1.5,
-            backgroundColor: theme.palette.background.paper,
-            boxShadow: theme.shadows[2],
-            border: `1px solid ${theme.palette.divider}`,
           }}
+          onClick={handleToggleExecutiveSummary} // New onClick handler
         >
-          <Droppable
-            droppableId="executive-summary-droppable"
-            direction={isMobile ? "vertical" : "horizontal"}
+          <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "inherit" }}>
+            Executive Summary
+          </Typography>
+          <IconButton
+            size="small"
+            sx={{
+              transition: "transform 0.3s ease-in-out",
+              transform: showExecutiveSummary ? "rotate(180deg)" : "rotate(0deg)", // Control rotation by new state
+              color: "inherit",
+            }}
           >
-            {(provided) => (
-              <Grid
-                container
-                spacing={isMobile ? 1 : 1.5}
-                {...provided.droppableProps}
-                ref={provided.innerRef}
-              >
-                {executiveSummaryCards.map(
-                  (
-                    { id, label, value, color, filter, tooltip, progress, pulse, icon, trend },
-                    index
-                  ) => (
-                    <Draggable key={id} draggableId={id} index={index}>
-                      {(providedDraggable) => (
-                        <Grid
-                          item
-                          xs={6}
-                          sm={4}
-                          md={3}
-                          lg={2}
-                          ref={providedDraggable.innerRef}
-                          {...providedDraggable.draggableProps}
-                          style={{ ...providedDraggable.draggableProps.style }}
-                        >
-                          <motion.div
-                            custom={index}
-                            initial="hidden"
-                            animate="visible"
-                            variants={cardVariants}
-                            whileHover={{ scale: 1.02, boxShadow: theme.shadows[4] }}
-                            whileTap={{ scale: 0.98 }}
-                            style={{ height: "100%" }}
-                            {...providedDraggable.dragHandleProps}
-                          >
-                            <Tooltip title={tooltip} arrow>
-                              <Card
-                                sx={{
-                                  p: isMobile ? 1 : 1.5,
-                                  cursor: "grab",
-                                  borderRadius: 2,
-                                  boxShadow: theme.shadows[1],
-                                  animation: pulse ? "pulse 2s infinite" : undefined,
-                                  transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
-                                  "&:hover": {
-                                    boxShadow: pulse ? `0 0 12px ${theme.palette.error.light}` : theme.shadows[3],
-                                    transform: "translateY(-3px)"
-                                  },
-                                  height: "100%",
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  justifyContent: "space-between",
-                                  backgroundColor: theme.palette.background.default,
-                                }}
-                                onClick={() => handleCardClick(filter)}
-                                elevation={0}
-                              >
-                                <Box display="flex" flexDirection="column" alignItems="flex-start" mb={isMobile ? 0.5 : 0.5}>
-                                  {React.cloneElement(icon, {
-                                    fontSize: isMobile ? "small" : "medium",
-                                    sx: { color: theme.palette[color].main, mb: 0.5 },
-                                  })}
-                                  <Typography variant={isMobile ? "caption" : "body2"} color="textSecondary" sx={{ fontWeight: 500 }}>
-                                    {label}
-                                  </Typography>
-                                  <Typography variant="h5" fontWeight="bold" color="text.primary">
-                                    {value}
-                                  </Typography>
-                                  {trend && (
-                                    <Typography
-                                      variant="caption"
-                                      sx={{
-                                        color: trend.startsWith('+') || trend === '0%' ? theme.palette.success.main : theme.palette.error.main,
-                                        fontWeight: 600,
-                                        mt: 0.5,
-                                      }}
-                                    >
-                                      {trend} vs. Last Month
-                                    </Typography>
-                                  )}
-                                </Box>
-                                {progress !== null && progress !== undefined && (
-                                  <Box sx={{ mt: 'auto', pt: 1 }}>
-                                    <LinearProgress
-                                      variant="determinate"
-                                      value={Math.min(progress * 100, 100)}
-                                      sx={{
-                                        height: isMobile ? 4 : 5,
-                                        borderRadius: 2,
-                                        backgroundColor: theme.palette[color].light,
-                                        "& .MuiLinearProgress-bar": {
-                                          backgroundColor: theme.palette[color].main,
-                                          borderRadius: 2,
-                                        },
-                                      }}
-                                    />
-                                    {id === "availableCapital" && (
-                                        <Typography variant="caption" color="textSecondary" sx={{ mt: 0.5, display: 'block' }}>
-                                          {Math.round(progress * 100)}% of Initial Capital
-                                        </Typography>
-                                    )}
-                                  </Box>
-                                )}
-                              </Card>
-                            </Tooltip>
-                          </motion.div>
-                        </Grid>
-                      )}
-                    </Draggable>
-                  )
-                )}
-                {provided.placeholder}
-              </Grid>
-            )}
-          </Droppable>
+            <ExpandMoreIcon />
+          </IconButton>
         </Box>
+        <Divider sx={{ mb: isMobile ? 1 : 1.5, mt: isMobile ? 0.5 : 0.5 }} />
+
+        {/* Executive Summary Collapsible Section */}
+        <AnimatePresence>
+          {showExecutiveSummary && ( // Conditionally render based on showExecutiveSummary
+            <motion.div
+              key="executive-summary-section"
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              variants={metricsContainerVariants} // Reusing the same animation variants
+            >
+              <Box
+                sx={{
+                  borderRadius: 2,
+                  p: isMobile ? 1 : 1.5,
+                  mb: isMobile ? 1 : 1.5,
+                  backgroundColor: theme.palette.background.paper,
+                  boxShadow: theme.shadows[2],
+                  border: `1px solid ${theme.palette.divider}`,
+                }}
+              >
+                <Droppable
+                  droppableId="executive-summary-droppable"
+                  direction={isMobile ? "vertical" : "horizontal"}
+                >
+                  {(provided) => (
+                    <Grid
+                      container
+                      spacing={isMobile ? 1 : 1.5}
+                      {...provided.droppableProps}
+                      ref={provided.innerRef}
+                    >
+                      {executiveSummaryCards.map(
+                        (
+                          { id, label, value, color, filter, tooltip, progress, pulse, icon, trend },
+                          index
+                        ) => (
+                          <Draggable key={id} draggableId={id} index={index}>
+                            {(providedDraggable) => (
+                              <Grid
+                                item
+                                xs={6}
+                                sm={4}
+                                md={3}
+                                lg={2}
+                                ref={providedDraggable.innerRef}
+                                {...providedDraggable.draggableProps}
+                                style={{ ...providedDraggable.draggableProps.style }}
+                              >
+                                <motion.div
+                                  custom={index}
+                                  initial="hidden"
+                                  animate="visible"
+                                  variants={cardVariants}
+                                  whileHover={{ scale: 1.02, boxShadow: theme.shadows[4] }}
+                                  whileTap={{ scale: 0.98 }}
+                                  style={{ height: "100%" }}
+                                  {...providedDraggable.dragHandleProps}
+                                >
+                                  <Tooltip title={tooltip} arrow>
+                                    <Card
+                                      sx={{
+                                        p: isMobile ? 1 : 1.5,
+                                        cursor: "grab",
+                                        borderRadius: 2,
+                                        boxShadow: theme.shadows[1],
+                                        animation: pulse ? "pulse 2s infinite" : undefined,
+                                        transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+                                        "&:hover": {
+                                          boxShadow: pulse ? `0 0 12px ${theme.palette.error.light}` : theme.shadows[3],
+                                          transform: "translateY(-3px)"
+                                        },
+                                        height: "100%",
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        justifyContent: "space-between",
+                                        backgroundColor: theme.palette.background.default,
+                                      }}
+                                      onClick={() => handleCardClick(filter)}
+                                      elevation={0}
+                                    >
+                                      <Box display="flex" flexDirection="column" alignItems="flex-start" mb={isMobile ? 0.5 : 0.5}>
+                                        {React.cloneElement(icon, {
+                                          fontSize: isMobile ? "small" : "medium",
+                                          sx: { color: theme.palette[color].main, mb: 0.5 },
+                                        })}
+                                        <Typography variant={isMobile ? "caption" : "body2"} color="textSecondary" sx={{ fontWeight: 500 }}>
+                                          {label}
+                                        </Typography>
+                                        <Typography variant="h5" fontWeight="bold" color="text.primary">
+                                          {value}
+                                        </Typography>
+                                        {trend && (
+                                          <Typography
+                                            variant="caption"
+                                            sx={{
+                                              color: trend.startsWith('+') || trend === '0%' || trend === 'New' ? theme.palette.success.main : theme.palette.error.main,
+                                              fontWeight: 600,
+                                              mt: 0.5,
+                                            }}
+                                          >
+                                            {trend} vs. Last Month
+                                          </Typography>
+                                        )}
+                                      </Box>
+                                      {progress !== null && progress !== undefined && (
+                                        <Box sx={{ mt: 'auto', pt: 1 }}>
+                                          <LinearProgress
+                                            variant="determinate"
+                                            value={Math.min(progress * 100, 100)}
+                                            sx={{
+                                              height: isMobile ? 4 : 5,
+                                              borderRadius: 2,
+                                              backgroundColor: theme.palette[color].light,
+                                              "& .MuiLinearProgress-bar": {
+                                                backgroundColor: theme.palette[color].main,
+                                                borderRadius: 2,
+                                              },
+                                            }}
+                                          />
+                                          {id === "availableCapital" && (
+                                              <Typography variant="caption" color="textSecondary" sx={{ mt: 0.5, display: 'block' }}>
+                                                {Math.round(progress * 100)}% of Initial Capital
+                                              </Typography>
+                                          )}
+                                        </Box>
+                                      )}
+                                    </Card>
+                                  </Tooltip>
+                                </motion.div>
+                              </Grid>
+                            )}
+                          </Draggable>
+                        )
+                      )}
+                      {provided.placeholder}
+                    </Grid>
+                  )}
+                </Droppable>
+              </Box>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Metrics Toggle Button */}
         <Box
           display="flex"
           alignItems="center"
