@@ -1,9 +1,16 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
-import { Toolbar, useTheme, useMediaQuery } from '@mui/material';
+import {
+  Toolbar,
+  useTheme,
+  useMediaQuery,
+  Box
+} from '@mui/material';
 import AppBarTop from './AppBarTop';
 import BottomNavBar from './BottomNavBar';
 import Sidebar from './Sidebar';
+
+const drawerWidth = 220;
 
 const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   const { pathname } = useLocation();
@@ -12,34 +19,49 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
 
   const hideLayout = ['/login', '/register', '/forgot-password'].includes(pathname);
 
-  // Heights for fixed bars
-  const topBarHeight = isMobile ? 56 : 64; // MUI AppBar default heights
-  const bottomNavHeight = isMobile && !hideLayout ? 64 : 0; // Your BottomNavBar height on mobile
+  const bottomNavHeight = isMobile && !hideLayout ? 56 : 0; // Standard Material-UI BottomNavigation height
+
+  if (hideLayout) {
+    return <>{children}</>;
+  }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      {!hideLayout && <AppBarTop darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} />}
-      {!hideLayout && <Toolbar />} {/* space for fixed AppBar */}
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <AppBarTop darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} />
 
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      {/* This Toolbar creates space equal to the AppBar's height, pushing content down */}
+      <Toolbar />
+
+      <Box
+        sx={{
+          display: 'flex',
+          flex: 1, // Allows this Box to grow and take available height
+          overflow: 'hidden', // Prevents scrollbars on this flex container
+          paddingBottom: `${bottomNavHeight}px`, // Space for BottomNavBar on mobile
+        }}
+      >
         {!hideLayout && <Sidebar />}
 
-        <main
-          style={{
-            flexGrow: 1,
-            overflowY: 'auto',
-            padding: '16px',
-            paddingTop: !hideLayout ? `${topBarHeight + 8}px` : undefined, // dynamic top padding
-            paddingBottom: !hideLayout ? `${bottomNavHeight + 8}px` : undefined, // dynamic bottom padding
-            boxSizing: 'border-box',
+        {/* Main content area. It takes remaining space and has horizontal/bottom padding. */}
+        <Box
+          component="main"
+          sx={{
+            flexGrow: 1, // Allows main content to fill remaining width
+            overflowY: 'auto', // Enables vertical scrolling for content if it overflows
+            boxSizing: 'border-box', // Ensures padding is included in the element's total width/height
+            background: theme.palette.background.default, // Use theme background color
+            px: isMobile ? 2 : 4, // Horizontal padding for the content area
+            pb: isMobile ? 2 : 4, // Bottom padding for the content area
+            // IMPORTANT: No 'pt' here. Dashboard.jsx will handle its own initial top spacing.
           }}
         >
           {children}
-        </main>
-      </div>
+        </Box>
+      </Box>
 
-      {!hideLayout && <BottomNavBar />}
-    </div>
+      {/* Bottom navigation bar, only visible on mobile */}
+      <BottomNavBar />
+    </Box>
   );
 };
 
