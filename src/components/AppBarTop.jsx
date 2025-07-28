@@ -5,7 +5,7 @@ import {
 } from "@mui/material";
 
 // ... (other imports) ...
-import ChangePasswordPage from "../pages/ChangePasswordPage.jsx"; // Import the ChangePasswordPage.jsx component
+import ChangePassword from "../pages/ChangePassword.jsx"; // Import the ChangePassword component
 
 // ... (stringToInitials, Transition components) ...
 
