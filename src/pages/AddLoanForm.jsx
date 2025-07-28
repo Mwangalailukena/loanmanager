@@ -1,4 +1,3 @@
-// src/pages/AddLoanForm.jsx
 import { getDoc } from "firebase/firestore";
 import React, { useState, useEffect } from "react";
 import {
@@ -12,7 +11,7 @@ import {
   CircularProgress,
   IconButton,
   Tooltip,
-  Paper,
+  Paper, // Ensure Paper is imported
   Dialog,
   DialogTitle,
   DialogContent,
@@ -135,72 +134,68 @@ export default function AddLoanForm() {
     return isValid;
   };
 
- const handleSubmit = async (e) => {
-  e.preventDefault();
-  setError("");
-  setLoading(true);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
-  const isValid = validateFields();
-  if (!isValid) {
-    setLoading(false);
-    return;
-  }
+    const isValid = validateFields();
+    if (!isValid) {
+      setLoading(false);
+      return;
+    }
 
-  const principal = Number(amount);
-  const interest = calculateInterest(principal, interestDuration);
-  const totalRepayable = principal + interest;
+    const principal = Number(amount);
+    const interest = calculateInterest(principal, interestDuration);
+    const totalRepayable = principal + interest;
 
-  const startDate = dayjs().format("YYYY-MM-DD");
-  const dueDate = dayjs().add(interestDuration * 7, "day").format("YYYY-MM-DD");
+    const startDate = dayjs().format("YYYY-MM-DD");
+    const dueDate = dayjs().add(interestDuration * 7, "day").format("YYYY-MM-DD");
 
-  try {
-    const loanDocRef = await addLoan({
-      borrower,
-      phone,
-      principal,
-      interest,
-      totalRepayable,
-      startDate,
-      dueDate,
-      status: "Active",
-      repaidAmount: 0,
-      interestDuration,
-    });
+    try {
+      const loanDocRef = await addLoan({
+        borrower,
+        phone,
+        principal,
+        interest,
+        totalRepayable,
+        startDate,
+        dueDate,
+        status: "Active",
+        repaidAmount: 0,
+        interestDuration,
+      });
 
-    // 👇 Fetch snapshot to check metadata (e.g., offline support)
-    const docSnap = await getDoc(loanDocRef);
-    const isOffline = docSnap.metadata?.hasPendingWrites ?? false;
+      const docSnap = await getDoc(loanDocRef);
+      const isOffline = docSnap.metadata?.hasPendingWrites ?? false;
 
-    await addActivityLog({
-      action: "Loan Created",
-      details: `Loan created for ${borrower} (ZMW ${principal.toLocaleString()}) [Loan ID: ${loanDocRef.id}]`,
-      timestamp: new Date().toISOString(),
-    });
+      await addActivityLog({
+        action: "Loan Created",
+        details: `Loan created for ${borrower} (ZMW ${principal.toLocaleString()}) [Loan ID: ${loanDocRef.id}]`,
+        timestamp: new Date().toISOString(),
+      });
 
-    toast.success(
-      isOffline
-        ? "Loan added (offline). Will sync when online."
-        : `Loan added successfully! Loan ID: ${loanDocRef.id}`
-    );
+      toast.success(
+        isOffline
+          ? "Loan added (offline). Will sync when online."
+          : `Loan added successfully! Loan ID: ${loanDocRef.id}`
+      );
 
-    // Reset form
-    setBorrower("");
-    setPhone("");
-    setAmount("");
-    setInterestDuration(1);
-    setBorrowerError("");
-    setPhoneError("");
-    setAmountError("");
-  } catch (err) {
-    console.error("Loan creation failed:", err);
-    setError("Failed to add loan. Please try again.");
-  } finally {
-    setLoading(false);
-  }
-};
+      setBorrower("");
+      setPhone("");
+      setAmount("");
+      setInterestDuration(1);
+      setBorrowerError("");
+      setPhoneError("");
+      setAmountError("");
+    } catch (err) {
+      console.error("Loan creation failed:", err);
+      setError("Failed to add loan. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-
-  // Real-time display calculations
   const displayPrincipal = Number(amount);
   const displayInterest = calculateInterest(displayPrincipal, interestDuration);
   const displayTotalRepayable = displayPrincipal + displayInterest;
@@ -301,7 +296,18 @@ export default function AddLoanForm() {
   };
 
   return (
-    <Box maxWidth={500} mx="auto" mt={3} p={2}>
+    // Wrap the content in a Paper component for a card-like appearance and border
+    <Paper
+      elevation={2} // Add a subtle shadow
+      sx={{
+        maxWidth: 500,
+        mx: "auto",
+        mt: 3,
+        p: 3, // Increased padding slightly for better spacing inside the border
+        border: (theme) => `2px solid ${theme.palette.primary.main}`, // Blue border
+        borderRadius: 2, // Rounded corners for the paper
+      }}
+    >
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
         <Typography variant="h5">Add New Loan</Typography>
         <Tooltip title="Import multiple loans from CSV">
@@ -475,7 +481,6 @@ export default function AddLoanForm() {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </Paper>
   );
 }
-
