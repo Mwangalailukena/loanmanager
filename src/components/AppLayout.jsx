@@ -1,7 +1,10 @@
-// src/components/AppLayout.jsx
 import React from 'react';
 import { useLocation } from 'react-router-dom';
-import { useTheme, useMediaQuery, Box } from '@mui/material';
+import {
+  useTheme,
+  useMediaQuery,
+  Box
+} from '@mui/material';
 
 import AppBarTop from './AppBarTop';
 import BottomNavBar from './BottomNavBar';
@@ -12,7 +15,7 @@ const drawerWidth = 220;
 const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   const { pathname } = useLocation();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const hideLayout = ['/login', '/register', '/forgot-password'].includes(pathname);
 
@@ -43,10 +46,10 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
 
         {/* 3. This is the actual Main content area where your page components render. */}
         <Box
-          component="main" // Renders semantically as a <main> HTML element
+          component="main"       // Renders semantically as a <main> HTML element
           sx={{
-            flexGrow: 1, // Takes up remaining horizontal space
-            overflowY: 'auto', // Enables vertical scrolling *within* this content area if content overflows.
+            flexGrow: 1,           // Takes up remaining horizontal space
+            overflowY: 'auto',     // Enables vertical scrolling *within* this content area if content overflows.
             boxSizing: 'border-box', // Standard box model; padding/border are included in the element's total size.
             background: theme.palette.background.default,
 
@@ -56,7 +59,7 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
 
             // Internal horizontal padding (from theme spacing)
             px: isMobile ? 2 : 4, // Shorthand for paddingLeft and paddingRight
-
+            
             // *** Increased top vertical space to 70px ***
             paddingTop: '70px', // Direct pixel value as requested
             pb: 0, // paddingBottom: 0
