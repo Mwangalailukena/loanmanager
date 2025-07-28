@@ -404,7 +404,7 @@ export default function Dashboard() {
     let currentCardsInSection;
     if (source.droppableId === "executive-summary-droppable") {
       currentCardsInSection = executiveSummaryCards;
-    } else { // "metrics-droppable"
+    } else {
       currentCardsInSection = metricsCards;
     }
 
@@ -439,82 +439,48 @@ export default function Dashboard() {
   // Skeleton for loading state
   if (loading) {
     return (
-      // Added pt: 3 here
-      <Box sx={{ minHeight: "100vh", background: theme.palette.background.default, pt: 3 }}>
-        <Typography variant={isMobile ? "h6" : "h5"} gutterBottom sx={{ fontWeight: 600 }}>
+      // Changed pt to 0 here to explicitly remove any top padding from Dashboard's root
+      <Box sx={{ minHeight: "100vh", background: theme.palette.background.default, pt: 0 }}>
+        <Typography variant={isMobile ? "h6" : "h5"} gutterBottom sx={{ fontWeight: 600, mb: 0.5, mt: 0 }}>
           <Skeleton variant="text" width="40%" />
         </Typography>
-        <Box mb={isMobile ? 1.5 : 2} maxWidth={isMobile ? "100%" : 180}>
-          <Skeleton variant="rectangular" height={35} width="100%" sx={{ borderRadius: 1.5 }} />
+        <Box mb={isMobile ? 1 : 1.5} maxWidth={isMobile ? "100%" : 180}>
+          <Skeleton variant="rectangular" height={30} width="100%" sx={{ borderRadius: 1 }} />
         </Box>
-        <Typography variant="subtitle1" gutterBottom mt={isMobile ? 1.5 : 2} mb={isMobile ? 1 : 1.5} sx={{ fontWeight: 600 }}>
+        <Typography variant="subtitle1" gutterBottom mt={isMobile ? 1 : 1.5} mb={isMobile ? 0.5 : 1} sx={{ fontWeight: 600 }}>
           <Skeleton variant="text" width="30%" />
         </Typography>
-        {/* Skeleton for Executive Summary Section Box */}
-        <Box
-          sx={{
-            p: isMobile ? 1 : 1.5,
-            mb: isMobile ? 1.5 : 2,
-            borderRadius: 2,
-            backgroundColor: theme.palette.grey[100],
-            boxShadow: theme.shadows[1],
-            border: `1px solid ${theme.palette.grey[200]}`,
-          }}
-        >
+        <Box sx={{ p: isMobile ? 1 : 1.5, mb: isMobile ? 1 : 1.5, borderRadius: 2, backgroundColor: theme.palette.grey[100], boxShadow: theme.shadows[1], border: `1px solid ${theme.palette.grey[200]}` }}>
           <Grid container spacing={isMobile ? 1 : 1.5}>
             {[...Array(4)].map((_, i) => (
               <Grid item xs={6} sm={4} md={3} lg={2} key={`exec-skel-${i}`}>
                 <Card sx={{ p: isMobile ? 1 : 1.5, borderRadius: 2, boxShadow: theme.shadows[0], height: "100%", backgroundColor: theme.palette.grey[50] }}>
                   <Box display="flex" alignItems="center" mb={0.5} gap={0.5}>
-                    <Skeleton variant="circular" width={isMobile ? 28 : 32} height={isMobile ? 28 : 32} />
-                    <Skeleton variant="text" width="50%" height={isMobile ? 18 : 20} />
+                    <Skeleton variant="circular" width={isMobile ? 24 : 28} height={isMobile ? 24 : 28} />
+                    <Skeleton variant="text" width="50%" height={isMobile ? 16 : 18} />
                   </Box>
-                  <Skeleton variant="text" width="70%" height={isMobile ? 25 : 30} />
-                  <Skeleton variant="rectangular" width="100%" height={isMobile ? 5 : 6} sx={{ mt: 0.5, borderRadius: 1 }} />
+                  <Skeleton variant="text" width="70%" height={isMobile ? 22 : 26} />
+                  <Skeleton variant="rectangular" width="100%" height={isMobile ? 4 : 5} sx={{ mt: 0.5, borderRadius: 1 }} />
                 </Card>
               </Grid>
             ))}
           </Grid>
         </Box>
-
-        {/* Updated skeleton for Metrics header */}
-        <Box
-          display="flex"
-          alignItems="center"
-          justifyContent="space-between"
-          mt={isMobile ? 2 : 3}
-          mb={isMobile ? 1.5 : 2}
-          sx={{
-            p: isMobile ? 1 : 1.5,
-            borderRadius: 2,
-            backgroundColor: theme.palette.grey[200],
-            boxShadow: theme.shadows[1],
-          }}
-        >
-          <Skeleton variant="text" width="40%" height={isMobile ? 28 : 32} />
-          <Skeleton variant="circular" width={24} height={24} />
+        <Box display="flex" alignItems="center" justifyContent="space-between" mt={isMobile ? 1.5 : 2} mb={isMobile ? 1 : 1.5} sx={{ p: isMobile ? 1 : 1.5, borderRadius: 2, backgroundColor: theme.palette.grey[200], boxShadow: theme.shadows[1] }}>
+          <Skeleton variant="text" width="40%" height={isMobile ? 24 : 28} />
+          <Skeleton variant="circular" width={20} height={20} />
         </Box>
-        {/* Skeleton for Metrics Section Box */}
-        <Box
-          sx={{
-            p: isMobile ? 1 : 1.5,
-            mb: isMobile ? 1.5 : 2,
-            borderRadius: 2,
-            backgroundColor: theme.palette.grey[100],
-            boxShadow: theme.shadows[1],
-            border: `1px solid ${theme.palette.grey[200]}`,
-          }}
-        >
+        <Box sx={{ p: isMobile ? 1 : 1.5, mb: isMobile ? 1 : 1.5, borderRadius: 2, backgroundColor: theme.palette.grey[100], boxShadow: theme.shadows[1], border: `1px solid ${theme.palette.grey[200]}` }}>
           <Grid container spacing={isMobile ? 1 : 1.5}>
             {[...Array(8)].map((_, i) => (
               <Grid item xs={6} sm={4} md={3} lg={2} key={`metrics-skel-${i}`}>
                 <Card sx={{ p: isMobile ? 1 : 1.5, borderRadius: 2, boxShadow: theme.shadows[0], height: "100%", backgroundColor: theme.palette.grey[50] }}>
                   <Box display="flex" alignItems="center" mb={0.5} gap={0.5}>
-                    <Skeleton variant="circular" width={isMobile ? 28 : 32} height={isMobile ? 28 : 32} />
-                    <Skeleton variant="text" width="50%" height={isMobile ? 18 : 20} />
+                    <Skeleton variant="circular" width={isMobile ? 24 : 28} height={isMobile ? 24 : 28} />
+                    <Skeleton variant="text" width="50%" height={isMobile ? 16 : 18} />
                   </Box>
-                  <Skeleton variant="text" width="70%" height={isMobile ? 25 : 30} />
-                  <Skeleton variant="rectangular" width="100%" height={isMobile ? 5 : 6} sx={{ mt: 0.5, borderRadius: 1 }} />
+                  <Skeleton variant="text" width="70%" height={isMobile ? 22 : 26} />
+                  <Skeleton variant="rectangular" width="100%" height={isMobile ? 4 : 5} sx={{ mt: 0.5, borderRadius: 1 }} />
                 </Card>
               </Grid>
             ))}
@@ -524,10 +490,9 @@ export default function Dashboard() {
     );
   }
 
-  // No loans state
   if (!loans || loans.length === 0) {
     return (
-      // Added pt: 3 here as well for consistency
+      // Changed pt to 0 here as well for consistency
       <Box
         display="flex"
         flexDirection="column"
@@ -535,7 +500,7 @@ export default function Dashboard() {
         justifyContent="center"
         minHeight="100vh"
         textAlign="center"
-        sx={{ background: theme.palette.background.default, pt: 3 }}
+        sx={{ background: theme.palette.background.default, pt: 0 }}
       >
         <Typography variant="h6" color="text.secondary" gutterBottom>
           No loans available yet!
@@ -548,7 +513,7 @@ export default function Dashboard() {
           aria-label="Add Loan"
           onClick={() => navigate("/add-loan")}
           variant="extended"
-          sx={{ mt: 1.5, borderRadius: 8, height: isMobile ? 40 : 48 }}
+          sx={{ mt: 1, borderRadius: 8, height: isMobile ? 36 : 44 }}
         >
           <AddIcon sx={{ mr: 0.5, fontSize: isMobile ? "small" : "medium" }} />
           Add First Loan
@@ -558,20 +523,25 @@ export default function Dashboard() {
   }
 
   return (
-    // Set pt to 3 (24px) for the root Dashboard Box.
-    <Box sx={{ background: theme.palette.background.default, minHeight: "100vh", pt: 3 }}>
-      {/* Fine-tuning the top margin of the Dashboard Typography to align with sidebar */}
-      <Typography variant={isMobile ? "h5" : "h4"} gutterBottom sx={{ fontWeight: 700, mb: isMobile ? 1 : 2, mt: -0.5 }}>
+    // Set pt to 0 for the root Dashboard Box to remove any top padding from here.
+    <Box sx={{ background: theme.palette.background.default, minHeight: "100vh", pt: 0 }}>
+      <Typography
+        variant={isMobile ? "h6" : "h5"}
+        gutterBottom
+        sx={{
+          fontWeight: 700,
+          mb: isMobile ? 0.5 : 1,
+          mt: 0 // Explicitly set top margin to 0 for the Dashboard title
+        }}
+      >
         Dashboard
       </Typography>
-
-      {/* Month picker */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1, duration: 0.3 }}
       >
-        <Box mb={isMobile ? 2 : 3} maxWidth={isMobile ? "100%" : 200}>
+        <Box mb={isMobile ? 1 : 2} maxWidth={isMobile ? "100%" : 180}>
           <TextField
             label="Filter by Month"
             type="month"
@@ -582,24 +552,22 @@ export default function Dashboard() {
             InputLabelProps={{ shrink: true }}
             sx={{
               "& .MuiOutlinedInput-root": {
-                borderRadius: 1.5,
+                borderRadius: 1,
               },
             }}
           />
         </Box>
       </motion.div>
-
       <DragDropContext onDragEnd={onDragEnd}>
-        {/* Executive Summary Section */}
-        <Typography variant="h6" gutterBottom mt={isMobile ? 2 : 3} sx={{ fontWeight: 600 }}>
+        <Typography variant="subtitle1" gutterBottom mt={isMobile ? 1 : 1.5} sx={{ fontWeight: 600 }}>
           Executive Summary
         </Typography>
-        <Divider sx={{ mb: isMobile ? 1.5 : 2, mt: isMobile ? 0.5 : 0.5 }} />
+        <Divider sx={{ mb: isMobile ? 1 : 1.5, mt: isMobile ? 0.5 : 0.5 }} />
         <Box
           sx={{
             borderRadius: 2,
             p: isMobile ? 1 : 1.5,
-            mb: isMobile ? 1.5 : 2,
+            mb: isMobile ? 1 : 1.5,
             backgroundColor: theme.palette.background.paper,
             boxShadow: theme.shadows[2],
             border: `1px solid ${theme.palette.divider}`,
@@ -695,12 +663,12 @@ export default function Dashboard() {
                                       variant="determinate"
                                       value={Math.min(progress * 100, 100)}
                                       sx={{
-                                        height: isMobile ? 5 : 6,
-                                        borderRadius: 3,
+                                        height: isMobile ? 4 : 5,
+                                        borderRadius: 2,
                                         backgroundColor: theme.palette[color].light,
                                         "& .MuiLinearProgress-bar": {
                                           backgroundColor: theme.palette[color].main,
-                                          borderRadius: 3,
+                                          borderRadius: 2,
                                         },
                                       }}
                                     />
@@ -724,13 +692,11 @@ export default function Dashboard() {
             )}
           </Droppable>
         </Box>
-
-        {/* Metrics Section Header (Now button-like) */}
         <Box
           display="flex"
           alignItems="center"
           justifyContent="space-between"
-          mt={isMobile ? 2 : 3}
+          mt={isMobile ? 1 : 1.5}
           sx={{
             cursor: "pointer",
             p: isMobile ? 1 : 1.5,
@@ -742,11 +708,11 @@ export default function Dashboard() {
               backgroundColor: theme.palette.primary.main,
               boxShadow: theme.shadows[3],
             },
-            mb: isMobile ? 1.5 : 2,
+            mb: isMobile ? 1 : 1.5,
           }}
           onClick={handleToggleMetrics}
         >
-          <Typography variant="h6" sx={{ fontWeight: 600, color: "inherit" }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "inherit" }}>
             Metrics
           </Typography>
           <IconButton
@@ -760,9 +726,7 @@ export default function Dashboard() {
             <ExpandMoreIcon />
           </IconButton>
         </Box>
-        <Divider sx={{ mb: isMobile ? 1.5 : 2, mt: isMobile ? 0.5 : 0.5 }} />
-
-        {/* Metrics Cards Section (Conditionally rendered and animated) */}
+        <Divider sx={{ mb: isMobile ? 1 : 1.5, mt: isMobile ? 0.5 : 0.5 }} />
         <AnimatePresence>
           {showMetrics && (
             <motion.div
@@ -776,7 +740,7 @@ export default function Dashboard() {
                 sx={{
                   borderRadius: 2,
                   p: isMobile ? 1 : 1.5,
-                  mb: isMobile ? 1.5 : 2,
+                  mb: isMobile ? 1 : 1.5,
                   backgroundColor: theme.palette.background.paper,
                   boxShadow: theme.shadows[2],
                   border: `1px solid ${theme.palette.divider}`,
@@ -860,12 +824,12 @@ export default function Dashboard() {
                                             variant="determinate"
                                             value={Math.min(progress * 100, 100)}
                                             sx={{
-                                              height: isMobile ? 5 : 6,
-                                              borderRadius: 3,
+                                              height: isMobile ? 4 : 5,
+                                              borderRadius: 2,
                                               backgroundColor: theme.palette[color].light,
                                               "& .MuiLinearProgress-bar": {
                                                 backgroundColor: theme.palette[color].main,
-                                                borderRadius: 3,
+                                                borderRadius: 2,
                                               },
                                             }}
                                           />
