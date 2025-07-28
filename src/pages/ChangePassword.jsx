@@ -1,10 +1,24 @@
-// src/pages/ChangePasswordPage.jsx
 import React, { useState } from "react";
-import { Box, Typography, TextField, Button, Alert, Stack } from "@mui/material";
+import {
+  Box,
+  Typography,
+  TextField,
+  Button,
+  Alert,
+  Stack,
+  // New imports for Dialog header
+  AppBar,
+  Toolbar,
+  IconButton,
+  useTheme,
+  useMediaQuery,
+} from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close"; // Import CloseIcon for the dialog header
 import { auth } from "../firebase";
 import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
 
-export default function ChangePasswordPage() {
+// Add onClose prop for when ChangePasswordPage is rendered inside a Dialog
+export default function ChangePasswordPage({ onClose }) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -12,12 +26,20 @@ export default function ChangePasswordPage() {
   const [successMsg, setSuccessMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const theme = useTheme(); // Use theme for responsiveness
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm")); // Check if on mobile
+
   const user = auth.currentUser;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg("");
     setSuccessMsg("");
+
+    if (!user) {
+      setErrorMsg("No authenticated user found. Please log in again.");
+      return;
+    }
 
     if (newPassword !== confirmPassword) {
       setErrorMsg("New password and confirmation do not match.");
@@ -43,26 +65,46 @@ export default function ChangePasswordPage() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+
+      // Optional: Close dialog after successful password change
+      // if (onClose) onClose();
     } catch (error) {
-      setErrorMsg(error.message || "Failed to update password.");
+      console.error("Password change error:", error); // Log error for debugging
+      // Provide more user-friendly messages for common errors
+      if (error.code === 'auth/wrong-password') {
+        setErrorMsg('Invalid current password. Please try again.');
+      } else if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-email') {
+        setErrorMsg('User not found or invalid email. Please log in again.');
+      } else if (error.code === 'auth/requires-recent-login') {
+        setErrorMsg('Please log out and log in again to change your password.');
+      }
+      else {
+        setErrorMsg("Failed to update password. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Box maxWidth={500} mx="auto" p={3}>
-      <Typography variant="h4" gutterBottom>
+    <Box
+      sx={{
+        p: { xs: 3, sm: 4 }, // Add padding directly to the main content box for dialogs
+      }}
+    >
+      {/* Title for the dialog/page */}
+      <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
         Change Password
       </Typography>
 
+      {/* Alerts for messages */}
       {errorMsg && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert severity="error" onClose={() => setErrorMsg("")} sx={{ mb: 2 }}>
           {errorMsg}
         </Alert>
       )}
       {successMsg && (
-        <Alert severity="success" sx={{ mb: 2 }}>
+        <Alert severity="success" onClose={() => setSuccessMsg("")} sx={{ mb: 2 }}>
           {successMsg}
         </Alert>
       )}
@@ -73,28 +115,34 @@ export default function ChangePasswordPage() {
             label="Current Password"
             type="password"
             required
+            fullWidth // Ensure it takes full width
             value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
+            onChange={(e) => { setCurrentPassword(e.target.value); setErrorMsg(""); setSuccessMsg(""); }}
             autoComplete="current-password"
+            margin="normal" // Consistent spacing
           />
           <TextField
             label="New Password"
             type="password"
             required
+            fullWidth
             value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
+            onChange={(e) => { setNewPassword(e.target.value); setErrorMsg(""); setSuccessMsg(""); }}
             autoComplete="new-password"
             helperText="At least 6 characters"
+            margin="normal"
           />
           <TextField
             label="Confirm New Password"
             type="password"
             required
+            fullWidth
             value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
+            onChange={(e) => { setConfirmPassword(e.target.value); setErrorMsg(""); setSuccessMsg(""); }}
             autoComplete="new-password"
+            margin="normal"
           />
-          <Button type="submit" variant="contained" disabled={loading}>
+          <Button type="submit" variant="contained" fullWidth disabled={loading} size="large">
             {loading ? "Updating..." : "Update Password"}
           </Button>
         </Stack>
@@ -102,4 +150,3 @@ export default function ChangePasswordPage() {
     </Box>
   );
 }
-
