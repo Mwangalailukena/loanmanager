@@ -9,7 +9,7 @@ import {
   TextField,
   Tooltip,
   LinearProgress,
-  Fab,
+  Fab, // Make sure Fab is imported
   Zoom,
   Skeleton,
   IconButton,
@@ -1019,7 +1019,12 @@ export default function Dashboard() {
         <Fab
           color="primary"
           aria-label="add"
-          sx={{ position: "fixed", bottom: isMobile ? 16 : 32, right: isMobile ? 16 : 32 }}
+          sx={{
+            position: "fixed",
+            bottom: isMobile ? 16 : 32,
+            right: isMobile ? 16 : 32,
+            zIndex: theme.zIndex.speedDial, // <-- Add this line
+          }}
           onClick={() => navigate("/loans/new")}
         >
           <AddIcon />
