@@ -14,6 +14,7 @@ import {
   Skeleton,
   IconButton,
 } from "@mui/material";
+import { BOTTOM_NAV_HEIGHT } from "../components/BottomNavBar"; // Correct import
 import AddIcon from "@mui/icons-material/Add";
 import PaidIcon from "@mui/icons-material/Payments";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
