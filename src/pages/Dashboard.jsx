@@ -1042,7 +1042,7 @@ export default function Dashboard() {
             right: isMobile ? 16 : 32,
             zIndex: theme.zIndex.fab,
           }}
-          onClick={() => navigate("/loans/new")}
+          onClick={() => navigate("/add-loan")}
         >
           <AddIcon />
         </Fab>
