@@ -11,7 +11,6 @@ import {
   createUserWithEmailAndPassword,
   updateProfile, // <-- Import updateProfile
 } from 'firebase/auth';
-import { getStorage } from 'firebase/storage'; // Import getStorage
 import app from '../firebase'; // Assuming 'app' is your initialized Firebase app
 
 const AuthContext = createContext();
