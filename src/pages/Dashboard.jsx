@@ -41,11 +41,12 @@ const cardVariants = {
   }),
 };
 
+// >>> UPDATED: Changed 'height' to 'maxHeight' and set a fixed value <<<
 const metricsContainerVariants = {
-  hidden: { opacity: 0, height: 0, overflow: "hidden" },
+  hidden: { opacity: 0, maxHeight: 0, overflow: "hidden" },
   visible: {
     opacity: 1,
-    height: "auto",
+    maxHeight: "1000px", // Set a sufficiently large value that covers all content
     transition: {
       type: "spring",
       damping: 20,
@@ -56,7 +57,7 @@ const metricsContainerVariants = {
   },
   exit: {
     opacity: 0,
-    height: 0,
+    maxHeight: 0, // Animate back to 0
     overflow: "hidden",
     transition: {
       when: "afterChildren",
@@ -620,7 +621,6 @@ export default function Dashboard() {
         minHeight: "100vh",
         background: theme.palette.background.default,
         p: isMobile ? 2 : 3,
-        // Add padding-bottom to the main content area to make space for the BottomNavBar on mobile
         pb: isMobile ? `calc(${BOTTOM_NAV_HEIGHT}px + ${theme.spacing(2)})` : 3,
       }}
     >
@@ -1038,11 +1038,9 @@ export default function Dashboard() {
           aria-label="add"
           sx={{
             position: "fixed",
-            // Adjust the bottom position for mobile to be above the nav bar
-            // BOTTOM_NAV_HEIGHT + 16px (original margin from bottom)
             bottom: isMobile ? (BOTTOM_NAV_HEIGHT + 16) : 32,
             right: isMobile ? 16 : 32,
-            zIndex: theme.zIndex.fab, // Ensure FAB is above other content but possibly below modal overlays
+            zIndex: theme.zIndex.fab,
           }}
           onClick={() => navigate("/loans/new")}
         >
