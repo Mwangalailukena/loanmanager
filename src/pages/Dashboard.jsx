@@ -1019,7 +1019,7 @@ export default function Dashboard() {
         <Fab
           color="primary"
           aria-label="add"
-          sx={{ position: "fixed", bottom: isMobile ? 16 : 32, right: isMobile ? 16 : 32 }}
+          sx={{ position: "fixed", bottom: isMobile ? 16 : 64, right: isMobile ? 16 : 64 }}
           onClick={() => navigate("/loans/new")}
         >
           <AddIcon />
