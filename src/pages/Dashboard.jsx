@@ -11,7 +11,7 @@ import {
   LinearProgress,
   Fab,
   Zoom,
-  Skeleton, // Divider might still be useful for visual separation inside if desired, but removed here for cleaner integration
+  Skeleton,
   IconButton,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
@@ -29,6 +29,7 @@ import { useFirestore } from "../contexts/FirestoreProvider";
 import dayjs from "dayjs";
 import { toast } from "react-toastify";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import Charts from "../components/Charts";
 
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -63,6 +64,7 @@ const metricsContainerVariants = {
   },
 };
 
+const CHART_SECTION_VISIBILITY_KEY = "dashboardChartsVisibility";
 const STORAGE_KEY = "dashboardCardOrder";
 const METRICS_VISIBILITY_KEY = "dashboardMetricsVisibility";
 const EXECUTIVE_SUMMARY_VISIBILITY_KEY = "dashboardExecutiveSummaryVisibility";
@@ -121,6 +123,10 @@ export default function Dashboard() {
     const savedVisibility = localStorage.getItem(EXECUTIVE_SUMMARY_VISIBILITY_KEY);
     return savedVisibility ? JSON.parse(savedVisibility) : true;
   });
+  const [showCharts, setShowCharts] = useState(() => {
+    const savedVisibility = localStorage.getItem(CHART_SECTION_VISIBILITY_KEY);
+    return savedVisibility ? JSON.parse(savedVisibility) : true;
+  });
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -132,35 +138,41 @@ export default function Dashboard() {
     if (loans) {
       const savedOrder = localStorage.getItem(STORAGE_KEY);
       if (savedOrder) {
-        const parsedOrder = JSON.parse(savedOrder);
-        const validOrder = parsedOrder.filter(id => DEFAULT_CARD_IDS.includes(id));
-        const finalOrder = [...new Set([...validOrder, ...DEFAULT_CARD_IDS])];
-        setCardsOrder(finalOrder);
+        try {
+          const parsedOrder = JSON.parse(savedOrder);
+          const validOrder = parsedOrder.filter(id => DEFAULT_CARD_IDS.includes(id));
+          const finalOrder = [...new Set([...validOrder, ...DEFAULT_CARD_IDS])];
+          setCardsOrder(finalOrder);
+        } catch (error) {
+          console.error("Error parsing saved card order from localStorage:", error);
+          setCardsOrder(DEFAULT_CARD_IDS); // Fallback to default
+        }
       } else {
         setCardsOrder(DEFAULT_CARD_IDS);
       }
 
-      const now = new Date();
-      const upcomingDueThreshold = new Date(now);
-      upcomingDueThreshold.setDate(now.getDate() + 3);
+      if (loans.length > 0) {
+        const now = dayjs();
+        const UPCOMING_LOAN_THRESHOLD_DAYS = 3;
+        const upcomingDueThreshold = now.add(UPCOMING_LOAN_THRESHOLD_DAYS, 'day');
 
-      const upcomingLoans = loans.filter(
-        (loan) =>
-          loan.status !== "Paid" &&
-          dayjs(loan.dueDate).isAfter(dayjs()) &&
-          dayjs(loan.dueDate).diff(dayjs(), "day") < 3 &&
-          dayjs(loan.dueDate).diff(dayjs(), 'day') >= 0
-      );
+        const upcomingLoans = loans.filter(
+          (loan) =>
+            loan.status !== "Paid" &&
+            dayjs(loan.dueDate).isAfter(now) &&
+            dayjs(loan.dueDate).isBefore(upcomingDueThreshold)
+        );
 
-      const overdueLoansList = loans.filter(
-        (loan) => loan.status !== "Paid" && dayjs(loan.dueDate).isBefore(dayjs(), 'day')
-      );
+        const overdueLoansList = loans.filter(
+          (loan) => loan.status !== "Paid" && dayjs(loan.dueDate).isBefore(now, 'day')
+        );
 
-      if (upcomingLoans.length > 0) {
-        toast.info(`You have ${upcomingLoans.length} loan(s) due within 3 days!`);
-      }
-      if (overdueLoansList.length > 0) {
-        toast.error(`You have ${overdueLoansList.length} overdue loan(s)! Please take action.`);
+        if (upcomingLoans.length > 0) {
+          toast.info(`You have ${upcomingLoans.length} loan(s) due within ${UPCOMING_LOAN_THRESHOLD_DAYS} days!`);
+        }
+        if (overdueLoansList.length > 0) {
+          toast.error(`You have ${overdueLoansList.length} overdue loan(s)! Please take action.`);
+        }
       }
     }
 
@@ -179,6 +191,14 @@ export default function Dashboard() {
     setShowExecutiveSummary((prev) => {
       const newState = !prev;
       localStorage.setItem(EXECUTIVE_SUMMARY_VISIBILITY_KEY, JSON.stringify(newState));
+      return newState;
+    });
+  };
+
+  const handleToggleCharts = () => {
+    setShowCharts((prev) => {
+      const newState = !prev;
+      localStorage.setItem(CHART_SECTION_VISIBILITY_KEY, JSON.stringify(newState));
       return newState;
     });
   };
@@ -261,7 +281,7 @@ export default function Dashboard() {
         (loan) =>
           loan.status === "Paid" &&
           Number(loan.repaidAmount || 0) >=
-            Number(loan.principal || 0) + Number(loan.interest || 0)
+          Number(loan.principal || 0) + Number(loan.interest || 0)
       )
       .reduce((sum, loan) => sum + Number(loan.interest || 0), 0);
   }, [loansThisMonth]);
@@ -432,14 +452,13 @@ export default function Dashboard() {
       return;
     }
 
-    // Prevent dragging between Executive Summary and Metrics sections
     if (source.droppableId !== destination.droppableId) {
       toast.error("Cards cannot be moved between sections.");
       return;
     }
 
     let reorderedSectionIds;
-    let currentGlobalOrder = Array.from(cardsOrder); // Start with a copy of the global order
+    let currentGlobalOrder = Array.from(cardsOrder);
 
     if (source.droppableId === "executive-summary-droppable") {
       const currentExecIds = executiveSummaryCards.map(card => card.id);
@@ -447,7 +466,6 @@ export default function Dashboard() {
       const [removedId] = reorderedSectionIds.splice(source.index, 1);
       reorderedSectionIds.splice(destination.index, 0, removedId);
 
-      // Reconstruct the global order: reordered executive cards + existing metrics cards
       const metricsSectionIds = metricsCards.map(card => card.id);
       currentGlobalOrder = [...reorderedSectionIds, ...metricsSectionIds];
 
@@ -457,7 +475,6 @@ export default function Dashboard() {
       const [removedId] = reorderedSectionIds.splice(source.index, 1);
       reorderedSectionIds.splice(destination.index, 0, removedId);
 
-      // Reconstruct the global order: existing executive cards + reordered metrics cards
       const executiveSectionIds = executiveSummaryCards.map(card => card.id);
       currentGlobalOrder = [...executiveSectionIds, ...reorderedSectionIds];
     }
@@ -475,14 +492,12 @@ export default function Dashboard() {
     navigate(`/loans?${params.toString()}`);
   };
 
-  // Common responsive skeleton sizes
   const skeletonIconSize = isMobile ? 24 : 28;
   const skeletonTextHeight = isMobile ? 16 : 18;
   const skeletonValueHeight = isMobile ? 22 : 26;
   const skeletonProgressHeight = isMobile ? 4 : 5;
 
 
-  // Skeleton for loading state
   if (loading) {
     return (
       <Box sx={{ minHeight: "100vh", background: theme.palette.background.default, pt: 0 }}>
@@ -494,14 +509,13 @@ export default function Dashboard() {
         </Box>
 
         {/* Executive Summary Skeleton */}
-        {/* Adjusted skeleton to match new bordered container */}
         <Box sx={{
           borderRadius: 2,
           p: isMobile ? 1.5 : 2,
           mb: isMobile ? 1.5 : 2,
-          backgroundColor: theme.palette.grey[100], // Lighter background for skeleton container
+          backgroundColor: theme.palette.grey[100],
           boxShadow: theme.shadows[1],
-          border: `2px solid ${theme.palette.grey[300]}`, // Gray border for skeleton
+          border: `2px solid ${theme.palette.primary.main}`, // Blue border for skeleton
         }}>
           <Box display="flex" alignItems="center" justifyContent="space-between" mb={isMobile ? 1 : 1.5}
             sx={{
@@ -527,24 +541,23 @@ export default function Dashboard() {
         </Box>
 
         {/* Metrics Skeleton */}
-        {/* Adjusted skeleton to match new bordered container */}
         <Box sx={{
           borderRadius: 2,
           p: isMobile ? 1.5 : 2,
           mb: isMobile ? 1.5 : 2,
-          backgroundColor: theme.palette.grey[100], // Lighter background for skeleton container
+          backgroundColor: theme.palette.grey[100],
           boxShadow: theme.shadows[1],
-          border: `2px solid ${theme.palette.grey[300]}`, // Gray border for skeleton
+          border: `2px solid ${theme.palette.primary.main}`, // Blue border for skeleton
         }}>
           <Box display="flex" alignItems="center" justifyContent="space-between" mb={isMobile ? 1 : 1.5}
             sx={{
               p: isMobile ? 1 : 1.5, borderRadius: 1, backgroundColor: theme.palette.grey[200]
             }}>
-            <Skeleton variant="text" width="40%" height={isMobile ? 24 : 28} />
-            <Skeleton variant="circular" width={20} height={20} />
+              <Skeleton variant="text" width="30%" height={isMobile ? 24 : 28} />
+              <Skeleton variant="circular" width={20} height={20} />
           </Box>
           <Grid container spacing={isMobile ? 1 : 1.5}>
-            {[...Array(8)].map((_, i) => (
+            {[...Array(6)].map((_, i) => ( // 6 skeletons for general metrics
               <Grid item xs={6} sm={4} md={3} lg={2} key={`metrics-skel-${i}`}>
                 <Card sx={{ p: isMobile ? 1 : 1.5, borderRadius: 2, boxShadow: theme.shadows[0], height: "100%", backgroundColor: theme.palette.grey[50] }}>
                   <Box display="flex" alignItems="center" mb={0.5} gap={0.5}>
@@ -558,301 +571,270 @@ export default function Dashboard() {
             ))}
           </Grid>
         </Box>
-      </Box>
-    );
-  }
 
-  if (!loans || loans.length === 0) {
-    return (
-      <Box
-        display="flex"
-        flexDirection="column"
-        alignItems="center"
-        justifyContent="center"
-        minHeight="100vh"
-        textAlign="center"
-        sx={{ background: theme.palette.background.default, pt: 0 }}
-      >
-        <Typography variant="h6" color="text.secondary" gutterBottom>
-          No loans available yet!
-        </Typography>
-        <Typography variant="body2" color="text.secondary" mb={2}>
-          Start by adding your first loan to see your financial overview here.
-        </Typography>
-        <Fab
-          color="primary"
-          aria-label="Add Loan"
-          onClick={() => navigate("/add-loan")}
-          variant="extended"
-          sx={{ mt: 1, borderRadius: 8, height: isMobile ? 36 : 44 }}
-        >
-          <AddIcon sx={{ mr: 0.5, fontSize: isMobile ? "small" : "medium" }} />
-          Add First Loan
-        </Fab>
+        {/* Charts Skeleton */}
+        <Box sx={{
+          borderRadius: 2,
+          p: isMobile ? 1.5 : 2,
+          mb: isMobile ? 1.5 : 2,
+          backgroundColor: theme.palette.grey[100],
+          boxShadow: theme.shadows[1],
+          border: `2px solid ${theme.palette.primary.main}`, // Blue border for skeleton
+        }}>
+          <Box display="flex" alignItems="center" justifyContent="space-between" mb={isMobile ? 1 : 1.5}
+            sx={{
+              p: isMobile ? 1 : 1.5, borderRadius: 1, backgroundColor: theme.palette.grey[200]
+            }}>
+              <Skeleton variant="text" width="30%" height={isMobile ? 24 : 28} />
+              <Skeleton variant="circular" width={20} height={20} />
+          </Box>
+          <Grid container spacing={isMobile ? 1.5 : 2}>
+            <Grid item xs={12} md={6}>
+              <Skeleton variant="rectangular" width="100%" height={300} sx={{ borderRadius: 2 }} />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Skeleton variant="rectangular" width="100%" height={300} sx={{ borderRadius: 2 }} />
+            </Grid>
+            <Grid item xs={12}>
+              <Skeleton variant="rectangular" width="100%" height={300} sx={{ borderRadius: 2 }} />
+            </Grid>
+          </Grid>
+        </Box>
+
       </Box>
     );
   }
 
   return (
-    <Box sx={{ background: theme.palette.background.default, minHeight: "100vh", pt: 0 }}>
-      <Typography
-        variant={isMobile ? "h6" : "h5"}
-        gutterBottom
-        sx={{
-          fontWeight: 700,
-          mb: isMobile ? 0.5 : 1,
-          mt: 0
-        }}
-      >
+    <Box sx={{ minHeight: "100vh", background: theme.palette.background.default, p: isMobile ? 2 : 3 }}>
+      <Typography variant={isMobile ? "h6" : "h5"} gutterBottom sx={{ fontWeight: 600, mb: 0.5 }}>
         Dashboard
       </Typography>
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1, duration: 0.3 }}
-      >
-        <Box mb={isMobile ? 1 : 2} maxWidth={isMobile ? "100%" : 180}>
-          <TextField
-            label="Filter by Month"
-            type="month"
-            size="small"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            fullWidth
-            InputLabelProps={{ shrink: true }}
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                borderRadius: 1,
-              },
-            }}
-          />
-        </Box>
-      </motion.div>
-      <DragDropContext onDragEnd={onDragEnd}>
-        {/* Executive Summary Section with Blue Border and Header Inside */}
-        <Box
-          sx={{
-            borderRadius: 2,
-            p: isMobile ? 1.5 : 2, // Adjusted padding for the whole bordered box
-            mb: isMobile ? 1.5 : 2,
-            backgroundColor: theme.palette.background.paper, // Background for the whole section
-            boxShadow: theme.shadows[2],
-            border: (theme) => `2px solid ${theme.palette.primary.main}`, // The blue border!
+
+      <Box mb={isMobile ? 1 : 1.5} maxWidth={isMobile ? "100%" : 180}>
+        <TextField
+          label="Select Month"
+          type="month"
+          value={selectedMonth}
+          onChange={(e) => setSelectedMonth(e.target.value)}
+          size="small"
+          fullWidth
+          InputLabelProps={{
+            shrink: true,
           }}
-        >
-          {/* Header (title + toggle) - Now INSIDE the bordered box */}
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 1.5,
+              backgroundColor: theme.palette.background.paper,
+            },
+            "& .MuiInputBase-input": {
+              padding: isMobile ? "8px 10px" : "10px 14px",
+            },
+            "& .MuiInputLabel-root": {
+              transform: isMobile ? "translate(14px, 7px) scale(0.75)" : "translate(14px, 10px) scale(0.75)",
+            },
+            "& .MuiInputLabel-shrink": {
+              transform: "translate(14px, -9px) scale(0.75)",
+            }
+          }}
+        />
+      </Box>
+
+      <DragDropContext onDragEnd={onDragEnd}>
+        {/* Executive Summary Section */}
+        <Box sx={{
+          borderRadius: 2,
+          p: isMobile ? 1.5 : 2,
+          mb: isMobile ? 1.5 : 2,
+          backgroundColor: theme.palette.grey[100],
+          boxShadow: theme.shadows[1],
+          border: `2px solid ${theme.palette.primary.main}`, // Changed to primary.main for blue
+          overflow: 'hidden',
+        }}>
           <Box
             display="flex"
             alignItems="center"
             justifyContent="space-between"
+            mb={isMobile ? 1 : 1.5}
             sx={{
-              cursor: "pointer",
               p: isMobile ? 1 : 1.5,
-              borderRadius: 1, // Slight rounding for the header itself
-              backgroundColor: theme.palette.primary.light,
-              color: theme.palette.primary.contrastText,
-              transition: "background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
-              "&:hover": {
-                backgroundColor: theme.palette.primary.main,
-                boxShadow: theme.shadows[3],
-              },
-              mb: isMobile ? 1 : 1.5, // Margin below the header to separate from content
+              borderRadius: 1,
+              backgroundColor: theme.palette.grey[200],
+              cursor: 'pointer',
             }}
             onClick={handleToggleExecutiveSummary}
           >
-            <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "inherit" }}>
+            <Typography variant={isMobile ? "h6" : "h5"} sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
               Executive Summary
             </Typography>
             <IconButton
+              onClick={handleToggleExecutiveSummary}
               size="small"
               sx={{
-                transition: "transform 0.3s ease-in-out",
-                transform: showExecutiveSummary ? "rotate(180deg)" : "rotate(0deg)",
-                color: "inherit",
+                transform: showExecutiveSummary ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.3s ease-in-out',
+                width: 20,
+                height: 20,
+                color: theme.palette.primary.main, // Changed icon color to primary.main
               }}
             >
               <ExpandMoreIcon />
             </IconButton>
           </Box>
-
-          {/* Collapsible Executive Summary Content */}
           <AnimatePresence>
             {showExecutiveSummary && (
               <motion.div
-                key="executive-summary-section"
+                key="executive-summary-content"
+                variants={metricsContainerVariants}
                 initial="hidden"
                 animate="visible"
                 exit="exit"
-                variants={metricsContainerVariants}
               >
-                <Box
-                  // Removed border, background, and shadow from this inner Box
-                  sx={{
-                    borderRadius: 2, // Keep border-radius for inner content (Grid) if desired
-                    p: isMobile ? 0 : 0, // Removed padding here as it's now on the outer box
-                  }}
-                >
-                  <Droppable
-                    droppableId="executive-summary-droppable"
-                    direction={isMobile ? "vertical" : "horizontal"}
-                  >
-                    {(provided) => (
-                      <Grid
-                        container
-                        spacing={isMobile ? 1 : 1.5}
-                        {...provided.droppableProps}
-                        ref={provided.innerRef}
-                      >
-                        {executiveSummaryCards.map(
-                          ({ id, label, value, color, filter, tooltip, progress, pulse, icon, trend }, index) => (
-                            <Draggable key={id} draggableId={id} index={index}>
-                              {(providedDraggable) => (
-                                <Grid
-                                  item
-                                  xs={6}
-                                  sm={4}
-                                  md={3}
-                                  lg={2}
-                                  ref={providedDraggable.innerRef}
-                                  {...providedDraggable.draggableProps}
-                                  style={{ ...providedDraggable.draggableProps.style }}
+                <Droppable droppableId="executive-summary-droppable" direction="horizontal">
+                  {(provided) => (
+                    <Grid
+                      container
+                      spacing={isMobile ? 1 : 1.5}
+                      {...provided.droppableProps}
+                      ref={provided.innerRef}
+                    >
+                      {executiveSummaryCards.map((card, index) => (
+                        <Draggable key={card.id} draggableId={card.id} index={index}>
+                          {(provided, snapshot) => (
+                            <Grid
+                              item
+                              xs={6}
+                              sm={4}
+                              md={3}
+                              lg={2}
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              style={{
+                                ...provided.draggableProps.style,
+                                userSelect: snapshot.isDragging ? 'none' : 'auto',
+                              }}
+                            >
+                              <Tooltip title={card.tooltip} arrow placement="top">
+                                <motion.div
+                                  variants={cardVariants}
+                                  initial="hidden"
+                                  animate="visible"
+                                  custom={index}
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
+                                  onClick={() => handleCardClick(card.filter)}
+                                  style={{ height: "100%" }}
                                 >
-                                  <motion.div
-                                    custom={index}
-                                    initial="hidden"
-                                    animate="visible"
-                                    variants={cardVariants}
-                                    whileHover={{ scale: 1.02, boxShadow: theme.shadows[4] }}
-                                    whileTap={{ scale: 0.98 }}
-                                    style={{ height: "100%" }}
-                                    {...providedDraggable.dragHandleProps}
+                                  <Card
+                                    sx={{
+                                      p: isMobile ? 1 : 1.5,
+                                      borderRadius: 2,
+                                      height: "100%",
+                                      display: "flex",
+                                      flexDirection: "column",
+                                      justifyContent: "space-between",
+                                      backgroundColor: theme.palette.background.paper,
+                                      boxShadow: theme.shadows[0],
+                                      border: `1px solid ${theme.palette.grey[200]}`,
+                                      transition: "box-shadow 0.3s ease-in-out",
+                                      "&:hover": {
+                                        boxShadow: theme.shadows[2],
+                                        cursor: "pointer",
+                                      },
+                                      ...(card.pulse && {
+                                        animation: 'pulse 1.5s infinite',
+                                      }),
+                                    }}
                                   >
-                                    <Tooltip title={tooltip} arrow>
-                                      <Card
+                                    <Box display="flex" alignItems="center" mb={0.5} gap={0.5}>
+                                      <Box
                                         sx={{
-                                          p: isMobile ? 1 : 1.5,
-                                          cursor: "grab",
-                                          borderRadius: 2,
-                                          boxShadow: theme.shadows[1],
-                                          animation: pulse ? "pulse 2s infinite" : undefined,
-                                          transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
-                                          "&:hover": {
-                                            boxShadow: pulse ? `0 0 12px ${theme.palette.error.light}` : theme.shadows[3],
-                                            transform: "translateY(-3px)"
-                                          },
-                                          height: "100%",
-                                          display: "flex",
-                                          flexDirection: "column",
-                                          justifyContent: "space-between",
-                                          backgroundColor: theme.palette.background.default,
+                                          color: theme.palette[card.color]?.main || theme.palette.text.primary,
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
                                         }}
-                                        onClick={() => handleCardClick(filter)}
-                                        elevation={0}
                                       >
-                                        <Box display="flex" flexDirection="column" alignItems="flex-start" mb={isMobile ? 0.5 : 0.5}>
-                                          {React.cloneElement(icon, {
-                                            fontSize: isMobile ? "small" : "medium",
-                                            sx: { color: theme.palette[color].main, mb: 0.5 },
-                                          })}
-                                          <Typography variant={isMobile ? "caption" : "body2"} color="textSecondary" sx={{ fontWeight: 500 }}>
-                                            {label}
-                                          </Typography>
-                                          <Typography variant="h5" fontWeight="bold" color="text.primary">
-                                            {value}
-                                          </Typography>
-                                          {trend && (
-                                            <Typography
-                                              variant="caption"
-                                              sx={{
-                                                color: trend.startsWith('+') || trend === '0%' || trend === 'New' ? theme.palette.success.main : theme.palette.error.main,
-                                                fontWeight: 600,
-                                                mt: 0.5,
-                                              }}
-                                            >
-                                              {trend} vs. Last Month
-                                            </Typography>
-                                          )}
-                                        </Box>
-                                        {progress !== null && progress !== undefined && (
-                                          <Box sx={{ mt: 'auto', pt: 1 }}>
-                                            <LinearProgress
-                                              variant="determinate"
-                                              value={Math.min(progress * 100, 100)}
-                                              sx={{
-                                                height: isMobile ? 4 : 5,
-                                                borderRadius: 2,
-                                                backgroundColor: theme.palette[color].light,
-                                                "& .MuiLinearProgress-bar": {
-                                                  backgroundColor: theme.palette[color].main,
-                                                  borderRadius: 2,
-                                                },
-                                              }}
-                                            />
-                                            {id === "availableCapital" && (
-                                                <Typography variant="caption" color="textSecondary" sx={{ mt: 0.5, display: 'block' }}>
-                                                  {Math.round(progress * 100)}% of Initial Capital
-                                                </Typography>
-                                            )}
-                                          </Box>
-                                        )}
-                                      </Card>
-                                    </Tooltip>
-                                  </motion.div>
-                                </Grid>
-                              )}
-                            </Draggable>
-                          )
-                        )}
-                        {provided.placeholder}
-                      </Grid>
-                    )}
-                  </Droppable>
-                </Box>
+                                        {card.icon}
+                                      </Box>
+                                      <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 500 }}>
+                                        {card.label}
+                                      </Typography>
+                                    </Box>
+                                    <Typography variant={isMobile ? "h6" : "h5"} sx={{ fontWeight: 700, mb: card.progress !== null ? 0.5 : 0 }}>
+                                      {card.value}
+                                    </Typography>
+                                    {card.progress !== null && (
+                                      <LinearProgress
+                                        variant="determinate"
+                                        value={card.progress * 100}
+                                        sx={{
+                                          height: 5,
+                                          borderRadius: 2,
+                                          backgroundColor: theme.palette.grey[300],
+                                          "& .MuiLinearProgress-bar": {
+                                            backgroundColor: theme.palette[card.color]?.main || theme.palette.primary.main,
+                                          },
+                                        }}
+                                      />
+                                    )}
+                                    {card.trend && (
+                                        <Typography variant="caption" sx={{ color: card.trend.startsWith('+') ? theme.palette.success.main : (card.trend.startsWith('-') ? theme.palette.error.main : theme.palette.text.secondary), fontWeight: 600, mt: 0.5 }}>
+                                          {card.trend} vs. last month
+                                        </Typography>
+                                    )}
+                                  </Card>
+                                </motion.div>
+                              </Tooltip>
+                            </Grid>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </Grid>
+                  )}
+                </Droppable>
               </motion.div>
             )}
           </AnimatePresence>
         </Box>
 
-        {/* Metrics Section with Blue Border and Header Inside */}
-        <Box
-          sx={{
-            borderRadius: 2,
-            p: isMobile ? 1.5 : 2, // Adjusted padding for the whole bordered box
-            mb: isMobile ? 1.5 : 2,
-            backgroundColor: theme.palette.background.paper, // Background for the whole section
-            boxShadow: theme.shadows[2],
-            border: (theme) => `2px solid ${theme.palette.primary.main}`, // The blue border!
-          }}
-        >
-          {/* Header (title + toggle) - Now INSIDE the bordered box */}
+        {/* Metrics Section */}
+        <Box sx={{
+          borderRadius: 2,
+          p: isMobile ? 1.5 : 2,
+          mb: isMobile ? 1.5 : 2,
+          backgroundColor: theme.palette.grey[100],
+          boxShadow: theme.shadows[1],
+          border: `2px solid ${theme.palette.primary.main}`, // Changed to primary.main for blue
+          overflow: 'hidden',
+        }}>
           <Box
             display="flex"
             alignItems="center"
             justifyContent="space-between"
+            mb={isMobile ? 1 : 1.5}
             sx={{
-              cursor: "pointer",
               p: isMobile ? 1 : 1.5,
-              borderRadius: 1, // Slight rounding for the header itself
-              backgroundColor: theme.palette.primary.light,
-              color: theme.palette.primary.contrastText,
-              transition: "background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
-              "&:hover": {
-                backgroundColor: theme.palette.primary.main,
-                boxShadow: theme.shadows[3],
-              },
-              mb: isMobile ? 1 : 1.5, // Margin below the header to separate from content
+              borderRadius: 1,
+              backgroundColor: theme.palette.grey[200],
+              cursor: 'pointer',
             }}
             onClick={handleToggleMetrics}
           >
-            <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "inherit" }}>
-              Metrics
+            <Typography variant={isMobile ? "h6" : "h5"} sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
+              Key Metrics
             </Typography>
             <IconButton
+              onClick={handleToggleMetrics}
               size="small"
               sx={{
-                transition: "transform 0.3s ease-in-out",
-                transform: showMetrics ? "rotate(180deg)" : "rotate(0deg)",
-                color: "inherit",
+                transform: showMetrics ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.3s ease-in-out',
+                width: 20,
+                height: 20,
+                color: theme.palette.primary.main, // Changed icon color to primary.main
               }}
             >
               <ExpandMoreIcon />
@@ -861,157 +843,188 @@ export default function Dashboard() {
           <AnimatePresence>
             {showMetrics && (
               <motion.div
-                key="metrics-section"
+                key="metrics-content"
+                variants={metricsContainerVariants}
                 initial="hidden"
                 animate="visible"
                 exit="exit"
-                variants={metricsContainerVariants}
               >
-                <Box
-                  // Removed border, background, and shadow from this inner Box
-                  sx={{
-                    borderRadius: 2, // Keep border-radius for inner content (Grid) if desired
-                    p: isMobile ? 0 : 0, // Removed padding here as it's now on the outer box
-                  }}
-                >
-                  <Droppable
-                    droppableId="metrics-droppable"
-                    direction={isMobile ? "vertical" : "horizontal"}
-                  >
-                    {(provided) => (
-                      <Grid
-                        container
-                        spacing={isMobile ? 1 : 1.5}
-                        {...provided.droppableProps}
-                        ref={provided.innerRef}
-                      >
-                        {metricsCards.map(
-                          ({ id, label, value, color, filter, tooltip, progress, pulse, icon }, index) => (
-                            <Draggable key={id} draggableId={id} index={index}>
-                              {(providedDraggable) => (
-                                <Grid
-                                  item
-                                  xs={6}
-                                  sm={4}
-                                  md={3}
-                                  lg={2}
-                                  ref={providedDraggable.innerRef}
-                                  {...providedDraggable.draggableProps}
-                                  style={{ ...providedDraggable.draggableProps.style }}
+                <Droppable droppableId="metrics-droppable" direction="horizontal">
+                  {(provided) => (
+                    <Grid
+                      container
+                      spacing={isMobile ? 1 : 1.5}
+                      {...provided.droppableProps}
+                      ref={provided.innerRef}
+                    >
+                      {metricsCards.map((card, index) => (
+                        <Draggable key={card.id} draggableId={card.id} index={index}>
+                          {(provided, snapshot) => (
+                            <Grid
+                              item
+                              xs={6}
+                              sm={4}
+                              md={3}
+                              lg={2}
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              style={{
+                                ...provided.draggableProps.style,
+                                userSelect: snapshot.isDragging ? 'none' : 'auto',
+                              }}
+                            >
+                              <Tooltip title={card.tooltip} arrow placement="top">
+                                <motion.div
+                                  variants={cardVariants}
+                                  initial="hidden"
+                                  animate="visible"
+                                  custom={index}
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
+                                  onClick={() => handleCardClick(card.filter)}
+                                  style={{ height: "100%" }}
                                 >
-                                  <motion.div
-                                    custom={index}
-                                    initial="hidden"
-                                    animate="visible"
-                                    variants={cardVariants}
-                                    whileHover={{ scale: 1.02, boxShadow: theme.shadows[4] }}
-                                    whileTap={{ scale: 0.98 }}
-                                    style={{ height: "100%" }}
-                                    {...providedDraggable.dragHandleProps}
+                                  <Card
+                                    sx={{
+                                      p: isMobile ? 1 : 1.5,
+                                      borderRadius: 2,
+                                      height: "100%",
+                                      display: "flex",
+                                      flexDirection: "column",
+                                      justifyContent: "space-between",
+                                      backgroundColor: theme.palette.background.paper,
+                                      boxShadow: theme.shadows[0],
+                                      border: `1px solid ${theme.palette.grey[200]}`,
+                                      transition: "box-shadow 0.3s ease-in-out",
+                                      "&:hover": {
+                                        boxShadow: theme.shadows[2],
+                                        cursor: "pointer",
+                                      },
+                                      ...(card.pulse && {
+                                        animation: 'pulse 1.5s infinite',
+                                      }),
+                                    }}
                                   >
-                                    <Tooltip title={tooltip} arrow>
-                                      <Card
+                                    <Box display="flex" alignItems="center" mb={0.5} gap={0.5}>
+                                      <Box
                                         sx={{
-                                          p: isMobile ? 1 : 1.5,
-                                          cursor: "grab",
-                                          borderRadius: 2,
-                                          boxShadow: theme.shadows[1],
-                                          animation: pulse ? "pulse 2s infinite" : undefined,
-                                          transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
-                                          "&:hover": {
-                                            boxShadow: pulse ? `0 0 12px ${theme.palette.error.light}` : theme.shadows[3],
-                                            transform: "translateY(-3px)"
-                                          },
-                                          height: "100%",
-                                          display: "flex",
-                                          flexDirection: "column",
-                                          justifyContent: "space-between",
-                                          backgroundColor: theme.palette.background.default,
+                                          color: theme.palette[card.color]?.main || theme.palette.text.primary,
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
                                         }}
-                                        onClick={() => handleCardClick(filter)}
-                                        elevation={0}
                                       >
-                                        <Box display="flex" flexDirection="column" alignItems="flex-start" mb={isMobile ? 0.5 : 0.5}>
-                                          {React.cloneElement(icon, {
-                                            fontSize: isMobile ? "small" : "medium",
-                                            sx: { color: theme.palette[color].main, mb: 0.5 },
-                                          })}
-                                          <Typography variant={isMobile ? "caption" : "body2"} color="textSecondary" sx={{ fontWeight: 500 }}>
-                                            {label}
-                                          </Typography>
-                                          <Typography variant="h5" fontWeight="bold" color="text.primary">
-                                            {value}
-                                          </Typography>
-                                        </Box>
-                                        {progress !== null && progress !== undefined && (
-                                          <Box sx={{ mt: 'auto', pt: 1 }}>
-                                            <LinearProgress
-                                              variant="determinate"
-                                              value={Math.min(progress * 100, 100)}
-                                              sx={{
-                                                height: isMobile ? 4 : 5,
-                                                borderRadius: 2,
-                                                backgroundColor: theme.palette[color].light,
-                                                "& .MuiLinearProgress-bar": {
-                                                  backgroundColor: theme.palette[color].main,
-                                                  borderRadius: 2,
-                                                },
-                                              }}
-                                            />
-                                          </Box>
-                                        )}
-                                      </Card>
-                                    </Tooltip>
-                                  </motion.div>
-                                </Grid>
-                              )}
-                            </Draggable>
-                          )
-                        )}
-                        {provided.placeholder}
-                      </Grid>
-                    )}
-                  </Droppable>
-                </Box>
+                                        {card.icon}
+                                      </Box>
+                                      <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 500 }}>
+                                        {card.label}
+                                      </Typography>
+                                    </Box>
+                                    <Typography variant={isMobile ? "h6" : "h5"} sx={{ fontWeight: 700, mb: card.progress !== null ? 0.5 : 0 }}>
+                                      {card.value}
+                                    </Typography>
+                                    {card.progress !== null && (
+                                      <LinearProgress
+                                        variant="determinate"
+                                        value={card.progress * 100}
+                                        sx={{
+                                          height: 5,
+                                          borderRadius: 2,
+                                          backgroundColor: theme.palette.grey[300],
+                                          "& .MuiLinearProgress-bar": {
+                                            backgroundColor: theme.palette[card.color]?.main || theme.palette.primary.main,
+                                          },
+                                        }}
+                                      />
+                                    )}
+                                    {card.trend && (
+                                        <Typography variant="caption" sx={{ color: card.trend.startsWith('+') ? theme.palette.success.main : (card.trend.startsWith('-') ? theme.palette.error.main : theme.palette.text.secondary), fontWeight: 600, mt: 0.5 }}>
+                                          {card.trend} vs. last month
+                                        </Typography>
+                                    )}
+                                  </Card>
+                                </motion.div>
+                              </Tooltip>
+                            </Grid>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </Grid>
+                  )}
+                </Droppable>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </Box>
+
+        {/* Charts Section */}
+        <Box sx={{
+          borderRadius: 2,
+          p: isMobile ? 1.5 : 2,
+          mb: isMobile ? 1.5 : 2,
+          backgroundColor: theme.palette.grey[100],
+          boxShadow: theme.shadows[1],
+          border: `2px solid ${theme.palette.primary.main}`, // Changed to primary.main for blue
+          overflow: 'hidden',
+        }}>
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
+            mb={isMobile ? 1 : 1.5}
+            sx={{
+              p: isMobile ? 1 : 1.5,
+              borderRadius: 1,
+              backgroundColor: theme.palette.grey[200],
+              cursor: 'pointer',
+            }}
+            onClick={handleToggleCharts}
+          >
+            <Typography variant={isMobile ? "h6" : "h5"} sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
+              Charts
+            </Typography>
+            <IconButton
+              onClick={handleToggleCharts}
+              size="small"
+              sx={{
+                transform: showCharts ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.3s ease-in-out',
+                width: 20,
+                height: 20,
+                color: theme.palette.primary.main, // Changed icon color to primary.main
+              }}
+            >
+              <ExpandMoreIcon />
+            </IconButton>
+          </Box>
+          <AnimatePresence>
+            {showCharts && (
+              <motion.div
+                key="charts-content"
+                variants={metricsContainerVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+              >
+                <Charts loans={loansForCalculations} selectedMonth={selectedMonth} />
               </motion.div>
             )}
           </AnimatePresence>
         </Box>
       </DragDropContext>
 
-      {/* Floating Add Loan Button */}
-      <Zoom in={true} timeout={500} style={{ transitionDelay: "500ms" }}>
+      <Zoom in timeout={300} style={{ transitionDelay: '50ms' }}>
         <Fab
           color="primary"
-          aria-label="Add Loan"
-          onClick={() => navigate("/add-loan")}
-          sx={{
-            position: "fixed",
-            bottom: isMobile ? 64 : 24,
-            right: isMobile ? 16 : 24,
-            zIndex: 1300,
-            boxShadow: theme.shadows[4],
-            borderRadius: "50%",
-          }}
+          aria-label="add"
+          sx={{ position: "fixed", bottom: isMobile ? 16 : 32, right: isMobile ? 16 : 32 }}
+          onClick={() => navigate("/loans/new")}
         >
           <AddIcon />
         </Fab>
       </Zoom>
-
-      {/* Pulse keyframes */}
-      <style>{`
-        @keyframes pulse {
-          0% {
-            box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7);
-          }
-          70% {
-            box-shadow: 0 10px 10px 10px rgba(255, 0, 0, 0);
-          }
-          100% {
-            box-shadow: 0 0 0 0 rgba(255, 0, 0, 0);
-          }
-        }
-      `}</style>
     </Box>
   );
 }
