@@ -8,6 +8,7 @@ import {
   Alert,
   Stack,
   Link,
+  CircularProgress, // Import CircularProgress
 } from "@mui/material";
 import { useAuth } from "../contexts/AuthProvider";
 import { useNavigate, Link as RouterLink } from "react-router-dom";
@@ -16,10 +17,12 @@ export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
 
+  const [name, setName] = useState(""); // New: State for name
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false); // New: State for loading
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -29,11 +32,18 @@ export default function Register() {
       return setError("Passwords do not match.");
     }
 
+    setLoading(true); // Set loading true when registration starts
+
     try {
-      await register(email, password);
+      // Pass the name, email, and password to the register function
+      await register(name, email, password);
       navigate("/dashboard");
     } catch (err) {
-      setError("Failed to create an account.");
+      // Improved error message for Firebase Auth errors
+      setError(err.message || "Failed to create an account. Please try again.");
+      console.error("Registration error:", err); // Log for debugging
+    } finally {
+      setLoading(false); // Always set loading false
     }
   };
 
@@ -59,12 +69,22 @@ export default function Register() {
 
         <form onSubmit={handleRegister}>
           <Stack spacing={2}>
+            {/* New: Name TextField */}
+            <TextField
+              label="Name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              fullWidth
+            />
             <TextField
               label="Email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              fullWidth
             />
             <TextField
               label="Password"
@@ -72,6 +92,7 @@ export default function Register() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              fullWidth
             />
             <TextField
               label="Confirm Password"
@@ -79,13 +100,20 @@ export default function Register() {
               value={passwordConfirm}
               onChange={(e) => setPasswordConfirm(e.target.value)}
               required
+              fullWidth
             />
 
-            <Button variant="contained" type="submit" fullWidth>
-              Register
+            <Button
+              variant="contained"
+              type="submit"
+              fullWidth
+              disabled={loading} // Disable button when loading
+              sx={{ mt: 2 }}
+            >
+              {loading ? <CircularProgress size={24} color="inherit" /> : "Register"}
             </Button>
 
-            <Typography variant="body2" align="center">
+            <Typography variant="body2" align="center" mt={2}>
               Already have an account?{" "}
               <Link component={RouterLink} to="/login">
                 Login
@@ -97,4 +125,3 @@ export default function Register() {
     </Box>
   );
 }
-
