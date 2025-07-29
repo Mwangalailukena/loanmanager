@@ -30,6 +30,7 @@ import dayjs from "dayjs";
 import { toast } from "react-toastify";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import Charts from "../components/Charts";
+import { BOTTOM_NAV_HEIGHT } from "../components/BottomNavBar"; // Import the constant here
 
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -500,7 +501,15 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <Box sx={{ minHeight: "100vh", background: theme.palette.background.default, pt: 0 }}>
+      <Box
+        sx={{
+          minHeight: "100vh",
+          background: theme.palette.background.default,
+          pt: 0,
+          // Add padding-bottom to the main content area to make space for the BottomNavBar on mobile
+          pb: isMobile ? `calc(${BOTTOM_NAV_HEIGHT}px + ${theme.spacing(2)})` : 3,
+        }}
+      >
         <Typography variant={isMobile ? "h6" : "h5"} gutterBottom sx={{ fontWeight: 600, mb: 0.5, mt: 0 }}>
           <Skeleton variant="text" width="40%" />
         </Typography>
@@ -515,7 +524,7 @@ export default function Dashboard() {
           mb: isMobile ? 1.5 : 2,
           backgroundColor: theme.palette.grey[100],
           boxShadow: theme.shadows[1],
-          border: `2px solid ${theme.palette.primary.main}`, // Blue border for skeleton
+          border: `2px solid ${theme.palette.primary.main}`,
         }}>
           <Box display="flex" alignItems="center" justifyContent="space-between" mb={isMobile ? 1 : 1.5}
             sx={{
@@ -547,7 +556,7 @@ export default function Dashboard() {
           mb: isMobile ? 1.5 : 2,
           backgroundColor: theme.palette.grey[100],
           boxShadow: theme.shadows[1],
-          border: `2px solid ${theme.palette.primary.main}`, // Blue border for skeleton
+          border: `2px solid ${theme.palette.primary.main}`,
         }}>
           <Box display="flex" alignItems="center" justifyContent="space-between" mb={isMobile ? 1 : 1.5}
             sx={{
@@ -557,7 +566,7 @@ export default function Dashboard() {
               <Skeleton variant="circular" width={20} height={20} />
           </Box>
           <Grid container spacing={isMobile ? 1 : 1.5}>
-            {[...Array(6)].map((_, i) => ( // 6 skeletons for general metrics
+            {[...Array(6)].map((_, i) => (
               <Grid item xs={6} sm={4} md={3} lg={2} key={`metrics-skel-${i}`}>
                 <Card sx={{ p: isMobile ? 1 : 1.5, borderRadius: 2, boxShadow: theme.shadows[0], height: "100%", backgroundColor: theme.palette.grey[50] }}>
                   <Box display="flex" alignItems="center" mb={0.5} gap={0.5}>
@@ -579,7 +588,7 @@ export default function Dashboard() {
           mb: isMobile ? 1.5 : 2,
           backgroundColor: theme.palette.grey[100],
           boxShadow: theme.shadows[1],
-          border: `2px solid ${theme.palette.primary.main}`, // Blue border for skeleton
+          border: `2px solid ${theme.palette.primary.main}`,
         }}>
           <Box display="flex" alignItems="center" justifyContent="space-between" mb={isMobile ? 1 : 1.5}
             sx={{
@@ -606,7 +615,15 @@ export default function Dashboard() {
   }
 
   return (
-    <Box sx={{ minHeight: "100vh", background: theme.palette.background.default, p: isMobile ? 2 : 3 }}>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        background: theme.palette.background.default,
+        p: isMobile ? 2 : 3,
+        // Add padding-bottom to the main content area to make space for the BottomNavBar on mobile
+        pb: isMobile ? `calc(${BOTTOM_NAV_HEIGHT}px + ${theme.spacing(2)})` : 3,
+      }}
+    >
       <Typography variant={isMobile ? "h6" : "h5"} gutterBottom sx={{ fontWeight: 600, mb: 0.5 }}>
         Dashboard
       </Typography>
@@ -648,7 +665,7 @@ export default function Dashboard() {
           mb: isMobile ? 1.5 : 2,
           backgroundColor: theme.palette.grey[100],
           boxShadow: theme.shadows[1],
-          border: `2px solid ${theme.palette.primary.main}`, // Changed to primary.main for blue
+          border: `2px solid ${theme.palette.primary.main}`,
           overflow: 'hidden',
         }}>
           <Box
@@ -675,7 +692,7 @@ export default function Dashboard() {
                 transition: 'transform 0.3s ease-in-out',
                 width: 20,
                 height: 20,
-                color: theme.palette.primary.main, // Changed icon color to primary.main
+                color: theme.palette.primary.main,
               }}
             >
               <ExpandMoreIcon />
@@ -807,7 +824,7 @@ export default function Dashboard() {
           mb: isMobile ? 1.5 : 2,
           backgroundColor: theme.palette.grey[100],
           boxShadow: theme.shadows[1],
-          border: `2px solid ${theme.palette.primary.main}`, // Changed to primary.main for blue
+          border: `2px solid ${theme.palette.primary.main}`,
           overflow: 'hidden',
         }}>
           <Box
@@ -834,7 +851,7 @@ export default function Dashboard() {
                 transition: 'transform 0.3s ease-in-out',
                 width: 20,
                 height: 20,
-                color: theme.palette.primary.main, // Changed icon color to primary.main
+                color: theme.palette.primary.main,
               }}
             >
               <ExpandMoreIcon />
@@ -966,7 +983,7 @@ export default function Dashboard() {
           mb: isMobile ? 1.5 : 2,
           backgroundColor: theme.palette.grey[100],
           boxShadow: theme.shadows[1],
-          border: `2px solid ${theme.palette.primary.main}`, // Changed to primary.main for blue
+          border: `2px solid ${theme.palette.primary.main}`,
           overflow: 'hidden',
         }}>
           <Box
@@ -993,7 +1010,7 @@ export default function Dashboard() {
                 transition: 'transform 0.3s ease-in-out',
                 width: 20,
                 height: 20,
-                color: theme.palette.primary.main, // Changed icon color to primary.main
+                color: theme.palette.primary.main,
               }}
             >
               <ExpandMoreIcon />
@@ -1019,7 +1036,14 @@ export default function Dashboard() {
         <Fab
           color="primary"
           aria-label="add"
-          sx={{ position: "fixed", bottom: isMobile ? 16 : 64, right: isMobile ? 16 : 64 }}
+          sx={{
+            position: "fixed",
+            // Adjust the bottom position for mobile to be above the nav bar
+            // BOTTOM_NAV_HEIGHT + 16px (original margin from bottom)
+            bottom: isMobile ? (BOTTOM_NAV_HEIGHT + 16) : 32,
+            right: isMobile ? 16 : 32,
+            zIndex: theme.zIndex.fab, // Ensure FAB is above other content but possibly below modal overlays
+          }}
           onClick={() => navigate("/loans/new")}
         >
           <AddIcon />
