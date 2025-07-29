@@ -1,3 +1,4 @@
+// src/pages/Profile.jsx
 import React, { useState, useEffect } from "react";
 import {
   Box,
@@ -7,25 +8,25 @@ import {
   Avatar,
   CircularProgress,
   Stack,
-  Alert, // Added for message display
+  Alert,
 } from "@mui/material";
 import { useAuth } from "../contexts/AuthProvider";
 import { getAuth, updateProfile } from "firebase/auth";
-// If you integrate Firebase Storage, you'll need these imports:
-// import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-// import { storage } from "../firebaseConfig"; // Assuming your firebase config is here
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage"; // <-- Import Storage functions
+import app from "../firebase"; // Assuming your firebase app instance is here
 
 export default function Profile() {
-  const { currentUser } = useAuth();
-  const auth = getAuth();
-  // const storage = getStorage(); // Initialize storage if you use it
+  const { currentUser, refreshUser } = useAuth(); // Also get refreshUser
+  const auth = getAuth(app); // Ensure auth is initialized with app
+  const storage = getStorage(app); // Initialize storage with app
 
   const [displayName, setDisplayName] = useState(currentUser?.displayName || "");
   const [photoURL, setPhotoURL] = useState(currentUser?.photoURL || "");
   const [uploading, setUploading] = useState(false);
-  const [savingDisplayName, setSavingDisplayName] = useState(false); // New state for display name saving
+  const [savingDisplayName, setSavingDisplayName] = useState(false);
   const [message, setMessage] = useState("");
 
+  // Sync state with currentUser from context
   useEffect(() => {
     if (currentUser) {
       setDisplayName(currentUser.displayName || "");
@@ -33,34 +34,34 @@ export default function Profile() {
     }
   }, [currentUser]);
 
-  // Simulated photo upload handler
   const handlePhotoChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    setUploading(true);
     setMessage("");
+    setUploading(true);
 
     try {
-      // --- START: Replace with actual Firebase Storage upload logic ---
-      // Example of real Firebase Storage upload:
-      // const storageRef = ref(storage, `profile_pictures/${currentUser.uid}/${file.name}`);
-      // const snapshot = await uploadBytes(storageRef, file);
-      // const uploadedPhotoURL = await getDownloadURL(snapshot.ref);
+      // Create a storage reference: profile_pictures/{user_id}/profile.jpg (or original file name)
+      // Using user.uid ensures each user has their own folder
+      const storageRef = ref(storage, `profile_pictures/${currentUser.uid}/${file.name}`);
 
-      // Current Simulated Logic:
-      await new Promise((res) => setTimeout(res, 1500)); // Simulate upload delay
-      const uploadedPhotoURL = URL.createObjectURL(file); // Get local URL for immediate display
-      // --- END: Replace with actual Firebase Storage upload logic ---
+      // Upload the file
+      const snapshot = await uploadBytes(storageRef, file);
 
-      // Update Firebase Auth user profile photoURL
-      await updateProfile(auth.currentUser, { photoURL: uploadedPhotoURL });
+      // Get the download URL
+      const newPhotoURL = await getDownloadURL(snapshot.ref);
 
-      setPhotoURL(uploadedPhotoURL);
+      // Update Firebase Auth user profile with the new photoURL
+      await updateProfile(auth.currentUser, { photoURL: newPhotoURL });
+
+      // Update local state and trigger context refresh
+      setPhotoURL(newPhotoURL);
+      await refreshUser(); // Important: Refresh user in AuthProvider to get latest data
       setMessage("Profile photo updated successfully!");
     } catch (error) {
-      setMessage("Failed to upload photo. Please try again.");
       console.error("Photo upload error:", error);
+      setMessage(`Failed to upload photo: ${error.message || "Unknown error"}.`);
     } finally {
       setUploading(false);
     }
@@ -68,15 +69,21 @@ export default function Profile() {
 
   const handleSave = async () => {
     setMessage("");
-    setSavingDisplayName(true); // Set loading true for save button
+    setSavingDisplayName(true);
     try {
-      await updateProfile(auth.currentUser, { displayName });
-      setMessage("Profile updated successfully.");
+      // Check if display name has actually changed to avoid unnecessary API calls
+      if (displayName !== currentUser?.displayName) {
+        await updateProfile(auth.currentUser, { displayName });
+        await refreshUser(); // Refresh user in AuthProvider to get latest data
+        setMessage("Profile updated successfully.");
+      } else {
+        setMessage("No changes to save.");
+      }
     } catch (error) {
-      setMessage("Failed to update profile.");
       console.error("Profile update error:", error);
+      setMessage(`Failed to update profile: ${error.message || "Unknown error"}.`);
     } finally {
-      setSavingDisplayName(false); // Set loading false
+      setSavingDisplayName(false);
     }
   };
 
@@ -89,7 +96,7 @@ export default function Profile() {
       {message && (
         <Alert
           severity={message.includes("successfully") ? "success" : "error"}
-          onClose={() => setMessage("")} // Allow user to dismiss
+          onClose={() => setMessage("")}
           sx={{ mb: 2 }}
         >
           {message}
@@ -98,11 +105,11 @@ export default function Profile() {
 
       <Stack spacing={2} alignItems="center" mb={3}>
         <Avatar
-          src={photoURL}
+          src={photoURL || currentUser?.photoURL || 'https://via.placeholder.com/100?text=No+Photo'} // Fallback for no photo
           alt={displayName || "User Avatar"}
           sx={{ width: 100, height: 100 }}
         />
-        {uploading && <CircularProgress size={24} />}
+        {uploading && <CircularProgress size={24} sx={{ mt: 1 }} />} {/* Adjusted margin */}
         <Button variant="contained" component="label" disabled={uploading}>
           Upload New Photo
           <input type="file" hidden onChange={handlePhotoChange} accept="image/*" />
@@ -115,10 +122,16 @@ export default function Profile() {
         onChange={(e) => setDisplayName(e.target.value)}
         fullWidth
         margin="normal"
-        disabled={savingDisplayName} // Disable while saving
+        disabled={savingDisplayName}
       />
 
-      <Button variant="contained" onClick={handleSave} fullWidth disabled={savingDisplayName} sx={{ mt: 2 }}>
+      <Button
+        variant="contained"
+        onClick={handleSave}
+        fullWidth
+        disabled={savingDisplayName || displayName === currentUser?.displayName} // Disable if no changes
+        sx={{ mt: 2 }}
+      >
         {savingDisplayName ? <CircularProgress size={24} color="inherit" /> : 'Save Profile'}
       </Button>
     </Box>
