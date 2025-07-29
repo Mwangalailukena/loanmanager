@@ -1,3 +1,4 @@
+// src/components/AppBarTop.jsx
 import React, { useState, useEffect } from "react";
 import {
   AppBar,
@@ -10,7 +11,7 @@ import {
   Avatar,
   Divider,
   ListItemIcon,
-  Dialog,
+  Dialog, // Already imported
   useMediaQuery,
   useTheme,
   Popover,
@@ -29,6 +30,7 @@ import {
   Close as CloseIcon,
   Brightness4 as Brightness4Icon,
   Brightness7 as Brightness7Icon,
+  AccountCircle as AccountCircleIcon, // <-- New Import: for Profile Icon
 } from "@mui/icons-material";
 import MenuIcon from "@mui/icons-material/Menu";
 import Slide from "@mui/material/Slide";
@@ -40,16 +42,15 @@ import { signOut } from "firebase/auth";
 import { auth } from "../firebase";
 
 import SettingsPage from "../pages/SettingsPage";
-// --- Change this line ---
-import ChangePassword from "../pages/ChangePassword.jsx"; // Corrected: Import as ChangePassword from ChangePassword.jsx
+import ChangePassword from "../pages/ChangePassword.jsx";
 import HelpDialog from "./HelpDialog";
+import Profile from "../pages/Profile"; // <-- NEW IMPORT: Import your Profile component here
 
 import dayjs from "dayjs";
 
 function stringToInitials(name = "") {
   return name
     .split(" ")
-
     .map((n) => n[0])
     .join("")
     .toUpperCase();
@@ -60,7 +61,7 @@ const Transition = React.forwardRef(function Transition(props, ref) {
 });
 
 const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
-  const { user } = useAuth();
+  const { currentUser } = useAuth(); // Changed 'user' to 'currentUser' for consistency with AuthProvider
   const { loans } = useFirestore();
   const navigate = useNavigate();
   const theme = useTheme();
@@ -74,6 +75,8 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [notifications, setNotifications] = useState([]);
+
+  const [profileOpen, setProfileOpen] = useState(false); // <-- NEW STATE: for Profile dialog
 
   const openMenu = Boolean(anchorEl);
   const openNotifications = Boolean(notificationAnchor);
@@ -118,21 +121,48 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
 
   const handleSettingsClick = () => {
     handleMenuClose();
+    // Decide if you want a dialog or navigation for settings based on screen size
     if (isMobile) {
       setSettingsOpen(true);
-    } else if (window.location.pathname !== "/settings") {
-      navigate("/settings");
+    } else {
+      // If not mobile, navigate to a dedicated settings page if it exists
+      // If you always want a dialog regardless of screen size, remove this 'else' block
+      if (window.location.pathname !== "/settings") {
+         navigate("/settings"); // Assuming you have a /settings route
+      }
     }
   };
 
   const handleChangePasswordClick = () => {
     handleMenuClose();
+    // Decide if you want a dialog or navigation for change password based on screen size
     if (isMobile) {
       setChangePasswordOpen(true);
-    } else if (window.location.pathname !== "/change-password") {
-      navigate("/change-password");
+    } else {
+      // If not mobile, navigate to a dedicated change-password page if it exists
+      // If you always want a dialog regardless of screen size, remove this 'else' block
+      if (window.location.pathname !== "/change-password") {
+        navigate("/change-password"); // Assuming you have a /change-password route
+      }
     }
   };
+
+  // <-- NEW HANDLERS for Profile Dialog
+  const handleProfileClick = () => {
+    handleMenuClose();
+    // Decide if you want a dialog or navigation for profile based on screen size
+    if (isMobile) {
+      setProfileOpen(true);
+    } else {
+      // If not mobile, navigate to a dedicated profile page if it exists
+      // If you always want a dialog regardless of screen size, remove this 'else' block
+      if (window.location.pathname !== "/profile") {
+        navigate("/profile"); // Assuming you have a /profile route
+      }
+    }
+  };
+  const closeProfileDialog = () => setProfileOpen(false);
+  // NEW HANDLERS for Profile Dialog -->
 
   const handleActivityClick = () => {
     handleMenuClose();
@@ -293,8 +323,9 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
                   fontSize: "0.875rem",
                   fontWeight: 600,
                 }}
+                src={currentUser?.photoURL || ''} // Use photoURL from currentUser
               >
-                {stringToInitials(user?.displayName || "U")}
+                {stringToInitials(currentUser?.displayName || "U")} {/* Use displayName from currentUser */}
               </Avatar>
             </IconButton>
           </Tooltip>
@@ -337,12 +368,22 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
         transformOrigin={{ horizontal: "right", vertical: "top" }}
         anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
       >
+        {/* NEW: Profile Menu Item */}
+        <MenuItem onClick={handleProfileClick}>
+          <ListItemIcon>
+            <AccountCircleIcon fontSize="small" sx={{ color: theme.palette.text.secondary }} />
+          </ListItemIcon>
+          <Typography variant="body2" color="text.primary">
+            Profile
+          </Typography>
+        </MenuItem>
+
         <MenuItem onClick={handleSettingsClick}>
           <ListItemIcon>
             <SettingsIcon fontSize="small" sx={{ color: theme.palette.text.secondary }} />
           </ListItemIcon>
           <Typography variant="body2" color="text.primary">
-            Settings
+            App Settings
           </Typography>
         </MenuItem>
         <MenuItem onClick={handleChangePasswordClick}>
@@ -380,7 +421,7 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
         </MenuItem>
       </Menu>
 
-      {/* Notifications Popover */}
+      {/* Notifications Popover (No changes here) */}
       <Popover
         open={openNotifications}
         anchorEl={notificationAnchor}
@@ -433,7 +474,7 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
         )}
       </Popover>
 
-      {/* Settings Dialog (non-fullscreen) */}
+      {/* Settings Dialog */}
       <Dialog
         open={settingsOpen}
         onClose={closeSettingsDialog}
@@ -445,7 +486,7 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
         <SettingsPage onClose={closeSettingsDialog} />
       </Dialog>
 
-      {/* Change Password Dialog (non-fullscreen) */}
+      {/* Change Password Dialog */}
       <Dialog
         open={changePasswordOpen}
         onClose={closeChangePasswordDialog}
@@ -454,12 +495,24 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
         fullWidth
         PaperProps={{ sx: { borderRadius: 3, mx: 2 } }}
       >
-        {/* --- Change this line --- */}
-        <ChangePassword onClose={closeChangePasswordDialog} /> {/* Render ChangePassword component */}
+        <ChangePassword onClose={closeChangePasswordDialog} />
       </Dialog>
 
       {/* Help Dialog */}
       <HelpDialog open={helpOpen} onClose={closeHelpDialog} sx={{ "& .MuiDialog-paper": { borderRadius: 3 } }} />
+
+      {/* NEW: Profile Dialog */}
+      <Dialog
+        open={profileOpen} // Controls visibility
+        onClose={closeProfileDialog} // Allows closing by clicking outside or Esc
+        TransitionComponent={Transition}
+        maxWidth="sm" // Adjust max width as needed for your Profile content
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3, mx: 2 } }} // Consistent styling
+      >
+        {/* Pass the close handler to your Profile component */}
+        <Profile onClose={closeProfileDialog} />
+      </Dialog>
     </>
   );
 };
