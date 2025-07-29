@@ -9,11 +9,11 @@ import {
   Grid,
   IconButton,
   Tooltip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
+  Dialog, // Keep Dialog
+  DialogTitle, // Keep DialogTitle
+  DialogContent, // Keep DialogContent
   Slide,
-  Button, // Added for date range example
+  // Button, // Removed as it was unused in the current setup
 } from "@mui/material";
 import CloseIcon from '@mui/icons-material/Close';
 import dayjs from "dayjs";
@@ -47,14 +47,10 @@ const Charts = ({ loans, selectedMonth }) => {
     endDate: null
   });
 
-  const handleApplyDateRange = () => {
-    // This function would be triggered by a button next to your date pickers
-    // and would update `dateRange` state.
-    // For now, it just shows where you'd handle applying the filter.
-    console.log("Applying date range:", dateRange);
-    // You'd likely re-calculate some data based on this range
-    // and pass it to a new filteredLoansByDateRange memoization.
-  };
+  // Removed handleApplyDateRange as it's no longer used with the button commented out.
+  // const handleApplyDateRange = () => {
+  //   console.log("Applying date range:", dateRange);
+  // };
 
   // Define a consistent height for all chart containers
   const chartPaperHeight = 250;
