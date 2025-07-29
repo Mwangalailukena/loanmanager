@@ -8,22 +8,18 @@ export function useThemeContext() {
 }
 
 export function ThemeProvider({ children }) {
-  // Check localStorage for saved preference or default to system preference
   const getInitialMode = () => {
     const saved = localStorage.getItem("darkMode");
     if (saved !== null) return saved === "true";
-    // fallback to system preference
     return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
   };
 
   const [darkMode, setDarkMode] = useState(getInitialMode);
 
-  // Save preference on change
   useEffect(() => {
     localStorage.setItem("darkMode", darkMode);
   }, [darkMode]);
 
-  // Create MUI theme based on darkMode state
   const theme = useMemo(
     () =>
       createTheme({
@@ -31,61 +27,60 @@ export function ThemeProvider({ children }) {
           mode: darkMode ? "dark" : "light",
           ...(darkMode
             ? {
-                // Dark Mode Palette: Modern Dark Blue/Green
+                // Dark Mode Palette: Vibrant Purple & Orange
                 primary: {
-                  main: '#80cbc4', // Teal/Aqua (lighter for contrast)
-                  light: '#b2fef7',
-                  dark: '#4f9a94',
+                  main: '#ce93d8', // Light Purple
+                  light: '#ffe4ff',
+                  dark: '#9c64a6',
                 },
                 secondary: {
-                  main: '#f48fb1', // Light pink (retained for contrast/accent)
-                  light: '#ffc1e3',
-                  dark: '#be5f82',
+                  main: '#ffab40', // Deep Orange Accent
+                  light: '#ffdd71',
+                  dark: '#c77c00',
                 },
                 background: {
-                  default: '#1a202c', // Deeper, slightly bluish dark grey
-                  paper: '#2d3748',   // Slightly lighter surface for cards
+                  default: '#1a1a2e', // Very dark blue/purple
+                  paper: '#2a2a47',   // Slightly lighter blue/purple for surfaces
                 },
                 text: {
-                  primary: '#e2e8f0', // Off-white
-                  secondary: '#a0aec0', // Lighter grey
+                  primary: '#ffffff', // White
+                  secondary: '#d1d1d1', // Light grey
                 },
                 divider: 'rgba(255, 255, 255, 0.15)',
-                success: { main: '#68d391' }, // Brighter green
-                info: { main: '#63b3ed' },    // Muted blue
-                warning: { main: '#f6ad55' }, // Muted orange
-                error: { main: '#fc8181' },   // Muted red
+                success: { main: '#69f0ae' }, // Bright green
+                info: { main: '#82b1ff' },    // Light blue
+                warning: { main: '#ffea00' }, // Yellow
+                error: { main: '#ff8a80' },   // Light red
               }
             : {
-                // Light Mode Palette: Modern Muted Blue/Green
+                // Light Mode Palette: Vibrant Purple & Orange
                 primary: {
-                  main: '#3182ce', // Moderate blue
-                  light: '#63b3ed',
-                  dark: '#2b6cb0',
+                  main: '#9c27b0', // Deep Purple
+                  light: '#d05ce3',
+                  dark: '#6a0080',
                 },
                 secondary: {
-                  main: '#d69e2e', // Muted orange/gold for secondary action
-                  light: '#ecc94b',
-                  dark: '#b7791f',
+                  main: '#ff6f00', // Orange
+                  light: '#ffa040',
+                  dark: '#c43e00',
                 },
                 background: {
-                  default: '#f7fafc', // Very light grey/off-white for main app background
-                  paper: '#ffffff',   // Pure white for cards, sidebar
+                  default: '#f3f6f9', // Very light grey
+                  paper: '#ffffff',   // Pure white
                 },
                 text: {
-                  primary: 'rgba(23, 30, 46, 0.87)', // Very dark grey/blue text
-                  secondary: 'rgba(23, 30, 46, 0.6)', // Muted dark grey/blue text
+                  primary: 'rgba(0, 0, 0, 0.87)',
+                  secondary: 'rgba(0, 0, 0, 0.6)',
                 },
-                divider: 'rgba(0, 0, 0, 0.1)',
-                success: { main: '#38a169' }, // Darker green
-                info: { main: '#3182ce' },    // Same as primary
-                warning: { main: '#d69e2e' }, // Same as secondary
-                error: { main: '#e53e3e' },   // Muted red
+                divider: 'rgba(0, 0, 0, 0.12)',
+                success: { main: '#4caf50' },
+                info: { main: '#2196f3' },
+                warning: { main: '#ff9800' },
+                error: { main: '#f44336' },
               }),
         },
         typography: {
           fontFamily: 'Roboto, sans-serif',
-          // optional typography overrides here
         },
         components: {
           MuiAppBar: {
