@@ -21,7 +21,7 @@ import { ResponsiveLine } from "@nivo/line";
 import dayjs from "dayjs";
 import PropTypes from 'prop-types';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import ArrowForwardIcon from '@mui/icons-material/ArrowBack';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward'; // Corrected icon name
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 
 // Define a transition for the Dialog
@@ -35,7 +35,7 @@ const Charts = ({ loans, selectedMonth }) => {
 
   const [currentDisplayMonth, setCurrentDisplayMonth] = useState(selectedMonth);
 
-  // Define a consistent height for all chart containers (smaller than before)
+  // Define a consistent height for all chart containers
   const chartPaperHeight = 250;
   // Calculate inner box height based on paper height and title/tooltip area
   const chartInnerHeight = `calc(${chartPaperHeight}px - ${isMobile ? 55 : 60}px)`;
@@ -44,15 +44,15 @@ const Charts = ({ loans, selectedMonth }) => {
   const [openDialog, setOpenDialog] = useState(false);
   const [dialogChartConfig, setDialogChartConfig] = useState(null); // { type, data, title, keys, indexBy }
 
-  // Define a consistent color palette for loan statuses
+  // Define a consistent color palette for loan statuses - MEMOIZED
   const loanStatusColors = useMemo(() => ({
     'Paid': theme.palette.success.main,    // Green for Paid
     'Active': theme.palette.primary.main,  // Primary/Blue for Active
     'Overdue': theme.palette.error.main,   // Red for Overdue
   }), [theme]);
 
-  // General Nivo colors for charts that don't use specific loan statuses
-  const nivoColors = [
+  // General Nivo colors for charts that don't use specific loan statuses - MEMOIZED
+  const nivoColors = useMemo(() => [
     theme.palette.primary.main,
     theme.palette.success.main,
     theme.palette.info.main,
@@ -60,7 +60,7 @@ const Charts = ({ loans, selectedMonth }) => {
     theme.palette.error.main,
     theme.palette.secondary.main,
     theme.palette.text.secondary,
-  ];
+  ], [theme]);
 
   const handlePreviousMonth = () => {
     const prevMonth = dayjs(currentDisplayMonth).subtract(1, 'month').format('YYYY-MM');
@@ -113,10 +113,17 @@ const Charts = ({ loans, selectedMonth }) => {
     }
   }, [selectedMonth, loans, latestDataMonth]);
 
+  // MEMOIZED: Filter loans for the current display month once
+  const filteredLoansThisMonth = useMemo(() => {
+    if (!loans || loans.length === 0) return [];
+    return loans.filter(loan =>
+      dayjs(loan.startDate).format('YYYY-MM') === currentDisplayMonth
+    );
+  }, [loans, currentDisplayMonth]);
 
   // 1. Data for Monthly Disbursed vs. Collected (Line Chart)
   const monthlySummaryData = useMemo(() => {
-    if (!loans || loans.length === 0) return [];
+    if (!loans || loans.length === 0) return []; // Use full 'loans' for historical data
 
     const monthlyMap = new Map();
 
@@ -156,13 +163,9 @@ const Charts = ({ loans, selectedMonth }) => {
 
   // 2. Data for Loan Status Distribution (Pie Chart) for the selected month
   const loanStatusData = useMemo(() => {
-    if (!loans || loans.length === 0) return [];
+    if (!filteredLoansThisMonth || filteredLoansThisMonth.length === 0) return [];
 
-    const filteredLoans = loans.filter(loan =>
-      dayjs(loan.startDate).format('YYYY-MM') === currentDisplayMonth
-    );
-
-    const statusCounts = filteredLoans.reduce((acc, loan) => {
+    const statusCounts = filteredLoansThisMonth.reduce((acc, loan) => {
       // Ensure only these specific statuses are counted for the pie chart
       const statusName = loan.status;
       if (['Active', 'Repaid', 'Overdue'].includes(statusName)) {
@@ -178,11 +181,11 @@ const Charts = ({ loans, selectedMonth }) => {
       label: status === 'Repaid' ? 'Paid' : status,
       value: statusCounts[status],
     }));
-  }, [loans, currentDisplayMonth]);
+  }, [filteredLoansThisMonth]); // Depends on filteredLoansThisMonth
 
   // 3. Data for Loan Amount Distribution (Bar Chart - simple buckets)
   const loanAmountDistributionData = useMemo(() => {
-    if (!loans || loans.length === 0) return [];
+    if (!filteredLoansThisMonth || filteredLoansThisMonth.length === 0) return [];
 
     const bins = {
       '0-500': 0,
@@ -192,11 +195,7 @@ const Charts = ({ loans, selectedMonth }) => {
       '5000+': 0,
     };
 
-    const filteredLoans = loans.filter(loan =>
-      dayjs(loan.startDate).format('YYYY-MM') === currentDisplayMonth
-    );
-
-    filteredLoans.forEach(loan => {
+    filteredLoansThisMonth.forEach(loan => {
       const principal = Number(loan.principal || 0);
       if (principal <= 500) bins['0-500']++;
       else if (principal <= 1000) bins['501-1000']++;
@@ -209,11 +208,11 @@ const Charts = ({ loans, selectedMonth }) => {
       range,
       count: bins[range],
     }));
-  }, [loans, currentDisplayMonth]);
+  }, [filteredLoansThisMonth]); // Depends on filteredLoansThisMonth
 
   // 4. Data: Loan Status Count Over Time (for Stacked Bar Chart)
   const loanStatusCountOverTimeData = useMemo(() => {
-    if (!loans || loans.length === 0) return [];
+    if (!loans || loans.length === 0) return []; // Use full 'loans' for historical data
 
     const monthlyStatusMap = new Map();
 
@@ -269,7 +268,172 @@ const Charts = ({ loans, selectedMonth }) => {
     legends: { text: { fill: theme.palette.text.primary, fontSize: 12 } },
   }), [theme]);
 
-  // --- Memoized Props for Dialog Charts ---
+  // --- Memoized Props for SMALL Charts ---
+
+  // Line Chart Props (Small)
+  const smallLineChartMargin = useMemo(() => ({ top: 10, right: 60, bottom: 40, left: 50 }), []);
+  const smallLineChartAxisBottom = useMemo(() => ({
+    format: '%b %Y',
+    tickValues: 'every 1 month',
+    legend: 'Month',
+    legendOffset: 30,
+    legendPosition: 'middle',
+  }), []);
+  const smallLineChartAxisLeft = useMemo(() => ({
+    legend: 'Amount (ZMW)',
+    legendOffset: -40,
+    legendPosition: 'middle',
+  }), []);
+  const smallLineChartLegends = useMemo(() => ([
+    {
+      anchor: 'bottom-right',
+      direction: 'column',
+      justify: false,
+      translateX: 60,
+      translateY: 0,
+      itemsSpacing: 0,
+      itemDirection: 'left-to-right',
+      itemWidth: 60,
+      itemHeight: 16,
+      itemOpacity: 0.75,
+      symbolSize: 8,
+      symbolShape: 'circle',
+      symbolBorderColor: 'rgba(0, 0, 0, .5)',
+      effects: [
+        {
+          on: 'hover',
+          style: {
+            itemBackground: 'rgba(0, 0, 0, .03)',
+            itemOpacity: 1
+          }
+        }
+      ]
+    }
+  ]), []);
+
+  // Pie Chart Props (Small)
+  const smallPieChartMargin = useMemo(() => ({ top: 10, right: 40, bottom: 40, left: 40 }), []);
+  const smallPieChartBorderColor = useMemo(() => ({ from: 'color', modifiers: [['darker', 0.2]] }), []);
+  const smallPieChartArcLinkLabelsColor = useMemo(() => ({ from: 'color' }), []);
+  const smallPieChartArcLabelsTextColor = useMemo(() => ({ from: 'color', modifiers: [['darker', 2]] }), []);
+  const smallPieChartLegends = useMemo(() => ([
+    {
+      anchor: 'bottom',
+      direction: 'row',
+      justify: false,
+      translateX: 0,
+      translateY: 30,
+      itemsSpacing: 0,
+      itemWidth: 70,
+      itemHeight: 14,
+      itemTextColor: theme.palette.text.primary,
+      itemDirection: 'left-to-right',
+      itemOpacity: 1,
+      symbolSize: 12,
+      symbolShape: 'circle',
+      effects: [
+        {
+          on: 'hover',
+          style: {
+            itemTextColor: theme.palette.primary.main
+          }
+        }
+      ]
+    }
+  ]), [theme]);
+
+  // Bar Chart Props (Small)
+  const smallBarChartMargin = useMemo(() => ({ top: 10, right: 40, bottom: 60, left: 50 }), []);
+  const smallBarChartBorderColor = useMemo(() => ({ from: 'color', modifiers: [['darker', 1.6]] }), []);
+  const smallBarChartAxisBottom = useMemo(() => ({
+    tickSize: 5,
+    tickPadding: 5,
+    tickRotation: isMobile ? 45 : 0,
+    legend: 'Loan Amount Range',
+    legendPosition: 'middle',
+    legendOffset: isMobile ? 45 : 35,
+  }), [isMobile]);
+  const smallBarChartAxisLeft = useMemo(() => ({
+    tickSize: 5,
+    tickPadding: 5,
+    tickRotation: 0,
+    legend: 'Number of Loans',
+    legendPosition: 'middle',
+    legendOffset: -40,
+  }), []);
+  const smallBarChartLabelTextColor = useMemo(() => ({ from: 'color', modifiers: [['darker', 1.6]] }), []);
+  const smallBarChartLegends = useMemo(() => ([
+    {
+      dataFrom: 'keys',
+      anchor: 'bottom-right',
+      direction: 'column',
+      justify: false,
+      translateX: 80,
+      translateY: 0,
+      itemsSpacing: 2,
+      itemWidth: 80,
+      itemHeight: 18,
+      itemDirection: 'left-to-right',
+      itemOpacity: 0.85,
+      symbolSize: 16,
+      effects: [
+        {
+          on: 'hover',
+          style: {
+            itemOpacity: 1
+          }
+        }
+      ]
+    }
+  ]), []);
+
+  // Stacked Bar Chart Props (Small)
+  const smallStackedBarChartMargin = useMemo(() => ({ top: 10, right: 60, bottom: 60, left: 50 }), []);
+  const smallStackedBarChartBorderColor = useMemo(() => ({ from: 'color', modifiers: [['darker', 1.6]] }), []);
+  const smallStackedBarChartAxisBottom = useMemo(() => ({
+    tickSize: 5,
+    tickPadding: 5,
+    tickRotation: isMobile ? 45 : 0,
+    legend: 'Month',
+    legendPosition: 'middle',
+    legendOffset: isMobile ? 50 : 35,
+    format: value => dayjs(value).format('MMM YY'),
+  }), [isMobile]);
+  const smallStackedBarChartAxisLeft = useMemo(() => ({
+    tickSize: 5,
+    tickPadding: 5,
+    tickRotation: 0,
+    legend: 'Number of Loans',
+    legendPosition: 'middle',
+    legendOffset: -40,
+  }), []);
+  const smallStackedBarChartLabelTextColor = useMemo(() => ({ from: 'color', modifiers: [['darker', 1.6]] }), []);
+  const smallStackedBarChartLegends = useMemo(() => ([
+    {
+      dataFrom: 'keys',
+      anchor: 'bottom-right',
+      direction: 'column',
+      justify: false,
+      translateX: 80,
+      translateY: 0,
+      itemsSpacing: 2,
+      itemWidth: 80,
+      itemHeight: 18,
+      itemDirection: 'left-to-right',
+      itemOpacity: 0.85,
+      symbolSize: 16,
+      // Custom legend data to show 'Paid' instead of 'Repaid'
+      data: ['Active', 'Paid', 'Overdue'].map(id => ({
+        id: id,
+        label: id,
+        color: loanStatusColors[id]
+      })),
+      effects: [{ on: 'hover', style: { itemOpacity: 1 } }]
+    }
+  ]), [loanStatusColors]);
+
+
+  // --- Memoized Props for DIALOG Charts ---
 
   // Line Chart Props
   const dialogLineChartMargin = useMemo(() => ({ top: 40, right: 120, bottom: 80, left: 80 }), []);
@@ -401,9 +565,15 @@ const Charts = ({ loans, selectedMonth }) => {
       itemDirection: 'left-to-right',
       itemOpacity: 0.85,
       symbolSize: 20,
+      // Custom legend data to show 'Paid' instead of 'Repaid'
+      data: ['Active', 'Paid', 'Overdue'].map(id => ({
+        id: id,
+        label: id,
+        color: loanStatusColors[id]
+      })),
       effects: [{ on: 'hover', style: { itemOpacity: 1 } }]
     }
-  ]), []);
+  ]), [loanStatusColors]);
 
 
   // Handle loading state
@@ -459,55 +629,20 @@ const Charts = ({ loans, selectedMonth }) => {
               <Box sx={{ height: chartInnerHeight }}>
                 <ResponsiveLine
                   data={monthlySummaryData}
-                  margin={{ top: 10, right: 60, bottom: 40, left: 50 }}
+                  margin={smallLineChartMargin}
                   xScale={{ type: 'time', format: '%Y-%m-%d', useUTC: false, precision: 'month' }}
                   xFormat="time:%Y-%m-%d"
                   yScale={{ type: 'linear', min: 'auto', max: 'auto', stacked: false, reverse: false }}
                   yFormat=" >-.2f"
                   axisTop={null}
                   axisRight={null}
-                  axisBottom={{
-                    format: '%b %Y',
-                    tickValues: 'every 1 month',
-                    legend: 'Month',
-                    legendOffset: 30,
-                    legendPosition: 'middle',
-                  }}
-                  axisLeft={{
-                    legend: 'Amount (ZMW)',
-                    legendOffset: -40,
-                    legendPosition: 'middle',
-                  }}
+                  axisBottom={smallLineChartAxisBottom}
+                  axisLeft={smallLineChartAxisLeft}
                   pointSize={4}
                   pointBorderWidth={0.5}
                   pointBorderColor={{ from: 'serieColor' }}
                   useMesh={true}
-                  legends={[
-                    {
-                      anchor: 'bottom-right',
-                      direction: 'column',
-                      justify: false,
-                      translateX: 60,
-                      translateY: 0,
-                      itemsSpacing: 0,
-                      itemDirection: 'left-to-right',
-                      itemWidth: 60,
-                      itemHeight: 16,
-                      itemOpacity: 0.75,
-                      symbolSize: 8,
-                      symbolShape: 'circle',
-                      symbolBorderColor: 'rgba(0, 0, 0, .5)',
-                      effects: [
-                        {
-                          on: 'hover',
-                          style: {
-                            itemBackground: 'rgba(0, 0, 0, .03)',
-                            itemOpacity: 1
-                          }
-                        }
-                      ]
-                    }
-                  ]}
+                  legends={smallLineChartLegends}
                   theme={commonNivoTheme}
                   colors={nivoColors}
                   ariaLabel="Monthly Disbursements and Collections Line Chart"
@@ -539,60 +674,20 @@ const Charts = ({ loans, selectedMonth }) => {
               <Box sx={{ height: chartInnerHeight }}>
                 <ResponsivePie
                   data={loanStatusData}
-                  margin={{ top: 10, right: 40, bottom: 40, left: 40 }}
+                  margin={smallPieChartMargin}
                   innerRadius={0.5}
                   padAngle={0.7}
                   cornerRadius={3}
                   activeOuterRadiusOffset={8}
                   borderWidth={1}
-                  borderColor={{
-                    from: 'color',
-                    modifiers: [
-                      [
-                        'darker',
-                        0.2
-                      ]
-                    ]
-                  }}
+                  borderColor={smallPieChartBorderColor}
                   arcLinkLabelsSkipAngle={10}
                   arcLinkLabelsTextColor={theme.palette.text.primary}
                   arcLinkLabelsThickness={2}
-                  arcLinkLabelsColor={{ from: 'color' }}
+                  arcLinkLabelsColor={smallPieChartArcLinkLabelsColor}
                   arcLabelsSkipAngle={10}
-                  arcLabelsTextColor={{
-                    from: 'color',
-                    modifiers: [
-                      [
-                        'darker',
-                        2
-                      ]
-                    ]
-                  }}
-                  legends={[
-                    {
-                      anchor: 'bottom',
-                      direction: 'row',
-                      justify: false,
-                      translateX: 0,
-                      translateY: 30,
-                      itemsSpacing: 0,
-                      itemWidth: 70,
-                      itemHeight: 14,
-                      itemTextColor: theme.palette.text.primary,
-                      itemDirection: 'left-to-right',
-                      itemOpacity: 1,
-                      symbolSize: 12,
-                      symbolShape: 'circle',
-                      effects: [
-                        {
-                          on: 'hover',
-                          style: {
-                            itemTextColor: theme.palette.primary.main
-                          }
-                        }
-                      ]
-                    }
-                  ]}
+                  arcLabelsTextColor={smallPieChartArcLabelsTextColor}
+                  legends={smallPieChartLegends}
                   theme={commonNivoTheme}
                   colors={({ id }) => loanStatusColors[id]} // Use specific loan status colors
                   ariaLabel="Loan Status Distribution Pie Chart"
@@ -626,73 +721,20 @@ const Charts = ({ loans, selectedMonth }) => {
                   data={loanAmountDistributionData}
                   keys={['count']}
                   indexBy="range"
-                  margin={{ top: 10, right: 40, bottom: 60, left: 50 }}
+                  margin={smallBarChartMargin}
                   padding={0.3}
                   valueScale={{ type: 'linear' }}
                   indexScale={{ type: 'band', round: true }}
                   colors={nivoColors[0]} // Use a general color for this chart
-                  borderColor={{
-                    from: 'color',
-                    modifiers: [
-                      [
-                        'darker',
-                        1.6
-                      ]
-                    ]
-                  }}
+                  borderColor={smallBarChartBorderColor}
                   axisTop={null}
                   axisRight={null}
-                  axisBottom={{
-                    tickSize: 5,
-                    tickPadding: 5,
-                    tickRotation: isMobile ? 45 : 0,
-                    legend: 'Loan Amount Range',
-                    legendPosition: 'middle',
-                    legendOffset: isMobile ? 45 : 35,
-                  }}
-                  axisLeft={{
-                    tickSize: 5,
-                    tickPadding: 5,
-                    tickRotation: 0,
-                    legend: 'Number of Loans',
-                    legendPosition: 'middle',
-                    legendOffset: -40,
-                  }}
+                  axisBottom={smallBarChartAxisBottom}
+                  axisLeft={smallBarChartAxisLeft}
                   labelSkipWidth={12}
                   labelSkipHeight={12}
-                  labelTextColor={{
-                    from: 'color',
-                    modifiers: [
-                      [
-                        'darker',
-                        1.6
-                      ]
-                    ]
-                  }}
-                  legends={[
-                    {
-                      dataFrom: 'keys',
-                      anchor: 'bottom-right',
-                      direction: 'column',
-                      justify: false,
-                      translateX: 80,
-                      translateY: 0,
-                      itemsSpacing: 2,
-                      itemWidth: 80,
-                      itemHeight: 18,
-                      itemDirection: 'left-to-right',
-                      itemOpacity: 0.85,
-                      symbolSize: 16,
-                      effects: [
-                        {
-                          on: 'hover',
-                          style: {
-                            itemOpacity: 1
-                          }
-                        }
-                      ]
-                    }
-                  ]}
+                  labelTextColor={smallBarChartLabelTextColor}
+                  legends={smallBarChartLegends}
                   role="application"
                   ariaLabel="Loan Amount Distribution Bar Chart"
                   theme={commonNivoTheme}
@@ -726,58 +768,21 @@ const Charts = ({ loans, selectedMonth }) => {
                   data={loanStatusCountOverTimeData}
                   keys={['Active', 'Repaid', 'Overdue']} // Use Repaid internally
                   indexBy="month"
-                  margin={{ top: 10, right: 60, bottom: 60, left: 50 }}
+                  margin={smallStackedBarChartMargin}
                   padding={0.3}
                   groupMode="stacked"
                   valueScale={{ type: 'linear' }}
                   indexScale={{ type: 'band', round: true }}
                   colors={({ id }) => loanStatusColors[id === 'Repaid' ? 'Paid' : id]} // Map 'Repaid' to 'Paid' color
-                  borderColor={{ from: 'color', modifiers: [['darker', 1.6]] }}
+                  borderColor={smallStackedBarChartBorderColor}
                   axisTop={null}
                   axisRight={null}
-                  axisBottom={{
-                    tickSize: 5,
-                    tickPadding: 5,
-                    tickRotation: isMobile ? 45 : 0,
-                    legend: 'Month',
-                    legendPosition: 'middle',
-                    legendOffset: isMobile ? 50 : 35,
-                    format: value => dayjs(value).format('MMM YY'),
-                  }}
-                  axisLeft={{
-                    tickSize: 5,
-                    tickPadding: 5,
-                    tickRotation: 0,
-                    legend: 'Number of Loans',
-                    legendPosition: 'middle',
-                    legendOffset: -40,
-                  }}
+                  axisBottom={smallStackedBarChartAxisBottom}
+                  axisLeft={smallStackedBarChartAxisLeft}
                   labelSkipWidth={12}
                   labelSkipHeight={12}
-                  labelTextColor={{ from: 'color', modifiers: [['darker', 1.6]] }}
-                  legends={[
-                    {
-                      dataFrom: 'keys',
-                      anchor: 'bottom-right',
-                      direction: 'column',
-                      justify: false,
-                      translateX: 80,
-                      translateY: 0,
-                      itemsSpacing: 2,
-                      itemWidth: 80,
-                      itemHeight: 18,
-                      itemDirection: 'left-to-right',
-                      itemOpacity: 0.85,
-                      symbolSize: 16,
-                      // Custom legend data to show 'Paid' instead of 'Repaid'
-                      data: ['Active', 'Paid', 'Overdue'].map(id => ({
-                        id: id,
-                        label: id,
-                        color: loanStatusColors[id]
-                      })),
-                      effects: [{ on: 'hover', style: { itemOpacity: 1 } }]
-                    }
-                  ]}
+                  labelTextColor={smallStackedBarChartLabelTextColor}
+                  legends={smallStackedBarChartLegends}
                   role="application"
                   ariaLabel="Loan Status Count Over Time Stacked Bar Chart"
                   theme={commonNivoTheme}
@@ -904,38 +909,4 @@ const Charts = ({ loans, selectedMonth }) => {
                 borderColor={dialogStackedBarChartBorderColor}
                 axisTop={null}
                 axisRight={null}
-                axisBottom={dialogStackedBarChartAxisBottom}
-                axisLeft={dialogStackedBarChartAxisLeft}
-                labelSkipWidth={12}
-                labelSkipHeight={12}
-                labelTextColor={dialogStackedBarChartLabelTextColor}
-                legends={dialogStackedBarChartLegends.map(legend => ({ // Map legends to show 'Paid' instead of 'Repaid'
-                    ...legend,
-                    data: ['Active', 'Paid', 'Overdue'].map(id => ({
-                        id: id,
-                        label: id,
-                        color: loanStatusColors[id]
-                    })),
-                }))}
-                role="application"
-                ariaLabel="Loan Status Count Over Time Stacked Bar Chart (Dialog)"
-                theme={dialogNivoTheme}
-              />
-            </Box>
-          ) : (
-            <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.palette.text.secondary }}>
-              <Typography variant="body1">No data to display in this chart.</Typography>
-            </Box>
-          )}
-        </DialogContent>
-      </Dialog>
-    </Box>
-  );
-};
-
-Charts.propTypes = {
-  loans: PropTypes.array,
-  selectedMonth: PropTypes.string.isRequired,
-};
-
-export default Charts;
+                axisBottom={dialog
