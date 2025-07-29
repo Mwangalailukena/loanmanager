@@ -21,7 +21,8 @@ import { ResponsiveLine } from "@nivo/line";
 import dayjs from "dayjs";
 import PropTypes from 'prop-types';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward'; // Corrected icon name
+// Corrected import path for ArrowForwardIcon
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 
 // Define a transition for the Dialog
@@ -236,7 +237,7 @@ const Charts = ({ loans, selectedMonth }) => {
     return Array.from(monthlyStatusMap.values()).sort((a, b) => dayjs(a.month).diff(dayjs(b.month)));
   }, [loans]);
 
-  // Define common theme for Nivo charts (for small view)
+  // Define common theme for Nivo charts (for small view) - MEMOIZED
   const commonNivoTheme = useMemo(() => ({
     axis: {
       ticks: {
@@ -257,7 +258,7 @@ const Charts = ({ loans, selectedMonth }) => {
     },
   }), [theme, isMobile]);
 
-  // Define theme for Nivo charts in the dialog (larger view)
+  // Define theme for Nivo charts in the dialog (larger view) - MEMOIZED
   const dialogNivoTheme = useMemo(() => ({
     axis: {
       ticks: { text: { fill: theme.palette.text.secondary, fontSize: 12 } },
@@ -909,4 +910,32 @@ const Charts = ({ loans, selectedMonth }) => {
                 borderColor={dialogStackedBarChartBorderColor}
                 axisTop={null}
                 axisRight={null}
-                axisBottom={dialog
+                axisBottom={dialogStackedBarChartAxisBottom} // This was the line with the syntax error
+                axisLeft={dialogStackedBarChartAxisLeft}
+                labelSkipWidth={12}
+                labelSkipHeight={12}
+                labelTextColor={dialogStackedBarChartLabelTextColor}
+                legends={dialogStackedBarChartLegends}
+                role="application"
+                ariaLabel="Loan Status Count Over Time Stacked Bar Chart (Dialog)"
+                theme={dialogNivoTheme}
+              />
+            </Box>
+          ) : (
+            <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.palette.text.secondary }}>
+              <Typography variant="body1">No data to display in this chart.</Typography>
+            </Box>
+          )}
+        </DialogContent>
+      </Dialog>
+    </Box>
+  );
+};
+
+Charts.propTypes = {
+  loans: PropTypes.array,
+  selectedMonth: PropTypes.string.isRequired,
+};
+
+// >>> Apply React.memo for overall component memoization <<<
+export default React.memo(Charts);
