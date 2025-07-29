@@ -1021,8 +1021,8 @@ export default function Dashboard() {
           aria-label="add"
           sx={{
             position: "fixed",
-            bottom: isMobile ? 16 : 32,
-            right: isMobile ? 16 : 32,
+            bottom: isMobile ? 16 : 64,
+            right: isMobile ? 16 : 64,
             zIndex: theme.zIndex.speedDial, // <-- Add this line
           }}
           onClick={() => navigate("/loans/new")}
