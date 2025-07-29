@@ -31,48 +31,56 @@ export function ThemeProvider({ children }) {
           mode: darkMode ? "dark" : "light",
           ...(darkMode
             ? {
-                // Standard Material-UI Dark Mode Palette
+                // Dark Mode Palette: Modern Dark Blue/Green
                 primary: {
-                  main: '#90caf9', // Light blue
+                  main: '#80cbc4', // Teal/Aqua (lighter for contrast)
+                  light: '#b2fef7',
+                  dark: '#4f9a94',
                 },
                 secondary: {
-                  main: '#f48fb1', // Light pink
+                  main: '#f48fb1', // Light pink (retained for contrast/accent)
+                  light: '#ffc1e3',
+                  dark: '#be5f82',
                 },
                 background: {
-                  default: '#121212', // Very dark grey
-                  paper: '#1d1d1d',   // Slightly lighter dark grey for surfaces
+                  default: '#1a202c', // Deeper, slightly bluish dark grey
+                  paper: '#2d3748',   // Slightly lighter surface for cards
                 },
                 text: {
-                  primary: '#ffffff', // White
-                  secondary: '#b0b0b0', // Light grey
+                  primary: '#e2e8f0', // Off-white
+                  secondary: '#a0aec0', // Lighter grey
                 },
-                divider: 'rgba(255, 255, 255, 0.12)',
-                success: { main: '#66bb6a' },
-                info: { main: '#29b6f6' },
-                warning: { main: '#ffa726' },
-                error: { main: '#ef5350' },
+                divider: 'rgba(255, 255, 255, 0.15)',
+                success: { main: '#68d391' }, // Brighter green
+                info: { main: '#63b3ed' },    // Muted blue
+                warning: { main: '#f6ad55' }, // Muted orange
+                error: { main: '#fc8181' },   // Muted red
               }
             : {
-                // All-White Light Mode Palette (Default Material-UI feel)
+                // Light Mode Palette: Modern Muted Blue/Green
                 primary: {
-                  main: '#1976d2', // Standard Material-UI blue
+                  main: '#3182ce', // Moderate blue
+                  light: '#63b3ed',
+                  dark: '#2b6cb0',
                 },
                 secondary: {
-                  main: '#dc004e', // Standard Material-UI pink
+                  main: '#d69e2e', // Muted orange/gold for secondary action
+                  light: '#ecc94b',
+                  dark: '#b7791f',
                 },
                 background: {
-                  default: '#ffffff', // Pure white for the main app background
-                  paper: '#ffffff',   // Pure white for cards, sidebar, etc.
+                  default: '#f7fafc', // Very light grey/off-white for main app background
+                  paper: '#ffffff',   // Pure white for cards, sidebar
                 },
                 text: {
-                  primary: 'rgba(0, 0, 0, 0.87)', // Standard dark text for contrast on white
-                  secondary: 'rgba(0, 0, 0, 0.6)', // Standard muted text
+                  primary: 'rgba(23, 30, 46, 0.87)', // Very dark grey/blue text
+                  secondary: 'rgba(23, 30, 46, 0.6)', // Muted dark grey/blue text
                 },
-                divider: 'rgba(0, 0, 0, 0.12)',
-                success: { main: '#4caf50' },
-                info: { main: '#2196f3' },
-                warning: { main: '#ff9800' },
-                error: { main: '#f44336' },
+                divider: 'rgba(0, 0, 0, 0.1)',
+                success: { main: '#38a169' }, // Darker green
+                info: { main: '#3182ce' },    // Same as primary
+                warning: { main: '#d69e2e' }, // Same as secondary
+                error: { main: '#e53e3e' },   // Muted red
               }),
         },
         typography: {
@@ -83,10 +91,8 @@ export function ThemeProvider({ children }) {
           MuiAppBar: {
             styleOverrides: {
               root: ({ theme }) => ({
-                // *** CHANGE HERE: Set AppBar background to paper color in light mode ***
                 backgroundColor: theme.palette.mode === 'dark' ? theme.palette.background.paper : theme.palette.background.paper,
-                // You might want to adjust shadow if white on white is hard to distinguish
-                boxShadow: theme.shadows[theme.palette.mode === 'dark' ? 0 : 1], // Changed to shadow 1 for subtle elevation
+                boxShadow: theme.shadows[theme.palette.mode === 'dark' ? 0 : 1],
               }),
             },
           },
@@ -128,7 +134,6 @@ export function ThemeProvider({ children }) {
           MuiToolbar: {
             styleOverrides: {
                 root: ({ theme }) => ({
-                    // Toolbar background also matches paper in light mode now
                     backgroundColor: theme.palette.mode === 'dark' ? theme.palette.background.paper : theme.palette.background.paper,
                 }),
             },
