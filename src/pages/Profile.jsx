@@ -12,13 +12,14 @@ import {
 } from "@mui/material";
 import { useAuth } from "../contexts/AuthProvider";
 import { getAuth, updateProfile } from "firebase/auth";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage"; // <-- Import Storage functions
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import app from "../firebase"; // Assuming your firebase app instance is here
 
-export default function Profile() {
-  const { currentUser, refreshUser } = useAuth(); // Also get refreshUser
-  const auth = getAuth(app); // Ensure auth is initialized with app
-  const storage = getStorage(app); // Initialize storage with app
+// Accept onClose prop
+export default function Profile({ onClose }) {
+  const { currentUser, refreshUser } = useAuth();
+  const auth = getAuth(app);
+  const storage = getStorage(app);
 
   const [displayName, setDisplayName] = useState(currentUser?.displayName || "");
   const [photoURL, setPhotoURL] = useState(currentUser?.photoURL || "");
@@ -34,6 +35,12 @@ export default function Profile() {
     }
   }, [currentUser]);
 
+  // Optional: Clear messages when component mounts/unmounts or when dialog is re-opened
+  // This helps ensure a clean state if the dialog is opened multiple times
+  useEffect(() => {
+    setMessage(""); // Clear message when component mounts or relevant props change
+  }, [onClose]); // Or you might use a specific 'open' prop from the dialog host
+
   const handlePhotoChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -42,20 +49,12 @@ export default function Profile() {
     setUploading(true);
 
     try {
-      // Create a storage reference: profile_pictures/{user_id}/profile.jpg (or original file name)
-      // Using user.uid ensures each user has their own folder
       const storageRef = ref(storage, `profile_pictures/${currentUser.uid}/${file.name}`);
-
-      // Upload the file
       const snapshot = await uploadBytes(storageRef, file);
-
-      // Get the download URL
       const newPhotoURL = await getDownloadURL(snapshot.ref);
 
-      // Update Firebase Auth user profile with the new photoURL
       await updateProfile(auth.currentUser, { photoURL: newPhotoURL });
 
-      // Update local state and trigger context refresh
       setPhotoURL(newPhotoURL);
       await refreshUser(); // Important: Refresh user in AuthProvider to get latest data
       setMessage("Profile photo updated successfully!");
@@ -71,11 +70,12 @@ export default function Profile() {
     setMessage("");
     setSavingDisplayName(true);
     try {
-      // Check if display name has actually changed to avoid unnecessary API calls
       if (displayName !== currentUser?.displayName) {
         await updateProfile(auth.currentUser, { displayName });
-        await refreshUser(); // Refresh user in AuthProvider to get latest data
+        await refreshUser();
         setMessage("Profile updated successfully.");
+        // Optional: Close dialog on successful save
+        // if (onClose) onClose();
       } else {
         setMessage("No changes to save.");
       }
@@ -88,7 +88,7 @@ export default function Profile() {
   };
 
   return (
-    <Box maxWidth={400} mx="auto" p={3}>
+    <Box maxWidth={400} mx="auto" p={3}> {/* Add padding for dialog content */}
       <Typography variant="h4" gutterBottom>
         Profile
       </Typography>
@@ -105,11 +105,11 @@ export default function Profile() {
 
       <Stack spacing={2} alignItems="center" mb={3}>
         <Avatar
-          src={photoURL || currentUser?.photoURL || 'https://via.placeholder.com/100?text=No+Photo'} // Fallback for no photo
+          src={photoURL || currentUser?.photoURL || 'https://via.placeholder.com/100?text=No+Photo'}
           alt={displayName || "User Avatar"}
           sx={{ width: 100, height: 100 }}
         />
-        {uploading && <CircularProgress size={24} sx={{ mt: 1 }} />} {/* Adjusted margin */}
+        {uploading && <CircularProgress size={24} sx={{ mt: 1 }} />}
         <Button variant="contained" component="label" disabled={uploading}>
           Upload New Photo
           <input type="file" hidden onChange={handlePhotoChange} accept="image/*" />
@@ -129,10 +129,20 @@ export default function Profile() {
         variant="contained"
         onClick={handleSave}
         fullWidth
-        disabled={savingDisplayName || displayName === currentUser?.displayName} // Disable if no changes
+        disabled={savingDisplayName || displayName === currentUser?.displayName}
         sx={{ mt: 2 }}
       >
         {savingDisplayName ? <CircularProgress size={24} color="inherit" /> : 'Save Profile'}
+      </Button>
+
+      {/* Optional: Add a close button if the dialog doesn't have its own */}
+      <Button
+        variant="outlined"
+        onClick={onClose} // Use the onClose prop to close the dialog
+        fullWidth
+        sx={{ mt: 2 }}
+      >
+        Close
       </Button>
     </Box>
   );
