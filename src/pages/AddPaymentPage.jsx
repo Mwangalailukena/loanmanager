@@ -1,4 +1,3 @@
-// src/pages/AddPaymentPage.jsx
 import React, { useState, useEffect, useMemo } from "react";
 import {
   Box,
@@ -16,121 +15,149 @@ import {
   DialogActions,
   Paper,
 } from "@mui/material";
-// Removed DatePicker related imports
-// import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-// import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-// import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { toast } from "react-toastify";
-import dayjs from "dayjs"; // Still needed for internal date handling and display
+
+const OFFLINE_PAYMENTS_KEY = "offlinePayments";
 
 export default function AddPaymentPage() {
   const { loans, addPayment, loadingLoans } = useFirestore();
 
-  const [selectedLoan, setSelectedLoan] = useState(null); // This will hold the loan object
+  const [selectedLoan, setSelectedLoan] = useState(null);
   const [paymentAmount, setPaymentAmount] = useState("");
-  // Removed paymentDate state: const [paymentDate, setPaymentDate] = useState(dayjs());
-  const [generalError, setGeneralError] = useState(""); // General form error
-  const [fieldErrors, setFieldErrors] = useState({}); // Specific field errors
-  const [loading, setLoading] = useState(false); // For form submission
+  const [generalError, setGeneralError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [loading, setLoading] = useState(false);
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
 
-  // Filter active loans for selection
-  const activeLoans = useMemo(() => {
-    return loans.filter(loan => loan.status === "Active");
-  }, [loans]);
+  // On mount: try syncing any offline payments saved in localStorage
+  useEffect(() => {
+    async function syncOfflinePayments() {
+      const savedPayments = JSON.parse(localStorage.getItem(OFFLINE_PAYMENTS_KEY) || "[]");
+      if (savedPayments.length === 0) return;
 
-  // Handle errors for specific fields
+      // Attempt to sync each payment
+      for (const payment of savedPayments) {
+        try {
+          await addPayment(payment.loanId, payment.amount);
+          toast.success(`Offline payment of ZMW ${payment.amount.toFixed(2)} synced for loan ID ${payment.loanId}`);
+          // Remove synced payments after successful sync later below
+        } catch (err) {
+          // If sync fails, keep payment in localStorage and show a toast
+          toast.error(`Failed to sync offline payment for loan ID ${payment.loanId}. Will retry later.`);
+          console.error("Offline payment sync error:", err);
+          return; // stop further syncing now, wait for next online
+        }
+      }
+      // If all synced successfully, clear offline payments storage
+      localStorage.removeItem(OFFLINE_PAYMENTS_KEY);
+    }
+
+    if (navigator.onLine) {
+      syncOfflinePayments();
+    }
+
+    // Also listen to 'online' event to try syncing when connection returns
+    function handleOnline() {
+      syncOfflinePayments();
+    }
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
+  }, [addPayment]);
+
+  const activeLoans = useMemo(() => loans.filter(loan => loan.status === "Active"), [loans]);
+
   const setFieldError = (field, message) => {
     setFieldErrors(prev => ({ ...prev, [field]: message }));
   };
 
   const clearFieldError = (field) => {
     setFieldErrors(prev => {
-      const newState = { ...prev };
-      delete newState[field];
-      return newState;
+      const copy = { ...prev };
+      delete copy[field];
+      return copy;
     });
   };
 
-  // Reset errors when relevant fields change
   useEffect(() => { clearFieldError('loan'); setGeneralError(''); }, [selectedLoan]);
   useEffect(() => { clearFieldError('amount'); setGeneralError(''); }, [paymentAmount]);
-  // Removed useEffect for paymentDate: useEffect(() => { setGeneralError(''); }, [paymentDate]);
 
   const validateForm = () => {
-    let isValid = true;
-    setFieldErrors({}); // Clear all previous field errors
+    let valid = true;
+    setFieldErrors({});
     setGeneralError("");
 
     if (!selectedLoan) {
-      setFieldError('loan', "Please select a borrower/loan.");
-      isValid = false;
+      setFieldError("loan", "Please select a borrower/loan.");
+      valid = false;
     }
 
-    const numPaymentAmount = Number(paymentAmount);
-    if (isNaN(numPaymentAmount) || numPaymentAmount <= 0) {
-      setFieldError('amount', "Payment amount must be a valid positive number.");
-      isValid = false;
+    const numAmount = Number(paymentAmount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      setFieldError("amount", "Payment amount must be a valid positive number.");
+      valid = false;
     } else if (selectedLoan) {
       const remainingBalance = selectedLoan.totalRepayable - (selectedLoan.repaidAmount || 0);
-      // Allow a tiny tolerance for floating point arithmetic, e.g., 0.0001
-      if (numPaymentAmount > remainingBalance + 0.0001) {
-        setFieldError('amount', `Payment (ZMW ${numPaymentAmount.toFixed(2)}) exceeds remaining balance (ZMW ${remainingBalance.toFixed(2)}).`);
-        isValid = false;
+      if (numAmount > remainingBalance + 0.0001) {
+        setFieldError(
+          "amount",
+          `Payment (ZMW ${numAmount.toFixed(2)}) exceeds remaining balance (ZMW ${remainingBalance.toFixed(2)}).`
+        );
+        valid = false;
       }
     }
 
-    return isValid;
+    return valid;
   };
 
   const handleOpenConfirmation = (e) => {
     e.preventDefault();
-    if (validateForm()) {
-      setOpenConfirmDialog(true);
-    }
+    if (validateForm()) setOpenConfirmDialog(true);
+  };
+
+  const savePaymentOffline = (loanId, amount) => {
+    const offlinePayments = JSON.parse(localStorage.getItem(OFFLINE_PAYMENTS_KEY) || "[]");
+    offlinePayments.push({ loanId, amount, timestamp: Date.now() });
+    localStorage.setItem(OFFLINE_PAYMENTS_KEY, JSON.stringify(offlinePayments));
   };
 
   const handleConfirmSubmit = async () => {
-    setOpenConfirmDialog(false); // Close confirmation dialog
+    setOpenConfirmDialog(false);
     setLoading(true);
 
     try {
-      const numPaymentAmount = Number(paymentAmount);
-      // Call addPayment without paymentDate, it will default to current date
-      await addPayment(selectedLoan.id, numPaymentAmount);
+      const numAmount = Number(paymentAmount);
 
-      toast.success(`Payment of ZMW ${numPaymentAmount.toFixed(2).toLocaleString()} added for ${selectedLoan.borrower}!`);
+      if (!navigator.onLine) {
+        // Save offline and notify user
+        savePaymentOffline(selectedLoan.id, numAmount);
+        toast.info("No internet connection. Payment saved locally and will sync when online.");
+      } else {
+        await addPayment(selectedLoan.id, numAmount);
+        toast.success(`Payment of ZMW ${numAmount.toFixed(2).toLocaleString()} added for ${selectedLoan.borrower}!`);
+      }
 
       // Reset form
       setSelectedLoan(null);
       setPaymentAmount("");
-      // Removed paymentDate reset: setPaymentDate(dayjs());
-      setFieldErrors({}); // Clear all errors
+      setFieldErrors({});
       setGeneralError("");
-
     } catch (err) {
       console.error("Payment submission failed:", err);
       setGeneralError("Failed to add payment. Please try again.");
-      toast.error(`Failed to add payment: ${err.message || 'Unknown error'}`);
+      toast.error(`Failed to add payment: ${err.message || "Unknown error"}`);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCloseConfirmDialog = () => {
-    setOpenConfirmDialog(false);
-  };
+  const handleCloseConfirmDialog = () => setOpenConfirmDialog(false);
 
-  // Calculate and display remaining balance for the selected loan
-  const currentRepaid = selectedLoan ? (selectedLoan.repaidAmount || 0) : 0;
+  const currentRepaid = selectedLoan ? selectedLoan.repaidAmount || 0 : 0;
   const remainingBalance = selectedLoan ? selectedLoan.totalRepayable - currentRepaid : 0;
   const prospectiveRemaining = remainingBalance - Number(paymentAmount || 0);
 
   return (
-    // LocalizationProvider is no longer strictly needed without DatePicker,
-    // but can be kept if other date components are used elsewhere or for future plans.
-    // For now, I'll remove it as it's directly tied to DatePicker.
     <Box maxWidth={500} mx="auto" mt={3} p={2}>
       <Typography variant="h5" sx={{ mb: 3 }}>
         Add Payment
@@ -144,7 +171,6 @@ export default function AddPaymentPage() {
 
       <form onSubmit={handleOpenConfirmation}>
         <Stack spacing={2}>
-          {/* Borrower/Loan Search and Selection */}
           <Autocomplete
             id="loan-borrower-search"
             options={activeLoans}
@@ -152,9 +178,7 @@ export default function AddPaymentPage() {
               `${option.borrower} (Phone: ${option.phone}, Loan: ZMW ${option.principal.toLocaleString()})`
             }
             value={selectedLoan}
-            onChange={(event, newValue) => {
-              setSelectedLoan(newValue);
-            }}
+            onChange={(e, newValue) => setSelectedLoan(newValue)}
             loading={loadingLoans}
             renderInput={(params) => (
               <TextField
@@ -167,10 +191,10 @@ export default function AddPaymentPage() {
                 InputProps={{
                   ...params.InputProps,
                   endAdornment: (
-                    <React.Fragment>
+                    <>
                       {loadingLoans ? <CircularProgress color="inherit" size={20} /> : null}
                       {params.InputProps.endAdornment}
-                    </React.Fragment>
+                    </>
                   ),
                 }}
               />
@@ -178,17 +202,17 @@ export default function AddPaymentPage() {
             isOptionEqualToValue={(option, value) => option.id === value.id}
             filterOptions={(options, { inputValue }) => {
               const search = inputValue.toLowerCase();
-              return options.filter(option =>
-                option.borrower.toLowerCase().includes(search) ||
-                option.phone.includes(search)
+              return options.filter(
+                (option) =>
+                  option.borrower.toLowerCase().includes(search) ||
+                  option.phone.includes(search)
               );
             }}
             noOptionsText="No active loans found for this search."
           />
 
-          {/* Display Loan Details if selected */}
           {selectedLoan && (
-            <Paper variant="outlined" sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
+            <Paper variant="outlined" sx={{ p: 2, bgcolor: "action.hover", borderRadius: 1 }}>
               <Typography variant="body2" color="text.secondary">
                 **Selected Loan Details:**
               </Typography>
@@ -204,7 +228,11 @@ export default function AddPaymentPage() {
               <Typography variant="body2" color="text.secondary">
                 Already Repaid: **ZMW {currentRepaid.toFixed(2).toLocaleString()}**
               </Typography>
-              <Typography variant="body1" fontWeight="bold" color={remainingBalance <= 0.01 ? "success.main" : "error.main"}>
+              <Typography
+                variant="body1"
+                fontWeight="bold"
+                color={remainingBalance <= 0.01 ? "success.main" : "error.main"}
+              >
                 Remaining Balance: **ZMW {remainingBalance.toFixed(2).toLocaleString()}**
               </Typography>
             </Paper>
@@ -220,16 +248,19 @@ export default function AddPaymentPage() {
             required
             error={!!fieldErrors.amount}
             helperText={fieldErrors.amount}
-            disabled={!selectedLoan || loading} // Disable if no loan selected or loading
+            disabled={!selectedLoan || loading}
           />
 
-          {/* Prospective remaining balance */}
           {selectedLoan && parseFloat(paymentAmount) > 0 && (
-            <Box sx={{ p: 1, bgcolor: 'background.paper', borderRadius: 1, border: '1px dashed grey.300' }}>
+            <Box sx={{ p: 1, bgcolor: "background.paper", borderRadius: 1, border: "1px dashed grey.300" }}>
               <Typography variant="body2" color="text.secondary">
                 After this payment, **{selectedLoan.borrower}'s** loan balance will be:
               </Typography>
-              <Typography variant="body1" fontWeight="bold" color={prospectiveRemaining <= 0.01 ? "success.main" : "text.primary"}>
+              <Typography
+                variant="body1"
+                fontWeight="bold"
+                color={prospectiveRemaining <= 0.01 ? "success.main" : "text.primary"}
+              >
                 **ZMW {Math.max(0, prospectiveRemaining).toFixed(2).toLocaleString()}**
                 {prospectiveRemaining <= 0.01 && " (Loan will be paid in full)"}
               </Typography>
@@ -243,12 +274,11 @@ export default function AddPaymentPage() {
             disabled={loading || !selectedLoan || !paymentAmount || parseFloat(paymentAmount) <= 0}
             startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
           >
-            {loading ? 'Submitting...' : 'Add Payment'}
+            {loading ? "Submitting..." : "Add Payment"}
           </Button>
         </Stack>
       </form>
 
-      {/* Confirmation Dialog */}
       <Dialog
         open={openConfirmDialog}
         onClose={handleCloseConfirmDialog}
@@ -266,19 +296,22 @@ export default function AddPaymentPage() {
               <br />
               After this payment, the remaining balance will be **ZMW {Math.max(0, prospectiveRemaining).toFixed(2).toLocaleString()}**.
               {prospectiveRemaining <= 0.01 && " (This loan will be marked as Paid.)"}
-              <br/><br/>
+              <br />
+              <br />
               **Confirm to proceed?**
             </DialogContentText>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseConfirmDialog} disabled={loading}>Cancel</Button>
+          <Button onClick={handleCloseConfirmDialog} disabled={loading}>
+            Cancel
+          </Button>
           <Button onClick={handleConfirmSubmit} autoFocus variant="contained" disabled={loading}>
             Confirm
           </Button>
         </DialogActions>
       </Dialog>
     </Box>
-    // Removed closing LocalizationProvider tag
   );
 }
+
