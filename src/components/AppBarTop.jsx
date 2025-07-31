@@ -31,7 +31,7 @@ import {
   Brightness4 as Brightness4Icon,
   Brightness7 as Brightness7Icon,
   AccountCircle as AccountCircleIcon,
-  Assessment as AssessmentIcon, // <-- NEW IMPORT: for Reports Icon
+  Assessment as AssessmentIcon,
 } from "@mui/icons-material";
 import MenuIcon from "@mui/icons-material/Menu";
 import Slide from "@mui/material/Slide";
@@ -161,14 +161,12 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
     }
   };
 
-  // <-- NEW HANDLER: for Reports Page Navigation
   const handleReportsClick = () => {
     handleMenuClose();
     if (window.location.pathname !== "/reports") {
-      navigate("/reports"); // Assuming your reports page route is '/reports'
+      navigate("/reports");
     }
   };
-  // NEW HANDLER: for Reports Page Navigation -->
 
   const openHelpDialog = () => {
     handleMenuClose();
@@ -209,11 +207,16 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
     <>
       <AppBar
         position="fixed"
+        // Set elevation to 0 to apply custom boxShadow for glassmorphism
         elevation={0}
         sx={{
           zIndex: theme.zIndex.drawer + 1,
-          bgcolor: theme.palette.background.paper,
-          borderBottom: `1px solid ${theme.palette.divider}`,
+          // --- GLASSMORPHISM STYLES START ---
+          backdropFilter: 'blur(12px) saturate(180%)', // Apply the frosted glass blur
+          backgroundColor: 'rgba(255, 255, 255, 0.1)', // Semi-transparent white background
+          borderBottom: '1px solid rgba(255, 255, 255, 0.2)', // Subtle translucent border at the bottom
+          boxShadow: theme.shadows[3], // A softer shadow (e.g., elevation 3) complements the glass effect
+          // --- GLASSMORPHISM STYLES END ---
         }}
       >
         <Toolbar sx={{ px: isMobile ? 2 : 3 }}>
@@ -253,7 +256,8 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
               autoFocus
               sx={{
                 width: isMobile ? "60vw" : 250,
-                bgcolor: theme.palette.action.hover,
+                // Ensure the TextField's background is somewhat transparent or matches for consistency
+                bgcolor: 'rgba(255, 255, 255, 0.15)', // Adjusted for glassmorphism
                 borderRadius: 2,
                 mr: 1,
                 "& .MuiOutlinedInput-root": {
@@ -344,6 +348,8 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
             filter: "drop-shadow(0px 2px 8px rgba(0,0,0,0.32))",
             mt: 1.5,
             borderRadius: 2,
+            // You might want to apply glassmorphism here too if this menu should also be glass
+            // For now, keeping original styles as user only asked for AppBarTop
             "& .MuiAvatar-root": {
               width: 32,
               height: 32,
@@ -358,7 +364,7 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
               right: 14,
               width: 10,
               height: 10,
-              bgcolor: "background.paper",
+              bgcolor: "background.paper", // This background should also match the glass if applied to menu
               transform: "translateY(-50%) rotate(45deg)",
               zIndex: 0,
             },
@@ -376,7 +382,6 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
           </Typography>
         </MenuItem>
 
-        {/* NEW: Reports Menu Item */}
         <MenuItem onClick={handleReportsClick}>
           <ListItemIcon>
             <AssessmentIcon fontSize="small" sx={{ color: theme.palette.text.secondary }} />
@@ -429,7 +434,7 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
         </MenuItem>
       </Menu>
 
-      {/* Notifications Popover (No changes here) */}
+      {/* Notifications Popover (No changes here, but could be made glassmorphic too if desired) */}
       <Popover
         open={openNotifications}
         anchorEl={notificationAnchor}
@@ -444,6 +449,10 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
             p: 2,
             borderRadius: 2,
             boxShadow: theme.shadows[4],
+            // Add glassmorphism here if you want it for popovers
+            // backdropFilter: 'blur(10px) saturate(180%)',
+            // backgroundColor: 'rgba(255, 255, 255, 0.15)',
+            // border: '1px solid rgba(255, 255, 255, 0.2)',
           },
         }}
       >
@@ -482,7 +491,8 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
         )}
       </Popover>
 
-      {/* Settings Dialog */}
+      {/* Dialogs (Settings, Change Password, Help, Profile) - No changes here for glassmorphism */}
+      {/* If you want these dialog backgrounds glassmorphic, you'd apply it to the PaperProps here as well */}
       <Dialog
         open={settingsOpen}
         onClose={closeSettingsDialog}
@@ -494,7 +504,6 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
         <SettingsPage onClose={closeSettingsDialog} />
       </Dialog>
 
-      {/* Change Password Dialog */}
       <Dialog
         open={changePasswordOpen}
         onClose={closeChangePasswordDialog}
@@ -506,10 +515,8 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
         <ChangePassword onClose={closeChangePasswordDialog} />
       </Dialog>
 
-      {/* Help Dialog */}
       <HelpDialog open={helpOpen} onClose={closeHelpDialog} sx={{ "& .MuiDialog-paper": { borderRadius: 3 } }} />
 
-      {/* Profile Dialog */}
       <Dialog
         open={profileOpen}
         onClose={closeProfileDialog}
