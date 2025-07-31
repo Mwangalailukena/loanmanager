@@ -8,7 +8,7 @@ import AddIcon from "@mui/icons-material/Add";
 import ListAltIcon from "@mui/icons-material/ListAlt";
 import HistoryIcon from "@mui/icons-material/History";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
-import AssessmentIcon from "@mui/icons-material/Assessment"; // <--- ADD THIS IMPORT
+import AssessmentIcon from "@mui/icons-material/Assessment";
 
 const drawerWidth = 220;
 
@@ -22,8 +22,7 @@ const Sidebar = () => {
     { text: "Add Loan", icon: <AddIcon />, path: "/add-loan" },
     { text: "Add Payment", icon: <AttachMoneyIcon />, path: "/add-payment" },
     { text: "Loan Records", icon: <ListAltIcon />, path: "/loans" },
-    // Add the new Reports item here
-    { text: "Reports", icon: <AssessmentIcon />, path: "/reports" }, // <--- ADD THIS ITEM
+    { text: "Reports", icon: <AssessmentIcon />, path: "/reports" },
     { text: "Activity", icon: <HistoryIcon />, path: "/activity" },
   ];
 
@@ -37,12 +36,11 @@ const Sidebar = () => {
         [`& .MuiDrawer-paper`]: {
           width: drawerWidth,
           boxSizing: 'border-box',
-          borderRight: 'none',
           // --- GLASSMORPHISM STYLES START ---
-          backdropFilter: 'blur(12px) saturate(180%)', // Apply blur to content behind
-          backgroundColor: 'rgba(255, 255, 255, 0.1)', // Semi-transparent white background
-          borderRight: '1px solid rgba(255, 255, 255, 0.2)', // Subtle translucent border on the right
-          boxShadow: theme.shadows[3], // A softer shadow works well with glassmorphism
+          backdropFilter: 'blur(12px) saturate(180%)',
+          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+          borderRight: '1px solid rgba(255, 255, 255, 0.2)',
+          boxShadow: theme.shadows[3],
           // --- GLASSMORPHISM STYLES END ---
         },
       }}
@@ -52,14 +50,12 @@ const Sidebar = () => {
         {navItems.map((item) => (
           <ListItem key={item.text} disablePadding sx={{ mb: 1 }}>
             <ListItemButton
-              // Use startsWith for robust active state, especially for nested routes if you ever add them
               selected={location.pathname.startsWith(item.path)}
               onClick={() => navigate(item.path)}
               sx={{
                 borderRadius: 2,
                 py: 1.2,
                 '&.Mui-selected': {
-                  // Keep your existing active state styles which are good
                   backgroundColor: theme.palette.primary.light + '20',
                   color: theme.palette.primary.main,
                   fontWeight: theme.typography.fontWeightMedium,
