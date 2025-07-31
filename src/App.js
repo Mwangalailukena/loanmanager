@@ -1,8 +1,5 @@
 // src/App.js
 import React, { useState, useEffect, useRef } from 'react';
-// These Material-UI imports are no longer needed here as your CustomThemeProvider handles them internally
-// import { ThemeProvider, createTheme } from '@mui/material/styles';
-// import CssBaseline from '@mui/material/CssBaseline';
 import { BrowserRouter as Router } from 'react-router-dom';
 
 import { ThemeProvider as CustomThemeProvider, useThemeContext } from './contexts/ThemeProvider.jsx';
@@ -16,29 +13,21 @@ import InstallPrompt from './components/InstallPrompt';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-import useOfflineStatus from './hooks/useOfflineStatus';
+import useOfflineStatus from './hooks/useOfflineStatus'; // Make sure this path is correct
 
-// Import the SplashScreen component
-import SplashScreen from './components/SplashScreen'; // Make sure this path is correct
-
-// Import the syncPendingData function to sync offline queued data (both loans and payments)
+import SplashScreen from './components/SplashScreen';
 import { syncPendingData } from './utils/offlineQueue';
 
-// Define the total duration for the splash screen in milliseconds
-const SPLASH_SCREEN_DURATION = 3000; // 3 seconds (adjust as needed)
+const SPLASH_SCREEN_DURATION = 3000;
 
-// This component is created to properly use React Hooks (like useThemeContext)
-// as it will be rendered *inside* your CustomThemeProvider.
 function AppContent() {
-  // Get the darkMode state and the toggleDarkMode function from your custom theme context.
   const { darkMode, toggleDarkMode } = useThemeContext();
-  // Use your custom hook to monitor online/offline status.
-  const isOnline = useOfflineStatus();
+  // Use the debounced hook, e.g., with 1000ms (1 second) debounce time.
+  // You can adjust this value to find the sweet spot for your app's network conditions.
+  const isOnline = useOfflineStatus(1000); // <--- CHANGE THIS LINE
 
-  // Ref to prevent multiple syncs at once
   const syncInProgress = useRef(false);
 
-  // Effect hook to display toast notifications based on online/offline status and sync data
   useEffect(() => {
     if (!isOnline) {
       toast.warn("You're offline. Changes will sync once you're back online.", {
@@ -55,17 +44,21 @@ function AppContent() {
       if (!syncInProgress.current) {
         syncInProgress.current = true;
 
+        // Give this "syncing..." toast a specific ID and keep it open
         toast.success("You're back online. Syncing data...", {
-          toastId: 'online-success',
+          toastId: 'sync-starting', // New ID for the "syncing..." message
           position: "top-center",
+          autoClose: false, // Keep it open until sync finishes
         });
 
         syncPendingData()
           .then(() => {
+            toast.dismiss('sync-starting'); // Dismiss the "syncing..." toast on success
             toast.success("Offline data synced successfully!", { toastId: 'sync-success' });
           })
           .catch((err) => {
             console.error("Failed to sync offline data:", err);
+            toast.dismiss('sync-starting'); // Dismiss the "syncing..." toast on error
             toast.error("Failed to sync offline data. Please try again.", { toastId: 'sync-fail' });
           })
           .finally(() => {
@@ -73,7 +66,7 @@ function AppContent() {
           });
       }
     }
-  }, [isOnline]);
+  }, [isOnline]); // This now uses the *debounced* `isOnline` state
 
   return (
     <Router>
@@ -136,4 +129,3 @@ function App() {
 }
 
 export default App;
-
