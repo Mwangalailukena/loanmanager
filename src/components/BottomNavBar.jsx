@@ -32,13 +32,19 @@ const BottomNavBar = () => {
         right: 0,
         display: { xs: "block", sm: "none" },
         zIndex: theme.zIndex.appBar + 1, // Keep this, or theme.zIndex.drawer + 1 if you have a drawer
-        backgroundColor: theme.palette.background.paper,
         borderTopLeftRadius: 16,
         borderTopRightRadius: 16,
-        overflow: 'hidden',
-        boxShadow: theme.shadows[8], // Can reduce this for a lighter feel (e.g., theme.shadows[4])
+        overflow: 'hidden', // Crucial for backdrop-filter to work correctly with border-radius
+        
+        // --- GLASSMORPHISM STYLES START ---
+        backdropFilter: 'blur(12px) saturate(180%)', // Applies the frosted glass blur effect
+        backgroundColor: 'rgba(255, 255, 255, 0.1)', // Semi-transparent white background
+        border: '1px solid rgba(255, 255, 255, 0.2)', // Subtle translucent border
+        boxShadow: theme.shadows[3], // A softer shadow (e.g., elevation 3) complements the glass effect
+        // --- GLASSMORPHISM STYLES END ---
       }}
-      elevation={3}
+      // Set elevation to 0 as we are defining a custom boxShadow for the glassmorphic look
+      elevation={0} 
     >
       <BottomNavigation
         showLabels
@@ -46,7 +52,8 @@ const BottomNavBar = () => {
         onChange={(event, newValue) => navigate(newValue)}
         sx={{
           height: BOTTOM_NAV_HEIGHT,
-          backgroundColor: 'inherit', // Inherit from Paper for consistency
+          // Make the BottomNavigation itself transparent so the glassmorphic Paper background is visible
+          backgroundColor: 'transparent', 
           '& .MuiBottomNavigationAction-root': {
             minWidth: 0,
             px: 1,
