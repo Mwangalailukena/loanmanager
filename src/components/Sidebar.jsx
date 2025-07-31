@@ -38,8 +38,12 @@ const Sidebar = () => {
           width: drawerWidth,
           boxSizing: 'border-box',
           borderRight: 'none',
-          backgroundColor: theme.palette.background.paper,
-          boxShadow: theme.shadows[1],
+          // --- GLASSMORPHISM STYLES START ---
+          backdropFilter: 'blur(12px) saturate(180%)', // Apply blur to content behind
+          backgroundColor: 'rgba(255, 255, 255, 0.1)', // Semi-transparent white background
+          borderRight: '1px solid rgba(255, 255, 255, 0.2)', // Subtle translucent border on the right
+          boxShadow: theme.shadows[3], // A softer shadow works well with glassmorphism
+          // --- GLASSMORPHISM STYLES END ---
         },
       }}
     >
@@ -55,6 +59,7 @@ const Sidebar = () => {
                 borderRadius: 2,
                 py: 1.2,
                 '&.Mui-selected': {
+                  // Keep your existing active state styles which are good
                   backgroundColor: theme.palette.primary.light + '20',
                   color: theme.palette.primary.main,
                   fontWeight: theme.typography.fontWeightMedium,
