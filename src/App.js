@@ -13,7 +13,7 @@ import InstallPrompt from './components/InstallPrompt';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-import useOfflineStatus from './hooks/useOfflineStatus'; // Make sure this path is correct
+import useOfflineStatus from './hooks/useOfflineStatus';
 
 import SplashScreen from './components/SplashScreen';
 import { syncPendingData } from './utils/offlineQueue';
@@ -22,20 +22,27 @@ const SPLASH_SCREEN_DURATION = 3000;
 
 function AppContent() {
   const { darkMode, toggleDarkMode } = useThemeContext();
-  // Use the debounced hook, e.g., with 1000ms (1 second) debounce time.
-  // You can adjust this value to find the sweet spot for your app's network conditions.
-  const isOnline = useOfflineStatus(1000); // <--- CHANGE THIS LINE
-
+  const isOnline = useOfflineStatus(1000);
   const syncInProgress = useRef(false);
+  const wasOffline = useRef(false); // New ref to track if the app was previously offline
 
   useEffect(() => {
+    // If we've just gone offline
     if (!isOnline) {
+      // Set the flag that we were offline.
+      wasOffline.current = true;
       toast.warn("You're offline. Changes will sync once you're back online.", {
         toastId: 'offline-warning',
         position: "top-center",
+        autoClose: false, // Keep this toast open indefinitely while offline
       });
-    } else {
-      // Dismiss offline warning toast if active
+    } 
+    // If we've just come back online
+    else if (isOnline && wasOffline.current) {
+      // Reset the flag
+      wasOffline.current = false;
+      
+      // Dismiss the offline warning toast
       if (toast.isActive('offline-warning')) {
         toast.dismiss('offline-warning');
       }
@@ -44,21 +51,20 @@ function AppContent() {
       if (!syncInProgress.current) {
         syncInProgress.current = true;
 
-        // Give this "syncing..." toast a specific ID and keep it open
         toast.success("You're back online. Syncing data...", {
-          toastId: 'sync-starting', // New ID for the "syncing..." message
+          toastId: 'sync-starting',
           position: "top-center",
-          autoClose: false, // Keep it open until sync finishes
+          autoClose: false,
         });
 
         syncPendingData()
           .then(() => {
-            toast.dismiss('sync-starting'); // Dismiss the "syncing..." toast on success
+            toast.dismiss('sync-starting');
             toast.success("Offline data synced successfully!", { toastId: 'sync-success' });
           })
           .catch((err) => {
             console.error("Failed to sync offline data:", err);
-            toast.dismiss('sync-starting'); // Dismiss the "syncing..." toast on error
+            toast.dismiss('sync-starting');
             toast.error("Failed to sync offline data. Please try again.", { toastId: 'sync-fail' });
           })
           .finally(() => {
@@ -66,7 +72,7 @@ function AppContent() {
           });
       }
     }
-  }, [isOnline]); // This now uses the *debounced* `isOnline` state
+  }, [isOnline]);
 
   return (
     <Router>
