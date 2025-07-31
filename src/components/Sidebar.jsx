@@ -1,6 +1,6 @@
 // src/components/Sidebar.jsx
 import React from "react";
-import { Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, useTheme } from "@mui/material"; // Import useTheme
+import { Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, useTheme } from "@mui/material";
 import { useNavigate, useLocation } from "react-router-dom";
 
 import DashboardIcon from "@mui/icons-material/Dashboard";
@@ -8,19 +8,22 @@ import AddIcon from "@mui/icons-material/Add";
 import ListAltIcon from "@mui/icons-material/ListAlt";
 import HistoryIcon from "@mui/icons-material/History";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
+import AssessmentIcon from "@mui/icons-material/Assessment"; // <--- ADD THIS IMPORT
 
 const drawerWidth = 220;
 
 const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const theme = useTheme(); // Access the theme
+  const theme = useTheme();
 
   const navItems = [
     { text: "Dashboard", icon: <DashboardIcon />, path: "/dashboard" },
     { text: "Add Loan", icon: <AddIcon />, path: "/add-loan" },
     { text: "Add Payment", icon: <AttachMoneyIcon />, path: "/add-payment" },
     { text: "Loan Records", icon: <ListAltIcon />, path: "/loans" },
+    // Add the new Reports item here
+    { text: "Reports", icon: <AssessmentIcon />, path: "/reports" }, // <--- ADD THIS ITEM
     { text: "Activity", icon: <HistoryIcon />, path: "/activity" },
   ];
 
@@ -30,52 +33,50 @@ const Sidebar = () => {
       sx={{
         width: drawerWidth,
         flexShrink: 0,
-        display: { xs: 'none', sm: 'block' }, // Hide on mobile
+        display: { xs: 'none', sm: 'block' },
         [`& .MuiDrawer-paper`]: {
           width: drawerWidth,
           boxSizing: 'border-box',
-          borderRight: 'none', // Remove default border
-          backgroundColor: theme.palette.background.paper, // Use paper background
-          boxShadow: theme.shadows[1], // Subtle shadow for the drawer itself
-          // You might want rounded top-right corner if the app bar doesn't cover it
-          // e.g., borderTopRightRadius: 16,
+          borderRight: 'none',
+          backgroundColor: theme.palette.background.paper,
+          boxShadow: theme.shadows[1],
         },
       }}
     >
-      <Toolbar /> {/* This pushes content below the AppBar */}
-      <List sx={{ pt: 2, px: 1 }}> {/* Add some padding to the list itself */}
+      <Toolbar />
+      <List sx={{ pt: 2, px: 1 }}>
         {navItems.map((item) => (
-          <ListItem key={item.text} disablePadding sx={{ mb: 1 }}> {/* Add bottom margin for spacing between items */}
+          <ListItem key={item.text} disablePadding sx={{ mb: 1 }}>
             <ListItemButton
+              // Use startsWith for robust active state, especially for nested routes if you ever add them
               selected={location.pathname.startsWith(item.path)}
               onClick={() => navigate(item.path)}
               sx={{
-                borderRadius: 2, // Apply rounded corners to the button
-                py: 1.2, // Adjust vertical padding for more height
+                borderRadius: 2,
+                py: 1.2,
                 '&.Mui-selected': {
-                  backgroundColor: theme.palette.primary.light + '20', // Lighter primary color with opacity for selected state
-                  color: theme.palette.primary.main, // Primary color for text and icon when selected
+                  backgroundColor: theme.palette.primary.light + '20',
+                  color: theme.palette.primary.main,
                   fontWeight: theme.typography.fontWeightMedium,
                   '& .MuiListItemIcon-root': {
-                    color: theme.palette.primary.main, // Ensure icon color is primary
+                    color: theme.palette.primary.main,
                   },
                   '&:hover': {
-                    backgroundColor: theme.palette.primary.light + '30', // Slightly darker hover for selected state
+                    backgroundColor: theme.palette.primary.light + '30',
                   },
                 },
                 '&:hover': {
-                  backgroundColor: theme.palette.action.hover, // Subtle hover effect for unselected items
-                  borderRadius: 2, // Maintain rounded corners on hover
+                  backgroundColor: theme.palette.action.hover,
+                  borderRadius: 2,
                 },
-                // Styles for unselected items
-                color: theme.palette.text.secondary, // Softer color for unselected text
+                color: theme.palette.text.secondary,
                 '& .MuiListItemIcon-root': {
-                  color: theme.palette.text.secondary, // Softer color for unselected icons
+                  color: theme.palette.text.secondary,
                 },
               }}
             >
               <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.text} primaryTypographyProps={{ fontSize: '0.9rem' }} /> {/* Adjust font size */}
+              <ListItemText primary={item.text} primaryTypographyProps={{ fontSize: '0.9rem' }} />
             </ListItemButton>
           </ListItem>
         ))}
