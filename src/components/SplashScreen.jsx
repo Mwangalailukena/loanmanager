@@ -1,3 +1,4 @@
+// src/components/SplashScreen.jsx
 import React, { useState, useEffect } from 'react';
 import { Box, LinearProgress, Typography, keyframes, useTheme } from '@mui/material';
 
@@ -98,6 +99,21 @@ const SplashScreen = ({ onFadeOutComplete, duration = 3000 }) => {
           },
         }}
       />
+
+      {/* NEW: Developed by JeoTronix Technologies Limited credit */}
+      <Typography
+        variant="caption" // Makes the text very small
+        color="text.disabled" // A very subtle color
+        sx={{
+          mt: 4, // Margin-top to space it from the progress bar
+          textAlign: 'center',
+          lineHeight: 1.2, // Adjust line height if it wraps
+          // You can use a custom font size if 'caption' isn't small enough
+          // fontSize: '0.65rem',
+        }}
+      >
+        Developed by JeoTronix Technologies Limited
+      </Typography>
     </Box>
   );
 };
