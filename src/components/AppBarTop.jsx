@@ -11,7 +11,7 @@ import {
   Avatar,
   Divider,
   ListItemIcon,
-  Dialog, // Already imported
+  Dialog,
   useMediaQuery,
   useTheme,
   Popover,
@@ -30,7 +30,8 @@ import {
   Close as CloseIcon,
   Brightness4 as Brightness4Icon,
   Brightness7 as Brightness7Icon,
-  AccountCircle as AccountCircleIcon, // <-- New Import: for Profile Icon
+  AccountCircle as AccountCircleIcon,
+  Assessment as AssessmentIcon, // <-- NEW IMPORT: for Reports Icon
 } from "@mui/icons-material";
 import MenuIcon from "@mui/icons-material/Menu";
 import Slide from "@mui/material/Slide";
@@ -44,7 +45,7 @@ import { auth } from "../firebase";
 import SettingsPage from "../pages/SettingsPage";
 import ChangePassword from "../pages/ChangePassword.jsx";
 import HelpDialog from "./HelpDialog";
-import Profile from "../pages/Profile"; // <-- NEW IMPORT: Import your Profile component here
+import Profile from "../pages/Profile";
 
 import dayjs from "dayjs";
 
@@ -61,7 +62,7 @@ const Transition = React.forwardRef(function Transition(props, ref) {
 });
 
 const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
-  const { currentUser } = useAuth(); // Changed 'user' to 'currentUser' for consistency with AuthProvider
+  const { currentUser } = useAuth();
   const { loans } = useFirestore();
   const navigate = useNavigate();
   const theme = useTheme();
@@ -76,7 +77,7 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [notifications, setNotifications] = useState([]);
 
-  const [profileOpen, setProfileOpen] = useState(false); // <-- NEW STATE: for Profile dialog
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const openMenu = Boolean(anchorEl);
   const openNotifications = Boolean(notificationAnchor);
@@ -121,48 +122,37 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
 
   const handleSettingsClick = () => {
     handleMenuClose();
-    // Decide if you want a dialog or navigation for settings based on screen size
     if (isMobile) {
       setSettingsOpen(true);
     } else {
-      // If not mobile, navigate to a dedicated settings page if it exists
-      // If you always want a dialog regardless of screen size, remove this 'else' block
       if (window.location.pathname !== "/settings") {
-         navigate("/settings"); // Assuming you have a /settings route
+         navigate("/settings");
       }
     }
   };
 
   const handleChangePasswordClick = () => {
     handleMenuClose();
-    // Decide if you want a dialog or navigation for change password based on screen size
     if (isMobile) {
       setChangePasswordOpen(true);
     } else {
-      // If not mobile, navigate to a dedicated change-password page if it exists
-      // If you always want a dialog regardless of screen size, remove this 'else' block
       if (window.location.pathname !== "/change-password") {
-        navigate("/change-password"); // Assuming you have a /change-password route
+        navigate("/change-password");
       }
     }
   };
 
-  // <-- NEW HANDLERS for Profile Dialog
   const handleProfileClick = () => {
     handleMenuClose();
-    // Decide if you want a dialog or navigation for profile based on screen size
     if (isMobile) {
       setProfileOpen(true);
     } else {
-      // If not mobile, navigate to a dedicated profile page if it exists
-      // If you always want a dialog regardless of screen size, remove this 'else' block
       if (window.location.pathname !== "/profile") {
-        navigate("/profile"); // Assuming you have a /profile route
+        navigate("/profile");
       }
     }
   };
   const closeProfileDialog = () => setProfileOpen(false);
-  // NEW HANDLERS for Profile Dialog -->
 
   const handleActivityClick = () => {
     handleMenuClose();
@@ -170,6 +160,15 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
       navigate("/activity");
     }
   };
+
+  // <-- NEW HANDLER: for Reports Page Navigation
+  const handleReportsClick = () => {
+    handleMenuClose();
+    if (window.location.pathname !== "/reports") {
+      navigate("/reports"); // Assuming your reports page route is '/reports'
+    }
+  };
+  // NEW HANDLER: for Reports Page Navigation -->
 
   const openHelpDialog = () => {
     handleMenuClose();
@@ -323,9 +322,9 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
                   fontSize: "0.875rem",
                   fontWeight: 600,
                 }}
-                src={currentUser?.photoURL || ''} // Use photoURL from currentUser
+                src={currentUser?.photoURL || ''}
               >
-                {stringToInitials(currentUser?.displayName || "U")} {/* Use displayName from currentUser */}
+                {stringToInitials(currentUser?.displayName || "U")}
               </Avatar>
             </IconButton>
           </Tooltip>
@@ -368,13 +367,22 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
         transformOrigin={{ horizontal: "right", vertical: "top" }}
         anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
       >
-        {/* NEW: Profile Menu Item */}
         <MenuItem onClick={handleProfileClick}>
           <ListItemIcon>
             <AccountCircleIcon fontSize="small" sx={{ color: theme.palette.text.secondary }} />
           </ListItemIcon>
           <Typography variant="body2" color="text.primary">
             Profile
+          </Typography>
+        </MenuItem>
+
+        {/* NEW: Reports Menu Item */}
+        <MenuItem onClick={handleReportsClick}>
+          <ListItemIcon>
+            <AssessmentIcon fontSize="small" sx={{ color: theme.palette.text.secondary }} />
+          </ListItemIcon>
+          <Typography variant="body2" color="text.primary">
+            Reports
           </Typography>
         </MenuItem>
 
@@ -501,16 +509,15 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
       {/* Help Dialog */}
       <HelpDialog open={helpOpen} onClose={closeHelpDialog} sx={{ "& .MuiDialog-paper": { borderRadius: 3 } }} />
 
-      {/* NEW: Profile Dialog */}
+      {/* Profile Dialog */}
       <Dialog
-        open={profileOpen} // Controls visibility
-        onClose={closeProfileDialog} // Allows closing by clicking outside or Esc
+        open={profileOpen}
+        onClose={closeProfileDialog}
         TransitionComponent={Transition}
-        maxWidth="sm" // Adjust max width as needed for your Profile content
+        maxWidth="sm"
         fullWidth
-        PaperProps={{ sx: { borderRadius: 3, mx: 2 } }} // Consistent styling
+        PaperProps={{ sx: { borderRadius: 3, mx: 2 } }}
       >
-        {/* Pass the close handler to your Profile component */}
         <Profile onClose={closeProfileDialog} />
       </Dialog>
     </>
