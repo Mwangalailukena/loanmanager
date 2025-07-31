@@ -212,10 +212,10 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
         sx={{
           zIndex: theme.zIndex.drawer + 1,
           // --- GLASSMORPHISM STYLES START ---
-          backdropFilter: 'blur(12px) saturate(180%)', // Apply the frosted glass blur
-          backgroundColor: 'rgba(255, 255, 255, 0.1)', // Semi-transparent white background
-          borderBottom: '1px solid rgba(255, 255, 255, 0.2)', // Subtle translucent border at the bottom
-          boxShadow: theme.shadows[3], // A softer shadow (e.g., elevation 3) complements the glass effect
+          backdropFilter: 'blur(12px) saturate(180%)',
+          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
+          boxShadow: theme.shadows[3],
           // --- GLASSMORPHISM STYLES END ---
         }}
       >
@@ -256,8 +256,7 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
               autoFocus
               sx={{
                 width: isMobile ? "60vw" : 250,
-                // Ensure the TextField's background is somewhat transparent or matches for consistency
-                bgcolor: 'rgba(255, 255, 255, 0.15)', // Adjusted for glassmorphism
+                bgcolor: 'rgba(255, 255, 255, 0.15)',
                 borderRadius: 2,
                 mr: 1,
                 "& .MuiOutlinedInput-root": {
@@ -348,8 +347,6 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
             filter: "drop-shadow(0px 2px 8px rgba(0,0,0,0.32))",
             mt: 1.5,
             borderRadius: 2,
-            // You might want to apply glassmorphism here too if this menu should also be glass
-            // For now, keeping original styles as user only asked for AppBarTop
             "& .MuiAvatar-root": {
               width: 32,
               height: 32,
@@ -364,7 +361,7 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
               right: 14,
               width: 10,
               height: 10,
-              bgcolor: "background.paper", // This background should also match the glass if applied to menu
+              bgcolor: "background.paper",
               transform: "translateY(-50%) rotate(45deg)",
               zIndex: 0,
             },
@@ -434,7 +431,7 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
         </MenuItem>
       </Menu>
 
-      {/* Notifications Popover (No changes here, but could be made glassmorphic too if desired) */}
+      {/* Notifications Popover */}
       <Popover
         open={openNotifications}
         anchorEl={notificationAnchor}
@@ -449,10 +446,6 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
             p: 2,
             borderRadius: 2,
             boxShadow: theme.shadows[4],
-            // Add glassmorphism here if you want it for popovers
-            // backdropFilter: 'blur(10px) saturate(180%)',
-            // backgroundColor: 'rgba(255, 255, 255, 0.15)',
-            // border: '1px solid rgba(255, 255, 255, 0.2)',
           },
         }}
       >
@@ -491,8 +484,7 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
         )}
       </Popover>
 
-      {/* Dialogs (Settings, Change Password, Help, Profile) - No changes here for glassmorphism */}
-      {/* If you want these dialog backgrounds glassmorphic, you'd apply it to the PaperProps here as well */}
+      {/* Dialogs (Settings, Change Password, Help, Profile) */}
       <Dialog
         open={settingsOpen}
         onClose={closeSettingsDialog}
