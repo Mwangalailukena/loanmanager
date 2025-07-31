@@ -27,27 +27,26 @@ const BottomNavBar = () => {
     <Paper
       sx={{
         position: "fixed",
-        bottom: 0,
+        // --- LIFT FROM BOTTOM ---
+        bottom: 16, // Lifts the component 16px from the bottom of the viewport
+        // --- END LIFT FROM BOTTOM ---
         left: 0,
         right: 0,
         display: { xs: "block", sm: "none" },
-        zIndex: theme.zIndex.appBar + 1, // Keep this, or theme.zIndex.drawer + 1 if you have a drawer
-        // --- ADDED BOTTOM RADIUS ---
+        zIndex: theme.zIndex.appBar + 1,
         borderTopLeftRadius: 16,
         borderTopRightRadius: 16,
-        borderBottomLeftRadius: 16, // Added for rounded bottom-left corner
-        borderBottomRightRadius: 16, // Added for rounded bottom-right corner
-        // --- END ADDED BOTTOM RADIUS ---
-        overflow: 'hidden', // Crucial for backdrop-filter to work correctly with border-radius
+        borderBottomLeftRadius: 16,
+        borderBottomRightRadius: 16,
+        overflow: 'hidden', 
         
         // --- GLASSMORPHISM STYLES ---
-        backdropFilter: 'blur(12px) saturate(180%)', // Applies the frosted glass blur effect
-        backgroundColor: 'rgba(255, 255, 255, 0.1)', // Semi-transparent white background
-        border: '1px solid rgba(255, 255, 255, 0.2)', // Subtle translucent border
-        boxShadow: theme.shadows[3], // A softer shadow (e.g., elevation 3) complements the glass effect
+        backdropFilter: 'blur(12px) saturate(180%)', 
+        backgroundColor: 'rgba(255, 255, 255, 0.1)', 
+        border: '1px solid rgba(255, 255, 255, 0.2)', 
+        boxShadow: theme.shadows[3], 
         // --- END GLASSMORPHISM STYLES ---
       }}
-      // Set elevation to 0 as we are defining a custom boxShadow for the glassmorphic look
       elevation={0} 
     >
       <BottomNavigation
@@ -56,30 +55,25 @@ const BottomNavBar = () => {
         onChange={(event, newValue) => navigate(newValue)}
         sx={{
           height: BOTTOM_NAV_HEIGHT,
-          // Make the BottomNavigation itself transparent so the glassmorphic Paper background is visible
           backgroundColor: 'transparent', 
           '& .MuiBottomNavigationAction-root': {
             minWidth: 0,
             px: 1,
             color: theme.palette.text.secondary,
-            // Add a subtle transition for smoother icon/label color changes
-            transition: 'color 0.3s ease-in-out', // Keep for color transition
+            transition: 'color 0.3s ease-in-out',
 
             '&.Mui-selected': {
               color: theme.palette.primary.main,
               fontWeight: theme.typography.fontWeightMedium,
               
-              // >>>>> ADD/MODIFY THIS SECTION FOR THE BOUNCE EFFECT <<<<<
-              '& .MuiSvgIcon-root': { // Target the SVG icon directly
-                transform: 'translateY(-4px)', // Moves the icon up by 4px
-                transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)', // Smooth animation
-                // cubic-bezier provides a subtle ease-out bounce feel
+              '& .MuiSvgIcon-root': {
+                transform: 'translateY(-4px)',
+                transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
               },
             },
-            // Ensure icons return to original position when unselected
             '& .MuiSvgIcon-root': {
-              transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)', // Same transition for returning
-              transform: 'translateY(0)', // Default position
+              transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+              transform: 'translateY(0)',
             },
           },
           '& .MuiBottomNavigationAction-label.Mui-selected': {
