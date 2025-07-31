@@ -16,14 +16,19 @@ import {
   TableRow,
   TableCell,
   TableContainer,
-  TextField,
+  TextField, // Keep TextField for date inputs
   useMediaQuery,
   useTheme,
-  Divider, // Added for visual separation
+  Divider,
+  FormControlLabel, // Added for Checkbox
+  Checkbox, // Added for Checkbox
 } from "@mui/material";
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+
+// REMOVE THESE IMPORTS:
+// import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+// import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+// import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { exportToCsv } from "../utils/exportCSV";
 import dayjs from "dayjs";
@@ -31,9 +36,6 @@ import isBetween from 'dayjs/plugin/isBetween';
 dayjs.extend(isBetween);
 
 // --- Constants ---
-// No chart-specific COLORS needed now
-
-// Utility function to calculate loan status (consistent with your LoanList)
 const calcStatus = (loan) => {
   const now = dayjs();
   const due = dayjs(loan.dueDate);
@@ -44,19 +46,19 @@ const calcStatus = (loan) => {
 };
 
 export default function ReportsPage() {
-  const { loans, loadingLoans, payments, loadingPayments, getAllPayments } = useFirestore(); // Assuming getAllPayments is available or payments are loaded with loans
+  const { loans, loadingLoans, payments, loadingPayments, getAllPayments } = useFirestore();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   // --- Filters State ---
-  const [reportType, setReportType] = useState("portfolioSummary"); // Default report
-  const [startDate, setStartDate] = useState(dayjs().subtract(6, 'months').startOf('month'));
-  const [endDate, setEndDate] = useState(dayjs().endOf('month'));
-  const [includePaid, setIncludePaid] = useState(true); // New filter for some reports
+  const [reportType, setReportType] = useState("portfolioSummary");
+  // Change state to store string dates for TextField type="date"
+  const [startDate, setStartDate] = useState(dayjs().subtract(6, 'months').startOf('month').format('YYYY-MM-DD'));
+  const [endDate, setEndDate] = useState(dayjs().endOf('month').format('YYYY-MM-DD'));
+  const [includePaid, setIncludePaid] = useState(true);
   const [includeActive, setIncludeActive] = useState(true);
   const [includeOverdue, setIncludeOverdue] = useState(true);
 
-  // Fetch all payments if not already loaded with loans (important for some future reports like detailed payment history across all loans)
   useEffect(() => {
     if (!payments && !loadingPayments) {
       getAllPayments();
@@ -66,14 +68,17 @@ export default function ReportsPage() {
   // --- Memoized Filtered Data ---
   const filteredLoansForReports = useMemo(() => {
     if (loadingLoans || !loans) return [];
+
+    // Parse string dates back to dayjs objects for comparison
+    const filterStartDate = dayjs(startDate);
+    const filterEndDate = dayjs(endDate);
+
     return loans.filter(loan => {
       const loanStartDate = dayjs(loan.startDate);
       const status = calcStatus(loan);
 
-      // Date range filter
-      const inDateRange = loanStartDate.isBetween(startDate, endDate, 'day', '[]');
+      const inDateRange = loanStartDate.isBetween(filterStartDate, filterEndDate, 'day', '[]');
 
-      // Status filter
       let statusMatches = false;
       if (status === "Paid" && includePaid) statusMatches = true;
       if (status === "Active" && includeActive) statusMatches = true;
@@ -82,6 +87,7 @@ export default function ReportsPage() {
       return inDateRange && statusMatches;
     });
   }, [loans, startDate, endDate, includePaid, includeActive, includeOverdue, loadingLoans]);
+
 
   // --- REPORT 1: Loan Portfolio Summary ---
   const portfolioSummary = useMemo(() => {
@@ -110,7 +116,7 @@ export default function ReportsPage() {
       else if (status === "Paid") paidLoans++;
       else if (status === "Overdue") overdueLoans++;
 
-      totalPrincipalDisbversed += Number(loan.principal || 0);
+      totalPrincipalDisbursed += Number(loan.principal || 0);
       totalInterestAccrued += Number(loan.interest || 0);
       totalRepaid += Number(loan.repaidAmount || 0);
       totalOutstanding += (Number(loan.totalRepayable || 0) - Number(loan.repaidAmount || 0));
@@ -149,7 +155,7 @@ export default function ReportsPage() {
         const daysOverdue = now.diff(dueDate, 'day');
         const outstanding = (Number(loan.totalRepayable || 0) - Number(loan.repaidAmount || 0));
 
-        if (outstanding <= 0) return; // Don't include if already fully paid but status is 'Overdue'
+        if (outstanding <= 0) return;
 
         const loanData = {
           id: loan.id,
@@ -178,7 +184,6 @@ export default function ReportsPage() {
       }
     });
 
-    // Sort the list of overdue loans by daysOverdue (descending)
     overdueLoansList.sort((a, b) => b.daysOverdue - a.daysOverdue);
 
     return { buckets, list: overdueLoansList };
@@ -254,7 +259,7 @@ export default function ReportsPage() {
         </Box>
       );
     }
-    if (filteredLoansForReports.length === 0 && reportType !== 'portfolioSummary') { // Portfolio summary will always show 0s
+    if (filteredLoansForReports.length === 0 && reportType !== 'portfolioSummary') {
       return (
         <Typography variant="h6" align="center" mt={4} color="text.secondary">
           No loan data found for the selected filters.
@@ -269,7 +274,7 @@ export default function ReportsPage() {
             <Typography variant="h6" gutterBottom>Loan Portfolio Summary</Typography>
             <Paper elevation={1} sx={{ p: 2, mb: 3 }}>
               <Stack direction="column" spacing={1}>
-                <Typography variant="subtitle1" fontWeight="bold">Summary for Loans from {startDate.format('DD MMM YYYY')} to {endDate.format('DD MMM YYYY')}</Typography>
+                <Typography variant="subtitle1" fontWeight="bold">Summary for Loans from {dayjs(startDate).format('DD MMM YYYY')} to {dayjs(endDate).format('DD MMM YYYY')}</Typography>
                 <Divider />
                 <Typography>Total Loans: <Typography component="span" fontWeight="bold">{portfolioSummary.totalLoans}</Typography></Typography>
                 <Typography>Active Loans: <Typography component="span" fontWeight="bold">{portfolioSummary.activeLoans}</Typography></Typography>
@@ -410,7 +415,8 @@ export default function ReportsPage() {
   };
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDayjs}>
+    // REMOVE LocalizationProvider wrapper, as it's for @mui/x-date-pickers
+    // <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Box sx={{ p: isMobile ? 1 : 3 }}>
         <Typography variant="h4" component="h1" gutterBottom>
           Reports & Analytics
@@ -431,21 +437,26 @@ export default function ReportsPage() {
               </Select>
             </FormControl>
 
-            <DatePicker
+            {/* Replace DatePicker with TextField type="date" */}
+            <TextField
               label="Start Date"
-              value={startDate}
-              onChange={(newValue) => setStartDate(newValue)}
-              slotProps={{ textField: { size: 'small', fullWidth: isMobile } }}
+              type="date"
+              size="small"
+              fullWidth={isMobile}
+              value={startDate} // Value is a string 'YYYY-MM-DD'
+              onChange={(e) => setStartDate(e.target.value)}
+              InputLabelProps={{ shrink: true }} // Makes label float correctly for date input
             />
-            <DatePicker
+            <TextField
               label="End Date"
-              value={endDate}
-              onChange={(newValue) => setEndDate(newValue)}
-              slotProps={{ textField: { size: 'small', fullWidth: isMobile } }}
+              type="date"
+              size="small"
+              fullWidth={isMobile}
+              value={endDate} // Value is a string 'YYYY-MM-DD'
+              onChange={(e) => setEndDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
             />
 
-            {/* Optional: Add status checkboxes for more granular filtering for certain reports */}
-            {/* These can be conditionally rendered based on reportType if desired */}
             {reportType === "detailedLoanList" && (
                 <Stack direction="row" spacing={1} sx={{ml: isMobile ? 0 : 2}}>
                     <FormControlLabel
@@ -468,6 +479,6 @@ export default function ReportsPage() {
 
         {renderReportContent()}
       </Box>
-    </LocalizationProvider>
+    // </LocalizationProvider>
   );
 }
