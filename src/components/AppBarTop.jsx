@@ -1,4 +1,3 @@
-// src/components/AppBarTop.jsx
 import React, { useState, useEffect } from "react";
 import {
   AppBar,
@@ -207,7 +206,6 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
     <>
       <AppBar
         position="fixed"
-        // Set elevation to 0 to apply custom boxShadow for glassmorphism
         elevation={0}
         sx={{
           zIndex: theme.zIndex.drawer + 1,
