@@ -32,16 +32,20 @@ const BottomNavBar = () => {
         right: 0,
         display: { xs: "block", sm: "none" },
         zIndex: theme.zIndex.appBar + 1, // Keep this, or theme.zIndex.drawer + 1 if you have a drawer
+        // --- ADDED BOTTOM RADIUS ---
         borderTopLeftRadius: 16,
         borderTopRightRadius: 16,
+        borderBottomLeftRadius: 16, // Added for rounded bottom-left corner
+        borderBottomRightRadius: 16, // Added for rounded bottom-right corner
+        // --- END ADDED BOTTOM RADIUS ---
         overflow: 'hidden', // Crucial for backdrop-filter to work correctly with border-radius
         
-        // --- GLASSMORPHISM STYLES START ---
+        // --- GLASSMORPHISM STYLES ---
         backdropFilter: 'blur(12px) saturate(180%)', // Applies the frosted glass blur effect
         backgroundColor: 'rgba(255, 255, 255, 0.1)', // Semi-transparent white background
         border: '1px solid rgba(255, 255, 255, 0.2)', // Subtle translucent border
         boxShadow: theme.shadows[3], // A softer shadow (e.g., elevation 3) complements the glass effect
-        // --- GLASSMORPHISM STYLES END ---
+        // --- END GLASSMORPHISM STYLES ---
       }}
       // Set elevation to 0 as we are defining a custom boxShadow for the glassmorphic look
       elevation={0} 
