@@ -41,7 +41,6 @@ const cardVariants = {
   }),
 };
 
-// >>> UPDATED: Changed 'height' to 'maxHeight' and set a fixed value <<<
 const metricsContainerVariants = {
   hidden: { opacity: 0, maxHeight: 0, overflow: "hidden" },
   visible: {
@@ -93,19 +92,20 @@ const EXECUTIVE_SUMMARY_IDS = [
   "totalCollected",
 ];
 
+// === MODIFIED: All icons set to "medium" size ===
 const iconMap = {
-  totalLoans: <MonetizationOnIcon fontSize="large" />,
-  paidLoans: <CheckCircleIcon fontSize="large" />,
-  activeLoans: <PendingIcon fontSize="large" />,
-  overdueLoans: <WarningIcon fontSize="large" />,
-  totalDisbursed: <MonetizationOnIcon fontSize="large" />,
-  investedCapital: <AccountBalanceWalletIcon fontSize="large" />,
-  availableCapital: <AccountBalanceWalletIcon fontSize="large" />,
-  totalCollected: <PaidIcon fontSize="large" />,
-  totalOutstanding: <WarningIcon fontSize="large" />,
-  expectedProfit: <BarChartIcon fontSize="large" />,
-  actualProfit: <CheckCircleIcon fontSize="large" />,
-  averageLoan: <MonetizationOnIcon fontSize="large" />,
+  totalLoans: <MonetizationOnIcon fontSize="medium" />,
+  paidLoans: <CheckCircleIcon fontSize="medium" />,
+  activeLoans: <PendingIcon fontSize="medium" />,
+  overdueLoans: <WarningIcon fontSize="medium" />,
+  totalDisbursed: <MonetizationOnIcon fontSize="medium" />,
+  investedCapital: <AccountBalanceWalletIcon fontSize="medium" />,
+  availableCapital: <AccountBalanceWalletIcon fontSize="medium" />,
+  totalCollected: <PaidIcon fontSize="medium" />,
+  totalOutstanding: <WarningIcon fontSize="medium" />,
+  expectedProfit: <BarChartIcon fontSize="medium" />,
+  actualProfit: <CheckCircleIcon fontSize="medium" />,
+  averageLoan: <MonetizationOnIcon fontSize="medium" />,
 };
 
 export default function Dashboard() {
@@ -747,7 +747,6 @@ export default function Dashboard() {
                                     sx={{
                                       p: isMobile ? 1 : 1.5,
                                       borderRadius: 2,
-                                      // === MODIFIED: Fixed height for mobile ===
                                       height: isMobile ? 130 : "100%",
                                       display: "flex",
                                       flexDirection: "column",
@@ -765,23 +764,30 @@ export default function Dashboard() {
                                       }),
                                     }}
                                   >
-                                    <Box display="flex" alignItems="center" mb={0.5} gap={0.5}>
-                                      <Box
-                                        sx={{
-                                          color: theme.palette[card.color]?.main || theme.palette.text.primary,
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                        }}
-                                      >
-                                        {card.icon}
-                                      </Box>
+                                    {/* === MODIFIED: New structure for Label and Icon === */}
+                                    <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={0.5}>
                                       <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 500 }}>
                                         {card.label}
                                       </Typography>
+                                      <Box sx={{
+                                          color: theme.palette[card.color]?.main || theme.palette.text.primary,
+                                          mt: -0.5, // Adjust vertical position for better alignment
+                                      }}>
+                                        {card.icon}
+                                      </Box>
                                     </Box>
-                                    {/* === MODIFIED: Adjust variant for mobile === */}
-                                    <Typography variant={isMobile ? "subtitle1" : "h5"} sx={{ fontWeight: 700, mb: card.progress !== null ? 0.5 : 0 }}>
+                                    {/* === MODIFIED: Commandining Figure Typography === */}
+                                    <Typography
+                                      variant={isMobile ? "h5" : "h5"} // Use h5 for commanding figures on mobile
+                                      sx={{
+                                        fontWeight: 800, // Make it extra bold
+                                        lineHeight: 1.1, // Slightly reduced line height
+                                        mb: (card.progress !== null || card.trend) ? 0.5 : 0, // Adjust margin bottom
+                                        whiteSpace: 'nowrap', // Prevent text wrap
+                                        overflow: 'hidden', // Hide overflow
+                                        textOverflow: 'ellipsis', // Show ellipsis if overflows
+                                      }}
+                                    >
                                       {card.value}
                                     </Typography>
                                     {card.progress !== null && (
@@ -795,6 +801,7 @@ export default function Dashboard() {
                                           "& .MuiLinearProgress-bar": {
                                             backgroundColor: theme.palette[card.color]?.main || theme.palette.primary.main,
                                           },
+                                          mt: 0.5, // Add margin top
                                         }}
                                       />
                                     )}
@@ -908,7 +915,6 @@ export default function Dashboard() {
                                     sx={{
                                       p: isMobile ? 1 : 1.5,
                                       borderRadius: 2,
-                                      // === MODIFIED: Fixed height for mobile ===
                                       height: isMobile ? 130 : "100%",
                                       display: "flex",
                                       flexDirection: "column",
@@ -926,23 +932,30 @@ export default function Dashboard() {
                                       }),
                                     }}
                                   >
-                                    <Box display="flex" alignItems="center" mb={0.5} gap={0.5}>
-                                      <Box
-                                        sx={{
-                                          color: theme.palette[card.color]?.main || theme.palette.text.primary,
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                        }}
-                                      >
-                                        {card.icon}
-                                      </Box>
+                                    {/* === MODIFIED: New structure for Label and Icon === */}
+                                    <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={0.5}>
                                       <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 500 }}>
                                         {card.label}
                                       </Typography>
+                                      <Box sx={{
+                                          color: theme.palette[card.color]?.main || theme.palette.text.primary,
+                                          mt: -0.5, // Adjust vertical position for better alignment
+                                      }}>
+                                        {card.icon}
+                                      </Box>
                                     </Box>
-                                    {/* === MODIFIED: Adjust variant for mobile === */}
-                                    <Typography variant={isMobile ? "subtitle1" : "h5"} sx={{ fontWeight: 700, mb: card.progress !== null ? 0.5 : 0 }}>
+                                    {/* === MODIFIED: Commandining Figure Typography === */}
+                                    <Typography
+                                      variant={isMobile ? "h5" : "h5"} // Use h5 for commanding figures on mobile
+                                      sx={{
+                                        fontWeight: 800, // Make it extra bold
+                                        lineHeight: 1.1, // Slightly reduced line height
+                                        mb: (card.progress !== null || card.trend) ? 0.5 : 0, // Adjust margin bottom
+                                        whiteSpace: 'nowrap', // Prevent text wrap
+                                        overflow: 'hidden', // Hide overflow
+                                        textOverflow: 'ellipsis', // Show ellipsis if overflows
+                                      }}
+                                    >
                                       {card.value}
                                     </Typography>
                                     {card.progress !== null && (
@@ -956,6 +969,7 @@ export default function Dashboard() {
                                           "& .MuiLinearProgress-bar": {
                                             backgroundColor: theme.palette[card.color]?.main || theme.palette.primary.main,
                                           },
+                                          mt: 0.5, // Add margin top
                                         }}
                                       />
                                     )}
