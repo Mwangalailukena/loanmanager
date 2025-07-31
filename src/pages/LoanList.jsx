@@ -1,3 +1,4 @@
+// src/pages/LoanList.jsx
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Box,
@@ -41,6 +42,8 @@ import { useFirestore } from "../contexts/FirestoreProvider";
 import { exportToCsv } from "../utils/exportCSV";
 import { motion, AnimatePresence } from "framer-motion";
 import dayjs from "dayjs";
+// NEW IMPORT: Import useSearchParams
+import { useSearchParams } from "react-router-dom";
 
 const PAGE_SIZE = 10;
 
@@ -55,10 +58,14 @@ export default function LoanList() {
   const { loans, loadingLoans, deleteLoan, addPayment, updateLoan, getPaymentsByLoanId, settings } = useFirestore();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  // NEW: Get URL search parameters
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [monthFilter, setMonthFilter] = useState(dayjs().format("YYYY-MM"));
+  // UPDATED: Initialize statusFilter from URL param, defaulting to "all"
+  const [statusFilter, setStatusFilter] = useState(searchParams.get('filter') || "all");
+  // UPDATED: Initialize monthFilter from URL param, defaulting to current month
+  const [monthFilter, setMonthFilter] = useState(searchParams.get('month') || dayjs().format("YYYY-MM"));
   const [page, setPage] = useState(1);
   const [useInfiniteScroll] = useState(isMobile);
   const [expandedRow, setExpandedRow] = useState(null);
@@ -108,11 +115,42 @@ export default function LoanList() {
     return "Active";
   };
 
+  // NEW useEffect to update filters when URL params change
+  useEffect(() => {
+    const urlFilter = searchParams.get('filter');
+    const urlMonth = searchParams.get('month');
+
+    // Only update if the URL parameter is different from current state
+    if (urlFilter && urlFilter !== statusFilter) {
+      setStatusFilter(urlFilter);
+    } else if (!urlFilter && statusFilter !== "all") {
+      setStatusFilter("all"); // Reset if param removed
+    }
+
+    if (urlMonth && urlMonth !== monthFilter) {
+      setMonthFilter(urlMonth);
+    } else if (!urlMonth && monthFilter !== dayjs().format("YYYY-MM")) {
+      setMonthFilter(dayjs().format("YYYY-MM")); // Reset to current month if param removed
+    }
+
+    // Reset search term if coming from a direct filtered link
+    // You might want to adjust this logic based on whether you expect search to persist
+    // if a user navigates from dashboard to loans, or if they explicitly search.
+    // For now, let's reset it to make sure dashboard clicks take precedence.
+    setSearchTerm("");
+    setPage(1); // Reset pagination when filters change from URL
+  }, [searchParams]); // Depend on searchParams to react to URL changes
+
+
   const filteredLoans = useMemo(() => {
     return loans
       .filter((loan) => {
-        if (monthFilter && !dayjs(loan.startDate).format("YYYY-MM").startsWith(monthFilter)) return false;
-        if (statusFilter !== "all" && calcStatus(loan).toLowerCase() !== statusFilter) return false;
+        // Ensure monthFilter is compared correctly
+        if (monthFilter && dayjs(loan.startDate).format("YYYY-MM") !== monthFilter) return false;
+
+        // Ensure statusFilter is compared correctly (case-insensitive)
+        if (statusFilter !== "all" && calcStatus(loan).toLowerCase() !== statusFilter.toLowerCase()) return false;
+
         if (
           searchTerm &&
           !(
@@ -124,7 +162,7 @@ export default function LoanList() {
         return true;
       })
       .sort((a, b) => dayjs(b.startDate).unix() - dayjs(a.startDate).unix());
-  }, [loans, searchTerm, statusFilter, monthFilter]);
+  }, [loans, searchTerm, statusFilter, monthFilter]); // Add statusFilter and monthFilter to dependencies
 
   const displayedLoans = useMemo(() => {
     if (useInfiniteScroll && isMobile) {
@@ -154,10 +192,12 @@ export default function LoanList() {
   }, [handleScroll, useInfiniteScroll, isMobile]);
 
   useEffect(() => {
+    // This useEffect is now mostly for internal state changes or pagination resets
+    // The primary handling of URL params is in the dedicated useEffect above
     setPage(1);
     setExpandedRow(null);
     setSelectedLoanIds([]);
-  }, [searchTerm, statusFilter, monthFilter, useInfiniteScroll]);
+  }, [searchTerm, statusFilter, monthFilter, useInfiniteScroll]); // Keep these dependencies for internal changes
 
   const totals = useMemo(() => {
     return filteredLoans.reduce(
