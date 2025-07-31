@@ -747,7 +747,8 @@ export default function Dashboard() {
                                     sx={{
                                       p: isMobile ? 1 : 1.5,
                                       borderRadius: 2,
-                                      height: "100%",
+                                      // === MODIFIED: Fixed height for mobile ===
+                                      height: isMobile ? 130 : "100%",
                                       display: "flex",
                                       flexDirection: "column",
                                       justifyContent: "space-between",
@@ -779,7 +780,8 @@ export default function Dashboard() {
                                         {card.label}
                                       </Typography>
                                     </Box>
-                                    <Typography variant={isMobile ? "h6" : "h5"} sx={{ fontWeight: 700, mb: card.progress !== null ? 0.5 : 0 }}>
+                                    {/* === MODIFIED: Adjust variant for mobile === */}
+                                    <Typography variant={isMobile ? "subtitle1" : "h5"} sx={{ fontWeight: 700, mb: card.progress !== null ? 0.5 : 0 }}>
                                       {card.value}
                                     </Typography>
                                     {card.progress !== null && (
@@ -906,7 +908,8 @@ export default function Dashboard() {
                                     sx={{
                                       p: isMobile ? 1 : 1.5,
                                       borderRadius: 2,
-                                      height: "100%",
+                                      // === MODIFIED: Fixed height for mobile ===
+                                      height: isMobile ? 130 : "100%",
                                       display: "flex",
                                       flexDirection: "column",
                                       justifyContent: "space-between",
@@ -938,7 +941,8 @@ export default function Dashboard() {
                                         {card.label}
                                       </Typography>
                                     </Box>
-                                    <Typography variant={isMobile ? "h6" : "h5"} sx={{ fontWeight: 700, mb: card.progress !== null ? 0.5 : 0 }}>
+                                    {/* === MODIFIED: Adjust variant for mobile === */}
+                                    <Typography variant={isMobile ? "subtitle1" : "h5"} sx={{ fontWeight: 700, mb: card.progress !== null ? 0.5 : 0 }}>
                                       {card.value}
                                     </Typography>
                                     {card.progress !== null && (
