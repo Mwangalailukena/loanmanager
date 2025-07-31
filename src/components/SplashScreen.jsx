@@ -51,65 +51,77 @@ const SplashScreen = ({ onFadeOutComplete, duration = 3000 }) => {
         backgroundColor: theme.palette.background.default,
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'center',
+        justifyContent: 'center', // This centers the main content (logo, message, progress)
         alignItems: 'center',
         zIndex: 9999,
-        animation: `${fadeOut} 0.5s ease-out forwards`, // Apply fade-out animation
-        animationDelay: `${(duration / 1000) - 0.5}s`, // Start fade-out 0.5s before total duration
+        animation: `${fadeOut} 0.5s ease-out forwards`,
+        animationDelay: `${(duration / 1000) - 0.5}s`,
         '@keyframes fadeOut': { from: { opacity: 1 }, to: { opacity: 0, visibility: 'hidden' } },
       }}
-      // Call callback when the fade-out animation ends
       onAnimationEnd={(e) => {
         if (e.animationName === fadeOut.name) {
           onFadeOutComplete();
         }
       }}
     >
+      {/* Main centered content: Logo, Loading Message, Progress Bar */}
+      {/* This Box ensures these elements stay centered together */}
       <Box
-        component="img"
-        src="/android/android-launchericon-512-512.png" // Path to your logo in the public folder
-        alt="Your App Logo"
         sx={{
-          maxWidth: '200px',
-          maxHeight: '200px',
-          mb: 4, // Increased margin-bottom for spacing with progress bar
-          animation: `${pulse} 1.5s infinite ease-in-out`, // Optional pulse animation for logo
-          '@keyframes pulse': {
-            '0%': { transform: 'scale(1)' },
-            '50%': { transform: 'scale(1.05)' },
-            '100%': { transform: 'scale(1)' },
-          },
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          // Optionally, add flex-grow to push the credit to the bottom if it were within this flex container
+          // flexGrow: 1,
         }}
-      />
-      <Typography variant="h6" color="text.secondary" sx={{ mb: 3 }}>
-        Loading your application...
-      </Typography>
-      <LinearProgress
-        variant="determinate" // Use determinate variant for controlled progress
-        value={progress}
-        sx={{
-          width: '70%', // Width of the progress bar
-          maxWidth: '400px', // Max width for larger screens
-          height: 8, // Thicker progress bar
-          borderRadius: 5, // Rounded corners
-          backgroundColor: theme.palette.mode === 'light' ? theme.palette.grey[300] : theme.palette.grey[700],
-          '& .MuiLinearProgress-bar': {
+      >
+        <Box
+          component="img"
+          src="/android/android-launchericon-512-512.png" // Path to your logo in the public folder
+          alt="Your App Logo"
+          sx={{
+            maxWidth: '200px',
+            maxHeight: '200px',
+            mb: 4,
+            animation: `${pulse} 1.5s infinite ease-in-out`,
+            '@keyframes pulse': {
+              '0%': { transform: 'scale(1)' },
+              '50%': { transform: 'scale(1.05)' },
+              '100%': { transform: 'scale(1)' },
+            },
+          }}
+        />
+        <Typography variant="h6" color="text.secondary" sx={{ mb: 3 }}>
+          Loading your application...
+        </Typography>
+        <LinearProgress
+          variant="determinate"
+          value={progress}
+          sx={{
+            width: '70%',
+            maxWidth: '400px',
+            height: 8,
             borderRadius: 5,
-            backgroundColor: theme.palette.primary.main, // Color of the progress indicator
-          },
-        }}
-      />
+            backgroundColor: theme.palette.mode === 'light' ? theme.palette.grey[300] : theme.palette.grey[700],
+            '& .MuiLinearProgress-bar': {
+              borderRadius: 5,
+              backgroundColor: theme.palette.primary.main,
+            },
+          }}
+        />
+      </Box>
 
-      {/* NEW: Developed by JeoTronix Technologies Limited credit */}
+      {/* NEW: Credit text positioned absolutely at the bottom */}
       <Typography
-        variant="caption" // Makes the text very small
-        color="text.disabled" // A very subtle color
+        variant="caption"
+        color="text.disabled"
         sx={{
-          mt: 4, // Margin-top to space it from the progress bar
+          position: 'absolute', // Position this text absolutely
+          bottom: theme.spacing(2), // 2 units from the bottom (adjust as needed)
+          width: '100%', // Take full width to allow text-align center
           textAlign: 'center',
-          lineHeight: 1.2, // Adjust line height if it wraps
-          // You can use a custom font size if 'caption' isn't small enough
-          // fontSize: '0.65rem',
+          lineHeight: 1.2,
         }}
       >
         Developed by JeoTronix Technologies Limited
