@@ -1,4 +1,3 @@
-// src/components/Sidebar.jsx
 import React from "react";
 import { Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, useTheme } from "@mui/material";
 import { useNavigate, useLocation } from "react-router-dom";
