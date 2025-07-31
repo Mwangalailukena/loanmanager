@@ -27,8 +27,8 @@ const BottomNavBar = () => {
     <Paper
       sx={{
         position: "fixed",
-        // --- LIFT FROM BOTTOM (ADJUSTED TO 13PX) ---
-        bottom: 13, // Lifts the component 13px from the bottom of the viewport
+        // --- LIFT FROM BOTTOM (ADJUSTED TO 12PX) ---
+        bottom: 12, // Lifts the component 12px from the bottom of the viewport
         // --- END LIFT FROM BOTTOM ---
         left: 0,
         right: 0,
