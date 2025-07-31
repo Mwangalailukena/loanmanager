@@ -1,4 +1,3 @@
-// src/App.js
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 
@@ -24,52 +23,56 @@ function AppContent() {
   const { darkMode, toggleDarkMode } = useThemeContext();
   const isOnline = useOfflineStatus(1000);
   const syncInProgress = useRef(false);
-  const wasOffline = useRef(false); // New ref to track if the app was previously offline
+  const wasOffline = useRef(false);
+  const syncExecutedOnce = useRef(false);
 
   useEffect(() => {
     // If we've just gone offline
     if (!isOnline) {
-      // Set the flag that we were offline.
       wasOffline.current = true;
+      syncExecutedOnce.current = false; // Reset the flag when we go offline
+      
       toast.warn("You're offline. Changes will sync once you're back online.", {
         toastId: 'offline-warning',
         position: "top-center",
-        autoClose: false, // Keep this toast open indefinitely while offline
+        autoClose: false,
       });
     } 
-    // If we've just come back online
+    // If we've just come back online AND we were previously offline
     else if (isOnline && wasOffline.current) {
-      // Reset the flag
-      wasOffline.current = false;
-      
       // Dismiss the offline warning toast
       if (toast.isActive('offline-warning')) {
         toast.dismiss('offline-warning');
       }
 
-      // Only start syncing if no sync is currently running
-      if (!syncInProgress.current) {
-        syncInProgress.current = true;
+      // Check if sync has already been executed for this offline-online cycle
+      if (!syncExecutedOnce.current) {
+        syncExecutedOnce.current = true; // Set the flag to prevent re-execution
+        wasOffline.current = false; // Reset wasOffline flag after sync is handled
 
-        toast.success("You're back online. Syncing data...", {
-          toastId: 'sync-starting',
-          position: "top-center",
-          autoClose: false,
-        });
+        // Now, proceed with the sync logic
+        if (!syncInProgress.current) {
+            syncInProgress.current = true;
+            toast.success("You're back online. Syncing data...", {
+                toastId: 'sync-starting',
+                position: "top-center",
+                autoClose: false,
+            });
 
-        syncPendingData()
-          .then(() => {
-            toast.dismiss('sync-starting');
-            toast.success("Offline data synced successfully!", { toastId: 'sync-success' });
-          })
-          .catch((err) => {
-            console.error("Failed to sync offline data:", err);
-            toast.dismiss('sync-starting');
-            toast.error("Failed to sync offline data. Please try again.", { toastId: 'sync-fail' });
-          })
-          .finally(() => {
-            syncInProgress.current = false;
-          });
+            syncPendingData()
+                .then(() => {
+                    toast.dismiss('sync-starting');
+                    toast.success("Offline data synced successfully!", { toastId: 'sync-success' });
+                })
+                .catch((err) => {
+                    console.error("Failed to sync offline data:", err);
+                    toast.dismiss('sync-starting');
+                    toast.error("Failed to sync offline data. Please try again.", { toastId: 'sync-fail' });
+                })
+                .finally(() => {
+                    syncInProgress.current = false;
+                });
+        }
       }
     }
   }, [isOnline]);
