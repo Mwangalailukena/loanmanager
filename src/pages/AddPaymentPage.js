@@ -171,6 +171,11 @@ export default function AddPaymentPage() {
           .toLocaleString()} added for ${selectedLoan.borrower}!`
       );
 
+      // Added vibration here:
+      if (navigator.vibrate) {
+        navigator.vibrate([100, 50, 100]);
+      }
+
       setSelectedLoan(null);
       setPaymentAmount("");
       setFieldErrors({});
@@ -396,3 +401,4 @@ export default function AddPaymentPage() {
     </Paper>
   );
 }
+
