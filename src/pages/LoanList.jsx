@@ -57,8 +57,8 @@ export default function LoanList() {
   const { loans, loadingLoans, deleteLoan, addPayment, updateLoan, getPaymentsByLoanId, settings } = useFirestore();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  // MODIFIED: Only destructure searchParams, as setSearchParams is not used here.
-  const [searchParams] = useSearchParams();
+  // MODIFIED: Destructure setSearchParams
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [searchTerm, setSearchTerm] = useState("");
   // MODIFIED: Initialize statusFilter from URL param, defaulting to "all"
@@ -356,6 +356,34 @@ export default function LoanList() {
   const toggleRow = (id) => {
     setExpandedRow(expandedRow === id ? null : id);
   };
+  
+  // NEW useCallback to handle month filter change and update URL
+  const onMonthChange = useCallback(
+    (e) => {
+      const newMonth = e.target.value;
+      if (newMonth) {
+        searchParams.set("month", newMonth);
+      } else {
+        searchParams.delete("month");
+      }
+      setSearchParams(searchParams);
+    },
+    [searchParams, setSearchParams]
+  );
+  
+  // Existing useCallback for status filter
+  const onStatusChange = useCallback(
+    (e) => {
+      const newStatus = e.target.value;
+      if (newStatus === "all") {
+        searchParams.delete("filter");
+      } else {
+        searchParams.set("filter", newStatus);
+      }
+      setSearchParams(searchParams);
+    },
+    [searchParams, setSearchParams]
+  );
 
   return (
     <Box sx={{ p: isMobile ? 1 : 3 }}>
@@ -378,7 +406,7 @@ export default function LoanList() {
           <Select
             value={statusFilter}
             label="Status"
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={onStatusChange}
             margin="dense"
           >
             <MenuItem value="all">All</MenuItem>
@@ -392,7 +420,7 @@ export default function LoanList() {
           type="month"
           size="small"
           value={monthFilter}
-          onChange={(e) => setMonthFilter(e.target.value)}
+          onChange={onMonthChange}
           sx={{ maxWidth: 130 }}
           margin="dense"
         />

@@ -1,0 +1,56 @@
+module.exports = {
+  root: true,
+  env: {
+    es6: true,
+    node: true,
+  },
+  extends: [
+    "eslint:recommended",
+    "plugin:import/errors",
+    "plugin:import/warnings",
+    "plugin:import/typescript",
+    "google",
+  ],
+  ignorePatterns: [
+    "/lib/**/*",
+    "/generated/**/*",
+    "functions/index.js",
+  ],
+  plugins: [
+    "import",
+  ],
+  overrides: [
+    {
+      files: ["*.ts", "*.tsx"],
+      parser: "@typescript-eslint/parser",
+      parserOptions: {
+        project: ["tsconfig.json", "tsconfig.dev.json"],
+        sourceType: "module",
+      },
+      plugins: [
+        "@typescript-eslint",
+      ],
+      extends: [
+        "plugin:@typescript-eslint/recommended",
+      ],
+      rules: {
+        "quotes": ["error", "double"],
+        "indent": ["error", 2],
+        "import/no-unresolved": 0,
+        "@typescript-eslint/no-unused-vars": [
+          "error",
+          {"argsIgnorePattern": "^_", "varsIgnorePattern": "^_"},
+        ],
+      },
+    },
+    {
+      files: ["*.js"],
+      rules: {
+        "quotes": ["error", "double"],
+        "indent": ["error", 2],
+        "import/no-unresolved": 0,
+      },
+    },
+  ],
+};
+
