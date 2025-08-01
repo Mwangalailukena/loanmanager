@@ -11,7 +11,7 @@ import {
   CircularProgress,
   IconButton,
   Tooltip,
-  Paper, // Ensure Paper is imported
+  Paper,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -181,6 +181,11 @@ export default function AddLoanForm() {
           : `Loan added successfully! Loan ID: ${loanDocRef.id}`
       );
 
+      // ✅ VIBRATION HERE
+      if (navigator.vibrate) {
+        navigator.vibrate([100, 50, 100]);
+      }
+
       setBorrower("");
       setPhone("");
       setAmount("");
@@ -296,16 +301,15 @@ export default function AddLoanForm() {
   };
 
   return (
-    // Wrap the content in a Paper component for a card-like appearance and border
     <Paper
-      elevation={2} // Add a subtle shadow
+      elevation={2}
       sx={{
         maxWidth: 500,
         mx: "auto",
         mt: 3,
-        p: 3, // Increased padding slightly for better spacing inside the border
-        border: (theme) => `2px solid ${theme.palette.primary.main}`, // Blue border
-        borderRadius: 2, // Rounded corners for the paper
+        p: 3,
+        border: (theme) => `2px solid ${theme.palette.primary.main}`,
+        borderRadius: 2,
       }}
     >
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
@@ -430,7 +434,6 @@ export default function AddLoanForm() {
         </Stack>
       </form>
 
-      {/* CSV Import Dialog */}
       <Dialog open={openImportDialog} onClose={() => setOpenImportDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -484,3 +487,4 @@ export default function AddLoanForm() {
     </Paper>
   );
 }
+
