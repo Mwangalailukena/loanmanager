@@ -720,10 +720,7 @@ export default function Dashboard() {
                           {(provided, snapshot) => (
                             <Grid
                               item
-                              xs={6}
-                              sm={4}
-                              md={3}
-                              lg={2}
+                              xs={6} sm={6} md={6} lg={6} // Consistent 2-column layout
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               {...provided.dragHandleProps}
@@ -747,10 +744,11 @@ export default function Dashboard() {
                                     sx={{
                                       p: isMobile ? 1 : 1.5,
                                       borderRadius: 2,
-                                      height: isMobile ? 130 : "100%",
+                                      height: isMobile ? 140 : 150, // Consistent card height
                                       display: "flex",
                                       flexDirection: "column",
-                                      justifyContent: "space-between",
+                                      alignItems: "center",
+                                      textAlign: "center", // Center all text content
                                       backgroundColor: theme.palette.background.paper,
                                       boxShadow: theme.shadows[0],
                                       border: `1px solid ${theme.palette.grey[200]}`,
@@ -764,32 +762,28 @@ export default function Dashboard() {
                                       }),
                                     }}
                                   >
-                                    {/* === MODIFIED: New structure for Label and Icon === */}
-                                    <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={0.5}>
+                                    <Box display="flex" justifyContent="center" alignItems="center" mb={0.5} gap={0.5}>
+                                      <Box sx={{ color: theme.palette[card.color]?.main || theme.palette.text.primary }}>
+                                        {card.icon}
+                                      </Box>
                                       <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 500 }}>
                                         {card.label}
                                       </Typography>
-                                      <Box sx={{
-                                          color: theme.palette[card.color]?.main || theme.palette.text.primary,
-                                          mt: -0.5, // Adjust vertical position for better alignment
-                                      }}>
-                                        {card.icon}
-                                      </Box>
                                     </Box>
-                                    {/* === MODIFIED: Commandining Figure Typography === */}
-                                    <Typography
-                                      variant={isMobile ? "h5" : "h5"} // Use h5 for commanding figures on mobile
-                                      sx={{
-                                        fontWeight: 800, // Make it extra bold
-                                        lineHeight: 1.1, // Slightly reduced line height
-                                        mb: (card.progress !== null || card.trend) ? 0.5 : 0, // Adjust margin bottom
-                                        whiteSpace: 'nowrap', // Prevent text wrap
-                                        overflow: 'hidden', // Hide overflow
-                                        textOverflow: 'ellipsis', // Show ellipsis if overflows
-                                      }}
-                                    >
-                                      {card.value}
-                                    </Typography>
+                                    <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                      <Typography
+                                        variant={isMobile ? "h5" : "h4"}
+                                        sx={{
+                                          fontWeight: 800,
+                                          lineHeight: 1.1,
+                                          whiteSpace: 'nowrap',
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                        }}
+                                      >
+                                        {card.value}
+                                      </Typography>
+                                    </Box>
                                     {card.progress !== null && (
                                       <LinearProgress
                                         variant="determinate"
@@ -801,12 +795,14 @@ export default function Dashboard() {
                                           "& .MuiLinearProgress-bar": {
                                             backgroundColor: theme.palette[card.color]?.main || theme.palette.primary.main,
                                           },
-                                          mt: 0.5, // Add margin top
+                                          width: '80%',
+                                          mt: 0.5,
+                                          mb: 0.5,
                                         }}
                                       />
                                     )}
                                     {card.trend && (
-                                        <Typography variant="caption" sx={{ color: card.trend.startsWith('+') ? theme.palette.success.main : (card.trend.startsWith('-') ? theme.palette.error.main : theme.palette.text.secondary), fontWeight: 600, mt: 0.5 }}>
+                                        <Typography variant="caption" sx={{ color: card.trend.startsWith('+') ? theme.palette.success.main : (card.trend.startsWith('-') ? theme.palette.error.main : theme.palette.text.secondary), fontWeight: 600, mt: card.progress !== null ? 0 : 0.5 }}>
                                           {card.trend} vs. last month
                                         </Typography>
                                     )}
@@ -888,10 +884,7 @@ export default function Dashboard() {
                           {(provided, snapshot) => (
                             <Grid
                               item
-                              xs={6}
-                              sm={4}
-                              md={3}
-                              lg={2}
+                              xs={6} sm={6} md={6} lg={6} // Consistent 2-column layout
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               {...provided.dragHandleProps}
@@ -915,10 +908,11 @@ export default function Dashboard() {
                                     sx={{
                                       p: isMobile ? 1 : 1.5,
                                       borderRadius: 2,
-                                      height: isMobile ? 130 : "100%",
+                                      height: isMobile ? 140 : 150, // Consistent card height
                                       display: "flex",
                                       flexDirection: "column",
-                                      justifyContent: "space-between",
+                                      alignItems: "center",
+                                      textAlign: "center", // Center all text content
                                       backgroundColor: theme.palette.background.paper,
                                       boxShadow: theme.shadows[0],
                                       border: `1px solid ${theme.palette.grey[200]}`,
@@ -932,32 +926,28 @@ export default function Dashboard() {
                                       }),
                                     }}
                                   >
-                                    {/* === MODIFIED: New structure for Label and Icon === */}
-                                    <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={0.5}>
+                                    <Box display="flex" justifyContent="center" alignItems="center" mb={0.5} gap={0.5}>
+                                      <Box sx={{ color: theme.palette[card.color]?.main || theme.palette.text.primary }}>
+                                        {card.icon}
+                                      </Box>
                                       <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 500 }}>
                                         {card.label}
                                       </Typography>
-                                      <Box sx={{
-                                          color: theme.palette[card.color]?.main || theme.palette.text.primary,
-                                          mt: -0.5, // Adjust vertical position for better alignment
-                                      }}>
-                                        {card.icon}
-                                      </Box>
                                     </Box>
-                                    {/* === MODIFIED: Commandining Figure Typography === */}
-                                    <Typography
-                                      variant={isMobile ? "h5" : "h5"} // Use h5 for commanding figures on mobile
-                                      sx={{
-                                        fontWeight: 800, // Make it extra bold
-                                        lineHeight: 1.1, // Slightly reduced line height
-                                        mb: (card.progress !== null || card.trend) ? 0.5 : 0, // Adjust margin bottom
-                                        whiteSpace: 'nowrap', // Prevent text wrap
-                                        overflow: 'hidden', // Hide overflow
-                                        textOverflow: 'ellipsis', // Show ellipsis if overflows
-                                      }}
-                                    >
-                                      {card.value}
-                                    </Typography>
+                                    <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                      <Typography
+                                        variant={isMobile ? "h5" : "h4"}
+                                        sx={{
+                                          fontWeight: 800,
+                                          lineHeight: 1.1,
+                                          whiteSpace: 'nowrap',
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                        }}
+                                      >
+                                        {card.value}
+                                      </Typography>
+                                    </Box>
                                     {card.progress !== null && (
                                       <LinearProgress
                                         variant="determinate"
@@ -969,12 +959,14 @@ export default function Dashboard() {
                                           "& .MuiLinearProgress-bar": {
                                             backgroundColor: theme.palette[card.color]?.main || theme.palette.primary.main,
                                           },
-                                          mt: 0.5, // Add margin top
+                                          width: '80%',
+                                          mt: 0.5,
+                                          mb: 0.5,
                                         }}
                                       />
                                     )}
                                     {card.trend && (
-                                        <Typography variant="caption" sx={{ color: card.trend.startsWith('+') ? theme.palette.success.main : (card.trend.startsWith('-') ? theme.palette.error.main : theme.palette.text.secondary), fontWeight: 600, mt: 0.5 }}>
+                                        <Typography variant="caption" sx={{ color: card.trend.startsWith('+') ? theme.palette.success.main : (card.trend.startsWith('-') ? theme.palette.error.main : theme.palette.text.secondary), fontWeight: 600, mt: card.progress !== null ? 0 : 0.5 }}>
                                           {card.trend} vs. last month
                                         </Typography>
                                     )}
