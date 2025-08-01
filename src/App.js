@@ -25,16 +25,13 @@ function AppContent() {
     if (!isOnline) {
       wasOffline.current = true;
       syncExecutedOnce.current = false;
-      
       toast.warn("You're offline. Changes will sync once you're back online.", {
         toastId: 'offline-warning',
         position: "top-center",
         autoClose: false,
       });
     } else if (isOnline && wasOffline.current) {
-      if (toast.isActive('offline-warning')) {
-        toast.dismiss('offline-warning');
-      }
+      if (toast.isActive('offline-warning')) toast.dismiss('offline-warning');
 
       if (!syncExecutedOnce.current) {
         syncExecutedOnce.current = true;
@@ -42,6 +39,7 @@ function AppContent() {
 
         if (!syncInProgress.current) {
           syncInProgress.current = true;
+
           toast.success("You're back online. Syncing data...", {
             toastId: 'sync-starting',
             position: "top-center",
@@ -51,12 +49,16 @@ function AppContent() {
           syncPendingData()
             .then(() => {
               toast.dismiss('sync-starting');
-              toast.success("Offline data synced successfully!", { toastId: 'sync-success' });
+              toast.success("Offline data synced successfully!", {
+                toastId: 'sync-success'
+              });
             })
             .catch((err) => {
               console.error("Failed to sync offline data:", err);
               toast.dismiss('sync-starting');
-              toast.error("Failed to sync offline data. Please try again.", { toastId: 'sync-fail' });
+              toast.error("Failed to sync offline data. Please try again.", {
+                toastId: 'sync-fail'
+              });
             })
             .finally(() => {
               syncInProgress.current = false;
@@ -72,68 +74,53 @@ function AppContent() {
         <FirestoreProvider>
           <AppRoutes darkMode={darkMode} onToggleDarkMode={toggleDarkMode} />
           <InstallPrompt />
+          
           <ToastContainer
             position="top-center"
             autoClose={3000}
             hideProgressBar
+            closeOnClick={false}
+            pauseOnHover={false}
+            draggable={false}
             newestOnTop
-            closeOnClick
-            rtl={false}
-            pauseOnFocusLoss
-            draggable
-            pauseOnHover
-            theme={darkMode ? "dark" : "light"}
             toastStyle={{
-              borderRadius: "15px",
-              fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-              fontWeight: "500",
-              fontSize: "0.85rem",
-              padding: "12px 20px",
-              boxShadow: "0 8px 32px 0 rgba(31, 38, 135, 0.37)",
-              background: "rgba(255, 255, 255, 0.12)", // translucent white for glass
-              color: "#ffffff",
-              userSelect: "none",
-              backdropFilter: "blur(10px)",
-              border: "1px solid rgba(255, 255, 255, 0.25)",
-              WebkitBackdropFilter: "blur(10px)",
+              background: "#111",
+              color: "#f0f0f0",
+              borderRadius: "10px",
+              fontSize: "0.8rem",
+              fontFamily: "'Segoe UI', sans-serif",
+              padding: "10px 16px",
+              minHeight: "auto",
+              width: "fit-content",
+              boxShadow: "0 4px 14px rgba(0,0,0,0.3)",
             }}
-            bodyClassName="toast-body"
+            bodyClassName="custom-toast-body"
           />
 
           <style>{`
-            /* Fade in and fade out with opacity and slight vertical movement */
             .Toastify__toast {
-              opacity: 0;
-              transform: translateY(-10px);
-              animation: toastFadeIn 0.4s forwards;
-            }
-            .Toastify__toast--exit {
-              opacity: 0 !important;
-              transform: translateY(-10px) !important;
-              transition: opacity 0.4s ease, transform 0.4s ease;
+              animation: fadeInOut 3s ease-in-out;
             }
 
-            @keyframes toastFadeIn {
-              to {
-                opacity: 1;
-                transform: translateY(0);
-              }
+            @keyframes fadeInOut {
+              0% { opacity: 0; transform: translateY(-10px); }
+              10% { opacity: 1; transform: translateY(0); }
+              90% { opacity: 1; transform: translateY(0); }
+              100% { opacity: 0; transform: translateY(-10px); }
             }
 
-            /* Close button styling */
             .Toastify__close-button {
-              color: #ddd;
-              opacity: 0.7;
-              transition: opacity 0.2s;
-            }
-            .Toastify__close-button:hover {
-              opacity: 1;
+              display: none;
             }
 
-            /* Smaller icons */
+            .custom-toast-body {
+              padding: 0;
+              margin: 0;
+            }
+
             .Toastify__toast-icon svg {
-              width: 18px;
-              height: 18px;
+              width: 16px;
+              height: 16px;
             }
           `}</style>
         </FirestoreProvider>
