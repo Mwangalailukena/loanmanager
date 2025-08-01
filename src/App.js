@@ -14,7 +14,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import useOfflineStatus from './hooks/useOfflineStatus';
 import { syncPendingData } from './utils/offlineQueue';
 
-function AppContent() {
+function App() {
   const { darkMode, toggleDarkMode } = useThemeContext();
   const isOnline = useOfflineStatus(1000);
   const syncInProgress = useRef(false);
@@ -66,6 +66,14 @@ function AppContent() {
         }
       }
     }
+
+    // Cleanup on unmount
+    return () => {
+      toast.dismiss('offline-warning');
+      toast.dismiss('sync-starting');
+      toast.dismiss('sync-success');
+      toast.dismiss('sync-fail');
+    };
   }, [isOnline]);
 
   return (
@@ -79,7 +87,7 @@ function AppContent() {
             position="top-center"
             autoClose={3000}
             hideProgressBar
-            closeOnClick={false}
+            closeOnClick={true}
             pauseOnHover={false}
             draggable={false}
             newestOnTop
@@ -129,5 +137,5 @@ function AppContent() {
   );
 }
 
-export default AppContent;
+export default App;
 
