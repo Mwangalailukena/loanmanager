@@ -89,7 +89,9 @@ export default function AddLoanForm() {
     } catch (err) {
       console.error("Error accessing contacts:", err);
       if (err.name === "NotAllowedError" || err.name === "SecurityError") {
-        toast.error("Permission denied to access contacts. Please grant access in your browser settings.");
+        toast.error(
+          "Permission denied to access contacts. Please grant access in your browser settings."
+        );
       } else if (err.name === "AbortError") {
         toast.info("Contact selection cancelled.");
       } else {
@@ -107,7 +109,8 @@ export default function AddLoanForm() {
     4: 0.3,
   };
 
-  const calculateInterest = (principal, weeks) => principal * (interestRates[weeks] || 0);
+  const calculateInterest = (principal, weeks) =>
+    principal * (interestRates[weeks] || 0);
 
   const validateFields = () => {
     let isValid = true;
@@ -150,7 +153,9 @@ export default function AddLoanForm() {
     const totalRepayable = principal + interest;
 
     const startDate = dayjs().format("YYYY-MM-DD");
-    const dueDate = dayjs().add(interestDuration * 7, "day").format("YYYY-MM-DD");
+    const dueDate = dayjs()
+      .add(interestDuration * 7, "day")
+      .format("YYYY-MM-DD");
 
     try {
       const loanDocRef = await addLoan({
@@ -175,17 +180,22 @@ export default function AddLoanForm() {
         timestamp: new Date().toISOString(),
       });
 
+      // Use a unique toast ID to avoid duplicates
+      const toastId = "loan-add-success";
+
       toast.success(
         isOffline
           ? "Loan added (offline). Will sync when online."
-          : `Loan added successfully! Loan ID: ${loanDocRef.id}`
+          : `Loan added successfully! Loan ID: ${loanDocRef.id}`,
+        { toastId }
       );
 
-      // ✅ VIBRATION HERE
+      // Vibration feedback
       if (navigator.vibrate) {
         navigator.vibrate([100, 50, 100]);
       }
 
+      // Clear form
       setBorrower("");
       setPhone("");
       setAmount("");
@@ -236,18 +246,24 @@ export default function AddLoanForm() {
             continue;
           }
           if (!phoneNumber || !/^\d{10}$/.test(phoneNumber)) {
-            errors.push(`Row ${lineNumber}: Invalid 'Phone Number'. It must be 10 digits.`);
+            errors.push(
+              `Row ${lineNumber}: Invalid 'Phone Number'. It must be 10 digits.`
+            );
             continue;
           }
           if (isNaN(loanAmount) || loanAmount <= 0) {
-            errors.push(`Row ${lineNumber}: Invalid 'Loan Amount (ZMW)'. Must be a positive number.`);
+            errors.push(
+              `Row ${lineNumber}: Invalid 'Loan Amount (ZMW)'. Must be a positive number.`
+            );
             continue;
           }
           if (
             isNaN(interestDur) ||
             !interestOptions.some((opt) => opt.value === interestDur)
           ) {
-            errors.push(`Row ${lineNumber}: Invalid 'Interest Duration (Weeks)'. Must be 1, 2, 3, or 4.`);
+            errors.push(
+              `Row ${lineNumber}: Invalid 'Interest Duration (Weeks)'. Must be 1, 2, 3, or 4.`
+            );
             continue;
           }
 
@@ -273,7 +289,9 @@ export default function AddLoanForm() {
           } catch (addError) {
             console.error(`Error adding loan from row ${lineNumber}:`, addError);
             errors.push(
-              `Row ${lineNumber}: Failed to add loan to database. (${addError.message || "Unknown error"})`
+              `Row ${lineNumber}: Failed to add loan to database. (${
+                addError.message || "Unknown error"
+              })`
             );
           }
         }
@@ -281,13 +299,20 @@ export default function AddLoanForm() {
         setImportLoading(false);
         setOpenImportDialog(false);
 
+        // Unique toast IDs for import results
         if (successCount > 0) {
-          toast.success(`Successfully imported ${successCount} loan(s)!`);
+          toast.success(`Successfully imported ${successCount} loan(s)!`, {
+            toastId: "csv-import-success",
+          });
         }
         if (errors.length > 0) {
-          setError(`CSV Import finished with ${errors.length} error(s). Please check the console and toast notifications for details.`);
+          setError(
+            `CSV Import finished with ${errors.length} error(s). Please check console and toast notifications.`
+          );
           console.error("CSV Import Errors:", errors);
-          errors.forEach((err) => toast.error(`Import Error: ${err}`, { autoClose: false }));
+          errors.forEach((err) =>
+            toast.error(`Import Error: ${err}`, { autoClose: false })
+          );
         }
       },
       error: (err) => {
@@ -312,7 +337,14 @@ export default function AddLoanForm() {
         borderRadius: 2,
       }}
     >
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 3,
+        }}
+      >
         <Typography variant="h5">Add New Loan</Typography>
         <Tooltip title="Import multiple loans from CSV">
           <IconButton
@@ -359,7 +391,11 @@ export default function AddLoanForm() {
             ) : (
               <Tooltip title="Your browser does not support the Contact Picker API.">
                 <span>
-                  <IconButton color="primary" disabled aria-label="import contact not supported">
+                  <IconButton
+                    color="primary"
+                    disabled
+                    aria-label="import contact not supported"
+                  >
                     <ContactPhoneIcon />
                   </IconButton>
                 </span>
@@ -434,9 +470,16 @@ export default function AddLoanForm() {
         </Stack>
       </form>
 
-      <Dialog open={openImportDialog} onClose={() => setOpenImportDialog(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={openImportDialog}
+        onClose={() => setOpenImportDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <Box
+            sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+          >
             Import Loans from CSV
             <IconButton onClick={() => setOpenImportDialog(false)} aria-label="close">
               <CloseIcon />
@@ -445,7 +488,8 @@ export default function AddLoanForm() {
         </DialogTitle>
         <DialogContent dividers>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Upload a CSV file with loan data. Ensure the first row contains these exact headers:
+            Upload a CSV file with loan data. Ensure the first row contains these exact
+            headers:
           </Typography>
           <Paper variant="outlined" sx={{ p: 1, mb: 2, bgcolor: "grey.100" }}>
             <Typography
@@ -470,7 +514,9 @@ export default function AddLoanForm() {
             <Button
               variant="contained"
               component="span"
-              startIcon={importLoading ? <CircularProgress size={20} color="inherit" /> : <UploadFileIcon />}
+              startIcon={
+                importLoading ? <CircularProgress size={20} color="inherit" /> : <UploadFileIcon />
+              }
               disabled={importLoading}
               fullWidth
             >
