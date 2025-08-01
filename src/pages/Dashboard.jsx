@@ -309,7 +309,7 @@ export default function Dashboard() {
     {
       id: "investedCapital",
       label: "Invested Capital",
-      value: `ZMW ${initialCapital.toLocaleString()}`,
+      value: `K ${initialCapital.toLocaleString()}`,
       color: "primary",
       filter: "all",
       tooltip: "Initial capital invested into loans",
@@ -319,7 +319,7 @@ export default function Dashboard() {
     {
       id: "availableCapital",
       label: "Available Capital",
-      value: `ZMW ${availableCapital.toLocaleString()}`,
+      value: `K ${availableCapital.toLocaleString()}`,
       color: "success",
       filter: "all",
       tooltip: "Capital currently available to issue new loans. Progress against initial capital.",
@@ -329,7 +329,7 @@ export default function Dashboard() {
     {
       id: "totalDisbursed",
       label: "Total Disbursed",
-      value: `ZMW ${totalDisbursed.toLocaleString()}`,
+      value: `K ${totalDisbursed.toLocaleString()}`,
       color: "primary",
       filter: "all",
       tooltip: "Total principal amount disbursed this month",
@@ -340,7 +340,7 @@ export default function Dashboard() {
     {
       id: "totalCollected",
       label: "Total Collected",
-      value: `ZMW ${totalCollected.toLocaleString()}`,
+      value: `K ${totalCollected.toLocaleString()}`,
       color: "info",
       filter: "paid",
       tooltip: "Total amount collected from repayments this month",
@@ -392,7 +392,7 @@ export default function Dashboard() {
     {
       id: "totalOutstanding",
       label: "Total Outstanding",
-      value: `ZMW ${totalOutstanding.toLocaleString()}`,
+      value: `K ${totalOutstanding.toLocaleString()}`,
       color: "warning",
       filter: "active",
       tooltip: "Total outstanding repayments still due",
@@ -402,7 +402,7 @@ export default function Dashboard() {
     {
       id: "expectedProfit",
       label: "Interest Expected",
-      value: `ZMW ${totalExpectedProfit.toLocaleString()}`,
+      value: `K ${totalExpectedProfit.toLocaleString()}`,
       color: "info",
       filter: "all",
       tooltip: "Total expected profit from interest",
@@ -412,7 +412,7 @@ export default function Dashboard() {
     {
       id: "actualProfit",
       label: "Actual Interest",
-      value: `ZMW ${actualProfit.toLocaleString()}`,
+      value: `K ${actualProfit.toLocaleString()}`,
       color: "success",
       filter: "paid",
       tooltip: "Profit earned from fully repaid loans",
@@ -423,7 +423,7 @@ export default function Dashboard() {
     {
       id: "averageLoan",
       label: "Average Loan",
-      value: `ZMW ${averageLoan.toLocaleString()}`,
+      value: `K ${averageLoan.toLocaleString()}`,
       color: "primary",
       filter: "all",
       tooltip: "Average loan amount issued this month",
