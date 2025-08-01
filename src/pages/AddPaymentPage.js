@@ -15,6 +15,7 @@ import {
   DialogContentText,
   DialogActions,
   Paper,
+  Chip, // Import Chip component
 } from "@mui/material";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { toast } from "react-toastify";
@@ -23,6 +24,23 @@ import { db } from "../firebase";
 import { collection, addDoc } from "firebase/firestore";
 
 const OFFLINE_PAYMENTS_KEY = "pendingPayments";
+
+// Dummy StatusChip component for demonstration. Replace with your app's actual component.
+const StatusChip = ({ status }) => {
+  const colorMap = {
+    Active: "primary",
+    Paid: "success",
+    Overdue: "error",
+  };
+  return (
+    <Chip
+      label={status}
+      color={colorMap[status] || "default"}
+      size="small"
+      sx={{ ml: 1 }}
+    />
+  );
+};
 
 // Queue payment locally
 async function queuePayment(paymentData) {
@@ -226,13 +244,24 @@ export default function AddPaymentPage() {
             id="loan-borrower-search"
             options={activeLoans}
             getOptionLabel={(option) =>
-              `${option.borrower} (Phone: ${option.phone}, Loan: ZMW ${option.principal.toLocaleString()})`
+              `${option.borrower} (Phone: ${option.phone})`
             }
             value={selectedLoan}
             onChange={(event, newValue) => {
               setSelectedLoan(newValue);
             }}
             loading={loadingLoans}
+            renderOption={(props, option) => (
+              <Box component="li" {...props}>
+                <Typography variant="body1">
+                  {option.borrower}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ ml: 1, flexGrow: 1 }}>
+                  (Loan: ZMW {option.principal.toFixed(2).toLocaleString()})
+                </Typography>
+                <StatusChip status={option.status} />
+              </Box>
+            )}
             renderInput={(params) => (
               <TextField
                 {...params}
@@ -367,4 +396,3 @@ export default function AddPaymentPage() {
     </Paper>
   );
 }
-
