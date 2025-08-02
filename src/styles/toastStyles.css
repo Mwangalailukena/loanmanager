@@ -5,8 +5,8 @@
 
 /* Base styles for all toast types */
 .Toastify__toast {
-  /* Make the background black */
-  background: #000000 !important;
+  /* Set background color to a semi-transparent black (75% opacity) */
+  background: rgba(0, 0, 0, 0.75) !important;
   
   /* Set text color to white for better contrast */
   color: #ffffff !important;
@@ -39,9 +39,9 @@
 
 /* Optional: Style specific toast types (success, error, etc.) */
 .Toastify__toast--success {
-  background: #28a745 !important;
+  background: rgba(40, 167, 69, 0.75) !important;
 }
 
 .Toastify__toast--error {
-  background: #dc3545 !important;
+  background: rgba(220, 53, 69, 0.75) !important;
 }
