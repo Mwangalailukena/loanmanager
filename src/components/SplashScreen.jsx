@@ -19,7 +19,7 @@ const pulse = keyframes`
   100% { transform: scale(1); }
 `;
 
-const SplashScreen = ({ onFadeOutComplete, duration = 3000 }) => {
+const SplashScreen = ({ onFadeOutComplete, duration = 4000 }) => {
   const theme = useTheme();
   const [progress, setProgress] = useState(0);
 
