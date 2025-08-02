@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 
 import { useThemeContext } from './contexts/ThemeProvider.jsx';
@@ -7,6 +7,7 @@ import { AuthProvider } from './contexts/AuthProvider';
 
 import AppRoutes from './AppRoutes';
 import InstallPrompt from './components/InstallPrompt';
+import SplashScreen from './components/SplashScreen'; // Import your splash screen component
 
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -20,6 +21,23 @@ function App() {
   const syncInProgress = useRef(false);
   const wasOffline = useRef(false);
   const syncExecutedOnce = useRef(false);
+  const [showSplash, setShowSplash] = useState(true); // New state for the splash screen
+
+  // This useEffect now handles the splash screen logic
+  useEffect(() => {
+    // A simple way to hide the splash screen after a few seconds
+    const splashTimeout = setTimeout(() => {
+      setShowSplash(false);
+    }, 2000); // Adjust the duration (in milliseconds) as needed
+
+    // Check for pending data on initial load
+    // You can integrate this with your syncPendingData logic if it takes time
+    // For now, we'll just let the timer handle the splash screen.
+    // If syncPendingData was asynchronous on app load, you would await it here
+    // and then set setShowSplash(false) in the .then() block.
+
+    return () => clearTimeout(splashTimeout);
+  }, []);
 
   useEffect(() => {
     if (!isOnline) {
@@ -75,6 +93,10 @@ function App() {
       toast.dismiss('sync-fail');
     };
   }, [isOnline]);
+
+  if (showSplash) {
+    return <SplashScreen />;
+  }
 
   return (
     <Router>
@@ -138,4 +160,3 @@ function App() {
 }
 
 export default App;
-
