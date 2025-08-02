@@ -16,14 +16,14 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
-import { useAuth } from "./AuthProvider"; // Assuming you have an AuthProvider
+import { useAuth } from "./AuthProvider";
 
 const FirestoreContext = createContext();
 
 export const useFirestore = () => useContext(FirestoreContext);
 
 export function FirestoreProvider({ children }) {
-  const { user } = useAuth(); // Get the current authenticated user
+  const { user } = useAuth();
   
   const [loans, setLoans] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -35,7 +35,6 @@ export function FirestoreProvider({ children }) {
   const [loadingLoans, setLoadingLoans] = useState(true);
 
   const addActivityLog = async (logEntry) => {
-    // Add user info to every log entry
     const userDetails = {
       userId: user?.uid || "system",
       userName: user?.displayName || "System",
@@ -119,7 +118,6 @@ export function FirestoreProvider({ children }) {
     const updatesWithTimestamp = { ...updates, updatedAt: serverTimestamp() };
     await updateDoc(loanDocRef, updatesWithTimestamp);
     
-    // Fetch loan details for a more descriptive log
     const loanSnap = await getDoc(loanDocRef);
     if (loanSnap.exists()) {
       const loanData = loanSnap.data();
