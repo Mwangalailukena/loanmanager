@@ -8,32 +8,33 @@
   /* Make the background black */
   background: #000000 !important;
   
-  /* Add rounded corners */
-  border-radius: 12px !important;
-
   /* Set text color to white for better contrast */
   color: #ffffff !important;
 
-  /* Set a fixed smaller width */
+  /* Add rounded corners */
+  border-radius: 12px !important;
+
+  /* Reduce the height by adjusting padding */
+  padding: 8px 12px !important; 
+
+  /* Set a fixed smaller width to make it more compact */
   width: 250px !important; 
-
-  /* Or use a max-width to allow it to shrink on smaller screens */
-  /* max-width: 300px !important; */
-
-  /* You can also reduce the padding to make it more compact */
-  padding: 10px 15px !important; 
 
   /* Customize the box shadow */
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25) !important;
-  
-  /* Make the progress bar less tall to save space */
-  --toastify-progress-bar-height: 2px;
+}
+
+/* Make the toast text smaller */
+.Toastify__toast-body {
+  font-size: 14px !important;
 }
 
 /* Style the progress bar */
 .Toastify__progress-bar {
   /* Set the progress bar color to a lighter shade */
   background: #ffffff !important;
+  /* Make the progress bar less tall to save space */
+  height: 2px !important;
 }
 
 /* Optional: Style specific toast types (success, error, etc.) */
