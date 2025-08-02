@@ -1,6 +1,6 @@
 // src/components/SplashScreen.jsx
 import React, { useState, useEffect } from 'react';
-import { Box, LinearProgress, Typography, keyframes, useTheme, Paper } from '@mui/material'; // <-- Add Paper here
+import { Box, LinearProgress, Typography, keyframes, useTheme, Paper } from '@mui/material';
 
 // Define keyframe animations
 const fadeOut = keyframes`
@@ -62,19 +62,19 @@ const SplashScreen = ({ onFadeOutComplete, duration = 3000 }) => {
         }
       }}
     >
-      {/* Use Paper to create a card-like container for the splash screen content */}
+      {/* The Paper component now covers the entire viewport */}
       <Paper
-        elevation={3} // Adjust the shadow depth (0-24)
+        elevation={0} // Elevation is set to 0 as it's now the background
         sx={{
-          padding: { xs: 4, md: 6 }, // Use responsive padding
+          padding: { xs: 4, md: 6 },
+          // Remove max-width and border-radius
+          width: '100vw',
+          height: '100vh',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
           alignItems: 'center',
-          borderRadius: '16px', // Rounded corners
-          backgroundColor: theme.palette.background.paper, // Use the paper background color
-          width: { xs: '90%', sm: 'auto' }, // Make it responsive
-          maxWidth: '500px', // Set a max-width
+          backgroundColor: theme.palette.background.paper, // Use paper background color
         }}
       >
         <Box
@@ -100,7 +100,7 @@ const SplashScreen = ({ onFadeOutComplete, duration = 3000 }) => {
           variant="determinate"
           value={progress}
           sx={{
-            width: '100%', // Use 100% width of the Paper container
+            width: '100%',
             height: 8,
             borderRadius: 5,
             backgroundColor: theme.palette.mode === 'light' ? theme.palette.grey[300] : theme.palette.grey[700],
@@ -110,22 +110,22 @@ const SplashScreen = ({ onFadeOutComplete, duration = 3000 }) => {
             },
           }}
         />
+        
+        {/* The credit text is now inside the full-screen Paper component */}
+        <Typography
+          variant="caption"
+          color="text.disabled"
+          sx={{
+            position: 'absolute',
+            bottom: theme.spacing(2),
+            width: '100%',
+            textAlign: 'center',
+            lineHeight: 1.2,
+          }}
+        >
+          Developed by JeoTronix Technologies Limited
+        </Typography>
       </Paper>
-
-      {/* Credit text positioned absolutely at the bottom */}
-      <Typography
-        variant="caption"
-        color="text.disabled"
-        sx={{
-          position: 'absolute',
-          bottom: theme.spacing(2),
-          width: '100%',
-          textAlign: 'center',
-          lineHeight: 1.2,
-        }}
-      >
-        Developed by JeoTronix Technologies Limited
-      </Typography>
     </Box>
   );
 };
