@@ -27,7 +27,7 @@ import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion"; // AnimatePresence import removed
 import { useFirestore } from "../contexts/FirestoreProvider";
 import dayjs from "dayjs";
 import { toast } from "react-toastify";
