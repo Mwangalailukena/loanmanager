@@ -105,11 +105,11 @@ export function FirestoreProvider({ children }) {
     };
     const docRef = await addDoc(collection(db, "loans"), loanWithTimestamps);
     await addActivityLog({
-      description: `New loan added for ${loan.borrower} (${loan.borrowerPhone}).`,
+      description: `New loan added for ${loan.borrower} (${loan.phone}).`,
       type: "loan_creation",
       loanId: docRef.id,
       borrower: loan.borrower,
-      borrowerPhone: loan.borrowerPhone,
+      borrowerPhone: loan.phone,
     });
     return docRef;
   };
@@ -124,11 +124,11 @@ export function FirestoreProvider({ children }) {
     if (loanSnap.exists()) {
       const loanData = loanSnap.data();
       await addActivityLog({
-        description: `Loan details updated for ${loanData.borrower} (${loanData.borrowerPhone || 'No phone'}).`,
+        description: `Loan details updated for ${loanData.borrower} (${loanData.phone || 'No phone'}).`,
         type: "edit",
         loanId: id,
         borrower: loanData.borrower,
-        borrowerPhone: loanData.borrowerPhone,
+        borrowerPhone: loanData.phone,
       });
     } else {
       await addActivityLog({
@@ -149,7 +149,7 @@ export function FirestoreProvider({ children }) {
     if (loanExists) {
       const loanData = loanSnap.data();
       borrowerName = loanData.borrower;
-      borrowerPhone = loanData.borrowerPhone;
+      borrowerPhone = loanData.phone;
     }
     
     await deleteDoc(loanDocRef);
@@ -182,11 +182,11 @@ export function FirestoreProvider({ children }) {
 
       await updateDoc(loanDocRef, { repaidAmount, status });
       await addActivityLog({
-        description: `Payment of ZMW ${amount.toFixed(2)} added for ${loan.borrower} (${loan.borrowerPhone}).`,
+        description: `Payment of ZMW ${amount.toFixed(2)} added for ${loan.borrower} (${loan.phone}).`,
         type: "payment",
         loanId: loanId,
         borrower: loan.borrower,
-        borrowerPhone: loan.borrowerPhone,
+        borrowerPhone: loan.phone,
       });
     }
   };
