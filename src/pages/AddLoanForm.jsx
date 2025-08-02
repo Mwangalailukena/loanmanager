@@ -1,3 +1,4 @@
+// src/pages/AddLoanForm.js
 import { getDoc } from "firebase/firestore";
 import React, { useState, useEffect } from "react";
 import {
@@ -174,11 +175,7 @@ export default function AddLoanForm() {
       const docSnap = await getDoc(loanDocRef);
       const isOffline = docSnap.metadata?.hasPendingWrites ?? false;
 
-      await addActivityLog({
-        action: "Loan Created",
-        details: `Loan created for ${borrower} (ZMW ${principal.toLocaleString()}) [Loan ID: ${loanDocRef.id}]`,
-        timestamp: new Date().toISOString(),
-      });
+      // This call to addActivityLog was removed as it is now handled by the addLoan function in the FirestoreProvider.
 
       // Use a unique toast ID to avoid duplicates
       const toastId = "loan-add-success";
@@ -533,4 +530,3 @@ export default function AddLoanForm() {
     </Paper>
   );
 }
-
