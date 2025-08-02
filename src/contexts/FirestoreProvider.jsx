@@ -33,6 +33,7 @@ export function FirestoreProvider({ children }) {
   });
   const [activityLogs, setActivityLogs] = useState([]);
   const [loadingLoans, setLoadingLoans] = useState(true);
+  const [loadingPayments, setLoadingPayments] = useState(true);
 
   const addActivityLog = async (logEntry) => {
     const userDetails = {
@@ -58,8 +59,6 @@ export function FirestoreProvider({ children }) {
     return unsub;
   }, []);
 
-  // Updated useEffect to handle loading state for payments as well
-  const [loadingPayments, setLoadingPayments] = useState(true);
   useEffect(() => {
     const q = query(collection(db, "payments"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snap) => {
@@ -100,6 +99,7 @@ export function FirestoreProvider({ children }) {
   }, []);
 
   const addLoan = async (loan) => {
+    // This function is already correctly using serverTimestamp()
     const loanWithTimestamps = {
       ...loan,
       createdAt: serverTimestamp(),
@@ -165,11 +165,10 @@ export function FirestoreProvider({ children }) {
   };
 
   const addPayment = async (loanId, amount) => {
-    const date = new Date().toISOString();
+    // This is the updated code, removing the 'date' string field
     await addDoc(collection(db, "payments"), {
       loanId,
       amount,
-      date,
       createdAt: serverTimestamp(),
     });
 
