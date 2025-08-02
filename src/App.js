@@ -28,7 +28,7 @@ function App() {
       toast.warn("You're offline. Changes will sync once you're back online.", {
         toastId: 'offline-warning',
         position: "top-center",
-        autoClose: false,
+        autoClose: true,
       });
     } else if (isOnline && wasOffline.current) {
       if (toast.isActive('offline-warning')) toast.dismiss('offline-warning');
@@ -43,7 +43,7 @@ function App() {
           toast.success("You're back online. Syncing data...", {
             toastId: 'sync-starting',
             position: "top-center",
-            autoClose: false,
+            autoClose: true,
           });
 
           syncPendingData()
