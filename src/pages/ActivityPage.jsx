@@ -19,31 +19,37 @@ import {
   AccordionDetails,
   Tooltip,
   Skeleton,
+  styled,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme, useMediaQuery } from "@mui/material";
 
+// Framer Motion variants for animations
 const itemVariants = {
   hidden: { opacity: 0, y: 10 },
   visible: { opacity: 1, y: 0 },
   exit: { opacity: 0, y: -10 },
 };
 
-// Map action types to readable labels
-const actionLabels = {
-  loan_creation: "Loan Created",
-  edit: "Edited",
-  payment: "Payment Made",
-  login: "Login",
-  delete: "Loan Deleted",
+// Map action types to readable labels and colors
+const actionConfig = {
+  loan_creation: { label: "Loan Created", color: "primary" },
+  edit: { label: "Edited", color: "info" },
+  payment: { label: "Payment Made", color: "success" },
+  login: { label: "Login", color: "default" },
+  delete: { label: "Loan Deleted", color: "error" },
+  updateSettings: { label: "Settings Updated", color: "secondary" },
+  unknown: { label: "Unknown Action", color: "default" },
 };
 
 // Helper function to format date
 const formatDate = (dateValue) => {
   if (!dateValue) return "No valid date";
-  const date = new Date(dateValue);
+  
+  // Firestore timestamps might be objects, so handle them
+  const date = dateValue.toDate ? dateValue.toDate() : new Date(dateValue);
   if (isNaN(date)) return "No valid date";
 
   const options = {
@@ -58,6 +64,17 @@ const formatDate = (dateValue) => {
 
 const ITEMS_PER_PAGE = 20;
 
+// Custom styled components
+const StyledAccordionSummary = styled(AccordionSummary)(({ theme }) => ({
+  flexDirection: "row-reverse",
+  "& .MuiAccordionSummary-expandIconWrapper.Mui-expanded": {
+    transform: "rotate(90deg)",
+  },
+  "& .MuiAccordionSummary-content": {
+    marginLeft: theme.spacing(1),
+  },
+}));
+
 export default function ActivityPage() {
   const { activityLogs } = useFirestore();
   const theme = useTheme();
@@ -70,24 +87,34 @@ export default function ActivityPage() {
   const [filterType, setFilterType] = useState("all");
 
   const filteredLogs = useMemo(() => {
+    if (!activityLogs) return [];
+    
     return activityLogs
       .filter((log) => {
+        // Filter by type
         if (filterType !== "all" && log.type !== filterType) return false;
-        if (
-          search &&
-          !log.description?.toLowerCase().includes(search.toLowerCase()) &&
-          !(
-            log.userName?.toLowerCase().includes(search.toLowerCase()) ||
-            log.user?.toLowerCase().includes(search.toLowerCase())
-          )
-        )
-          return false;
+        
+        // Filter by search string
+        if (search) {
+          const lowerSearch = search.toLowerCase();
+          const logDescription = log.description?.toLowerCase() || "";
+          const logUserName = log.userName?.toLowerCase() || "";
+          const logBorrower = log.borrower?.toLowerCase() || "";
+          
+          if (
+            !logDescription.includes(lowerSearch) &&
+            !logUserName.includes(lowerSearch) &&
+            !logBorrower.includes(lowerSearch)
+          ) {
+            return false;
+          }
+        }
         return true;
       })
       .sort((a, b) => {
-        const dateA = a.timestamp || a.createdAt || 0;
-        const dateB = b.timestamp || b.createdAt || 0;
-        return new Date(dateB) - new Date(dateA);
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : a.createdAt?.getTime() || 0;
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : b.createdAt?.getTime() || 0;
+        return dateB - dateA;
       });
   }, [activityLogs, filterType, search]);
 
@@ -124,7 +151,6 @@ export default function ActivityPage() {
     };
   }, [displayedLogs, filteredLogs, isMobile]);
 
-  // Determine if data is still loading
   const isLoading = !activityLogs;
 
   return (
@@ -162,11 +188,11 @@ export default function ActivityPage() {
             onChange={(e) => setFilterType(e.target.value)}
           >
             <MenuItem value="all">All</MenuItem>
-            <MenuItem value="loan_creation">Loan Creation</MenuItem>
-            <MenuItem value="edit">Edit</MenuItem>
-            <MenuItem value="payment">Payment</MenuItem>
-            <MenuItem value="login">Login</MenuItem>
-            <MenuItem value="delete">Delete</MenuItem>
+            {Object.keys(actionConfig).filter(key => key !== 'unknown').map(key => (
+              <MenuItem key={key} value={key}>
+                {actionConfig[key].label}
+              </MenuItem>
+            ))}
           </Select>
         </FormControl>
       </Stack>
@@ -194,12 +220,9 @@ export default function ActivityPage() {
                   </Typography>
                 )}
                 {displayedLogs.map((log) => {
+                  const action = actionConfig[log.type] || actionConfig.unknown;
                   const userDisplay = log.userName ?? log.user ?? "System";
-                  const actionDisplay =
-                    actionLabels[log.type] ??
-                    (log.type ? log.type.replace(/_/g, " ") : "Unknown Action");
-
-                  const dateStr = formatDate(log.timestamp || log.createdAt);
+                  const dateStr = formatDate(log.createdAt);
 
                   return (
                     <motion.div
@@ -216,7 +239,7 @@ export default function ActivityPage() {
                         <Tooltip
                           title={log.description ?? "No description available"}
                         >
-                          <AccordionSummary
+                          <StyledAccordionSummary
                             expandIcon={<ExpandMoreIcon />}
                             aria-controls={`panel-${log.id}-content`}
                             id={`panel-${log.id}-header`}
@@ -228,22 +251,16 @@ export default function ActivityPage() {
                               sx={{ width: "100%" }}
                             >
                               <Chip
-                                label={actionDisplay}
+                                label={action.label}
                                 size="small"
-                                color={
-                                  log.type === "delete"
-                                    ? "error"
-                                    : log.type === "payment"
-                                    ? "success"
-                                    : "primary"
-                                }
+                                color={action.color}
                               />
                               <ListItemText
                                 primary={<strong>{userDisplay}</strong>}
                                 secondary={dateStr}
                               />
                             </Stack>
-                          </AccordionSummary>
+                          </StyledAccordionSummary>
                         </Tooltip>
                         <AccordionDetails>
                           <Typography variant="body2" color="text.secondary">
@@ -252,6 +269,21 @@ export default function ActivityPage() {
                           <Typography variant="body1" sx={{ mt: 1 }}>
                             {log.description ?? "No description provided."}
                           </Typography>
+                          {log.borrower && (
+                            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                              **Borrower:** {log.borrower} ({log.borrowerPhone})
+                            </Typography>
+                          )}
+                          {log.loanId && (
+                            <Typography variant="body2" color="text.secondary">
+                              **Loan ID:** {log.loanId}
+                            </Typography>
+                          )}
+                          {log.userEmail && (
+                            <Typography variant="body2" color="text.secondary">
+                              **Admin:** {log.userEmail}
+                            </Typography>
+                          )}
                         </AccordionDetails>
                       </Accordion>
                     </motion.div>
