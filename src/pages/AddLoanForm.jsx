@@ -36,7 +36,7 @@ const interestOptions = [
 ];
 
 export default function AddLoanForm() {
-  const { addLoan, addActivityLog, settings } = useFirestore();
+  const { addLoan, settings } = useFirestore();
 
   const [borrower, setBorrower] = useState("");
   const [phone, setPhone] = useState("");
