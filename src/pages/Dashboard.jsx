@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Box, Grid, Card, Typography, useTheme, useMediaQuery, TextField,
-  Tooltip, LinearProgress, Fab, Zoom, Skeleton, Accordion,
+  Tooltip, LinearProgress, Fab, Zoom, Accordion,
   AccordionSummary, AccordionDetails, Badge,
+  Backdrop, CircularProgress, // <-- Add these imports
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import PaidIcon from "@mui/icons-material/Payments";
@@ -236,7 +237,7 @@ export default function Dashboard() {
     setCardsOrder(newCardsOrder);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newCardsOrder));
     toast.success("Dashboard layout saved!");
-  }, [executiveSummaryCards, metricsCards]); // Removed cardsOrder from the dependency array
+  }, [executiveSummaryCards, metricsCards]);
 
   const handleCardClick = (filter) => {
     const params = new URLSearchParams();
@@ -244,59 +245,6 @@ export default function Dashboard() {
     if (selectedMonth) params.set("month", selectedMonth);
     navigate(`/loans?${params.toString()}`);
   };
-
-  const skeletonIconSize = isMobile ? 24 : 28;
-  const skeletonTextHeight = isMobile ? 16 : 18;
-  const skeletonValueHeight = isMobile ? 22 : 26;
-  const skeletonProgressHeight = isMobile ? 4 : 5;
-
-
-  if (loading) {
-    return (
-      <Box sx={{ minHeight: "100vh", background: theme.palette.background.default, pt: 0, pb: isMobile ? `calc(${BOTTOM_NAV_HEIGHT}px + ${theme.spacing(2)})` : 3 }}>
-        <Typography variant={isMobile ? "h6" : "h5"} gutterBottom sx={{ fontWeight: 600, mb: 0.5, mt: 0 }}><Skeleton variant="text" width="40%" /></Typography>
-        <Box mb={isMobile ? 1 : 1.5} maxWidth={isMobile ? "100%" : 180}><Skeleton variant="rectangular" height={30} width="100%" sx={{ borderRadius: 1 }} /></Box>
-
-        {/* Executive Summary Skeleton */}
-        <Box sx={{ borderRadius: 2, p: isMobile ? 1.5 : 2, mb: isMobile ? 1.5 : 2, backgroundColor: theme.palette.grey[100], boxShadow: theme.shadows[1], border: `2px solid ${theme.palette.primary.main}` }}>
-          <Box display="flex" alignItems="center" justifyContent="space-between" mb={isMobile ? 1 : 1.5} sx={{ p: isMobile ? 1 : 1.5, borderRadius: 1, backgroundColor: theme.palette.grey[200] }}><Skeleton variant="text" width="30%" height={isMobile ? 24 : 28} /><Skeleton variant="circular" width={20} height={20} /></Box>
-          <Grid container spacing={isMobile ? 1 : 1.5}>
-            {[...Array(4)].map((_, i) => (
-              <Grid item xs={6} sm={4} md={3} lg={2} key={`exec-skel-${i}`}>
-                <Card sx={{ p: isMobile ? 1 : 1.5, borderRadius: 2, boxShadow: theme.shadows[0], height: "100%", backgroundColor: theme.palette.grey[50] }}>
-                  <Box display="flex" alignItems="center" mb={0.5} gap={0.5}><Skeleton variant="circular" width={skeletonIconSize} height={skeletonIconSize} /><Skeleton variant="text" width="50%" height={skeletonTextHeight} /></Box>
-                  <Skeleton variant="text" width="70%" height={skeletonValueHeight} />
-                  <Skeleton variant="rectangular" width="100%" height={skeletonProgressHeight} sx={{ mt: 0.5, borderRadius: 1 }} />
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        </Box>
-
-        {/* Metrics Skeleton */}
-        <Box sx={{ borderRadius: 2, p: isMobile ? 1.5 : 2, mb: isMobile ? 1.5 : 2, backgroundColor: theme.palette.grey[100], boxShadow: theme.shadows[1], border: `2px solid ${theme.palette.primary.main}` }}>
-          <Box display="flex" alignItems="center" justifyContent="space-between" mb={isMobile ? 1 : 1.5} sx={{ p: isMobile ? 1 : 1.5, borderRadius: 1, backgroundColor: theme.palette.grey[200] }}><Skeleton variant="text" width="30%" height={isMobile ? 24 : 28} /><Skeleton variant="circular" width={20} height={20} /></Box>
-          <Grid container spacing={isMobile ? 1 : 1.5}>
-            {[...Array(6)].map((_, i) => (
-              <Grid item xs={6} sm={4} md={3} lg={2} key={`metrics-skel-${i}`}>
-                <Card sx={{ p: isMobile ? 1 : 1.5, borderRadius: 2, boxShadow: theme.shadows[0], height: "100%", backgroundColor: theme.palette.grey[50] }}>
-                  <Box display="flex" alignItems="center" mb={0.5} gap={0.5}><Skeleton variant="circular" width={skeletonIconSize} height={skeletonIconSize} /><Skeleton variant="text" width="50%" height={skeletonTextHeight} /></Box>
-                  <Skeleton variant="text" width="70%" height={skeletonValueHeight} />
-                  <Skeleton variant="rectangular" width="100%" height={skeletonProgressHeight} sx={{ mt: 0.5, borderRadius: 1 }} />
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        </Box>
-
-        {/* Charts Skeleton */}
-        <Box sx={{ borderRadius: 2, p: isMobile ? 1.5 : 2, mb: isMobile ? 1.5 : 2, backgroundColor: theme.palette.grey[100], boxShadow: theme.shadows[1], border: `2px solid ${theme.palette.primary.main}` }}>
-          <Box display="flex" alignItems="center" justifyContent="space-between" mb={isMobile ? 1 : 1.5} sx={{ p: isMobile ? 1 : 1.5, borderRadius: 1, backgroundColor: theme.palette.grey[200] }}><Skeleton variant="text" width="30%" height={isMobile ? 24 : 28} /><Skeleton variant="circular" width={20} height={20} /></Box>
-          <Grid container spacing={isMobile ? 1.5 : 2}><Grid item xs={12} md={6}><Skeleton variant="rectangular" width="100%" height={300} sx={{ borderRadius: 2 }} /></Grid><Grid item xs={12} md={6}><Skeleton variant="rectangular" width="100%" height={300} sx={{ borderRadius: 2 }} /></Grid><Grid item xs={12}><Skeleton variant="rectangular" width="100%" height={300} sx={{ borderRadius: 2 }} /></Grid></Grid>
-        </Box>
-      </Box>
-    );
-  }
 
   const renderCardSection = (cards, droppableId) => (
     <Droppable droppableId={droppableId} direction="horizontal">
@@ -355,6 +303,8 @@ export default function Dashboard() {
     </Droppable>
   );
 
+  // --- REMOVED: The `if (loading)` block with the Skeletons is removed here ---
+
   return (
     <Box sx={{ minHeight: "100vh", background: theme.palette.background.default, p: isMobile ? 2 : 3, pb: isMobile ? `calc(${BOTTOM_NAV_HEIGHT}px + ${theme.spacing(2)})` : 3 }}>
       <Typography variant={isMobile ? "h6" : "h5"} gutterBottom sx={{ fontWeight: 600, mb: 0.5 }}>Dashboard</Typography>
@@ -398,6 +348,14 @@ export default function Dashboard() {
           <AddIcon />
         </Fab>
       </Zoom>
+
+      {/* --- NEW: Loading Overlay Component --- */}
+      <Backdrop
+        sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}
+        open={loading}
+      >
+        <CircularProgress color="inherit" />
+      </Backdrop>
     </Box>
   );
 }
