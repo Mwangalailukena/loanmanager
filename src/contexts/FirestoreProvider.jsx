@@ -58,10 +58,13 @@ export function FirestoreProvider({ children }) {
     return unsub;
   }, []);
 
+  // Updated useEffect to handle loading state for payments as well
+  const [loadingPayments, setLoadingPayments] = useState(true);
   useEffect(() => {
     const q = query(collection(db, "payments"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snap) => {
       setPayments(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      setLoadingPayments(false);
     });
     return unsub;
   }, []);
@@ -215,6 +218,7 @@ export function FirestoreProvider({ children }) {
     loans,
     loadingLoans,
     payments,
+    loadingPayments,
     settings,
     activityLogs,
     addLoan,
