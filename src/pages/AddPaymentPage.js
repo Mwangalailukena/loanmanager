@@ -21,7 +21,7 @@ import { useFirestore } from "../contexts/FirestoreProvider";
 import { toast } from "react-toastify";
 import localforage from "localforage";
 import { db } from "../firebase";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore"; // Import serverTimestamp here
 
 const OFFLINE_PAYMENTS_KEY = "pendingPayments";
 
@@ -56,7 +56,11 @@ async function syncPendingPayments() {
 
   for (const payment of pending) {
     try {
-      await addDoc(collection(db, "payments"), payment);
+      // FIX: Ensure the createdAt field is a Firestore serverTimestamp
+      await addDoc(collection(db, "payments"), {
+        ...payment,
+        createdAt: serverTimestamp(),
+      });
     } catch (error) {
       console.error("Sync failed for payment", payment, error);
       return; // stop syncing if any write fails
@@ -212,9 +216,6 @@ export default function AddPaymentPage() {
 
         // Reset form even if queued locally
         setSelectedLoan(null);
-        setPaymentAmount("");
-        setFieldErrors({});
-        setGeneralError("");
       } else {
         setGeneralError("Failed to add payment. Please try again.");
         toast.error(`Failed to add payment: ${err.message || "Unknown error"}`);
@@ -431,4 +432,3 @@ export default function AddPaymentPage() {
     </Paper>
   );
 }
-
