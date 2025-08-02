@@ -1,3 +1,4 @@
+// src/pages/AddPaymentPage.jsx
 import React, { useState, useEffect, useMemo } from "react";
 import {
   Box,
@@ -14,11 +15,60 @@ import {
   DialogContentText,
   DialogActions,
   Paper,
+  Chip,
 } from "@mui/material";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { toast } from "react-toastify";
+import localforage from "localforage";
+import { db } from "../firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore"; // Import serverTimestamp here
 
-const OFFLINE_PAYMENTS_KEY = "offlinePayments";
+const OFFLINE_PAYMENTS_KEY = "pendingPayments";
+
+// Dummy StatusChip component for demonstration. Replace with your app's actual component.
+const StatusChip = ({ status }) => {
+  const colorMap = {
+    Active: "primary",
+    Paid: "success",
+    Overdue: "error",
+  };
+  return (
+    <Chip
+      label={status}
+      color={colorMap[status] || "default"}
+      size="small"
+      sx={{ ml: 1 }}
+    />
+  );
+};
+
+// Queue payment locally
+async function queuePayment(paymentData) {
+  const existing = (await localforage.getItem(OFFLINE_PAYMENTS_KEY)) || [];
+  existing.push({ ...paymentData, timestamp: Date.now() });
+  await localforage.setItem(OFFLINE_PAYMENTS_KEY, existing);
+}
+
+// Sync queued payments to Firestore
+async function syncPendingPayments() {
+  const pending = (await localforage.getItem(OFFLINE_PAYMENTS_KEY)) || [];
+  if (pending.length === 0) return;
+
+  for (const payment of pending) {
+    try {
+      // FIX: Ensure the createdAt field is a Firestore serverTimestamp
+      await addDoc(collection(db, "payments"), {
+        ...payment,
+        createdAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error("Sync failed for payment", payment, error);
+      return; // stop syncing if any write fails
+    }
+  }
+
+  await localforage.removeItem(OFFLINE_PAYMENTS_KEY);
+}
 
 export default function AddPaymentPage() {
   const { loans, addPayment, loadingLoans } = useFirestore();
@@ -30,95 +80,90 @@ export default function AddPaymentPage() {
   const [loading, setLoading] = useState(false);
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
 
-  // On mount: try syncing any offline payments saved in localStorage
-  useEffect(() => {
-    async function syncOfflinePayments() {
-      const savedPayments = JSON.parse(localStorage.getItem(OFFLINE_PAYMENTS_KEY) || "[]");
-      if (savedPayments.length === 0) return;
+  // Filter active loans for selection
+  const activeLoans = useMemo(() => {
+    return loans.filter((loan) => loan.status === "Active");
+  }, [loans]);
 
-      // Attempt to sync each payment
-      for (const payment of savedPayments) {
-        try {
-          await addPayment(payment.loanId, payment.amount);
-          toast.success(`Offline payment of ZMW ${payment.amount.toFixed(2)} synced for loan ID ${payment.loanId}`);
-          // Remove synced payments after successful sync later below
-        } catch (err) {
-          // If sync fails, keep payment in localStorage and show a toast
-          toast.error(`Failed to sync offline payment for loan ID ${payment.loanId}. Will retry later.`);
-          console.error("Offline payment sync error:", err);
-          return; // stop further syncing now, wait for next online
-        }
-      }
-      // If all synced successfully, clear offline payments storage
-      localStorage.removeItem(OFFLINE_PAYMENTS_KEY);
-    }
-
-    if (navigator.onLine) {
-      syncOfflinePayments();
-    }
-
-    // Also listen to 'online' event to try syncing when connection returns
-    function handleOnline() {
-      syncOfflinePayments();
-    }
-    window.addEventListener("online", handleOnline);
-    return () => window.removeEventListener("online", handleOnline);
-  }, [addPayment]);
-
-  const activeLoans = useMemo(() => loans.filter(loan => loan.status === "Active"), [loans]);
-
+  // Error helpers
   const setFieldError = (field, message) => {
-    setFieldErrors(prev => ({ ...prev, [field]: message }));
+    setFieldErrors((prev) => ({ ...prev, [field]: message }));
   };
-
   const clearFieldError = (field) => {
-    setFieldErrors(prev => {
-      const copy = { ...prev };
-      delete copy[field];
-      return copy;
+    setFieldErrors((prev) => {
+      const newState = { ...prev };
+      delete newState[field];
+      return newState;
     });
   };
 
-  useEffect(() => { clearFieldError('loan'); setGeneralError(''); }, [selectedLoan]);
-  useEffect(() => { clearFieldError('amount'); setGeneralError(''); }, [paymentAmount]);
+  useEffect(() => {
+    clearFieldError("loan");
+    setGeneralError("");
+  }, [selectedLoan]);
+
+  useEffect(() => {
+    clearFieldError("amount");
+    setGeneralError("");
+  }, [paymentAmount]);
+
+  // Attempt to sync when back online
+  useEffect(() => {
+    const offlineSyncToastId = "offline-sync-info";
+
+    const handleOnline = () => {
+      syncPendingPayments()
+        .then(() => {
+          if (!toast.isActive(offlineSyncToastId)) {
+            toast.info("Offline payments synced successfully.", {
+              toastId: offlineSyncToastId,
+            });
+          }
+        })
+        .catch((e) => {
+          console.error("Error syncing payments:", e);
+        });
+    };
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
+  }, []);
 
   const validateForm = () => {
-    let valid = true;
+    let isValid = true;
     setFieldErrors({});
     setGeneralError("");
 
     if (!selectedLoan) {
       setFieldError("loan", "Please select a borrower/loan.");
-      valid = false;
+      isValid = false;
     }
 
-    const numAmount = Number(paymentAmount);
-    if (isNaN(numAmount) || numAmount <= 0) {
+    const numPaymentAmount = Number(paymentAmount);
+    if (isNaN(numPaymentAmount) || numPaymentAmount <= 0) {
       setFieldError("amount", "Payment amount must be a valid positive number.");
-      valid = false;
+      isValid = false;
     } else if (selectedLoan) {
-      const remainingBalance = selectedLoan.totalRepayable - (selectedLoan.repaidAmount || 0);
-      if (numAmount > remainingBalance + 0.0001) {
+      const remainingBalance =
+        selectedLoan.totalRepayable - (selectedLoan.repaidAmount || 0);
+      if (numPaymentAmount > remainingBalance + 0.0001) {
         setFieldError(
           "amount",
-          `Payment (ZMW ${numAmount.toFixed(2)}) exceeds remaining balance (ZMW ${remainingBalance.toFixed(2)}).`
+          `Payment (ZMW ${numPaymentAmount.toFixed(
+            2
+          )}) exceeds remaining balance (ZMW ${remainingBalance.toFixed(2)}).`
         );
-        valid = false;
+        isValid = false;
       }
     }
 
-    return valid;
+    return isValid;
   };
 
   const handleOpenConfirmation = (e) => {
     e.preventDefault();
-    if (validateForm()) setOpenConfirmDialog(true);
-  };
-
-  const savePaymentOffline = (loanId, amount) => {
-    const offlinePayments = JSON.parse(localStorage.getItem(OFFLINE_PAYMENTS_KEY) || "[]");
-    offlinePayments.push({ loanId, amount, timestamp: Date.now() });
-    localStorage.setItem(OFFLINE_PAYMENTS_KEY, JSON.stringify(offlinePayments));
+    if (validateForm()) {
+      setOpenConfirmDialog(true);
+    }
   };
 
   const handleConfirmSubmit = async () => {
@@ -126,39 +171,82 @@ export default function AddPaymentPage() {
     setLoading(true);
 
     try {
-      const numAmount = Number(paymentAmount);
+      const numPaymentAmount = Number(paymentAmount);
+      // Try adding payment via Firestore context first
+      await addPayment(selectedLoan.id, numPaymentAmount);
 
-      if (!navigator.onLine) {
-        // Save offline and notify user
-        savePaymentOffline(selectedLoan.id, numAmount);
-        toast.info("No internet connection. Payment saved locally and will sync when online.");
-      } else {
-        await addPayment(selectedLoan.id, numAmount);
-        toast.success(`Payment of ZMW ${numAmount.toFixed(2).toLocaleString()} added for ${selectedLoan.borrower}!`);
+      const successToastId = "payment-success";
+      if (!toast.isActive(successToastId)) {
+        toast.success(
+          `Payment of ZMW ${numPaymentAmount.toFixed(2).toLocaleString()} added for ${selectedLoan.borrower}!`,
+          { toastId: successToastId }
+        );
       }
 
-      // Reset form
+      // Added vibration here:
+      if (navigator.vibrate) {
+        navigator.vibrate([100, 50, 100]);
+      }
+
       setSelectedLoan(null);
       setPaymentAmount("");
       setFieldErrors({});
       setGeneralError("");
     } catch (err) {
+      // If offline or Firestore unavailable, queue payment locally
       console.error("Payment submission failed:", err);
-      setGeneralError("Failed to add payment. Please try again.");
-      toast.error(`Failed to add payment: ${err.message || "Unknown error"}`);
+      if (
+        err.code === "unavailable" ||
+        err.message?.toLowerCase().includes("offline")
+      ) {
+        await queuePayment({
+          loanId: selectedLoan.id,
+          borrower: selectedLoan.borrower,
+          amount: Number(paymentAmount),
+          createdAt: new Date().toISOString(),
+        });
+
+        const offlineToastId = "offline-payment-info";
+        if (!toast.isActive(offlineToastId)) {
+          toast.info(
+            "You are offline. Payment saved locally and will sync when back online.",
+            { toastId: offlineToastId }
+          );
+        }
+
+        // Reset form even if queued locally
+        setSelectedLoan(null);
+      } else {
+        setGeneralError("Failed to add payment. Please try again.");
+        toast.error(`Failed to add payment: ${err.message || "Unknown error"}`);
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCloseConfirmDialog = () => setOpenConfirmDialog(false);
+  const handleCloseConfirmDialog = () => {
+    setOpenConfirmDialog(false);
+  };
 
   const currentRepaid = selectedLoan ? selectedLoan.repaidAmount || 0 : 0;
-  const remainingBalance = selectedLoan ? selectedLoan.totalRepayable - currentRepaid : 0;
+  const remainingBalance = selectedLoan
+    ? selectedLoan.totalRepayable - currentRepaid
+    : 0;
   const prospectiveRemaining = remainingBalance - Number(paymentAmount || 0);
 
   return (
-    <Box maxWidth={500} mx="auto" mt={3} p={2}>
+    <Paper
+      elevation={2}
+      sx={{
+        maxWidth: 500,
+        mx: "auto",
+        mt: 3,
+        p: 3,
+        border: (theme) => `2px solid ${theme.palette.primary.main}`,
+        borderRadius: 2,
+      }}
+    >
       <Typography variant="h5" sx={{ mb: 3 }}>
         Add Payment
       </Typography>
@@ -175,11 +263,26 @@ export default function AddPaymentPage() {
             id="loan-borrower-search"
             options={activeLoans}
             getOptionLabel={(option) =>
-              `${option.borrower} (Phone: ${option.phone}, Loan: ZMW ${option.principal.toLocaleString()})`
+              `${option.borrower} (Phone: ${option.phone})`
             }
             value={selectedLoan}
-            onChange={(e, newValue) => setSelectedLoan(newValue)}
+            onChange={(event, newValue) => {
+              setSelectedLoan(newValue);
+            }}
             loading={loadingLoans}
+            renderOption={(props, option) => (
+              <Box component="li" {...props}>
+                <Typography variant="body1">{option.borrower}</Typography>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ ml: 1, flexGrow: 1 }}
+                >
+                  (Loan: ZMW {option.principal.toFixed(2).toLocaleString()})
+                </Typography>
+                <StatusChip status={option.status} />
+              </Box>
+            )}
             renderInput={(params) => (
               <TextField
                 {...params}
@@ -192,7 +295,9 @@ export default function AddPaymentPage() {
                   ...params.InputProps,
                   endAdornment: (
                     <>
-                      {loadingLoans ? <CircularProgress color="inherit" size={20} /> : null}
+                      {loadingLoans ? (
+                        <CircularProgress color="inherit" size={20} />
+                      ) : null}
                       {params.InputProps.endAdornment}
                     </>
                   ),
@@ -212,7 +317,10 @@ export default function AddPaymentPage() {
           />
 
           {selectedLoan && (
-            <Paper variant="outlined" sx={{ p: 2, bgcolor: "action.hover", borderRadius: 1 }}>
+            <Paper
+              variant="outlined"
+              sx={{ p: 2, bgcolor: "action.hover", borderRadius: 1 }}
+            >
               <Typography variant="body2" color="text.secondary">
                 **Selected Loan Details:**
               </Typography>
@@ -252,9 +360,17 @@ export default function AddPaymentPage() {
           />
 
           {selectedLoan && parseFloat(paymentAmount) > 0 && (
-            <Box sx={{ p: 1, bgcolor: "background.paper", borderRadius: 1, border: "1px dashed grey.300" }}>
+            <Box
+              sx={{
+                p: 1,
+                bgcolor: "background.paper",
+                borderRadius: 1,
+                border: "1px dashed grey.300",
+              }}
+            >
               <Typography variant="body2" color="text.secondary">
-                After this payment, **{selectedLoan.borrower}'s** loan balance will be:
+                After this payment, **{selectedLoan.borrower}&#39;s** loan balance
+                will be:
               </Typography>
               <Typography
                 variant="body1"
@@ -271,7 +387,9 @@ export default function AddPaymentPage() {
             type="submit"
             variant="contained"
             color="primary"
-            disabled={loading || !selectedLoan || !paymentAmount || parseFloat(paymentAmount) <= 0}
+            disabled={
+              loading || !selectedLoan || !paymentAmount || parseFloat(paymentAmount) <= 0
+            }
             startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
           >
             {loading ? "Submitting..." : "Add Payment"}
@@ -290,7 +408,7 @@ export default function AddPaymentPage() {
           {selectedLoan && (
             <DialogContentText id="confirm-payment-description">
               You are about to add a payment of **ZMW {Number(paymentAmount).toFixed(2).toLocaleString()}**
-              for **{selectedLoan.borrower}**'s loan.
+              for **{selectedLoan.borrower}**&#39;s loan.
               <br />
               The current remaining balance is **ZMW {remainingBalance.toFixed(2).toLocaleString()}**.
               <br />
@@ -311,7 +429,6 @@ export default function AddPaymentPage() {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </Paper>
   );
 }
-
