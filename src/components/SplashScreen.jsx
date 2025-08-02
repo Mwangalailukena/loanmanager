@@ -1,6 +1,6 @@
 // src/components/SplashScreen.jsx
 import React, { useState, useEffect } from 'react';
-import { Box, LinearProgress, Typography, keyframes, useTheme } from '@mui/material';
+import { Box, LinearProgress, Typography, keyframes, useTheme, Paper } from '@mui/material'; // <-- Add Paper here
 
 // Define keyframe animations
 const fadeOut = keyframes`
@@ -9,7 +9,7 @@ const fadeOut = keyframes`
   }
   to {
     opacity: 0;
-    visibility: hidden; /* Hide element completely after fade */
+    visibility: hidden;
   }
 `;
 
@@ -21,11 +21,10 @@ const pulse = keyframes`
 
 const SplashScreen = ({ onFadeOutComplete, duration = 3000 }) => {
   const theme = useTheme();
-  const [progress, setProgress] = useState(0); // State for progress bar
+  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    // Calculate how often to update the progress bar
-    const intervalTime = duration / 100; // Update 100 times for 0-100%
+    const intervalTime = duration / 100;
     let currentProgress = 0;
 
     const timer = setInterval(() => {
@@ -36,7 +35,6 @@ const SplashScreen = ({ onFadeOutComplete, duration = 3000 }) => {
       }
     }, intervalTime);
 
-    // Clean up the interval on component unmount
     return () => clearInterval(timer);
   }, [duration]);
 
@@ -51,7 +49,7 @@ const SplashScreen = ({ onFadeOutComplete, duration = 3000 }) => {
         backgroundColor: theme.palette.background.default,
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'center', // This centers the main content (logo, message, progress)
+        justifyContent: 'center',
         alignItems: 'center',
         zIndex: 9999,
         animation: `${fadeOut} 0.5s ease-out forwards`,
@@ -64,21 +62,24 @@ const SplashScreen = ({ onFadeOutComplete, duration = 3000 }) => {
         }
       }}
     >
-      {/* Main centered content: Logo, Loading Message, Progress Bar */}
-      {/* This Box ensures these elements stay centered together */}
-      <Box
+      {/* Use Paper to create a card-like container for the splash screen content */}
+      <Paper
+        elevation={3} // Adjust the shadow depth (0-24)
         sx={{
+          padding: { xs: 4, md: 6 }, // Use responsive padding
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
           alignItems: 'center',
-          // Optionally, add flex-grow to push the credit to the bottom if it were within this flex container
-          // flexGrow: 1,
+          borderRadius: '16px', // Rounded corners
+          backgroundColor: theme.palette.background.paper, // Use the paper background color
+          width: { xs: '90%', sm: 'auto' }, // Make it responsive
+          maxWidth: '500px', // Set a max-width
         }}
       >
         <Box
           component="img"
-          src="/android/android-launchericon-512-512.png" // Path to your logo in the public folder
+          src="/android/android-launchericon-512-512.png"
           alt="Your App Logo"
           sx={{
             maxWidth: '200px',
@@ -99,8 +100,7 @@ const SplashScreen = ({ onFadeOutComplete, duration = 3000 }) => {
           variant="determinate"
           value={progress}
           sx={{
-            width: '70%',
-            maxWidth: '400px',
+            width: '100%', // Use 100% width of the Paper container
             height: 8,
             borderRadius: 5,
             backgroundColor: theme.palette.mode === 'light' ? theme.palette.grey[300] : theme.palette.grey[700],
@@ -110,16 +110,16 @@ const SplashScreen = ({ onFadeOutComplete, duration = 3000 }) => {
             },
           }}
         />
-      </Box>
+      </Paper>
 
-      {/* NEW: Credit text positioned absolutely at the bottom */}
+      {/* Credit text positioned absolutely at the bottom */}
       <Typography
         variant="caption"
         color="text.disabled"
         sx={{
-          position: 'absolute', // Position this text absolutely
-          bottom: theme.spacing(2), // 2 units from the bottom (adjust as needed)
-          width: '100%', // Take full width to allow text-align center
+          position: 'absolute',
+          bottom: theme.spacing(2),
+          width: '100%',
           textAlign: 'center',
           lineHeight: 1.2,
         }}
