@@ -7,10 +7,11 @@ import { AuthProvider } from './contexts/AuthProvider';
 
 import AppRoutes from './AppRoutes';
 import InstallPrompt from './components/InstallPrompt';
-import SplashScreen from './components/SplashScreen'; // Import your splash screen component
+import SplashScreen from './components/SplashScreen';
 
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+// Import the showToast function and ToastContainer
+import { ToastContainer } from 'react-toastify';
+import { showToast } from './toastConfig.js'; 
 
 import useOfflineStatus from './hooks/useOfflineStatus';
 import { syncPendingData } from './utils/offlineQueue';
@@ -21,20 +22,12 @@ function App() {
   const syncInProgress = useRef(false);
   const wasOffline = useRef(false);
   const syncExecutedOnce = useRef(false);
-  const [showSplash, setShowSplash] = useState(true); // New state for the splash screen
+  const [showSplash, setShowSplash] = useState(true);
 
-  // This useEffect now handles the splash screen logic
   useEffect(() => {
-    // A simple way to hide the splash screen after a few seconds
     const splashTimeout = setTimeout(() => {
       setShowSplash(false);
-    }, 2000); // Adjust the duration (in milliseconds) as needed
-
-    // Check for pending data on initial load
-    // You can integrate this with your syncPendingData logic if it takes time
-    // For now, we'll just let the timer handle the splash screen.
-    // If syncPendingData was asynchronous on app load, you would await it here
-    // and then set setShowSplash(false) in the .then() block.
+    }, 2000);
 
     return () => clearTimeout(splashTimeout);
   }, []);
@@ -43,40 +36,27 @@ function App() {
     if (!isOnline) {
       wasOffline.current = true;
       syncExecutedOnce.current = false;
-      toast.warn("You're offline. Changes will sync once you're back online.", {
-        toastId: 'offline-warning',
-        position: "top-center",
-        autoClose: true,
-      });
+      // Use your new showToast function
+      showToast("You're offline. Changes will sync once you're back online.", 'warning');
     } else if (isOnline && wasOffline.current) {
-      if (toast.isActive('offline-warning')) toast.dismiss('offline-warning');
-
       if (!syncExecutedOnce.current) {
         syncExecutedOnce.current = true;
         wasOffline.current = false;
 
         if (!syncInProgress.current) {
           syncInProgress.current = true;
-
-          toast.success("You're back online. Syncing data...", {
-            toastId: 'sync-starting',
-            position: "top-center",
-            autoClose: true,
-          });
+          // Use your new showToast function
+          showToast("You're back online. Syncing data...", 'info');
 
           syncPendingData()
             .then(() => {
-              toast.dismiss('sync-starting');
-              toast.success("Offline data synced successfully!", {
-                toastId: 'sync-success'
-              });
+              // Use your new showToast function
+              showToast("Offline data synced successfully!", 'success');
             })
             .catch((err) => {
               console.error("Failed to sync offline data:", err);
-              toast.dismiss('sync-starting');
-              toast.error("Failed to sync offline data. Please try again.", {
-                toastId: 'sync-fail'
-              });
+              // Use your new showToast function
+              showToast("Failed to sync offline data. Please try again.", 'error');
             })
             .finally(() => {
               syncInProgress.current = false;
@@ -84,14 +64,6 @@ function App() {
         }
       }
     }
-
-    // Cleanup on unmount
-    return () => {
-      toast.dismiss('offline-warning');
-      toast.dismiss('sync-starting');
-      toast.dismiss('sync-success');
-      toast.dismiss('sync-fail');
-    };
   }, [isOnline]);
 
   if (showSplash) {
@@ -105,54 +77,8 @@ function App() {
           <AppRoutes darkMode={darkMode} onToggleDarkMode={toggleDarkMode} />
           <InstallPrompt />
           
-          <ToastContainer
-            position="top-center"
-            autoClose={3000}
-            hideProgressBar
-            closeOnClick={true}
-            pauseOnHover={false}
-            draggable={false}
-            newestOnTop
-            toastStyle={{
-              background: "#111",
-              color: "#f0f0f0",
-              borderRadius: "10px",
-              fontSize: "0.8rem",
-              fontFamily: "'Segoe UI', sans-serif",
-              padding: "10px 16px",
-              minHeight: "auto",
-              width: "fit-content",
-              boxShadow: "0 4px 14px rgba(0,0,0,0.3)",
-            }}
-            bodyClassName="custom-toast-body"
-          />
-
-          <style>{`
-            .Toastify__toast {
-              animation: fadeInOut 3s ease-in-out;
-            }
-
-            @keyframes fadeInOut {
-              0% { opacity: 0; transform: translateY(-10px); }
-              10% { opacity: 1; transform: translateY(0); }
-              90% { opacity: 1; transform: translateY(0); }
-              100% { opacity: 0; transform: translateY(-10px); }
-            }
-
-            .Toastify__close-button {
-              display: none;
-            }
-
-            .custom-toast-body {
-              padding: 0;
-              margin: 0;
-            }
-
-            .Toastify__toast-icon svg {
-              width: 16px;
-              height: 16px;
-            }
-          `}</style>
+          {/* Keep the ToastContainer, but remove the custom props */}
+          <ToastContainer position="top-center" />
         </FirestoreProvider>
       </AuthProvider>
     </Router>
