@@ -2,7 +2,7 @@
 
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import "./styles/toastStyles.css"; // Ensure this path is correct
+import "../styles/toastStyles.css"; // Ensure this path is correct
 
 export const showToast = (message, type = "default") => {
   toast(message, {
