@@ -11,7 +11,7 @@ import SplashScreen from './components/SplashScreen';
 
 // Import the showToast function and ToastContainer
 import { ToastContainer } from 'react-toastify';
-import { showToast } from './toastConfig.js'; 
+import { showToast } from './components/toastConfig.js'; 
 
 import useOfflineStatus from './hooks/useOfflineStatus';
 import { syncPendingData } from './utils/offlineQueue';
