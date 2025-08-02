@@ -16,12 +16,15 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
+import { useAuth } from "./AuthProvider"; // Assuming you have an AuthProvider
 
 const FirestoreContext = createContext();
 
 export const useFirestore = () => useContext(FirestoreContext);
 
 export function FirestoreProvider({ children }) {
+  const { user } = useAuth(); // Get the current authenticated user
+  
   const [loans, setLoans] = useState([]);
   const [payments, setPayments] = useState([]);
   const [settings, setSettings] = useState({
@@ -32,8 +35,16 @@ export function FirestoreProvider({ children }) {
   const [loadingLoans, setLoadingLoans] = useState(true);
 
   const addActivityLog = async (logEntry) => {
+    // Add user info to every log entry
+    const userDetails = {
+      userId: user?.uid || "system",
+      userName: user?.displayName || "System",
+      userEmail: user?.email || "system",
+    };
+
     await addDoc(collection(db, "activityLogs"), {
       ...logEntry,
+      ...userDetails,
       createdAt: serverTimestamp(),
     });
   };
@@ -94,29 +105,61 @@ export function FirestoreProvider({ children }) {
     };
     const docRef = await addDoc(collection(db, "loans"), loanWithTimestamps);
     await addActivityLog({
-      description: `New loan added for ${loan.borrower}`,
-      action: "addLoan",
+      description: `New loan added for ${loan.borrower} (${loan.borrowerPhone}).`,
+      type: "loan_creation",
+      loanId: docRef.id,
+      borrower: loan.borrower,
+      borrowerPhone: loan.borrowerPhone,
     });
     return docRef;
   };
 
   const updateLoan = async (id, updates) => {
-    const docRef = doc(db, "loans", id);
+    const loanDocRef = doc(db, "loans", id);
     const updatesWithTimestamp = { ...updates, updatedAt: serverTimestamp() };
-    await updateDoc(docRef, updatesWithTimestamp);
-    await addActivityLog({
-      description: `Loan details updated for (ID: ${id})`,
-      action: "updateLoan",
-      loanId: id,
-    });
+    await updateDoc(loanDocRef, updatesWithTimestamp);
+    
+    // Fetch loan details for a more descriptive log
+    const loanSnap = await getDoc(loanDocRef);
+    if (loanSnap.exists()) {
+      const loanData = loanSnap.data();
+      await addActivityLog({
+        description: `Loan details updated for ${loanData.borrower} (${loanData.borrowerPhone || 'No phone'}).`,
+        type: "edit",
+        loanId: id,
+        borrower: loanData.borrower,
+        borrowerPhone: loanData.borrowerPhone,
+      });
+    } else {
+      await addActivityLog({
+        description: `Loan details updated for an unknown loan (ID: ${id}).`,
+        type: "edit",
+        loanId: id,
+      });
+    }
   };
 
   const deleteLoan = async (id) => {
-    await deleteDoc(doc(db, "loans", id));
+    const loanDocRef = doc(db, "loans", id);
+    const loanSnap = await getDoc(loanDocRef);
+    const loanExists = loanSnap.exists();
+    let borrowerName = "Unknown Borrower";
+    let borrowerPhone = "Unknown Phone";
+    
+    if (loanExists) {
+      const loanData = loanSnap.data();
+      borrowerName = loanData.borrower;
+      borrowerPhone = loanData.borrowerPhone;
+    }
+    
+    await deleteDoc(loanDocRef);
+    
     await addActivityLog({
-      description: `Loan deleted (ID: ${id})`,
-      action: "deleteLoan",
+      description: `Loan for ${borrowerName} (${borrowerPhone}) was deleted.`,
+      type: "delete",
       loanId: id,
+      borrower: borrowerName,
+      borrowerPhone: borrowerPhone,
     });
   };
 
@@ -137,11 +180,13 @@ export function FirestoreProvider({ children }) {
       const repaidAmount = (loan.repaidAmount || 0) + amount;
       const status = repaidAmount >= loan.totalRepayable ? "Paid" : "Active";
 
-      await updateLoan(loanId, { repaidAmount, status });
+      await updateDoc(loanDocRef, { repaidAmount, status });
       await addActivityLog({
-        description: `Payment of ZMW ${amount.toFixed(2)} added for loan (ID: ${loanId}).`,
-        action: "addPayment",
+        description: `Payment of ZMW ${amount.toFixed(2)} added for ${loan.borrower} (${loan.borrowerPhone}).`,
+        type: "payment",
         loanId: loanId,
+        borrower: loan.borrower,
+        borrowerPhone: loan.borrowerPhone,
       });
     }
   };
@@ -164,10 +209,10 @@ export function FirestoreProvider({ children }) {
     setSettings((prev) => ({ ...prev, ...newSettings }));
     await addActivityLog({
       description: "App settings updated.",
-      action: "updateSettings",
+      type: "edit",
     });
   };
-
+  
   const value = {
     loans,
     loadingLoans,
