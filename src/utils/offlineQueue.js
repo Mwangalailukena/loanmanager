@@ -1,7 +1,7 @@
 // src/utils/offlineQueue.js
 import localforage from "localforage";
 import { db } from "../firebase";
-import { addDoc, collection } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore"; // Import serverTimestamp
 
 const OFFLINE_LOANS_KEY = "pendingLoans";
 const OFFLINE_PAYMENTS_KEY = "pendingPayments";
@@ -29,33 +29,51 @@ export async function queuePayment(paymentData) {
 /**
  * Sync all pending loans and payments stored offline to Firestore.
  * Syncs loans first, then payments.
- * If any sync fails, stops further syncing.
+ * @returns {Promise<void>}
  */
 export async function syncPendingData() {
+  const syncPromises = [];
+  
   // Sync loans first
   const pendingLoans = (await localforage.getItem(OFFLINE_LOANS_KEY)) || [];
   for (const loan of pendingLoans) {
-    try {
-      await addDoc(collection(db, "loans"), loan);
-    } catch (error) {
-      console.error("Sync failed for loan", loan, error);
-      return; // Stop syncing on failure to avoid partial syncs
-    }
+    const { timestamp, ...loanData } = loan; // Exclude the offline timestamp
+    syncPromises.push(
+      addDoc(collection(db, "loans"), {
+        ...loanData,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      })
+    );
   }
 
   // Sync payments next
   const pendingPayments = (await localforage.getItem(OFFLINE_PAYMENTS_KEY)) || [];
   for (const payment of pendingPayments) {
-    try {
-      await addDoc(collection(db, "payments"), payment);
-    } catch (error) {
-      console.error("Sync failed for payment", payment, error);
-      return; // Stop syncing on failure
-    }
+    const { timestamp, ...paymentData } = payment; // Exclude the offline timestamp
+    syncPromises.push(
+      addDoc(collection(db, "payments"), {
+        ...paymentData,
+        createdAt: serverTimestamp(),
+      })
+    );
   }
 
-  // Clear the offline queues after successful sync
-  await localforage.removeItem(OFFLINE_LOANS_KEY);
-  await localforage.removeItem(OFFLINE_PAYMENTS_KEY);
-}
+  try {
+    // Wait for all sync operations to complete
+    await Promise.all(syncPromises);
 
+    // Clear the offline queues only after successful sync
+    if (pendingLoans.length > 0) {
+        await localforage.removeItem(OFFLINE_LOANS_KEY);
+    }
+    if (pendingPayments.length > 0) {
+        await localforage.removeItem(OFFLINE_PAYMENTS_KEY);
+    }
+    console.log("Offline data synced successfully.");
+  } catch (error) {
+    console.error("Failed to sync some data:", error);
+    // Do not clear queues on failure so they can be retried later
+    throw error;
+  }
+}
