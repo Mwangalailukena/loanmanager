@@ -10,18 +10,17 @@ import {
   InputLabel,
   FormControl,
   List,
-  ListItem,
   ListItemText,
   CircularProgress,
   Button,
-  Chip, // Added Chip
-  Accordion, // Added Accordion
-  AccordionSummary, // Added AccordionSummary
-  AccordionDetails, // Added AccordionDetails
-  Tooltip, // Added Tooltip
-  Skeleton, // Added Skeleton
+  Chip,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Tooltip,
+  Skeleton,
 } from "@mui/material";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore"; // Added icon for the Accordion
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme, useMediaQuery } from "@mui/material";
@@ -153,7 +152,7 @@ export default function ActivityPage() {
           fullWidth
           size="small"
           variant="outlined"
-          disabled={isLoading} // Disable input while loading
+          disabled={isLoading}
         />
         <FormControl sx={{ minWidth: 160 }} size="small" disabled={isLoading}>
           <InputLabel>Type</InputLabel>
@@ -172,7 +171,6 @@ export default function ActivityPage() {
         </FormControl>
       </Stack>
 
-      {/* Conditional rendering for Skeleton loading state */}
       {isLoading ? (
         <Stack spacing={1}>
           <Skeleton variant="text" height={24} />
@@ -211,12 +209,10 @@ export default function ActivityPage() {
                       exit="exit"
                       variants={itemVariants}
                     >
-                      {/* Use Accordion for expandable log details */}
                       <Accordion
                         variant="outlined"
                         sx={{ my: 1, boxShadow: 0 }}
                       >
-                        {/* Summary section with a Chip and Tooltip */}
                         <Tooltip
                           title={log.description ?? "No description available"}
                         >
@@ -249,7 +245,6 @@ export default function ActivityPage() {
                             </Stack>
                           </AccordionSummary>
                         </Tooltip>
-                        {/* Details section */}
                         <AccordionDetails>
                           <Typography variant="body2" color="text.secondary">
                             Full description:
