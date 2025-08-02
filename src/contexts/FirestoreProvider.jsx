@@ -29,6 +29,7 @@ export function FirestoreProvider({ children }) {
     interestRates: { 1: 0.15, 2: 0.2, 3: 0.3, 4: 0.3 },
   });
   const [activityLogs, setActivityLogs] = useState([]);
+  const [loadingLoans, setLoadingLoans] = useState(true);
 
   const addActivityLog = async (logEntry) => {
     await addDoc(collection(db, "activityLogs"), {
@@ -38,15 +39,17 @@ export function FirestoreProvider({ children }) {
   };
 
   useEffect(() => {
-    const q = query(collection(db, "loans"), orderBy("startDate", "desc"));
+    setLoadingLoans(true);
+    const q = query(collection(db, "loans"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snap) => {
       setLoans(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      setLoadingLoans(false);
     });
     return unsub;
   }, []);
 
   useEffect(() => {
-    const q = query(collection(db, "payments"), orderBy("date", "desc"));
+    const q = query(collection(db, "payments"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snap) => {
       setPayments(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
@@ -66,13 +69,17 @@ export function FirestoreProvider({ children }) {
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
+        setSettings({
+          initialCapital: 50000,
+          interestRates: { 1: 0.15, 2: 0.2, 3: 0.3, 4: 0.3 },
+        });
       }
     };
     fetchSettings();
   }, []);
 
   useEffect(() => {
-    const q = query(collection(db, "activityLogs"), orderBy("date", "desc"));
+    const q = query(collection(db, "activityLogs"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snap) => {
       setActivityLogs(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
@@ -87,8 +94,8 @@ export function FirestoreProvider({ children }) {
     };
     const docRef = await addDoc(collection(db, "loans"), loanWithTimestamps);
     await addActivityLog({
-      description: `Loan added for ${loan.borrower}`,
-      date: new Date().toISOString(),
+      description: `New loan added for ${loan.borrower}`,
+      action: "addLoan",
     });
     return docRef;
   };
@@ -98,8 +105,9 @@ export function FirestoreProvider({ children }) {
     const updatesWithTimestamp = { ...updates, updatedAt: serverTimestamp() };
     await updateDoc(docRef, updatesWithTimestamp);
     await addActivityLog({
-      description: `Loan updated (ID: ${id})`,
-      date: new Date().toISOString(),
+      description: `Loan details updated for (ID: ${id})`,
+      action: "updateLoan",
+      loanId: id,
     });
   };
 
@@ -107,7 +115,8 @@ export function FirestoreProvider({ children }) {
     await deleteDoc(doc(db, "loans", id));
     await addActivityLog({
       description: `Loan deleted (ID: ${id})`,
-      date: new Date().toISOString(),
+      action: "deleteLoan",
+      loanId: id,
     });
   };
 
@@ -130,8 +139,9 @@ export function FirestoreProvider({ children }) {
 
       await updateLoan(loanId, { repaidAmount, status });
       await addActivityLog({
-        description: `Payment of ZMW ${amount} added for loan ID ${loanId}`,
-        date: new Date().toISOString(),
+        description: `Payment of ZMW ${amount.toFixed(2)} added for loan (ID: ${loanId}).`,
+        action: "addPayment",
+        loanId: loanId,
       });
     }
   };
@@ -141,7 +151,7 @@ export function FirestoreProvider({ children }) {
     const q = query(
       paymentsRef,
       where("loanId", "==", loanId),
-      orderBy("date", "desc")
+      orderBy("createdAt", "desc")
     );
     const snapshot = await getDocs(q);
     return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
@@ -153,29 +163,29 @@ export function FirestoreProvider({ children }) {
     await setDoc(docRef, updatesWithTimestamp, { merge: true });
     setSettings((prev) => ({ ...prev, ...newSettings }));
     await addActivityLog({
-      description: "Settings updated",
-      date: new Date().toISOString(),
+      description: "App settings updated.",
+      action: "updateSettings",
     });
   };
 
+  const value = {
+    loans,
+    loadingLoans,
+    payments,
+    settings,
+    activityLogs,
+    addLoan,
+    updateLoan,
+    deleteLoan,
+    addPayment,
+    getPaymentsByLoanId,
+    updateSettings,
+    addActivityLog,
+  };
+
   return (
-    <FirestoreContext.Provider
-      value={{
-        loans,
-        payments,
-        settings,
-        activityLogs,
-        addLoan,
-        updateLoan,
-        deleteLoan,
-        addPayment,
-        getPaymentsByLoanId,
-        updateSettings,
-        addActivityLog,
-      }}
-    >
+    <FirestoreContext.Provider value={value}>
       {children}
     </FirestoreContext.Provider>
   );
 }
-
