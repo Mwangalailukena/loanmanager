@@ -1,17 +1,11 @@
-// src/toastConfig.js
-import { toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-import "./styles/toastStyles.css"; // Make sure this path is correct
+/* This file should only contain CSS rules */
+/* Example: */
+.Toastify__toast--success {
+  background-color: #28a745;
+}
 
-export const showToast = (message, type = "default") => {
-  toast(message, {
-    type,
-    autoClose: 3000,
-    hideProgressBar: true,
-    closeOnClick: false,        // Click does not cancel autoClose
-    pauseOnHover: false,        // Hover does not pause
-    pauseOnFocusLoss: false,    // Focus loss does not pause
-    draggable: false,
-  });
-};
+.Toastify__toast--error {
+  background-color: #dc3545;
+}
 
+/* Add any other custom styles for your toasts here */
