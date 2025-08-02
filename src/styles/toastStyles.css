@@ -1,17 +1,46 @@
 /*
- * This file contains custom CSS for react-toastify.
- * It should not contain any JavaScript code.
+ * Custom styles for react-toastify.
+ * This file should only contain CSS.
  */
 
+/* Base styles for all toast types */
 .Toastify__toast {
-  /* Set background color to black */
-  background-color: #000 !important;
-
+  /* Make the background black */
+  background: #000000 !important;
+  
   /* Add rounded corners */
-  border-radius: 10px !important;
+  border-radius: 12px !important;
+
+  /* Set text color to white for better contrast */
+  color: #ffffff !important;
+
+  /* Set a fixed smaller width */
+  width: 250px !important; 
+
+  /* Or use a max-width to allow it to shrink on smaller screens */
+  /* max-width: 300px !important; */
+
+  /* You can also reduce the padding to make it more compact */
+  padding: 10px 15px !important; 
+
+  /* Customize the box shadow */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25) !important;
+  
+  /* Make the progress bar less tall to save space */
+  --toastify-progress-bar-height: 2px;
 }
 
-/* Optional: You can also style the progress bar */
+/* Style the progress bar */
 .Toastify__progress-bar {
-  background-color: #fff !important;
+  /* Set the progress bar color to a lighter shade */
+  background: #ffffff !important;
+}
+
+/* Optional: Style specific toast types (success, error, etc.) */
+.Toastify__toast--success {
+  background: #28a745 !important;
+}
+
+.Toastify__toast--error {
+  background: #dc3545 !important;
 }
