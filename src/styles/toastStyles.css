@@ -1,11 +1,17 @@
-/* This file should only contain CSS rules */
-/* Example: */
-.Toastify__toast--success {
-  background-color: #28a745;
+/*
+ * This file contains custom CSS for react-toastify.
+ * It should not contain any JavaScript code.
+ */
+
+.Toastify__toast {
+  /* Set background color to black */
+  background-color: #000 !important;
+
+  /* Add rounded corners */
+  border-radius: 10px !important;
 }
 
-.Toastify__toast--error {
-  background-color: #dc3545;
+/* Optional: You can also style the progress bar */
+.Toastify__progress-bar {
+  background-color: #fff !important;
 }
-
-/* Add any other custom styles for your toasts here */
