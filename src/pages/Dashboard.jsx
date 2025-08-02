@@ -12,7 +12,10 @@ import {
   Fab,
   Zoom,
   Skeleton,
-  IconButton,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Badge,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import PaidIcon from "@mui/icons-material/Payments";
@@ -30,7 +33,7 @@ import dayjs from "dayjs";
 import { toast } from "react-toastify";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import Charts from "../components/Charts";
-import { BOTTOM_NAV_HEIGHT } from "../components/BottomNavBar"; // Import the constant here
+import { BOTTOM_NAV_HEIGHT } from "../components/BottomNavBar";
 
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -92,22 +95,6 @@ const EXECUTIVE_SUMMARY_IDS = [
   "totalCollected",
 ];
 
-// === MODIFIED: All icons set to "medium" size ===
-const iconMap = {
-  totalLoans: <MonetizationOnIcon fontSize="medium" />,
-  paidLoans: <CheckCircleIcon fontSize="medium" />,
-  activeLoans: <PendingIcon fontSize="medium" />,
-  overdueLoans: <WarningIcon fontSize="medium" />,
-  totalDisbursed: <MonetizationOnIcon fontSize="medium" />,
-  investedCapital: <AccountBalanceWalletIcon fontSize="medium" />,
-  availableCapital: <AccountBalanceWalletIcon fontSize="medium" />,
-  totalCollected: <PaidIcon fontSize="medium" />,
-  totalOutstanding: <WarningIcon fontSize="medium" />,
-  expectedProfit: <BarChartIcon fontSize="medium" />,
-  actualProfit: <CheckCircleIcon fontSize="medium" />,
-  averageLoan: <MonetizationOnIcon fontSize="medium" />,
-};
-
 export default function Dashboard() {
   const navigate = useNavigate();
   const theme = useTheme();
@@ -129,6 +116,33 @@ export default function Dashboard() {
     const savedVisibility = localStorage.getItem(CHART_SECTION_VISIBILITY_KEY);
     return savedVisibility ? JSON.parse(savedVisibility) : true;
   });
+
+  const iconMap = useMemo(() => {
+    return {
+      totalLoans: <MonetizationOnIcon fontSize="medium" />,
+      paidLoans: <CheckCircleIcon fontSize="medium" />,
+      activeLoans: <PendingIcon fontSize="medium" />,
+      overdueLoans: (overdueCount) => (
+        <Badge
+          badgeContent={overdueCount > 0 ? overdueCount : null}
+          color="error"
+          overlap="circular"
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+          sx={{ '& .MuiBadge-badge': { height: '18px', minWidth: '18px', padding: '0 4px', fontSize: '12px' } }}
+        >
+          <WarningIcon fontSize="medium" />
+        </Badge>
+      ),
+      totalDisbursed: <MonetizationOnIcon fontSize="medium" />,
+      investedCapital: <AccountBalanceWalletIcon fontSize="medium" />,
+      availableCapital: <AccountBalanceWalletIcon fontSize="medium" />,
+      totalCollected: <PaidIcon fontSize="medium" />,
+      totalOutstanding: <WarningIcon fontSize="medium" />,
+      expectedProfit: <BarChartIcon fontSize="medium" />,
+      actualProfit: <CheckCircleIcon fontSize="medium" />,
+      averageLoan: <MonetizationOnIcon fontSize="medium" />,
+    };
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -386,8 +400,9 @@ export default function Dashboard() {
       filter: "overdue",
       tooltip: "Loans overdue for repayment",
       progress: totalLoansCount ? overdueLoansCount / totalLoansCount : 0,
-      icon: iconMap.overdueLoans,
-      pulse: true,
+      // Pass the icon function with the count
+      icon: iconMap.overdueLoans(overdueLoansCount),
+      pulse: overdueLoansCount > 0,
     },
     {
       id: "totalOutstanding",
@@ -430,7 +445,7 @@ export default function Dashboard() {
       progress: null,
       icon: iconMap.averageLoan,
     },
-  ], [initialCapital, availableCapital, totalDisbursed, disbursedTrend, totalCollected, collectedTrend, totalLoansCount, paidLoansCount, activeLoansCount, overdueLoansCount, totalOutstanding, totalExpectedProfit, actualProfit, averageLoan]);
+  ], [initialCapital, availableCapital, totalDisbursed, disbursedTrend, totalCollected, collectedTrend, totalLoansCount, paidLoansCount, activeLoansCount, overdueLoansCount, totalOutstanding, totalExpectedProfit, actualProfit, averageLoan, iconMap]);
 
 
   const cardsToRender = useMemo(() => cardsOrder.length
@@ -507,7 +522,6 @@ export default function Dashboard() {
           minHeight: "100vh",
           background: theme.palette.background.default,
           pt: 0,
-          // Add padding-bottom to the main content area to make space for the BottomNavBar on mobile
           pb: isMobile ? `calc(${BOTTOM_NAV_HEIGHT}px + ${theme.spacing(2)})` : 3,
         }}
       >
@@ -659,387 +673,363 @@ export default function Dashboard() {
 
       <DragDropContext onDragEnd={onDragEnd}>
         {/* Executive Summary Section */}
-        <Box sx={{
-          borderRadius: 2,
-          p: isMobile ? 1.5 : 2,
-          mb: isMobile ? 1.5 : 2,
-          backgroundColor: theme.palette.grey[100],
-          boxShadow: theme.shadows[1],
-          border: `2px solid ${theme.palette.primary.main}`,
-          overflow: 'hidden',
-        }}>
-          <Box
-            display="flex"
-            alignItems="center"
-            justifyContent="space-between"
-            mb={isMobile ? 1 : 1.5}
+        <Accordion
+          expanded={showExecutiveSummary}
+          onChange={handleToggleExecutiveSummary}
+          sx={{
+            borderRadius: 2,
+            p: isMobile ? 1.5 : 2,
+            mb: isMobile ? 1.5 : 2,
+            backgroundColor: theme.palette.grey[100],
+            boxShadow: theme.shadows[1],
+            border: `2px solid ${theme.palette.primary.main}`,
+            overflow: 'hidden',
+            "&.MuiAccordion-root": {
+              "&.Mui-expanded": {
+                margin: 0,
+                "&:before": { opacity: 0 },
+              },
+            },
+          }}
+        >
+          <AccordionSummary
+            expandIcon={<ExpandMoreIcon />}
             sx={{
-              p: isMobile ? 1 : 1.5,
-              borderRadius: 1,
               backgroundColor: theme.palette.grey[200],
-              cursor: 'pointer',
+              borderRadius: 1,
+              p: isMobile ? 1 : 1.5,
+              minHeight: 0,
+              "& .MuiAccordionSummary-content": { margin: 0 },
             }}
-            onClick={handleToggleExecutiveSummary}
           >
             <Typography variant={isMobile ? "h6" : "h5"} sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
               Executive Summary
             </Typography>
-            <IconButton
-              onClick={handleToggleExecutiveSummary}
-              size="small"
-              sx={{
-                transform: showExecutiveSummary ? 'rotate(180deg)' : 'rotate(0deg)',
-                transition: 'transform 0.3s ease-in-out',
-                width: 20,
-                height: 20,
-                color: theme.palette.primary.main,
-              }}
+          </AccordionSummary>
+          <AccordionDetails sx={{ p: 0, pt: isMobile ? 1 : 1.5 }}>
+            <motion.div
+              key="executive-summary-content"
+              variants={metricsContainerVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
             >
-              <ExpandMoreIcon />
-            </IconButton>
-          </Box>
-          <AnimatePresence>
-            {showExecutiveSummary && (
-              <motion.div
-                key="executive-summary-content"
-                variants={metricsContainerVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-              >
-                <Droppable droppableId="executive-summary-droppable" direction="horizontal">
-                  {(provided) => (
-                    <Grid
-                      container
-                      spacing={isMobile ? 1 : 1.5}
-                      {...provided.droppableProps}
-                      ref={provided.innerRef}
-                    >
-                      {executiveSummaryCards.map((card, index) => (
-                        <Draggable key={card.id} draggableId={card.id} index={index}>
-                          {(provided, snapshot) => (
-                            <Grid
-                              item
-                              xs={6} sm={6} md={6} lg={6} // Consistent 2-column layout
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              style={{
-                                ...provided.draggableProps.style,
-                                userSelect: snapshot.isDragging ? 'none' : 'auto',
-                              }}
-                            >
-                              <Tooltip title={card.tooltip} arrow placement="top">
-                                <motion.div
-                                  variants={cardVariants}
-                                  initial="hidden"
-                                  animate="visible"
-                                  custom={index}
-                                  whileHover={{ scale: 1.02 }}
-                                  whileTap={{ scale: 0.98 }}
-                                  onClick={() => handleCardClick(card.filter)}
-                                  style={{ height: "100%" }}
+              <Droppable droppableId="executive-summary-droppable" direction="horizontal">
+                {(provided) => (
+                  <Grid
+                    container
+                    spacing={isMobile ? 1 : 1.5}
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                  >
+                    {executiveSummaryCards.map((card, index) => (
+                      <Draggable key={card.id} draggableId={card.id} index={index}>
+                        {(provided, snapshot) => (
+                          <Grid
+                            item
+                            xs={6} sm={6} md={6} lg={6} // Consistent 2-column layout
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
+                            style={{
+                              ...provided.draggableProps.style,
+                              userSelect: snapshot.isDragging ? 'none' : 'auto',
+                            }}
+                          >
+                            <Tooltip title={card.tooltip} arrow placement="top">
+                              <motion.div
+                                variants={cardVariants}
+                                initial="hidden"
+                                animate="visible"
+                                custom={index}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => handleCardClick(card.filter)}
+                                style={{ height: "100%" }}
+                              >
+                                <Card
+                                  sx={{
+                                    p: isMobile ? 1 : 1.5,
+                                    borderRadius: 2,
+                                    height: isMobile ? 140 : 150, // Consistent card height
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    alignItems: "center",
+                                    textAlign: "center", // Center all text content
+                                    backgroundColor: theme.palette.background.paper,
+                                    boxShadow: theme.shadows[0],
+                                    border: `1px solid ${theme.palette.grey[200]}`,
+                                    transition: "box-shadow 0.3s ease-in-out",
+                                    "&:hover": {
+                                      boxShadow: theme.shadows[2],
+                                      cursor: "pointer",
+                                    },
+                                    ...(card.pulse && {
+                                      animation: 'pulse 1.5s infinite',
+                                    }),
+                                  }}
                                 >
-                                  <Card
-                                    sx={{
-                                      p: isMobile ? 1 : 1.5,
-                                      borderRadius: 2,
-                                      height: isMobile ? 140 : 150, // Consistent card height
-                                      display: "flex",
-                                      flexDirection: "column",
-                                      alignItems: "center",
-                                      textAlign: "center", // Center all text content
-                                      backgroundColor: theme.palette.background.paper,
-                                      boxShadow: theme.shadows[0],
-                                      border: `1px solid ${theme.palette.grey[200]}`,
-                                      transition: "box-shadow 0.3s ease-in-out",
-                                      "&:hover": {
-                                        boxShadow: theme.shadows[2],
-                                        cursor: "pointer",
-                                      },
-                                      ...(card.pulse && {
-                                        animation: 'pulse 1.5s infinite',
-                                      }),
-                                    }}
-                                  >
-                                    <Box display="flex" justifyContent="center" alignItems="center" mb={0.5} gap={0.5}>
-                                      <Box sx={{ color: theme.palette[card.color]?.main || theme.palette.text.primary }}>
-                                        {card.icon}
-                                      </Box>
-                                      <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 500 }}>
-                                        {card.label}
-                                      </Typography>
+                                  <Box display="flex" justifyContent="center" alignItems="center" mb={0.5} gap={0.5}>
+                                    <Box sx={{ color: theme.palette[card.color]?.main || theme.palette.text.primary }}>
+                                      {card.icon}
                                     </Box>
-                                    <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                      <Typography
-                                        variant={isMobile ? "h5" : "h4"}
-                                        sx={{
-                                          fontWeight: 800,
-                                          lineHeight: 1.1,
-                                          whiteSpace: 'nowrap',
-                                          overflow: 'hidden',
-                                          textOverflow: 'ellipsis',
-                                        }}
-                                      >
-                                        {card.value}
+                                    <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 500 }}>
+                                      {card.label}
+                                    </Typography>
+                                  </Box>
+                                  <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Typography
+                                      variant={isMobile ? "h5" : "h4"}
+                                      sx={{
+                                        fontWeight: 800,
+                                        lineHeight: 1.1,
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                      }}
+                                    >
+                                      {card.value}
+                                    </Typography>
+                                  </Box>
+                                  {card.progress !== null && (
+                                    <LinearProgress
+                                      variant="determinate"
+                                      value={card.progress * 100}
+                                      sx={{
+                                        height: 5,
+                                        borderRadius: 2,
+                                        backgroundColor: theme.palette.grey[300],
+                                        "& .MuiLinearProgress-bar": {
+                                          backgroundColor: theme.palette[card.color]?.main || theme.palette.primary.main,
+                                        },
+                                        width: '80%',
+                                        mt: 0.5,
+                                        mb: 0.5,
+                                      }}
+                                    />
+                                  )}
+                                  {card.trend && (
+                                      <Typography variant="caption" sx={{ color: card.trend.startsWith('+') ? theme.palette.success.main : (card.trend.startsWith('-') ? theme.palette.error.main : theme.palette.text.secondary), fontWeight: 600, mt: card.progress !== null ? 0 : 0.5 }}>
+                                        {card.trend} vs. last month
                                       </Typography>
-                                    </Box>
-                                    {card.progress !== null && (
-                                      <LinearProgress
-                                        variant="determinate"
-                                        value={card.progress * 100}
-                                        sx={{
-                                          height: 5,
-                                          borderRadius: 2,
-                                          backgroundColor: theme.palette.grey[300],
-                                          "& .MuiLinearProgress-bar": {
-                                            backgroundColor: theme.palette[card.color]?.main || theme.palette.primary.main,
-                                          },
-                                          width: '80%',
-                                          mt: 0.5,
-                                          mb: 0.5,
-                                        }}
-                                      />
-                                    )}
-                                    {card.trend && (
-                                        <Typography variant="caption" sx={{ color: card.trend.startsWith('+') ? theme.palette.success.main : (card.trend.startsWith('-') ? theme.palette.error.main : theme.palette.text.secondary), fontWeight: 600, mt: card.progress !== null ? 0 : 0.5 }}>
-                                          {card.trend} vs. last month
-                                        </Typography>
-                                    )}
-                                  </Card>
-                                </motion.div>
-                              </Tooltip>
-                            </Grid>
-                          )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
-                    </Grid>
-                  )}
-                </Droppable>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </Box>
+                                  )}
+                                </Card>
+                              </motion.div>
+                            </Tooltip>
+                          </Grid>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </Grid>
+                )}
+              </Droppable>
+            </motion.div>
+          </AccordionDetails>
+        </Accordion>
 
         {/* Metrics Section */}
-        <Box sx={{
-          borderRadius: 2,
-          p: isMobile ? 1.5 : 2,
-          mb: isMobile ? 1.5 : 2,
-          backgroundColor: theme.palette.grey[100],
-          boxShadow: theme.shadows[1],
-          border: `2px solid ${theme.palette.primary.main}`,
-          overflow: 'hidden',
-        }}>
-          <Box
-            display="flex"
-            alignItems="center"
-            justifyContent="space-between"
-            mb={isMobile ? 1 : 1.5}
+        <Accordion
+          expanded={showMetrics}
+          onChange={handleToggleMetrics}
+          sx={{
+            borderRadius: 2,
+            p: isMobile ? 1.5 : 2,
+            mb: isMobile ? 1.5 : 2,
+            backgroundColor: theme.palette.grey[100],
+            boxShadow: theme.shadows[1],
+            border: `2px solid ${theme.palette.primary.main}`,
+            overflow: 'hidden',
+            "&.MuiAccordion-root": {
+              "&.Mui-expanded": {
+                margin: 0,
+                "&:before": { opacity: 0 },
+              },
+            },
+          }}
+        >
+          <AccordionSummary
+            expandIcon={<ExpandMoreIcon />}
             sx={{
-              p: isMobile ? 1 : 1.5,
-              borderRadius: 1,
               backgroundColor: theme.palette.grey[200],
-              cursor: 'pointer',
+              borderRadius: 1,
+              p: isMobile ? 1 : 1.5,
+              minHeight: 0,
+              "& .MuiAccordionSummary-content": { margin: 0 },
             }}
-            onClick={handleToggleMetrics}
           >
             <Typography variant={isMobile ? "h6" : "h5"} sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
               Key Metrics
             </Typography>
-            <IconButton
-              onClick={handleToggleMetrics}
-              size="small"
-              sx={{
-                transform: showMetrics ? 'rotate(180deg)' : 'rotate(0deg)',
-                transition: 'transform 0.3s ease-in-out',
-                width: 20,
-                height: 20,
-                color: theme.palette.primary.main,
-              }}
+          </AccordionSummary>
+          <AccordionDetails sx={{ p: 0, pt: isMobile ? 1 : 1.5 }}>
+            <motion.div
+              key="metrics-content"
+              variants={metricsContainerVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
             >
-              <ExpandMoreIcon />
-            </IconButton>
-          </Box>
-          <AnimatePresence>
-            {showMetrics && (
-              <motion.div
-                key="metrics-content"
-                variants={metricsContainerVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-              >
-                <Droppable droppableId="metrics-droppable" direction="horizontal">
-                  {(provided) => (
-                    <Grid
-                      container
-                      spacing={isMobile ? 1 : 1.5}
-                      {...provided.droppableProps}
-                      ref={provided.innerRef}
-                    >
-                      {metricsCards.map((card, index) => (
-                        <Draggable key={card.id} draggableId={card.id} index={index}>
-                          {(provided, snapshot) => (
-                            <Grid
-                              item
-                              xs={6} sm={6} md={6} lg={6} // Consistent 2-column layout
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              style={{
-                                ...provided.draggableProps.style,
-                                userSelect: snapshot.isDragging ? 'none' : 'auto',
-                              }}
-                            >
-                              <Tooltip title={card.tooltip} arrow placement="top">
-                                <motion.div
-                                  variants={cardVariants}
-                                  initial="hidden"
-                                  animate="visible"
-                                  custom={index}
-                                  whileHover={{ scale: 1.02 }}
-                                  whileTap={{ scale: 0.98 }}
-                                  onClick={() => handleCardClick(card.filter)}
-                                  style={{ height: "100%" }}
+              <Droppable droppableId="metrics-droppable" direction="horizontal">
+                {(provided) => (
+                  <Grid
+                    container
+                    spacing={isMobile ? 1 : 1.5}
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                  >
+                    {metricsCards.map((card, index) => (
+                      <Draggable key={card.id} draggableId={card.id} index={index}>
+                        {(provided, snapshot) => (
+                          <Grid
+                            item
+                            xs={6} sm={6} md={6} lg={6} // Consistent 2-column layout
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
+                            style={{
+                              ...provided.draggableProps.style,
+                              userSelect: snapshot.isDragging ? 'none' : 'auto',
+                            }}
+                          >
+                            <Tooltip title={card.tooltip} arrow placement="top">
+                              <motion.div
+                                variants={cardVariants}
+                                initial="hidden"
+                                animate="visible"
+                                custom={index}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => handleCardClick(card.filter)}
+                                style={{ height: "100%" }}
+                              >
+                                <Card
+                                  sx={{
+                                    p: isMobile ? 1 : 1.5,
+                                    borderRadius: 2,
+                                    height: isMobile ? 140 : 150, // Consistent card height
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    alignItems: "center",
+                                    textAlign: "center", // Center all text content
+                                    backgroundColor: theme.palette.background.paper,
+                                    boxShadow: theme.shadows[0],
+                                    border: `1px solid ${theme.palette.grey[200]}`,
+                                    transition: "box-shadow 0.3s ease-in-out",
+                                    "&:hover": {
+                                      boxShadow: theme.shadows[2],
+                                      cursor: "pointer",
+                                    },
+                                    ...(card.pulse && {
+                                      animation: 'pulse 1.5s infinite',
+                                    }),
+                                  }}
                                 >
-                                  <Card
-                                    sx={{
-                                      p: isMobile ? 1 : 1.5,
-                                      borderRadius: 2,
-                                      height: isMobile ? 140 : 150, // Consistent card height
-                                      display: "flex",
-                                      flexDirection: "column",
-                                      alignItems: "center",
-                                      textAlign: "center", // Center all text content
-                                      backgroundColor: theme.palette.background.paper,
-                                      boxShadow: theme.shadows[0],
-                                      border: `1px solid ${theme.palette.grey[200]}`,
-                                      transition: "box-shadow 0.3s ease-in-out",
-                                      "&:hover": {
-                                        boxShadow: theme.shadows[2],
-                                        cursor: "pointer",
-                                      },
-                                      ...(card.pulse && {
-                                        animation: 'pulse 1.5s infinite',
-                                      }),
-                                    }}
-                                  >
-                                    <Box display="flex" justifyContent="center" alignItems="center" mb={0.5} gap={0.5}>
-                                      <Box sx={{ color: theme.palette[card.color]?.main || theme.palette.text.primary }}>
-                                        {card.icon}
-                                      </Box>
-                                      <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 500 }}>
-                                        {card.label}
-                                      </Typography>
+                                  <Box display="flex" justifyContent="center" alignItems="center" mb={0.5} gap={0.5}>
+                                    <Box sx={{ color: theme.palette[card.color]?.main || theme.palette.text.primary }}>
+                                      {card.icon}
                                     </Box>
-                                    <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                      <Typography
-                                        variant={isMobile ? "h5" : "h4"}
-                                        sx={{
-                                          fontWeight: 800,
-                                          lineHeight: 1.1,
-                                          whiteSpace: 'nowrap',
-                                          overflow: 'hidden',
-                                          textOverflow: 'ellipsis',
-                                        }}
-                                      >
-                                        {card.value}
+                                    <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 500 }}>
+                                      {card.label}
+                                    </Typography>
+                                  </Box>
+                                  <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Typography
+                                      variant={isMobile ? "h5" : "h4"}
+                                      sx={{
+                                        fontWeight: 800,
+                                        lineHeight: 1.1,
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                      }}
+                                    >
+                                      {card.value}
+                                    </Typography>
+                                  </Box>
+                                  {card.progress !== null && (
+                                    <LinearProgress
+                                      variant="determinate"
+                                      value={card.progress * 100}
+                                      sx={{
+                                        height: 5,
+                                        borderRadius: 2,
+                                        backgroundColor: theme.palette.grey[300],
+                                        "& .MuiLinearProgress-bar": {
+                                          backgroundColor: theme.palette[card.color]?.main || theme.palette.primary.main,
+                                        },
+                                        width: '80%',
+                                        mt: 0.5,
+                                        mb: 0.5,
+                                      }}
+                                    />
+                                  )}
+                                  {card.trend && (
+                                      <Typography variant="caption" sx={{ color: card.trend.startsWith('+') ? theme.palette.success.main : (card.trend.startsWith('-') ? theme.palette.error.main : theme.palette.text.secondary), fontWeight: 600, mt: card.progress !== null ? 0 : 0.5 }}>
+                                        {card.trend} vs. last month
                                       </Typography>
-                                    </Box>
-                                    {card.progress !== null && (
-                                      <LinearProgress
-                                        variant="determinate"
-                                        value={card.progress * 100}
-                                        sx={{
-                                          height: 5,
-                                          borderRadius: 2,
-                                          backgroundColor: theme.palette.grey[300],
-                                          "& .MuiLinearProgress-bar": {
-                                            backgroundColor: theme.palette[card.color]?.main || theme.palette.primary.main,
-                                          },
-                                          width: '80%',
-                                          mt: 0.5,
-                                          mb: 0.5,
-                                        }}
-                                      />
-                                    )}
-                                    {card.trend && (
-                                        <Typography variant="caption" sx={{ color: card.trend.startsWith('+') ? theme.palette.success.main : (card.trend.startsWith('-') ? theme.palette.error.main : theme.palette.text.secondary), fontWeight: 600, mt: card.progress !== null ? 0 : 0.5 }}>
-                                          {card.trend} vs. last month
-                                        </Typography>
-                                    )}
-                                  </Card>
-                                </motion.div>
-                              </Tooltip>
-                            </Grid>
-                          )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
-                    </Grid>
-                  )}
-                </Droppable>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </Box>
+                                  )}
+                                </Card>
+                              </motion.div>
+                            </Tooltip>
+                          </Grid>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </Grid>
+                )}
+              </Droppable>
+            </motion.div>
+          </AccordionDetails>
+        </Accordion>
 
         {/* Charts Section */}
-        <Box sx={{
-          borderRadius: 2,
-          p: isMobile ? 1.5 : 2,
-          mb: isMobile ? 1.5 : 2,
-          backgroundColor: theme.palette.grey[100],
-          boxShadow: theme.shadows[1],
-          border: `2px solid ${theme.palette.primary.main}`,
-          overflow: 'hidden',
-        }}>
-          <Box
-            display="flex"
-            alignItems="center"
-            justifyContent="space-between"
-            mb={isMobile ? 1 : 1.5}
+        <Accordion
+          expanded={showCharts}
+          onChange={handleToggleCharts}
+          sx={{
+            borderRadius: 2,
+            p: isMobile ? 1.5 : 2,
+            mb: isMobile ? 1.5 : 2,
+            backgroundColor: theme.palette.grey[100],
+            boxShadow: theme.shadows[1],
+            border: `2px solid ${theme.palette.primary.main}`,
+            overflow: 'hidden',
+            "&.MuiAccordion-root": {
+              "&.Mui-expanded": {
+                margin: 0,
+                "&:before": { opacity: 0 },
+              },
+            },
+          }}
+        >
+          <AccordionSummary
+            expandIcon={<ExpandMoreIcon />}
             sx={{
-              p: isMobile ? 1 : 1.5,
-              borderRadius: 1,
               backgroundColor: theme.palette.grey[200],
-              cursor: 'pointer',
+              borderRadius: 1,
+              p: isMobile ? 1 : 1.5,
+              minHeight: 0,
+              "& .MuiAccordionSummary-content": { margin: 0 },
             }}
-            onClick={handleToggleCharts}
           >
             <Typography variant={isMobile ? "h6" : "h5"} sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
               Charts
             </Typography>
-            <IconButton
-              onClick={handleToggleCharts}
-              size="small"
-              sx={{
-                transform: showCharts ? 'rotate(180deg)' : 'rotate(0deg)',
-                transition: 'transform 0.3s ease-in-out',
-                width: 20,
-                height: 20,
-                color: theme.palette.primary.main,
-              }}
+          </AccordionSummary>
+          <AccordionDetails sx={{ p: 0, pt: isMobile ? 1 : 1.5 }}>
+            <motion.div
+              key="charts-content"
+              variants={metricsContainerVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
             >
-              <ExpandMoreIcon />
-            </IconButton>
-          </Box>
-          <AnimatePresence>
-            {showCharts && (
-              <motion.div
-                key="charts-content"
-                variants={metricsContainerVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-              >
-                <Charts loans={loansForCalculations} selectedMonth={selectedMonth} />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </Box>
+              <Charts loans={loansForCalculations} selectedMonth={selectedMonth} />
+            </motion.div>
+          </AccordionDetails>
+        </Accordion>
       </DragDropContext>
 
       <Zoom in timeout={300} style={{ transitionDelay: '50ms' }}>
