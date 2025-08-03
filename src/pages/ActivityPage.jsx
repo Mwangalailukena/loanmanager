@@ -10,13 +10,20 @@ import {
   InputLabel,
   FormControl,
   List,
-  ListItem,
+  ListItemButton,
+  ListItemAvatar,
+  Avatar,
   ListItemText,
   CircularProgress,
+  Tooltip,
+  Fade,
+  Chip,
+  Badge,
 } from "@mui/material";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme, useMediaQuery } from "@mui/material";
+import { formatDistanceToNow, parseISO } from "date-fns";
 
 const itemVariants = {
   hidden: { opacity: 0, y: 10 },
@@ -24,22 +31,54 @@ const itemVariants = {
   exit: { opacity: 0, y: -10 },
 };
 
-// Map action types to readable labels
 const actionLabels = {
   loan_creation: "Loan Created",
   edit: "Edited",
   payment: "Payment Made",
   login: "Login",
   delete: "Loan Deleted",
-  // add other action types here if any
+  settings_update: "Settings Updated",
 };
+
+// Colors for Chips based on action type
+const actionChipColors = {
+  loan_creation: "primary",
+  edit: "default",
+  payment: "success",
+  login: "info",
+  delete: "error",
+  settings_update: "secondary",
+};
+
+// Helper to highlight search term inside text
+function highlightText(text, highlight) {
+  if (!highlight) return text;
+  const regex = new RegExp(`(${highlight})`, "gi");
+  const parts = text.split(regex);
+  return parts.map((part, i) =>
+    regex.test(part) ? (
+      <Box component="span" key={i} sx={{ bgcolor: "yellow", fontWeight: "bold" }}>
+        {part}
+      </Box>
+    ) : (
+      part
+    )
+  );
+}
+
+// Helper to get initials from username/email
+function getInitials(name) {
+  if (!name) return "?";
+  const parts = name.split(" ");
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
 
 export default function ActivityPage() {
   const { activityLogs } = useFirestore();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  // For pagination
   const ITEMS_PER_PAGE = 20;
   const [page, setPage] = useState(1);
   const [displayedLogs, setDisplayedLogs] = useState([]);
@@ -48,7 +87,6 @@ export default function ActivityPage() {
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("all");
 
-  // Filter and sort logs based on search and filterType
   const filteredLogs = useMemo(() => {
     return activityLogs
       .filter((log) => {
@@ -56,35 +94,22 @@ export default function ActivityPage() {
         if (
           search &&
           !log.description.toLowerCase().includes(search.toLowerCase()) &&
-          !(log.userName?.toLowerCase().includes(search.toLowerCase()) ||
-            log.user?.toLowerCase().includes(search.toLowerCase()))
+          !(log.user?.toLowerCase().includes(search.toLowerCase()))
         )
           return false;
         return true;
       })
       .sort((a, b) => {
-        // Prefer timestamp or createdAt for sorting desc
-        const dateA = a.timestamp || a.createdAt || 0;
-        const dateB = b.timestamp || b.createdAt || 0;
+        const dateA = a.date || a.createdAt || 0;
+        const dateB = b.date || b.createdAt || 0;
         return new Date(dateB) - new Date(dateA);
       });
   }, [activityLogs, filterType, search]);
 
-  // For desktop: paginate logs
   useEffect(() => {
-    if (!isMobile) {
-      setDisplayedLogs(filteredLogs.slice(0, page * ITEMS_PER_PAGE));
-    }
-  }, [filteredLogs, page, isMobile]);
+    setDisplayedLogs(filteredLogs.slice(0, page * ITEMS_PER_PAGE));
+  }, [filteredLogs, page]);
 
-  // For mobile: infinite scroll
-  useEffect(() => {
-    if (isMobile) {
-      setDisplayedLogs(filteredLogs.slice(0, page * ITEMS_PER_PAGE));
-    }
-  }, [filteredLogs, page, isMobile]);
-
-  // Infinite scroll handler for mobile
   useEffect(() => {
     if (!isMobile) return;
 
@@ -103,7 +128,6 @@ export default function ActivityPage() {
     return () => container.removeEventListener("scroll", onScroll);
   }, [displayedLogs.length, filteredLogs.length, isMobile]);
 
-  // Reset page when filter/search changes
   useEffect(() => {
     setPage(1);
   }, [filterType, search]);
@@ -143,6 +167,7 @@ export default function ActivityPage() {
             <MenuItem value="payment">Payment</MenuItem>
             <MenuItem value="login">Login</MenuItem>
             <MenuItem value="delete">Delete</MenuItem>
+            <MenuItem value="settings_update">Settings Update</MenuItem>
           </Select>
         </FormControl>
       </Stack>
@@ -150,16 +175,46 @@ export default function ActivityPage() {
       <List>
         <AnimatePresence>
           {displayedLogs.map((log) => {
-            const userDisplay = log.userName ?? log.user ?? "System";
+            const userDisplay = log.user || "System";
             const actionDisplay =
               actionLabels[log.type] ??
               (log.type ? log.type.replace(/_/g, " ") : "Unknown Action");
-            const dateStr = (() => {
-              const dateVal = log.timestamp || log.createdAt;
-              if (!dateVal) return "No valid date";
-              const d = new Date(dateVal);
-              return !isNaN(d) ? d.toLocaleString() : "No valid date";
-            })();
+
+            const dateISO = log.date || log.createdAt;
+            let dateStr = "No valid date";
+            let relativeTime = "";
+            if (dateISO) {
+              try {
+                const parsedDate =
+                  typeof dateISO === "string"
+                    ? parseISO(dateISO)
+                    : dateISO.toDate
+                    ? dateISO.toDate()
+                    : dateISO;
+                relativeTime = formatDistanceToNow(parsedDate, { addSuffix: true });
+                dateStr = parsedDate.toLocaleString();
+              } catch {
+                // fallback if parsing fails
+              }
+            }
+
+            // Example badge usage:
+            // Suppose we treat logs less than 1 day old as "new"
+            const isNew =
+              dateISO &&
+              (() => {
+                try {
+                  const parsedDate =
+                    typeof dateISO === "string"
+                      ? parseISO(dateISO)
+                      : dateISO.toDate
+                      ? dateISO.toDate()
+                      : dateISO;
+                  return new Date() - parsedDate < 1000 * 60 * 60 * 24; // less than 24h old
+                } catch {
+                  return false;
+                }
+              })();
 
             return (
               <motion.div
@@ -169,35 +224,83 @@ export default function ActivityPage() {
                 exit="exit"
                 variants={itemVariants}
               >
-                <ListItem alignItems="flex-start" divider>
+                <ListItemButton
+                  divider
+                  sx={{
+                    py: 1.5,
+                    "&:hover": { bgcolor: theme.palette.action.hover },
+                    cursor: "default",
+                  }}
+                >
+                  <ListItemAvatar>
+                    <Badge
+                      color="error"
+                      variant="dot"
+                      overlap="circular"
+                      invisible={!isNew}
+                      anchorOrigin={{ vertical: "top", horizontal: "right" }}
+                    >
+                      <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
+                        {getInitials(userDisplay)}
+                      </Avatar>
+                    </Badge>
+                  </ListItemAvatar>
                   <ListItemText
                     primary={
-                      <>
-                        <strong>{userDisplay}</strong> — {actionDisplay}
-                      </>
+                      <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
+                        <Typography
+                          variant="subtitle1"
+                          component="span"
+                          fontWeight="bold"
+                        >
+                          {highlightText(userDisplay, search)}
+                        </Typography>
+
+                        <Tooltip
+                          title={actionDisplay}
+                          placement="top"
+                          TransitionComponent={Fade}
+                          arrow
+                        >
+                          <Chip
+                            label={actionDisplay}
+                            size="small"
+                            color={actionChipColors[log.type] || "default"}
+                            sx={{ textTransform: "capitalize", cursor: "help" }}
+                          />
+                        </Tooltip>
+                      </Box>
                     }
                     secondary={
                       <>
-                        <Typography
-                          component="span"
-                          variant="body2"
-                          color="text.primary"
-                          sx={{ display: "block" }}
+                        <Tooltip
+                          title={dateStr}
+                          arrow
+                          placement="top"
+                          TransitionComponent={Fade}
                         >
-                          {dateStr}
+                          <Typography
+                            component="span"
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ display: "block", mb: 0.5, fontStyle: "italic" }}
+                          >
+                            {relativeTime}
+                          </Typography>
+                        </Tooltip>
+                        <Typography component="span" variant="body2">
+                          {highlightText(log.description ?? "", search)}
                         </Typography>
-                        {log.description ?? ""}
                       </>
                     }
                   />
-                </ListItem>
+                </ListItemButton>
               </motion.div>
             );
           })}
         </AnimatePresence>
       </List>
 
-      {/* Pagination controls for desktop */}
       {!isMobile && filteredLogs.length > displayedLogs.length && (
         <Box textAlign="center" mt={2}>
           <Typography
@@ -214,18 +317,24 @@ export default function ActivityPage() {
         </Box>
       )}
 
-      {/* Loading indicator for mobile infinite scroll */}
       {isMobile && displayedLogs.length < filteredLogs.length && (
         <Box textAlign="center" mt={2}>
           <CircularProgress size={24} />
         </Box>
       )}
 
-      {/* No results fallback */}
       {displayedLogs.length === 0 && (
-        <Typography variant="body1" align="center" mt={4} color="text.secondary">
-          No activity logs found.
-        </Typography>
+        <Box
+          mt={6}
+          textAlign="center"
+          color={theme.palette.text.secondary}
+          sx={{ userSelect: "none" }}
+        >
+          <Typography variant="h6" gutterBottom>
+            No activity logs found
+          </Typography>
+          <Typography variant="body2">Try adjusting your search or filters.</Typography>
+        </Box>
       )}
     </Box>
   );

@@ -1,4 +1,3 @@
-// src/contexts/FirestoreProvider.js
 import React, { createContext, useContext, useEffect, useState } from "react";
 import {
   collection,
@@ -16,12 +15,14 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
+import { useAuth } from "./AuthProvider";
 
 const FirestoreContext = createContext();
-
 export const useFirestore = () => useContext(FirestoreContext);
 
 export function FirestoreProvider({ children }) {
+  const { currentUser } = useAuth();
+
   const [loans, setLoans] = useState([]);
   const [payments, setPayments] = useState([]);
   const [settings, setSettings] = useState({
@@ -33,6 +34,7 @@ export function FirestoreProvider({ children }) {
   const addActivityLog = async (logEntry) => {
     await addDoc(collection(db, "activityLogs"), {
       ...logEntry,
+      user: currentUser?.displayName || currentUser?.email || "System",
       createdAt: serverTimestamp(),
     });
   };
@@ -87,6 +89,7 @@ export function FirestoreProvider({ children }) {
     };
     const docRef = await addDoc(collection(db, "loans"), loanWithTimestamps);
     await addActivityLog({
+      type: "loan_creation",
       description: `Loan added for ${loan.borrower}`,
       date: new Date().toISOString(),
     });
@@ -98,6 +101,7 @@ export function FirestoreProvider({ children }) {
     const updatesWithTimestamp = { ...updates, updatedAt: serverTimestamp() };
     await updateDoc(docRef, updatesWithTimestamp);
     await addActivityLog({
+      type: "edit",
       description: `Loan updated (ID: ${id})`,
       date: new Date().toISOString(),
     });
@@ -106,6 +110,7 @@ export function FirestoreProvider({ children }) {
   const deleteLoan = async (id) => {
     await deleteDoc(doc(db, "loans", id));
     await addActivityLog({
+      type: "delete",
       description: `Loan deleted (ID: ${id})`,
       date: new Date().toISOString(),
     });
@@ -127,9 +132,10 @@ export function FirestoreProvider({ children }) {
       const loan = loanSnap.data();
       const repaidAmount = (loan.repaidAmount || 0) + amount;
       const status = repaidAmount >= loan.totalRepayable ? "Paid" : "Active";
-
       await updateLoan(loanId, { repaidAmount, status });
+
       await addActivityLog({
+        type: "payment",
         description: `Payment of ZMW ${amount} added for loan ID ${loanId}`,
         date: new Date().toISOString(),
       });
@@ -138,11 +144,7 @@ export function FirestoreProvider({ children }) {
 
   const getPaymentsByLoanId = async (loanId) => {
     const paymentsRef = collection(db, "payments");
-    const q = query(
-      paymentsRef,
-      where("loanId", "==", loanId),
-      orderBy("date", "desc")
-    );
+    const q = query(paymentsRef, where("loanId", "==", loanId));
     const snapshot = await getDocs(q);
     return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   };
@@ -153,6 +155,7 @@ export function FirestoreProvider({ children }) {
     await setDoc(docRef, updatesWithTimestamp, { merge: true });
     setSettings((prev) => ({ ...prev, ...newSettings }));
     await addActivityLog({
+      type: "settings_update",
       description: "Settings updated",
       date: new Date().toISOString(),
     });
