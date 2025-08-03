@@ -11,11 +11,12 @@ import {
   LinearProgress,
   Fab,
   Zoom,
-  Skeleton,
   Accordion,
   AccordionSummary,
   AccordionDetails,
   Badge,
+  Backdrop,
+  CircularProgress,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import PaidIcon from "@mui/icons-material/Payments";
@@ -453,11 +454,6 @@ export default function Dashboard() {
     navigate(`/loans?${params.toString()}`);
   };
 
-  const skeletonIconSize = isMobile ? 22 : 24;
-  const skeletonTextHeight = isMobile ? 14 : 16;
-  const skeletonValueHeight = isMobile ? 20 : 24;
-  const skeletonProgressHeight = isMobile ? 4 : 5;
-
   const AccordionTitle = ({ title }) => (
     <Typography
       variant="body1"
@@ -473,164 +469,23 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <Box
+      <Backdrop
         sx={{
-          minHeight: "100vh",
-          background: theme.palette.background.default,
-          p: isMobile ? 2 : 3,
-          pb: isMobile ? `calc(${BOTTOM_NAV_HEIGHT}px + ${theme.spacing(2)})` : 3,
+          color: '#fff',
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: theme.palette.background.default,
         }}
+        open={loading}
       >
-        <Typography
-          variant="h5"
-          gutterBottom
-          sx={{ fontWeight: 600, mb: 0.5, fontSize: { xs: "1.5rem", md: "2rem" } }}
-        >
-          <Skeleton variant="text" width="40%" />
+        <CircularProgress color="primary" />
+        <Typography variant="h6" sx={{ mt: 2, color: theme.palette.text.primary }}>
+          Loading dashboard...
         </Typography>
-        <Box mb={isMobile ? 1 : 1.5} maxWidth={isMobile ? "100%" : 180}>
-          <Skeleton variant="rectangular" height={30} width="100%" sx={{ borderRadius: 1 }} />
-        </Box>
-
-        {/* Executive Summary Skeleton */}
-        <Box
-          sx={{
-            borderRadius: 2,
-            mb: isMobile ? 2 : 4,
-            backgroundColor: theme.palette.background.paper,
-            boxShadow: theme.shadows[1],
-            overflow: "hidden",
-            border: `1px solid ${theme.palette.divider}`,
-          }}
-        >
-          <Box
-            display="flex"
-            alignItems="center"
-            justifyContent="space-between"
-            sx={{
-              p: isMobile ? "8px 16px" : "12px 24px",
-              backgroundColor: theme.palette.grey[100],
-              borderBottom: `1px solid ${theme.palette.divider}`, // Added a divider here for consistency with the final design
-            }}
-          >
-            <Skeleton variant="text" width="30%" height={isMobile ? 24 : 28} />
-            <Skeleton variant="circular" width={20} height={20} />
-          </Box>
-          <Box sx={{ p: isMobile ? 1.5 : 2 }}>
-            <Grid container spacing={isMobile ? 1 : 1.5}>
-              {[...Array(4)].map((_, i) => (
-                <Grid item xs={6} sm={4} md={3} lg={2} key={`exec-skel-${i}`}>
-                  <Card
-                    sx={{
-                      p: isMobile ? 1 : 1.5,
-                      borderRadius: 2,
-                      boxShadow: theme.shadows[0],
-                      height: "100%",
-                      backgroundColor: theme.palette.grey[50],
-                    }}
-                  >
-                    <Box display="flex" alignItems="center" mb={0.5} gap={0.5}>
-                      <Skeleton variant="circular" width={skeletonIconSize} height={skeletonIconSize} />
-                      <Skeleton variant="text" width="50%" height={skeletonTextHeight} />
-                    </Box>
-                    <Skeleton variant="text" width="70%" height={skeletonValueHeight} />
-                    <Skeleton variant="rectangular" width="100%" height={skeletonProgressHeight} sx={{ mt: 0.5, borderRadius: 1 }} />
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-          </Box>
-        </Box>
-
-        {/* Metrics Skeleton */}
-        <Box
-          sx={{
-            borderRadius: 2,
-            mb: isMobile ? 2 : 4,
-            backgroundColor: theme.palette.background.paper,
-            boxShadow: theme.shadows[1],
-            border: `1px solid ${theme.palette.divider}`,
-            overflow: "hidden",
-          }}
-        >
-          <Box
-            display="flex"
-            alignItems="center"
-            justifyContent="space-between"
-            sx={{
-              p: isMobile ? "8px 16px" : "12px 24px",
-              backgroundColor: theme.palette.grey[100],
-              borderBottom: `1px solid ${theme.palette.divider}`, // Added a divider here for consistency
-            }}
-          >
-            <Skeleton variant="text" width="30%" height={isMobile ? 24 : 28} />
-            <Skeleton variant="circular" width={20} height={20} />
-          </Box>
-          <Box sx={{ p: isMobile ? 1.5 : 2 }}>
-            <Grid container spacing={isMobile ? 1 : 1.5}>
-              {[...Array(6)].map((_, i) => (
-                <Grid item xs={6} sm={4} md={3} lg={2} key={`metrics-skel-${i}`}>
-                  <Card
-                    sx={{
-                      p: isMobile ? 1 : 1.5,
-                      borderRadius: 2,
-                      boxShadow: theme.shadows[0],
-                      height: "100%",
-                      backgroundColor: theme.palette.grey[50],
-                    }}
-                  >
-                    <Box display="flex" alignItems="center" mb={0.5} gap={0.5}>
-                      <Skeleton variant="circular" width={skeletonIconSize} height={skeletonIconSize} />
-                      <Skeleton variant="text" width="50%" height={skeletonTextHeight} />
-                    </Box>
-                    <Skeleton variant="text" width="70%" height={skeletonValueHeight} />
-                    <Skeleton variant="rectangular" width="100%" height={skeletonProgressHeight} sx={{ mt: 0.5, borderRadius: 1 }} />
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-          </Box>
-        </Box>
-
-        {/* Charts Skeleton */}
-        <Box
-          sx={{
-            borderRadius: 2,
-            mb: isMobile ? 2 : 4,
-            backgroundColor: theme.palette.background.paper,
-            boxShadow: theme.shadows[1],
-            border: `1px solid ${theme.palette.divider}`,
-            overflow: "hidden",
-          }}
-        >
-          <Box
-            display="flex"
-            alignItems="center"
-            justifyContent="space-between"
-            sx={{
-              p: isMobile ? "8px 16px" : "12px 24px",
-              backgroundColor: theme.palette.grey[100],
-              borderBottom: `1px solid ${theme.palette.divider}`, // Added a divider here for consistency
-            }}
-          >
-            <Skeleton variant="text" width="30%" height={isMobile ? 24 : 28} />
-            <Skeleton variant="circular" width={20} height={20} />
-          </Box>
-          <Box sx={{ p: isMobile ? 1.5 : 2 }}>
-            <Grid container spacing={isMobile ? 1.5 : 2}>
-              <Grid item xs={12} md={6}>
-                <Skeleton variant="rectangular" width="100%" height={300} sx={{ borderRadius: 2 }} />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <Skeleton variant="rectangular" width="100%" height={300} sx={{ borderRadius: 2 }} />
-              </Grid>
-              <Grid item xs={12}>
-                <Skeleton variant="rectangular" width="100%" height={300} sx={{ borderRadius: 2 }} />
-              </Grid>
-            </Grid>
-          </Box>
-        </Box>
-      </Box>
+      </Backdrop>
     );
   }
 
@@ -812,7 +667,7 @@ export default function Dashboard() {
           onChange={() => handleToggleSection("executive")}
           sx={{
             borderRadius: 2,
-            mb: isMobile ? 2 : 4,
+            mb: isMobile ? 2 : 4, // Added margin bottom for spacing
             backgroundColor: theme.palette.background.paper,
             boxShadow: theme.shadows[1],
             overflow: "hidden",
@@ -838,12 +693,12 @@ export default function Dashboard() {
               minHeight: "48px !important",
               "&.Mui-expanded": { minHeight: "48px !important" },
               "& .MuiAccordionSummary-content": { margin: 0, alignItems: "center" },
-              borderBottom: `1px solid ${theme.palette.divider}`, // Added a divider here
+              borderBottom: `1px solid ${theme.palette.divider}`,
             }}
           >
             <AccordionTitle title="Executive Summary" />
           </AccordionSummary>
-          <AccordionDetails sx={{ p: isMobile ? 1.5 : 2 }}>
+          <AccordionDetails sx={{ p: isMobile ? 1.5 : 2, pb: isMobile ? 2 : 3 }}>
             {renderCardSection(executiveSummaryCards, "executive-summary-droppable")}
           </AccordionDetails>
         </Accordion>
@@ -853,7 +708,7 @@ export default function Dashboard() {
           onChange={() => handleToggleSection("metrics")}
           sx={{
             borderRadius: 2,
-            mb: isMobile ? 2 : 4,
+            mb: isMobile ? 2 : 4, // Added margin bottom for spacing
             backgroundColor: theme.palette.background.paper,
             boxShadow: theme.shadows[1],
             overflow: "hidden",
@@ -879,12 +734,12 @@ export default function Dashboard() {
               minHeight: "48px !important",
               "&.Mui-expanded": { minHeight: "48px !important" },
               "& .MuiAccordionSummary-content": { margin: 0, alignItems: "center" },
-              borderBottom: `1px solid ${theme.palette.divider}`, // Added a divider here
+              borderBottom: `1px solid ${theme.palette.divider}`,
             }}
           >
-            <AccordionTitle title="Key Metrics" />
+            <AccordionTitle title="Metrics" />
           </AccordionSummary>
-          <AccordionDetails sx={{ p: isMobile ? 1.5 : 2 }}>
+          <AccordionDetails sx={{ p: isMobile ? 1.5 : 2, pb: isMobile ? 2 : 3 }}>
             {renderCardSection(metricsCards, "metrics-droppable")}
           </AccordionDetails>
         </Accordion>
@@ -895,7 +750,7 @@ export default function Dashboard() {
         onChange={() => handleToggleSection("charts")}
         sx={{
           borderRadius: 2,
-          mb: isMobile ? 2 : 4,
+          mb: `calc(${BOTTOM_NAV_HEIGHT}px + ${theme.spacing(2)})`,
           backgroundColor: theme.palette.background.paper,
           boxShadow: theme.shadows[1],
           overflow: "hidden",
@@ -921,30 +776,36 @@ export default function Dashboard() {
             minHeight: "48px !important",
             "&.Mui-expanded": { minHeight: "48px !important" },
             "& .MuiAccordionSummary-content": { margin: 0, alignItems: "center" },
-            borderBottom: `1px solid ${theme.palette.divider}`, // Added a divider here
+            borderBottom: `1px solid ${theme.palette.divider}`,
           }}
         >
-          <AccordionTitle title="Charts" />
+          <AccordionTitle title="Charts & Analytics" />
         </AccordionSummary>
-        <AccordionDetails sx={{ p: isMobile ? 1.5 : 2 }}>
-          <Charts loans={loansForCalculations} selectedMonth={selectedMonth} />
+        <AccordionDetails sx={{ p: isMobile ? 1.5 : 2, pb: isMobile ? 2 : 3 }}>
+          {loansForCalculations.length > 0 ? (
+            <Charts loans={loansForCalculations} selectedMonth={selectedMonth} />
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              No loan data available for charts.
+            </Typography>
+          )}
         </AccordionDetails>
       </Accordion>
 
-      <Zoom in timeout={300} style={{ transitionDelay: "50ms" }}>
+      <Zoom
+        in
+        style={{
+          position: "fixed",
+          bottom: isMobile ? `calc(${BOTTOM_NAV_HEIGHT}px + 16px)` : 16,
+          right: 16,
+        }}
+        timeout={500}
+        unmountOnExit
+      >
         <Fab
           color="primary"
-          aria-label="add"
-          sx={{
-            position: "fixed",
-            bottom: isMobile ? BOTTOM_NAV_HEIGHT + 16 : 32,
-            right: isMobile ? 16 : 32,
-            zIndex: theme.zIndex.fab,
-            width: 44,
-            height: 44,
-            minHeight: 44,
-          }}
-          onClick={() => navigate("/add-loan")}
+          aria-label="add loan"
+          onClick={() => navigate("/new-loan")}
         >
           <AddIcon />
         </Fab>
