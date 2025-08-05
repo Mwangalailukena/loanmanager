@@ -370,7 +370,7 @@ export default function Dashboard() {
         id: "expectedProfit",
         label: "Interest Expected",
         value: `K ${totalExpectedProfit.toLocaleString()}`,
-        color: "info",
+        color: "secondary", // <-- Changed to accent color
         filter: "all",
         tooltip: "Total expected profit from interest",
         progress: null,
@@ -658,7 +658,27 @@ export default function Dashboard() {
           size="small"
           fullWidth
           InputLabelProps={{ shrink: true }}
-          sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1.5, backgroundColor: theme.palette.background.paper }, "& .MuiInputBase-input": { padding: isMobile ? "8px 10px" : "10px 14px" }, "& .MuiInputLabel-root": { transform: isMobile ? "translate(14px, 7px) scale(0.75)" : "translate(14px, 10px) scale(0.75)" }, "& .MuiInputLabel-shrink": { transform: "translate(14px, -9px) scale(0.75)" } }}
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 1.5,
+              backgroundColor: theme.palette.background.paper,
+              "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                borderColor: theme.palette.secondary.main,
+              },
+            },
+            "& .MuiInputBase-input": {
+              padding: isMobile ? "8px 10px" : "10px 14px",
+            },
+            "& .MuiInputLabel-root": {
+              transform: isMobile ? "translate(14px, 7px) scale(0.75)" : "translate(14px, 10px) scale(0.75)",
+            },
+            "& .MuiInputLabel-root.Mui-focused": {
+              color: theme.palette.secondary.main,
+            },
+            "& .MuiInputLabel-shrink": {
+              transform: "translate(14px, -9px) scale(0.75)",
+            },
+          }}
         />
       </Box>
 
@@ -801,7 +821,7 @@ export default function Dashboard() {
         unmountOnExit
       >
         <Fab
-          color="primary"
+          color="secondary" // <-- Changed to accent color
           aria-label="add loan"
           onClick={() => navigate("/new-loan")}
         >
