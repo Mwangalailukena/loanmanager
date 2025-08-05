@@ -862,7 +862,7 @@ function ManualLoanForm() {
                 sx: textFieldStyles,
               },
             }}
-            disablePast // Prevents selecting dates in the past
+            // REMOVED disablePast here to allow picking any date
           />
           <DatePicker
             label="Due Date"
