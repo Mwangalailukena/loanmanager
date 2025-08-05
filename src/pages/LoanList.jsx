@@ -41,7 +41,6 @@ import { useFirestore } from "../contexts/FirestoreProvider";
 import { exportToCsv } from "../utils/exportCSV";
 import { motion, AnimatePresence } from "framer-motion";
 import dayjs from "dayjs";
-// NEW IMPORT: Import useSearchParams from react-router-dom
 import { useSearchParams } from "react-router-dom";
 
 const PAGE_SIZE = 10;
@@ -57,13 +56,10 @@ export default function LoanList() {
   const { loans, loadingLoans, deleteLoan, addPayment, updateLoan, getPaymentsByLoanId, settings } = useFirestore();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  // MODIFIED: Destructure setSearchParams
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [searchTerm, setSearchTerm] = useState("");
-  // MODIFIED: Initialize statusFilter from URL param, defaulting to "all"
   const [statusFilter, setStatusFilter] = useState(searchParams.get('filter') || "all");
-  // MODIFIED: Initialize monthFilter from URL param, defaulting to current month
   const [monthFilter, setMonthFilter] = useState(searchParams.get('month') || dayjs().format("YYYY-MM"));
   const [page, setPage] = useState(1);
   const [useInfiniteScroll] = useState(isMobile);
@@ -114,36 +110,48 @@ export default function LoanList() {
     return "Active";
   };
 
-  // NEW useEffect to update filters when URL params change, and address linting
+  // Reusable styles for the focused state of form fields
+  const filterInputStyles = {
+    "& .MuiOutlinedInput-root": {
+      "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+        borderColor: theme.palette.secondary.main,
+      },
+    },
+    "& .MuiInputLabel-root.Mui-focused": {
+      color: theme.palette.secondary.main,
+    },
+    "& .MuiSvgIcon-root": {
+      "&.Mui-focused": {
+        color: theme.palette.secondary.main,
+      },
+    },
+  };
+
   useEffect(() => {
     const urlFilter = searchParams.get('filter');
     const urlMonth = searchParams.get('month');
 
-    // Only update if the URL parameter is different from current state
-    // Use .toLowerCase() for consistent comparison with state
     if (urlFilter && urlFilter.toLowerCase() !== statusFilter.toLowerCase()) {
       setStatusFilter(urlFilter);
     } else if (!urlFilter && statusFilter !== "all") {
-      setStatusFilter("all"); // Reset to "all" if param removed from URL
+      setStatusFilter("all");
     }
 
     if (urlMonth && urlMonth !== monthFilter) {
       setMonthFilter(urlMonth);
     } else if (!urlMonth && monthFilter !== dayjs().format("YYYY-MM")) {
-      setMonthFilter(dayjs().format("YYYY-MM")); // Reset to current month if param removed from URL
+      setMonthFilter(dayjs().format("YYYY-MM"));
     }
 
-    setSearchTerm(""); // Reset search term when navigating via dashboard clicks
-    setPage(1); // Reset pagination when filters change from URL
-  }, [searchParams, statusFilter, monthFilter]); // ADDED statusFilter and monthFilter to dependencies
+    setSearchTerm("");
+    setPage(1);
+  }, [searchParams, statusFilter, monthFilter]);
 
   const filteredLoans = useMemo(() => {
     return loans
       .filter((loan) => {
-        // Ensure monthFilter is compared correctly
         if (monthFilter && dayjs(loan.startDate).format("YYYY-MM") !== monthFilter) return false;
         
-        // Ensure statusFilter is compared correctly (case-insensitive)
         if (statusFilter !== "all" && calcStatus(loan).toLowerCase() !== statusFilter.toLowerCase()) return false;
         
         if (
@@ -157,7 +165,7 @@ export default function LoanList() {
         return true;
       })
       .sort((a, b) => dayjs(b.startDate).unix() - dayjs(a.startDate).unix());
-  }, [loans, searchTerm, statusFilter, monthFilter]); // Add statusFilter and monthFilter to dependencies for useMemo
+  }, [loans, searchTerm, statusFilter, monthFilter]);
 
   const displayedLoans = useMemo(() => {
     if (useInfiniteScroll && isMobile) {
@@ -186,13 +194,11 @@ export default function LoanList() {
     }
   }, [handleScroll, useInfiniteScroll, isMobile]);
 
-  // This useEffect now primarily handles internal state resets based on local filter changes.
-  // The URL parameter handling is in the dedicated useEffect above.
   useEffect(() => {
     setPage(1);
     setExpandedRow(null);
     setSelectedLoanIds([]);
-  }, [searchTerm, statusFilter, monthFilter, useInfiniteScroll]); // Keep these dependencies for internal changes
+  }, [searchTerm, statusFilter, monthFilter, useInfiniteScroll]);
 
   const totals = useMemo(() => {
     return filteredLoans.reduce(
@@ -320,7 +326,6 @@ export default function LoanList() {
       return;
     }
 
-    // Find the loan being paid
     const loan = loans.find(l => l.id === paymentModal.loanId);
     const outstanding = (loan?.totalRepayable || 0) - (loan?.repaidAmount || 0);
 
@@ -357,7 +362,6 @@ export default function LoanList() {
     setExpandedRow(expandedRow === id ? null : id);
   };
   
-  // NEW useCallback to handle month filter change and update URL
   const onMonthChange = useCallback(
     (e) => {
       const newMonth = e.target.value;
@@ -371,7 +375,6 @@ export default function LoanList() {
     [searchParams, setSearchParams]
   );
   
-  // Existing useCallback for status filter
   const onStatusChange = useCallback(
     (e) => {
       const newStatus = e.target.value;
@@ -393,6 +396,7 @@ export default function LoanList() {
 
       <Stack direction={isMobile ? "column" : "row"} spacing={1} mb={2} alignItems="center">
         <TextField
+          sx={filterInputStyles} // <-- Accent color on focus
           label="Search"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -401,7 +405,7 @@ export default function LoanList() {
           variant="outlined"
           margin="dense"
         />
-        <FormControl size="small" sx={{ minWidth: 130 }}>
+        <FormControl size="small" sx={{ minWidth: 130, ...filterInputStyles }}>
           <InputLabel>Status</InputLabel>
           <Select
             value={statusFilter}
@@ -416,6 +420,7 @@ export default function LoanList() {
           </Select>
         </FormControl>
         <TextField
+          sx={filterInputStyles} // <-- Accent color on focus
           label="Month"
           type="month"
           size="small"
@@ -426,6 +431,7 @@ export default function LoanList() {
         />
         <Button
           variant="outlined"
+          color="secondary" // <-- Accent color
           size="small"
           onClick={() => exportToCsv("loans.csv", filteredLoans)}
           sx={{ height: 32 }}
@@ -435,7 +441,7 @@ export default function LoanList() {
         {selectedLoanIds.length > 0 && (
           <Button
             variant="contained"
-            color="error"
+            color="error" // <-- Correctly uses error color for destructive action
             size="small"
             onClick={() => setConfirmBulkDelete(true)}
             sx={{ height: 32 }}
@@ -470,7 +476,7 @@ export default function LoanList() {
                         marginBottom: 12,
                         boxShadow: theme.shadows[1],
                         borderRadius: theme.shape.borderRadius,
-                        borderLeft: `5px solid ${theme.palette.primary.main}`,
+                        borderLeft: `5px solid ${theme.palette.secondary.main}`, // <-- Accent color on left border
                         padding: 12,
                         background: theme.palette.background.paper,
                       }}
@@ -484,7 +490,7 @@ export default function LoanList() {
                             {loan.phone}
                           </Typography>
                         </Box>
-                        <IconButton size="small" onClick={() => toggleRow(loan.id)} aria-label="expand">
+                        <IconButton size="small" onClick={() => toggleRow(loan.id)} aria-label="expand" color="secondary">
                           {expandedRow === loan.id ? <KeyboardArrowUp fontSize="small" /> : <KeyboardArrowDown fontSize="small" />}
                         </IconButton>
                       </Stack>
@@ -493,14 +499,14 @@ export default function LoanList() {
                           <Typography noWrap>Principal: ZMW {Number(loan.principal).toFixed(2)}</Typography>
                           <Typography noWrap>Interest: ZMW {Number(loan.interest).toFixed(2)}</Typography>
                           <Typography noWrap>Total Repayable: ZMW {Number(loan.totalRepayable).toFixed(2)}</Typography>
-                          <Typography noWrap>Outstanding: ZMW {outstanding.toFixed(2)}</Typography>
+                          <Typography noWrap>Outstanding: <Typography component="span" fontWeight="bold" color="secondary.main">{outstanding.toFixed(2)}</Typography></Typography>
                           <Typography noWrap>Start: {loan.startDate}</Typography>
                           <Typography noWrap>Due: {loan.dueDate}</Typography>
                           <Typography noWrap>Status: {calcStatus(loan)}</Typography>
                           <Stack direction="row" spacing={0.5} mt={1} justifyContent="flex-start">
                             <Tooltip title="Edit">
                               <span>
-                                <IconButton size="small" onClick={() => openEditModal(loan)} aria-label="edit" disabled={isPaid}>
+                                <IconButton size="small" onClick={() => openEditModal(loan)} aria-label="edit" disabled={isPaid} color="secondary">
                                   <Edit fontSize="small" />
                                 </IconButton>
                               </span>
@@ -514,13 +520,13 @@ export default function LoanList() {
                             </Tooltip>
                             <Tooltip title="Add Payment">
                               <span>
-                                <IconButton size="small" onClick={() => openPaymentModal(loan.id)} aria-label="payment" disabled={isPaid}>
+                                <IconButton size="small" onClick={() => openPaymentModal(loan.id)} aria-label="payment" disabled={isPaid} color="secondary">
                                   <Payment fontSize="small" />
                                 </IconButton>
                               </span>
                             </Tooltip>
                             <Tooltip title="View History">
-                              <IconButton size="small" onClick={() => openHistoryModal(loan.id)} aria-label="history">
+                              <IconButton size="small" onClick={() => openHistoryModal(loan.id)} aria-label="history" color="secondary">
                                 <History fontSize="small" />
                               </IconButton>
                             </Tooltip>
@@ -554,6 +560,7 @@ export default function LoanList() {
                         onChange={toggleSelectAll}
                         inputProps={{ "aria-label": "select all loans" }}
                         size="small"
+                        sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }}
                       />
                     </TableCell>
                     <TableCell align="center" sx={{ width: 30, py: 0.5 }}>
@@ -601,6 +608,7 @@ export default function LoanList() {
                             onChange={() => toggleSelectLoan(loan.id)}
                             inputProps={{ "aria-label": `select loan ${loan.borrower}` }}
                             size="small"
+                            sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }} // <-- Accent color on checked
                           />
                         </TableCell>
                         <TableCell align="center" sx={{ py: 0.5 }}>
@@ -631,6 +639,7 @@ export default function LoanList() {
                                 onClick={() => openEditModal(loan)}
                                 aria-label="edit"
                                 disabled={isPaid}
+                                color="secondary" // <-- Accent color
                               >
                                 <Edit fontSize="small" />
                               </IconButton>
@@ -656,6 +665,7 @@ export default function LoanList() {
                                 onClick={() => openPaymentModal(loan.id)}
                                 aria-label="add payment"
                                 disabled={isPaid}
+                                color="secondary" // <-- Accent color
                               >
                                 <Payment fontSize="small" />
                               </IconButton>
@@ -666,6 +676,7 @@ export default function LoanList() {
                               size="small"
                               onClick={() => openHistoryModal(loan.id)}
                               aria-label="view history"
+                              color="secondary" // <-- Accent color
                             >
                               <History fontSize="small" />
                             </IconButton>
@@ -680,16 +691,16 @@ export default function LoanList() {
                     <TableCell colSpan={4} align="right" sx={{ fontWeight: "bold", py: 0.5 }}>
                       Totals:
                     </TableCell>
-                    <TableCell align="right" sx={{ fontWeight: "bold", py: 0.5 }}>
+                    <TableCell align="right" sx={{ fontWeight: "bold", py: 0.5, color: theme.palette.secondary.main }}>
                       {totals.principal.toFixed(2)}
                     </TableCell>
-                    <TableCell align="right" sx={{ fontWeight: "bold", py: 0.5 }}>
+                    <TableCell align="right" sx={{ fontWeight: "bold", py: 0.5, color: theme.palette.secondary.main }}>
                       {totals.interest.toFixed(2)}
                     </TableCell>
-                    <TableCell align="right" sx={{ fontWeight: "bold", py: 0.5 }}>
+                    <TableCell align="right" sx={{ fontWeight: "bold", py: 0.5, color: theme.palette.secondary.main }}>
                       {totals.totalRepayable.toFixed(2)}
                     </TableCell>
-                    <TableCell align="right" sx={{ fontWeight: "bold", py: 0.5 }}>
+                    <TableCell align="right" sx={{ fontWeight: "bold", py: 0.5, color: theme.palette.secondary.main }}>
                       {totals.outstanding.toFixed(2)}
                     </TableCell>
                     <TableCell colSpan={4} />
@@ -700,6 +711,7 @@ export default function LoanList() {
                 <Stack direction="row" justifyContent="center" spacing={1} mt={1} mb={2}>
                   <Button
                     size="small"
+                    color="secondary" // <-- Accent color
                     disabled={page === 1}
                     onClick={() => setPage((p) => Math.max(p - 1, 1))}
                   >
@@ -710,6 +722,7 @@ export default function LoanList() {
                   </Typography>
                   <Button
                     size="small"
+                    color="secondary" // <-- Accent color
                     disabled={page === Math.ceil(filteredLoans.length / PAGE_SIZE)}
                     onClick={() => setPage((p) => Math.min(p + 1, Math.ceil(filteredLoans.length / PAGE_SIZE))) }
                   >
@@ -768,11 +781,14 @@ export default function LoanList() {
             fullWidth
             error={!!paymentError}
             helperText={paymentError}
+            sx={filterInputStyles}
           />
         </DialogContent>
         <DialogActions sx={{ pb: 1 }}>
           <Button size="small" onClick={() => setPaymentModal({ open: false, loanId: null })} disabled={isAddingPayment}> Cancel </Button>
-          <Button size="small" variant="contained" onClick={handlePaymentSubmit} disabled={isAddingPayment}> {isAddingPayment ? <CircularProgress size={20} color="inherit" /> : 'Submit'} </Button>
+          <Button size="small" variant="contained" onClick={handlePaymentSubmit} disabled={isAddingPayment} color="secondary">
+            {isAddingPayment ? <CircularProgress size={20} color="inherit" /> : 'Submit'}
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -790,6 +806,7 @@ export default function LoanList() {
               fullWidth
               error={!!editErrors.borrower}
               helperText={editErrors.borrower}
+              sx={filterInputStyles}
             />
             <TextField
               label="Phone"
@@ -799,6 +816,7 @@ export default function LoanList() {
               fullWidth
               error={!!editErrors.phone}
               helperText={editErrors.phone}
+              sx={filterInputStyles}
             />
             <TextField
               label="Principal (ZMW)"
@@ -809,6 +827,7 @@ export default function LoanList() {
               fullWidth
               error={!!editErrors.principal}
               helperText={editErrors.principal}
+              sx={filterInputStyles}
             />
             <TextField
               select
@@ -825,6 +844,7 @@ export default function LoanList() {
               }}
               fullWidth
               size="small"
+              sx={filterInputStyles}
             >
               {interestOptions.map(({ label, value }) => (
                 <MenuItem key={value} value={value}>
@@ -851,6 +871,7 @@ export default function LoanList() {
               fullWidth
               error={!!editErrors.startDate}
               helperText={editErrors.startDate}
+              sx={filterInputStyles}
             />
             <TextField
               label="Due Date"
@@ -860,12 +881,15 @@ export default function LoanList() {
               size="small"
               fullWidth
               InputProps={{ readOnly: true }}
+              sx={filterInputStyles}
             />
           </Stack>
         </DialogContent>
         <DialogActions sx={{ pb: 1 }}>
           <Button size="small" onClick={() => setEditModal({ open: false, loan: null })} disabled={isSavingEdit}> Cancel </Button>
-          <Button size="small" variant="contained" onClick={handleEditSubmit} disabled={isSavingEdit}> {isSavingEdit ? <CircularProgress size={20} color="inherit" /> : 'Save'} </Button>
+          <Button size="small" variant="contained" onClick={handleEditSubmit} disabled={isSavingEdit} color="secondary">
+            {isSavingEdit ? <CircularProgress size={20} color="inherit" /> : 'Save'}
+          </Button>
         </DialogActions>
       </Dialog>
 
