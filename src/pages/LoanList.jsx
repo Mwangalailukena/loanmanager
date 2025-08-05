@@ -395,17 +395,18 @@ export default function LoanList() {
       </Typography>
 
       <Stack direction={isMobile ? "column" : "row"} spacing={1} mb={2} alignItems="center">
+        {/* CORRECTED: Combined sx props for Search TextField */}
         <TextField
-          sx={filterInputStyles} // <-- Accent color on focus
           label="Search"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           size="small"
-          sx={{ minWidth: 160 }}
+          sx={{ ...filterInputStyles, minWidth: 160 }}
           variant="outlined"
           margin="dense"
         />
-        <FormControl size="small" sx={{ minWidth: 130, ...filterInputStyles }}>
+        {/* CORRECTED: Combined sx props for Status FormControl */}
+        <FormControl size="small" sx={{ ...filterInputStyles, minWidth: 130 }}>
           <InputLabel>Status</InputLabel>
           <Select
             value={statusFilter}
@@ -419,19 +420,19 @@ export default function LoanList() {
             <MenuItem value="overdue">Overdue</MenuItem>
           </Select>
         </FormControl>
+        {/* CORRECTED: Combined sx props for Month TextField */}
         <TextField
-          sx={filterInputStyles} // <-- Accent color on focus
           label="Month"
           type="month"
           size="small"
           value={monthFilter}
           onChange={onMonthChange}
-          sx={{ maxWidth: 130 }}
+          sx={{ ...filterInputStyles, maxWidth: 130 }}
           margin="dense"
         />
         <Button
           variant="outlined"
-          color="secondary" // <-- Accent color
+          color="secondary"
           size="small"
           onClick={() => exportToCsv("loans.csv", filteredLoans)}
           sx={{ height: 32 }}
@@ -441,7 +442,7 @@ export default function LoanList() {
         {selectedLoanIds.length > 0 && (
           <Button
             variant="contained"
-            color="error" // <-- Correctly uses error color for destructive action
+            color="error"
             size="small"
             onClick={() => setConfirmBulkDelete(true)}
             sx={{ height: 32 }}
@@ -476,7 +477,7 @@ export default function LoanList() {
                         marginBottom: 12,
                         boxShadow: theme.shadows[1],
                         borderRadius: theme.shape.borderRadius,
-                        borderLeft: `5px solid ${theme.palette.secondary.main}`, // <-- Accent color on left border
+                        borderLeft: `5px solid ${theme.palette.secondary.main}`,
                         padding: 12,
                         background: theme.palette.background.paper,
                       }}
@@ -608,7 +609,7 @@ export default function LoanList() {
                             onChange={() => toggleSelectLoan(loan.id)}
                             inputProps={{ "aria-label": `select loan ${loan.borrower}` }}
                             size="small"
-                            sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }} // <-- Accent color on checked
+                            sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }}
                           />
                         </TableCell>
                         <TableCell align="center" sx={{ py: 0.5 }}>
@@ -639,7 +640,7 @@ export default function LoanList() {
                                 onClick={() => openEditModal(loan)}
                                 aria-label="edit"
                                 disabled={isPaid}
-                                color="secondary" // <-- Accent color
+                                color="secondary"
                               >
                                 <Edit fontSize="small" />
                               </IconButton>
@@ -665,7 +666,7 @@ export default function LoanList() {
                                 onClick={() => openPaymentModal(loan.id)}
                                 aria-label="add payment"
                                 disabled={isPaid}
-                                color="secondary" // <-- Accent color
+                                color="secondary"
                               >
                                 <Payment fontSize="small" />
                               </IconButton>
@@ -676,7 +677,7 @@ export default function LoanList() {
                               size="small"
                               onClick={() => openHistoryModal(loan.id)}
                               aria-label="view history"
-                              color="secondary" // <-- Accent color
+                              color="secondary"
                             >
                               <History fontSize="small" />
                             </IconButton>
@@ -711,7 +712,7 @@ export default function LoanList() {
                 <Stack direction="row" justifyContent="center" spacing={1} mt={1} mb={2}>
                   <Button
                     size="small"
-                    color="secondary" // <-- Accent color
+                    color="secondary"
                     disabled={page === 1}
                     onClick={() => setPage((p) => Math.max(p - 1, 1))}
                   >
@@ -722,7 +723,7 @@ export default function LoanList() {
                   </Typography>
                   <Button
                     size="small"
-                    color="secondary" // <-- Accent color
+                    color="secondary"
                     disabled={page === Math.ceil(filteredLoans.length / PAGE_SIZE)}
                     onClick={() => setPage((p) => Math.min(p + 1, Math.ceil(filteredLoans.length / PAGE_SIZE))) }
                   >
@@ -768,6 +769,7 @@ export default function LoanList() {
       <Dialog open={paymentModal.open} onClose={() => setPaymentModal({ open: false, loanId: null })} maxWidth="xs" fullWidth >
         <DialogTitle fontSize="1.1rem">Add Payment</DialogTitle>
         <DialogContent sx={{ pb: 1 }}>
+          {/* CORRECTED: Merged sx props into one */}
           <TextField
             label="Amount (ZMW)"
             type="number"
@@ -798,6 +800,7 @@ export default function LoanList() {
         <DialogContent sx={{ pb: 1 }}>
           {editErrors.form && <Alert severity="error" sx={{ mb: 1 }}>{editErrors.form}</Alert>}
           <Stack spacing={1}>
+            {/* CORRECTED: Merged sx props into one */}
             <TextField
               label="Borrower"
               value={editData.borrower}
@@ -808,6 +811,7 @@ export default function LoanList() {
               helperText={editErrors.borrower}
               sx={filterInputStyles}
             />
+            {/* CORRECTED: Merged sx props into one */}
             <TextField
               label="Phone"
               value={editData.phone}
@@ -818,6 +822,7 @@ export default function LoanList() {
               helperText={editErrors.phone}
               sx={filterInputStyles}
             />
+            {/* CORRECTED: Merged sx props into one */}
             <TextField
               label="Principal (ZMW)"
               type="number"
@@ -829,6 +834,7 @@ export default function LoanList() {
               helperText={editErrors.principal}
               sx={filterInputStyles}
             />
+            {/* CORRECTED: Merged sx props into one */}
             <TextField
               select
               label="Interest Duration"
@@ -852,6 +858,7 @@ export default function LoanList() {
                 </MenuItem>
               ))}
             </TextField>
+            {/* CORRECTED: Merged sx props into one */}
             <TextField
               label="Start Date"
               type="date"
@@ -873,6 +880,7 @@ export default function LoanList() {
               helperText={editErrors.startDate}
               sx={filterInputStyles}
             />
+            {/* CORRECTED: Merged sx props into one */}
             <TextField
               label="Due Date"
               type="date"
