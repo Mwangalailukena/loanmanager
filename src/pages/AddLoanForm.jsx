@@ -16,6 +16,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  useTheme,
 } from "@mui/material";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { toast } from "react-toastify";
@@ -35,6 +36,7 @@ const interestOptions = [
 ];
 
 export default function AddLoanForm() {
+  const theme = useTheme();
   const { addLoan, addActivityLog, settings } = useFirestore();
 
   const [borrower, setBorrower] = useState("");
@@ -180,7 +182,6 @@ export default function AddLoanForm() {
         timestamp: new Date().toISOString(),
       });
 
-      // Use a unique toast ID to avoid duplicates
       const toastId = "loan-add-success";
 
       toast.success(
@@ -190,7 +191,6 @@ export default function AddLoanForm() {
         { toastId }
       );
 
-      // Vibration feedback
       if (navigator.vibrate) {
         navigator.vibrate([100, 50, 100]);
       }
@@ -299,7 +299,6 @@ export default function AddLoanForm() {
         setImportLoading(false);
         setOpenImportDialog(false);
 
-        // Unique toast IDs for import results
         if (successCount > 0) {
           toast.success(`Successfully imported ${successCount} loan(s)!`, {
             toastId: "csv-import-success",
@@ -325,6 +324,17 @@ export default function AddLoanForm() {
     });
   };
 
+  const textFieldStyles = {
+    "& .MuiOutlinedInput-root": {
+      "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+        borderColor: theme.palette.secondary.main,
+      },
+    },
+    "& .MuiInputLabel-root.Mui-focused": {
+      color: theme.palette.secondary.main,
+    },
+  };
+
   return (
     <Paper
       elevation={2}
@@ -348,7 +358,7 @@ export default function AddLoanForm() {
         <Typography variant="h5">Add New Loan</Typography>
         <Tooltip title="Import multiple loans from CSV">
           <IconButton
-            color="primary"
+            color="secondary" // <-- Accent color
             onClick={() => setOpenImportDialog(true)}
             disabled={loading || importLoading}
             aria-label="import loans"
@@ -376,11 +386,12 @@ export default function AddLoanForm() {
               inputProps={{ maxLength: 50 }}
               error={!!borrowerError}
               helperText={borrowerError}
+              sx={textFieldStyles} // <-- Accent color on focus
             />
             {contactPickerSupported ? (
               <Tooltip title="Import from device contacts">
                 <IconButton
-                  color="primary"
+                  color="secondary" // <-- Accent color
                   onClick={handleSelectContact}
                   disabled={loading || importLoading}
                   aria-label="import contact"
@@ -412,6 +423,7 @@ export default function AddLoanForm() {
             inputProps={{ maxLength: 10 }}
             error={!!phoneError}
             helperText={phoneError}
+            sx={textFieldStyles} // <-- Accent color on focus
           />
           <TextField
             label="Loan Amount (ZMW)"
@@ -423,6 +435,7 @@ export default function AddLoanForm() {
             required
             error={!!amountError}
             helperText={amountError}
+            sx={textFieldStyles} // <-- Accent color on focus
           />
           <TextField
             select
@@ -431,6 +444,7 @@ export default function AddLoanForm() {
             onChange={(e) => setInterestDuration(Number(e.target.value))}
             fullWidth
             required
+            sx={textFieldStyles} // <-- Accent color on focus
           >
             {interestOptions.map(({ label, value }) => (
               <MenuItem key={value} value={value}>
@@ -461,7 +475,7 @@ export default function AddLoanForm() {
           <Button
             type="submit"
             variant="contained"
-            color="primary"
+            color="secondary" // <-- Accent color
             disabled={loading || importLoading}
             startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
           >
@@ -514,6 +528,7 @@ export default function AddLoanForm() {
             <Button
               variant="contained"
               component="span"
+              color="secondary" // <-- Accent color
               startIcon={
                 importLoading ? <CircularProgress size={20} color="inherit" /> : <UploadFileIcon />
               }
@@ -533,4 +548,3 @@ export default function AddLoanForm() {
     </Paper>
   );
 }
-
