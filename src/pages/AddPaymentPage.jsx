@@ -14,6 +14,7 @@ import {
   DialogContentText,
   DialogActions,
   Paper,
+  useTheme,
 } from "@mui/material";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { toast } from "react-toastify";
@@ -21,6 +22,7 @@ import { toast } from "react-toastify";
 const OFFLINE_PAYMENTS_KEY = "offlinePayments";
 
 export default function AddPaymentPage() {
+  const theme = useTheme();
   const { loans, addPayment, loadingLoans } = useFirestore();
 
   const [selectedLoan, setSelectedLoan] = useState(null);
@@ -30,26 +32,21 @@ export default function AddPaymentPage() {
   const [loading, setLoading] = useState(false);
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
 
-  // On mount: try syncing any offline payments saved in localStorage
   useEffect(() => {
     async function syncOfflinePayments() {
       const savedPayments = JSON.parse(localStorage.getItem(OFFLINE_PAYMENTS_KEY) || "[]");
       if (savedPayments.length === 0) return;
 
-      // Attempt to sync each payment
       for (const payment of savedPayments) {
         try {
           await addPayment(payment.loanId, payment.amount);
           toast.success(`Offline payment of ZMW ${payment.amount.toFixed(2)} synced for loan ID ${payment.loanId}`);
-          // Remove synced payments after successful sync later below
         } catch (err) {
-          // If sync fails, keep payment in localStorage and show a toast
           toast.error(`Failed to sync offline payment for loan ID ${payment.loanId}. Will retry later.`);
           console.error("Offline payment sync error:", err);
-          return; // stop further syncing now, wait for next online
+          return;
         }
       }
-      // If all synced successfully, clear offline payments storage
       localStorage.removeItem(OFFLINE_PAYMENTS_KEY);
     }
 
@@ -57,7 +54,6 @@ export default function AddPaymentPage() {
       syncOfflinePayments();
     }
 
-    // Also listen to 'online' event to try syncing when connection returns
     function handleOnline() {
       syncOfflinePayments();
     }
@@ -129,7 +125,6 @@ export default function AddPaymentPage() {
       const numAmount = Number(paymentAmount);
 
       if (!navigator.onLine) {
-        // Save offline and notify user
         savePaymentOffline(selectedLoan.id, numAmount);
         toast.info("No internet connection. Payment saved locally and will sync when online.");
       } else {
@@ -137,7 +132,6 @@ export default function AddPaymentPage() {
         toast.success(`Payment of ZMW ${numAmount.toFixed(2).toLocaleString()} added for ${selectedLoan.borrower}!`);
       }
 
-      // Reset form
       setSelectedLoan(null);
       setPaymentAmount("");
       setFieldErrors({});
@@ -157,8 +151,30 @@ export default function AddPaymentPage() {
   const remainingBalance = selectedLoan ? selectedLoan.totalRepayable - currentRepaid : 0;
   const prospectiveRemaining = remainingBalance - Number(paymentAmount || 0);
 
+  // Reusable styles for the focused state of form fields
+  const textFieldStyles = {
+    "& .MuiOutlinedInput-root": {
+      "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+        borderColor: theme.palette.secondary.main,
+      },
+    },
+    "& .MuiInputLabel-root.Mui-focused": {
+      color: theme.palette.secondary.main,
+    },
+  };
+
   return (
-    <Box maxWidth={500} mx="auto" mt={3} p={2}>
+    <Paper
+      elevation={2}
+      sx={{
+        maxWidth: 500,
+        mx: "auto",
+        mt: 3,
+        p: 3,
+        border: (theme) => `2px solid ${theme.palette.primary.main}`,
+        borderRadius: 2,
+      }}
+    >
       <Typography variant="h5" sx={{ mb: 3 }}>
         Add Payment
       </Typography>
@@ -172,6 +188,7 @@ export default function AddPaymentPage() {
       <form onSubmit={handleOpenConfirmation}>
         <Stack spacing={2}>
           <Autocomplete
+            sx={textFieldStyles} // <-- Accent color on focus
             id="loan-borrower-search"
             options={activeLoans}
             getOptionLabel={(option) =>
@@ -239,6 +256,7 @@ export default function AddPaymentPage() {
           )}
 
           <TextField
+            sx={textFieldStyles} // <-- Accent color on focus
             label="Payment Amount (ZMW)"
             value={paymentAmount}
             onChange={(e) => setPaymentAmount(e.target.value)}
@@ -270,7 +288,7 @@ export default function AddPaymentPage() {
           <Button
             type="submit"
             variant="contained"
-            color="primary"
+            color="secondary" // <-- Accent color
             disabled={loading || !selectedLoan || !paymentAmount || parseFloat(paymentAmount) <= 0}
             startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
           >
@@ -306,12 +324,17 @@ export default function AddPaymentPage() {
           <Button onClick={handleCloseConfirmDialog} disabled={loading}>
             Cancel
           </Button>
-          <Button onClick={handleConfirmSubmit} autoFocus variant="contained" disabled={loading}>
+          <Button
+            onClick={handleConfirmSubmit}
+            autoFocus
+            variant="contained"
+            color="secondary" // <-- Accent color
+            disabled={loading}
+          >
             Confirm
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </Paper>
   );
 }
-
