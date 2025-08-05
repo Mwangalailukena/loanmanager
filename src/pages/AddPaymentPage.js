@@ -16,6 +16,7 @@ import {
   DialogActions,
   Paper,
   Chip,
+  useTheme,
 } from "@mui/material";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { toast } from "react-toastify";
@@ -67,6 +68,7 @@ async function syncPendingPayments() {
 }
 
 export default function AddPaymentPage() {
+  const theme = useTheme();
   const { loans, addPayment, loadingLoans } = useFirestore();
 
   const [selectedLoan, setSelectedLoan] = useState(null);
@@ -234,6 +236,18 @@ export default function AddPaymentPage() {
     : 0;
   const prospectiveRemaining = remainingBalance - Number(paymentAmount || 0);
 
+  // Reusable styles for the focused state of form fields
+  const textFieldStyles = {
+    "& .MuiOutlinedInput-root": {
+      "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+        borderColor: theme.palette.secondary.main,
+      },
+    },
+    "& .MuiInputLabel-root.Mui-focused": {
+      color: theme.palette.secondary.main,
+    },
+  };
+
   return (
     <Paper
       elevation={2}
@@ -259,6 +273,7 @@ export default function AddPaymentPage() {
       <form onSubmit={handleOpenConfirmation}>
         <Stack spacing={2}>
           <Autocomplete
+            sx={textFieldStyles} // <-- Accent color on focus
             id="loan-borrower-search"
             options={activeLoans}
             getOptionLabel={(option) =>
@@ -346,6 +361,7 @@ export default function AddPaymentPage() {
           )}
 
           <TextField
+            sx={textFieldStyles} // <-- Accent color on focus
             label="Payment Amount (ZMW)"
             value={paymentAmount}
             onChange={(e) => setPaymentAmount(e.target.value)}
@@ -385,7 +401,7 @@ export default function AddPaymentPage() {
           <Button
             type="submit"
             variant="contained"
-            color="primary"
+            color="secondary" // <-- Accent color
             disabled={
               loading || !selectedLoan || !paymentAmount || parseFloat(paymentAmount) <= 0
             }
@@ -423,7 +439,13 @@ export default function AddPaymentPage() {
           <Button onClick={handleCloseConfirmDialog} disabled={loading}>
             Cancel
           </Button>
-          <Button onClick={handleConfirmSubmit} autoFocus variant="contained" disabled={loading}>
+          <Button 
+            onClick={handleConfirmSubmit} 
+            autoFocus 
+            variant="contained" 
+            color="secondary" // <-- Accent color
+            disabled={loading}
+          >
             Confirm
           </Button>
         </DialogActions>
@@ -431,4 +453,3 @@ export default function AddPaymentPage() {
     </Paper>
   );
 }
-
