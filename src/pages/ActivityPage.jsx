@@ -1,4 +1,3 @@
-// src/pages/ActivityPage.jsx
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   Box,
@@ -50,30 +49,6 @@ const actionChipColors = {
   settings_update: "secondary",
 };
 
-// Helper to highlight search term inside text
-function highlightText(text, highlight) {
-  if (!highlight) return text;
-  const regex = new RegExp(`(${highlight})`, "gi");
-  const parts = text.split(regex);
-  return parts.map((part, i) =>
-    regex.test(part) ? (
-      <Box component="span" key={i} sx={{ bgcolor: "yellow", fontWeight: "bold" }}>
-        {part}
-      </Box>
-    ) : (
-      part
-    )
-  );
-}
-
-// Helper to get initials from username/email
-function getInitials(name) {
-  if (!name) return "?";
-  const parts = name.split(" ");
-  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-  return (parts[0][0] + parts[1][0]).toUpperCase();
-}
-
 export default function ActivityPage() {
   const { activityLogs } = useFirestore();
   const theme = useTheme();
@@ -86,6 +61,51 @@ export default function ActivityPage() {
 
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("all");
+
+  // Reusable styles for the focused state of form fields
+  const filterInputStyles = {
+    "& .MuiOutlinedInput-root": {
+      "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+        borderColor: theme.palette.secondary.main,
+      },
+    },
+    "& .MuiInputLabel-root.Mui-focused": {
+      color: theme.palette.secondary.main,
+    },
+    "& .MuiSvgIcon-root": {
+      "&.Mui-focused": {
+        color: theme.palette.secondary.main,
+      },
+    },
+  };
+
+  // Helper to highlight search term inside text with accent color
+  function highlightText(text, highlight) {
+    if (!highlight) return text;
+    const regex = new RegExp(`(${highlight})`, "gi");
+    const parts = text.split(regex);
+    return parts.map((part, i) =>
+      regex.test(part) ? (
+        <Box
+          component="span"
+          key={i}
+          sx={{ bgcolor: theme.palette.secondary.light, fontWeight: "bold" }}
+        >
+          {part}
+        </Box>
+      ) : (
+        part
+      )
+    );
+  }
+
+  // Helper to get initials from username/email
+  function getInitials(name) {
+    if (!name) return "?";
+    const parts = name.split(" ");
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
 
   const filteredLogs = useMemo(() => {
     return activityLogs
@@ -147,6 +167,7 @@ export default function ActivityPage() {
 
       <Stack direction={{ xs: "column", sm: "row" }} spacing={2} mb={3}>
         <TextField
+          sx={filterInputStyles} // <-- Accent color on focus
           label="Search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -154,7 +175,7 @@ export default function ActivityPage() {
           size="small"
           variant="outlined"
         />
-        <FormControl sx={{ minWidth: 160 }} size="small">
+        <FormControl sx={{ minWidth: 160, ...filterInputStyles }} size="small">
           <InputLabel>Type</InputLabel>
           <Select
             value={filterType}
@@ -198,8 +219,6 @@ export default function ActivityPage() {
               }
             }
 
-            // Example badge usage:
-            // Suppose we treat logs less than 1 day old as "new"
             const isNew =
               dateISO &&
               (() => {
@@ -308,7 +327,7 @@ export default function ActivityPage() {
             onClick={() => setPage((p) => p + 1)}
             sx={{
               cursor: "pointer",
-              color: theme.palette.primary.main,
+              color: theme.palette.secondary.main, // <-- Accent color for the link
               userSelect: "none",
             }}
           >
@@ -339,4 +358,3 @@ export default function ActivityPage() {
     </Box>
   );
 }
-
