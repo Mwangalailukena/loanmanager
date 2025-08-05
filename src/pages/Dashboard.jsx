@@ -454,13 +454,14 @@ export default function Dashboard() {
     navigate(`/loans?${params.toString()}`);
   };
 
-  const AccordionTitle = ({ title }) => (
+  const AccordionTitle = ({ title, sx }) => (
     <Typography
       variant="body1"
       sx={{
         fontWeight: 600,
         color: theme.palette.text.primary,
         fontSize: isMobile ? "0.9rem" : "1rem",
+        ...sx,
       }}
     >
       {title}
@@ -667,7 +668,7 @@ export default function Dashboard() {
           onChange={() => handleToggleSection("executive")}
           sx={{
             borderRadius: 2,
-            mb: isMobile ? 2 : 4, // Added margin bottom for spacing
+            mb: isMobile ? 2 : 4,
             backgroundColor: theme.palette.background.paper,
             boxShadow: theme.shadows[1],
             overflow: "hidden",
@@ -686,17 +687,16 @@ export default function Dashboard() {
           }}
         >
           <AccordionSummary
-            expandIcon={<ExpandMoreIcon fontSize="small" />}
+            expandIcon={<ExpandMoreIcon fontSize="small" sx={{ color: theme.palette.primary.contrastText }} />}
             sx={{
-              backgroundColor: theme.palette.grey[100],
+              backgroundColor: theme.palette.primary.main,
               p: isMobile ? "8px 16px" : "12px 24px",
               minHeight: "48px !important",
               "&.Mui-expanded": { minHeight: "48px !important" },
               "& .MuiAccordionSummary-content": { margin: 0, alignItems: "center" },
-              borderBottom: `1px solid ${theme.palette.divider}`,
             }}
           >
-            <AccordionTitle title="Executive Summary" />
+            <AccordionTitle title="Executive Summary" sx={{ color: theme.palette.primary.contrastText }} />
           </AccordionSummary>
           <AccordionDetails sx={{ p: isMobile ? 1.5 : 2, pb: isMobile ? 2 : 3 }}>
             {renderCardSection(executiveSummaryCards, "executive-summary-droppable")}
@@ -708,7 +708,7 @@ export default function Dashboard() {
           onChange={() => handleToggleSection("metrics")}
           sx={{
             borderRadius: 2,
-            mb: isMobile ? 2 : 4, // Added margin bottom for spacing
+            mb: isMobile ? 2 : 4,
             backgroundColor: theme.palette.background.paper,
             boxShadow: theme.shadows[1],
             overflow: "hidden",
@@ -727,17 +727,16 @@ export default function Dashboard() {
           }}
         >
           <AccordionSummary
-            expandIcon={<ExpandMoreIcon fontSize="small" />}
+            expandIcon={<ExpandMoreIcon fontSize="small" sx={{ color: theme.palette.primary.contrastText }} />}
             sx={{
-              backgroundColor: theme.palette.grey[100],
+              backgroundColor: theme.palette.primary.main,
               p: isMobile ? "8px 16px" : "12px 24px",
               minHeight: "48px !important",
               "&.Mui-expanded": { minHeight: "48px !important" },
               "& .MuiAccordionSummary-content": { margin: 0, alignItems: "center" },
-              borderBottom: `1px solid ${theme.palette.divider}`,
             }}
           >
-            <AccordionTitle title="Metrics" />
+            <AccordionTitle title="Metrics" sx={{ color: theme.palette.primary.contrastText }} />
           </AccordionSummary>
           <AccordionDetails sx={{ p: isMobile ? 1.5 : 2, pb: isMobile ? 2 : 3 }}>
             {renderCardSection(metricsCards, "metrics-droppable")}
@@ -769,17 +768,16 @@ export default function Dashboard() {
         }}
       >
         <AccordionSummary
-          expandIcon={<ExpandMoreIcon fontSize="small" />}
+          expandIcon={<ExpandMoreIcon fontSize="small" sx={{ color: theme.palette.primary.contrastText }} />}
           sx={{
-            backgroundColor: theme.palette.grey[100],
+            backgroundColor: theme.palette.primary.main,
             p: isMobile ? "8px 16px" : "12px 24px",
             minHeight: "48px !important",
             "&.Mui-expanded": { minHeight: "48px !important" },
             "& .MuiAccordionSummary-content": { margin: 0, alignItems: "center" },
-            borderBottom: `1px solid ${theme.palette.divider}`,
           }}
         >
-          <AccordionTitle title="Charts & Analytics" />
+          <AccordionTitle title="Charts & Analytics" sx={{ color: theme.palette.primary.contrastText }} />
         </AccordionSummary>
         <AccordionDetails sx={{ p: isMobile ? 1.5 : 2, pb: isMobile ? 2 : 3 }}>
           {loansForCalculations.length > 0 ? (
