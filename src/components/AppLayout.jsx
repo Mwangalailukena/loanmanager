@@ -50,7 +50,6 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <CssBaseline />
       
-      {/* UPDATED: Pass the searchTerm and setSearchTerm props */}
       <AppBarTop 
         darkMode={darkMode} 
         onToggleDarkMode={onToggleDarkMode} 
@@ -83,8 +82,8 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
             pb: 0,
           }}
         >
-          {/* UPDATED: We need to pass the searchTerm to the child component */}
-          {React.cloneElement(children, { searchTerm })}
+          {/* CORRECTED: Pass the search term using the prop name 'globalSearchTerm' */}
+          {React.cloneElement(children, { globalSearchTerm: searchTerm })}
         </Box>
       </Box>
 
