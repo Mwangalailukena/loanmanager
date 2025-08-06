@@ -1,11 +1,11 @@
 // src/AppRoutes.js
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 // Import the correct AppLayout component from its dedicated file
 import AppLayout from './components/AppLayout';
 
-// Import your page components
+// Import all your page components
 import Dashboard from './pages/Dashboard';
 import LoanList from './pages/LoanList';
 import AddLoanForm from './pages/AddLoanForm';
@@ -17,42 +17,40 @@ import ChangePassword from './pages/ChangePassword';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
-
-// Import the new ReportsPage
-import ReportsPage from './pages/ReportsPage'; // <--- ADD THIS LINE
+import ReportsPage from './pages/ReportsPage';
 
 // Import your ProtectedRoute component
 import ProtectedRoute from './components/ProtectedRoute';
 
-// This component defines your application's routes
 function AppRoutes({ darkMode, onToggleDarkMode }) {
+  const location = useLocation();
+
   return (
-    // AppLayout wraps all routes to provide consistent UI shell
-    // The AppLayout component itself has logic to hide parts of the layout
-    // for specific routes like /login, /register, etc.
     <AppLayout darkMode={darkMode} onToggleDarkMode={onToggleDarkMode}>
-      <Routes>
-        {/* Public Routes - these paths will trigger `hideLayout` in AppLayout */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
+      <div className="page-transition-container">
+        <div key={location.pathname} className="page-transition">
+          <Routes location={location}>
+            {/* Public Routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
 
-        {/* Protected Routes - These components will be rendered inside AppLayout's <main> area */}
-        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/loans" element={<ProtectedRoute><LoanList /></ProtectedRoute>} />
-        <Route path="/add-loan" element={<ProtectedRoute><AddLoanForm /></ProtectedRoute>} />
-        <Route path="/add-payment" element={<ProtectedRoute><AddPaymentPage /></ProtectedRoute>} />
-        <Route path="/activity" element={<ProtectedRoute><ActivityPage /></ProtectedRoute>} />
-        <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-        <Route path="/change-password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
+            {/* Protected Routes */}
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/loans" element={<ProtectedRoute><LoanList /></ProtectedRoute>} />
+            <Route path="/add-loan" element={<ProtectedRoute><AddLoanForm /></ProtectedRoute>} />
+            <Route path="/add-payment" element={<ProtectedRoute><AddPaymentPage /></ProtectedRoute>} />
+            <Route path="/activity" element={<ProtectedRoute><ActivityPage /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/change-password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
+            <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
 
-        {/* New Reports Page Route */}
-        <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} /> {/* <--- ADD THIS LINE */}
-
-        {/* Catch-all route: Redirects any unmatched path to /dashboard */}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
+            {/* Catch-all route */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </div>
+      </div>
     </AppLayout>
   );
 }

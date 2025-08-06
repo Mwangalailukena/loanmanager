@@ -28,6 +28,9 @@ import {
   Checkbox,
   Tooltip,
   Snackbar,
+  Chip,
+  TableSortLabel,
+  InputAdornment, // <-- ADDED: InputAdornment
 } from "@mui/material";
 import {
   KeyboardArrowDown,
@@ -42,6 +45,7 @@ import { exportToCsv } from "../utils/exportCSV";
 import { motion, AnimatePresence } from "framer-motion";
 import dayjs from "dayjs";
 import { useSearchParams } from "react-router-dom";
+import { visuallyHidden } from '@mui/utils';
 
 const PAGE_SIZE = 10;
 
@@ -91,6 +95,9 @@ export default function LoanList() {
   const [selectedLoanIds, setSelectedLoanIds] = useState([]);
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  
+  const [sortKey, setSortKey] = useState("startDate");
+  const [sortDirection, setSortDirection] = useState("desc");
 
   const interestRates = settings.interestRates || {
     1: 0.15,
@@ -101,31 +108,36 @@ export default function LoanList() {
 
   const calculateInterest = (principal, weeks) => principal * (interestRates[weeks] || 0);
 
-  // === START OF CORRECTED CODE ===
-  // This function now calculates the status based on a loan's financial
-  // data and due date, without relying on a potentially outdated Firestore field.
   const calcStatus = (loan) => {
     const totalRepayable = Number(loan.totalRepayable || 0);
     const repaidAmount = Number(loan.repaidAmount || 0);
 
-    // Prioritize the 'Paid' status.
     if (repaidAmount >= totalRepayable && totalRepayable > 0) {
       return "Paid";
     }
 
-    // Check for 'Overdue' status based on the due date.
     const now = dayjs();
     const due = dayjs(loan.dueDate);
     if (due.isBefore(now, "day")) {
       return "Overdue";
     }
 
-    // Default to 'Active'.
     return "Active";
   };
-  // === END OF CORRECTED CODE ===
+  
+  const getStatusChipProps = (status) => {
+    const statusLower = status.toLowerCase();
+    switch (statusLower) {
+      case "paid":
+        return { label: "Paid", color: "success" };
+      case "overdue":
+        return { label: "Overdue", color: "error" };
+      case "active":
+      default:
+        return { label: "Active", color: "primary" };
+    }
+  };
 
-  // Reusable styles for the focused state of form fields
   const filterInputStyles = {
     "& .MuiOutlinedInput-root": {
       "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
@@ -163,7 +175,7 @@ export default function LoanList() {
   }, [searchParams, statusFilter, monthFilter]);
 
   const filteredLoans = useMemo(() => {
-    return loans
+    let result = loans
       .filter((loan) => {
         if (monthFilter && dayjs(loan.startDate).format("YYYY-MM") !== monthFilter) return false;
         
@@ -178,9 +190,35 @@ export default function LoanList() {
         )
           return false;
         return true;
-      })
-      .sort((a, b) => dayjs(b.startDate).unix() - dayjs(a.startDate).unix());
-  }, [loans, searchTerm, statusFilter, monthFilter]);
+      });
+      
+    if (sortKey) {
+      result.sort((a, b) => {
+        let valA = a[sortKey];
+        let valB = b[sortKey];
+
+        if (sortKey === "borrower" || sortKey === "phone") {
+          valA = valA.toLowerCase();
+          valB = valB.toLowerCase();
+        } else if (sortKey.includes("Date")) {
+          valA = dayjs(valA).unix();
+          valB = dayjs(valB).unix();
+        } else if (sortKey === 'outstanding') {
+           valA = (a.totalRepayable || 0) - (a.repaidAmount || 0);
+           valB = (b.totalRepayable || 0) - (b.repaidAmount || 0);
+        } else {
+          valA = Number(valA);
+          valB = Number(valB);
+        }
+
+        if (valA < valB) return sortDirection === "asc" ? -1 : 1;
+        if (valA > valB) return sortDirection === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return result;
+  }, [loans, searchTerm, statusFilter, monthFilter, sortKey, sortDirection]);
 
   const displayedLoans = useMemo(() => {
     if (useInfiniteScroll && isMobile) {
@@ -240,6 +278,12 @@ export default function LoanList() {
     setSelectedLoanIds((prev) =>
       prev.includes(id) ? prev.filter((sid) => sid !== id) : [...prev, id]
     );
+  };
+  
+  const handleSort = (key) => {
+    const isAsc = sortKey === key && sortDirection === 'asc';
+    setSortDirection(isAsc ? 'desc' : 'asc');
+    setSortKey(key);
   };
 
   const handleDelete = async () => {
@@ -410,7 +454,6 @@ export default function LoanList() {
       </Typography>
 
       <Stack direction={isMobile ? "column" : "row"} spacing={1} mb={2} alignItems="center">
-        {/* CORRECTED: Combined sx props for Search TextField */}
         <TextField
           label="Search"
           value={searchTerm}
@@ -420,7 +463,6 @@ export default function LoanList() {
           variant="outlined"
           margin="dense"
         />
-        {/* CORRECTED: Combined sx props for Status FormControl */}
         <FormControl size="small" sx={{ ...filterInputStyles, minWidth: 130 }}>
           <InputLabel>Status</InputLabel>
           <Select
@@ -435,7 +477,6 @@ export default function LoanList() {
             <MenuItem value="overdue">Overdue</MenuItem>
           </Select>
         </FormControl>
-        {/* CORRECTED: Combined sx props for Month TextField */}
         <TextField
           label="Month"
           type="month"
@@ -518,7 +559,10 @@ export default function LoanList() {
                           <Typography noWrap>Outstanding: <Typography component="span" fontWeight="bold" color="secondary.main">{outstanding.toFixed(2)}</Typography></Typography>
                           <Typography noWrap>Start: {loan.startDate}</Typography>
                           <Typography noWrap>Due: {loan.dueDate}</Typography>
-                          <Typography noWrap>Status: {calcStatus(loan)}</Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', my: 1 }}>
+                            <Typography component="span" noWrap sx={{ mr: 1, color: 'text.secondary', fontSize: '0.85rem' }}>Status:</Typography>
+                            <Chip size="small" {...getStatusChipProps(calcStatus(loan))} />
+                          </Box>
                           <Stack direction="row" spacing={0.5} mt={1} justifyContent="flex-start">
                             <Tooltip title="Edit">
                               <span>
@@ -582,22 +626,118 @@ export default function LoanList() {
                     <TableCell align="center" sx={{ width: 30, py: 0.5 }}>
                       #
                     </TableCell>
-                    <TableCell sx={{ width: 140 }}>Borrower</TableCell>
-                    <TableCell sx={{ width: 110 }}>Phone</TableCell>
-                    <TableCell align="right" sx={{ width: 90 }}>
-                      Principal
+                    <TableCell sx={{ width: 140 }} sortDirection={sortKey === 'borrower' ? sortDirection : false}>
+                      <TableSortLabel
+                        active={sortKey === 'borrower'}
+                        direction={sortKey === 'borrower' ? sortDirection : 'asc'}
+                        onClick={() => handleSort('borrower')}
+                      >
+                        Borrower
+                        {sortKey === 'borrower' ? (
+                          <Box component="span" sx={visuallyHidden}>
+                            {sortDirection === 'desc' ? 'sorted descending' : 'sorted ascending'}
+                          </Box>
+                        ) : null}
+                      </TableSortLabel>
                     </TableCell>
-                    <TableCell align="right" sx={{ width: 90 }}>
-                      Interest
+                    <TableCell sx={{ width: 110 }} sortDirection={sortKey === 'phone' ? sortDirection : false}>
+                      <TableSortLabel
+                        active={sortKey === 'phone'}
+                        direction={sortKey === 'phone' ? sortDirection : 'asc'}
+                        onClick={() => handleSort('phone')}
+                      >
+                        Phone
+                        {sortKey === 'phone' ? (
+                          <Box component="span" sx={visuallyHidden}>
+                            {sortDirection === 'desc' ? 'sorted descending' : 'sorted ascending'}
+                          </Box>
+                        ) : null}
+                      </TableSortLabel>
                     </TableCell>
-                    <TableCell align="right" sx={{ width: 110 }}>
-                      Total Repayable
+                    <TableCell align="right" sx={{ width: 90 }} sortDirection={sortKey === 'principal' ? sortDirection : false}>
+                      <TableSortLabel
+                        active={sortKey === 'principal'}
+                        direction={sortKey === 'principal' ? sortDirection : 'asc'}
+                        onClick={() => handleSort('principal')}
+                      >
+                        Principal
+                        {sortKey === 'principal' ? (
+                          <Box component="span" sx={visuallyHidden}>
+                            {sortDirection === 'desc' ? 'sorted descending' : 'sorted ascending'}
+                          </Box>
+                        ) : null}
+                      </TableSortLabel>
                     </TableCell>
-                    <TableCell align="right" sx={{ width: 110 }}>
-                      Total Outstanding
+                    <TableCell align="right" sx={{ width: 90 }} sortDirection={sortKey === 'interest' ? sortDirection : false}>
+                      <TableSortLabel
+                        active={sortKey === 'interest'}
+                        direction={sortKey === 'interest' ? sortDirection : 'asc'}
+                        onClick={() => handleSort('interest')}
+                      >
+                        Interest
+                        {sortKey === 'interest' ? (
+                          <Box component="span" sx={visuallyHidden}>
+                            {sortDirection === 'desc' ? 'sorted descending' : 'sorted ascending'}
+                          </Box>
+                        ) : null}
+                      </TableSortLabel>
                     </TableCell>
-                    <TableCell sx={{ width: 100 }}>Start Date</TableCell>
-                    <TableCell sx={{ width: 100 }}>Due Date</TableCell>
+                    <TableCell align="right" sx={{ width: 110 }} sortDirection={sortKey === 'totalRepayable' ? sortDirection : false}>
+                      <TableSortLabel
+                        active={sortKey === 'totalRepayable'}
+                        direction={sortKey === 'totalRepayable' ? sortDirection : 'asc'}
+                        onClick={() => handleSort('totalRepayable')}
+                      >
+                        Total Repayable
+                        {sortKey === 'totalRepayable' ? (
+                          <Box component="span" sx={visuallyHidden}>
+                            {sortDirection === 'desc' ? 'sorted descending' : 'sorted ascending'}
+                          </Box>
+                        ) : null}
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell align="right" sx={{ width: 110 }} sortDirection={sortKey === 'outstanding' ? sortDirection : false}>
+                      <TableSortLabel
+                        active={sortKey === 'outstanding'}
+                        direction={sortKey === 'outstanding' ? sortDirection : 'asc'}
+                        onClick={() => handleSort('outstanding')}
+                      >
+                        Total Outstanding
+                        {sortKey === 'outstanding' ? (
+                          <Box component="span" sx={visuallyHidden}>
+                            {sortDirection === 'desc' ? 'sorted descending' : 'sorted ascending'}
+                          </Box>
+                        ) : null}
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ width: 100 }} sortDirection={sortKey === 'startDate' ? sortDirection : false}>
+                      <TableSortLabel
+                        active={sortKey === 'startDate'}
+                        direction={sortKey === 'startDate' ? sortDirection : 'asc'}
+                        onClick={() => handleSort('startDate')}
+                      >
+                        Start Date
+                        {sortKey === 'startDate' ? (
+                          <Box component="span" sx={visuallyHidden}>
+                            {sortDirection === 'desc' ? 'sorted descending' : 'sorted ascending'}
+                          </Box>
+                        ) : null}
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ width: 100 }} sortDirection={sortKey === 'dueDate' ? sortDirection : false}>
+                      <TableSortLabel
+                        active={sortKey === 'dueDate'}
+                        direction={sortKey === 'dueDate' ? sortDirection : 'asc'}
+                        onClick={() => handleSort('dueDate')}
+                      >
+                        Due Date
+                        {sortKey === 'dueDate' ? (
+                          <Box component="span" sx={visuallyHidden}>
+                            {sortDirection === 'desc' ? 'sorted descending' : 'sorted ascending'}
+                          </Box>
+                        ) : null}
+                      </TableSortLabel>
+                    </TableCell>
                     <TableCell sx={{ width: 90 }}>Status</TableCell>
                     <TableCell align="center" sx={{ width: 120 }}>
                       Actions
@@ -646,7 +786,9 @@ export default function LoanList() {
                         </TableCell>
                         <TableCell sx={{ py: 0.5 }}>{loan.startDate}</TableCell>
                         <TableCell sx={{ py: 0.5 }}>{loan.dueDate}</TableCell>
-                        <TableCell sx={{ py: 0.5 }}>{calcStatus(loan)}</TableCell>
+                        <TableCell sx={{ py: 0.5 }}>
+                          <Chip size="small" {...getStatusChipProps(calcStatus(loan))} />
+                        </TableCell>
                         <TableCell align="center" sx={{ py: 0.5 }}>
                           <Tooltip title="Edit">
                             <span>
@@ -784,9 +926,8 @@ export default function LoanList() {
       <Dialog open={paymentModal.open} onClose={() => setPaymentModal({ open: false, loanId: null })} maxWidth="xs" fullWidth >
         <DialogTitle fontSize="1.1rem">Add Payment</DialogTitle>
         <DialogContent sx={{ pb: 1 }}>
-          {/* CORRECTED: Merged sx props into one */}
           <TextField
-            label="Amount (ZMW)"
+            label="Amount"
             type="number"
             value={paymentAmount}
             onChange={(e) => {
@@ -799,6 +940,11 @@ export default function LoanList() {
             error={!!paymentError}
             helperText={paymentError}
             sx={filterInputStyles}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">ZMW</InputAdornment>
+              ),
+            }}
           />
         </DialogContent>
         <DialogActions sx={{ pb: 1 }}>
@@ -836,7 +982,7 @@ export default function LoanList() {
               sx={filterInputStyles}
             />
             <TextField
-              label="Principal Amount (ZMW)"
+              label="Principal Amount"
               size="small"
               type="number"
               fullWidth
@@ -850,6 +996,11 @@ export default function LoanList() {
               error={!!editErrors.principal}
               helperText={editErrors.principal}
               sx={filterInputStyles}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">ZMW</InputAdornment>
+                ),
+              }}
             />
             <FormControl size="small" fullWidth sx={filterInputStyles}>
               <InputLabel>Interest Duration</InputLabel>

@@ -25,68 +25,71 @@ export function ThemeProvider({ children }) {
       createTheme({
         palette: {
           mode: darkMode ? "dark" : "light",
-          ...(darkMode
-            ? {
-                // Dark Mode Palette: Vibrant Purple & Amber Accent
-                primary: {
-                  main: '#ce93d8', // Light Purple
-                  light: '#ffe4ff',
-                  dark: '#9c64a6',
-                },
-                secondary: {
-                  main: '#ffc107', // Vibrant Amber Accent
-                  light: '#fff350',
-                  dark: '#c79100',
-                },
-                background: {
-                  default: '#1a1a2e',
-                  paper: '#2a2a47',
-                },
-                text: {
-                  primary: '#ffffff',
-                  secondary: '#d1d1d1',
-                },
-                divider: 'rgba(255, 255, 255, 0.15)',
-                success: { main: '#69f0ae' },
-                info: { main: '#82b1ff' },
-                warning: { main: '#ffea00' },
-                error: { main: '#ff8a80' },
-              }
-            : {
-                // Light Mode Palette: Deep Purple & Amber Accent
-                primary: {
-                  main: '#9c27b0', // Deep Purple
-                  light: '#d05ce3',
-                  dark: '#6a0080',
-                },
-                secondary: {
-                  main: '#ffc107', // Vibrant Amber Accent
-                  light: '#fff350',
-                  dark: '#c79100',
-                },
-                background: {
-                  default: '#f3f6f9',
-                  paper: '#ffffff',
-                },
-                text: {
-                  primary: 'rgba(0, 0, 0, 0.87)',
-                  secondary: 'rgba(0, 0, 0, 0.6)',
-                },
-                divider: 'rgba(0, 0, 0, 0.12)',
-                success: { main: '#4caf50' },
-                info: { main: '#2196f3' },
-                warning: { main: '#ff9800' },
-                error: { main: '#f44336' },
-              }),
+          // The new primary color is a modern, soft blue-purple
+          primary: {
+            main: darkMode ? '#8561c5' : '#6c63ff',
+            light: darkMode ? '#b68efc' : '#8e88ff',
+            dark: darkMode ? '#3e3776' : '#5750cc',
+            contrastText: '#ffffff',
+          },
+          // A clean, classic blue for secondary accent
+          secondary: {
+            main: darkMode ? '#a7c0f1' : '#42a5f5',
+            light: darkMode ? '#d9efff' : '#81d4fa',
+            dark: darkMode ? '#5979bb' : '#1976d2',
+            contrastText: '#ffffff',
+          },
+          background: {
+            // Very light gray background for the overall dashboard
+            default: darkMode ? '#121212' : '#f9fafc',
+            // Pure white for card backgrounds
+            paper: darkMode ? '#1e1e1e' : '#ffffff',
+          },
+          text: {
+            // Darker, cleaner text for better readability
+            primary: darkMode ? '#ffffff' : '#212121',
+            secondary: darkMode ? '#b0b0b0' : '#757575',
+            disabled: darkMode ? 'rgba(255, 255, 255, 0.38)' : 'rgba(0, 0, 0, 0.38)',
+          },
+          divider: darkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)',
+          success: {
+            main: darkMode ? '#69f0ae' : '#4caf50',
+            light: darkMode ? '#9ff2c8' : '#81c784',
+            dark: darkMode ? '#3e9c71' : '#388e3c',
+          },
+          info: {
+            main: darkMode ? '#82b1ff' : '#2196f3',
+            light: darkMode ? '#b3caff' : '#64b5f6',
+            dark: darkMode ? '#5c7cc9' : '#1976d2',
+          },
+          warning: {
+            main: darkMode ? '#ffea00' : '#ff9800',
+            light: darkMode ? '#ffed5d' : '#ffb74d',
+            dark: darkMode ? '#c7ab00' : '#f57c00',
+          },
+          error: {
+            main: darkMode ? '#ff8a80' : '#f44336',
+            light: darkMode ? '#ffb9b3' : '#e57373',
+            dark: darkMode ? '#c75956' : '#d32f2f',
+          },
         },
         typography: {
-          fontFamily: 'Roboto, sans-serif',
+          fontFamily: 'Inter, Roboto, sans-serif',
+          h1: { fontWeight: 700 },
+          h2: { fontWeight: 700 },
+          h3: { fontWeight: 700 },
+          h4: { fontWeight: 600 },
+          h5: { fontWeight: 600 },
+          h6: { fontWeight: 600 },
+        },
+        shape: {
+          borderRadius: 12,
         },
         components: {
           MuiAppBar: {
             styleOverrides: {
               root: ({ theme }) => ({
-                backgroundColor: theme.palette.mode === 'dark' ? theme.palette.background.paper : theme.palette.background.paper,
+                backgroundColor: theme.palette.background.paper,
                 boxShadow: theme.shadows[theme.palette.mode === 'dark' ? 0 : 1],
               }),
             },
@@ -103,6 +106,9 @@ export function ThemeProvider({ children }) {
             styleOverrides: {
               root: ({ theme }) => ({
                 backgroundColor: theme.palette.background.paper,
+                borderRadius: theme.shape.borderRadius,
+                // Soft, subtle shadow to match the reference image
+                boxShadow: `0px 4px 20px rgba(0, 0, 0, 0.05)`, 
               }),
             },
           },
@@ -128,22 +134,100 @@ export function ThemeProvider({ children }) {
           },
           MuiToolbar: {
             styleOverrides: {
-                root: ({ theme }) => ({
-                    backgroundColor: theme.palette.mode === 'dark' ? theme.palette.background.paper : theme.palette.background.paper,
-                }),
+              root: ({ theme }) => ({
+                backgroundColor: theme.palette.background.paper,
+              }),
             },
           },
-          // New override to demonstrate the accent color on buttons
           MuiButton: {
             styleOverrides: {
+              containedPrimary: ({ theme }) => ({
+                backgroundColor: theme.palette.primary.main,
+                color: theme.palette.primary.contrastText,
+                '&:hover': {
+                  backgroundColor: theme.palette.primary.dark,
+                },
+                borderRadius: theme.shape.borderRadius,
+              }),
               containedSecondary: ({ theme }) => ({
-                // Use the secondary color for contained buttons
                 backgroundColor: theme.palette.secondary.main,
                 color: theme.palette.secondary.contrastText,
                 '&:hover': {
                   backgroundColor: theme.palette.secondary.dark,
                 },
+                borderRadius: theme.shape.borderRadius,
               }),
+            },
+          },
+          MuiAlert: {
+            styleOverrides: {
+              root: ({ theme }) => ({
+                borderRadius: theme.shape.borderRadius,
+                '&.MuiAlert-standardSuccess': {
+                  backgroundColor: theme.palette.success.light,
+                  color: theme.palette.success.dark,
+                  '& .MuiAlert-icon': { color: theme.palette.success.main },
+                },
+                '&.MuiAlert-standardInfo': {
+                  backgroundColor: theme.palette.info.light,
+                  color: theme.palette.info.dark,
+                  '& .MuiAlert-icon': { color: theme.palette.info.main },
+                },
+                '&.MuiAlert-standardWarning': {
+                  backgroundColor: theme.palette.warning.light,
+                  color: theme.palette.warning.dark,
+                  '& .MuiAlert-icon': { color: theme.palette.warning.main },
+                },
+                '&.MuiAlert-standardError': {
+                  backgroundColor: theme.palette.error.light,
+                  color: theme.palette.error.dark,
+                  '& .MuiAlert-icon': { color: theme.palette.error.main },
+                },
+              }),
+            },
+          },
+          MuiAccordion: {
+            styleOverrides: {
+              root: ({ theme }) => ({
+                borderRadius: theme.shape.borderRadius,
+                overflow: 'hidden',
+                boxShadow: `0px 4px 20px rgba(0, 0, 0, 0.05)`,
+                '&.Mui-expanded': {
+                  margin: '0 !important',
+                },
+                '&:before': {
+                  display: 'none', // Removes the default Material-UI border
+                },
+              }),
+            },
+          },
+          MuiAccordionSummary: {
+            styleOverrides: {
+              root: ({ theme }) => ({
+                backgroundColor: theme.palette.background.paper,
+                borderBottom: `1px solid ${theme.palette.divider}`,
+                borderRadius: theme.shape.borderRadius,
+                minHeight: '64px',
+                '&.Mui-expanded': {
+                  borderBottomLeftRadius: 0,
+                  borderBottomRightRadius: 0,
+                },
+              }),
+            },
+          },
+          MuiLinearProgress: {
+            styleOverrides: {
+              root: ({ theme }) => ({
+                borderRadius: 5,
+                backgroundColor: theme.palette.action.disabledBackground,
+              }),
+            },
+          },
+          MuiFab: {
+            styleOverrides: {
+              root: {
+                boxShadow: '0px 8px 16px rgba(0, 0, 0, 0.1)',
+              },
             },
           },
         },
