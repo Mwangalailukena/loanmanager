@@ -1,14 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react'; // <-- Import useState
 import { useLocation } from 'react-router-dom';
 import {
   useTheme,
   useMediaQuery,
-  Box
+  Box,
+  CssBaseline // <-- Import CssBaseline if not already there
 } from '@mui/material';
 
 import AppBarTop from './AppBarTop';
 import BottomNavBar from './BottomNavBar';
 import Sidebar from './Sidebar';
+
+// <-- IMPORT THE NEW DIALOG COMPONENT
+import LoanDetailDialog from './LoanDetailDialog';
 
 const drawerWidth = 220;
 
@@ -17,8 +21,24 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  const hideLayout = ['/login', '/register', '/forgot-password'].includes(pathname);
+  // === DIALOG STATE AND HANDLERS GO HERE ===
+  const [loanDetailOpen, setLoanDetailOpen] = useState(false);
+  const [selectedLoanId, setSelectedLoanId] = useState(null);
 
+  const handleOpenLoanDetail = (loanId) => {
+    console.log("AppLayout: handleOpenLoanDetail called for ID:", loanId);
+    setSelectedLoanId(loanId);
+    setLoanDetailOpen(true);
+  };
+
+  const handleCloseLoanDetail = () => {
+    console.log("AppLayout: handleCloseLoanDetail called");
+    setLoanDetailOpen(false);
+    setSelectedLoanId(null);
+  };
+  // =========================================
+
+  const hideLayout = ['/login', '/register', '/forgot-password'].includes(pathname);
   const bottomNavHeight = isMobile && !hideLayout ? 64 : 0;
 
   if (hideLayout) {
@@ -27,17 +47,21 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      {/* 1. Fixed AppBar */}
-      <AppBarTop darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} />
+      <CssBaseline />
+
+      {/* 1. Fixed AppBar - Pass the new handler to it */}
+      <AppBarTop 
+        darkMode={darkMode} 
+        onToggleDarkMode={onToggleDarkMode} 
+        onOpenLoanDetail={handleOpenLoanDetail} // <-- PASS THE FUNCTION HERE
+      />
 
       {/* 2. This Box creates space BELOW the fixed AppBar and holds sidebar/main content */}
       <Box
         sx={{
           display: 'flex',
           flex: 1,
-          // This property creates the necessary space at the top, equal to the AppBar's height.
           paddingTop: theme.mixins.toolbar,
-          // Apply padding at the bottom equal to the BottomNavBar's height.
           paddingBottom: `${bottomNavHeight}px`,
         }}
       >
@@ -46,23 +70,17 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
 
         {/* 3. This is the actual Main content area where your page components render. */}
         <Box
-          component="main"       // Renders semantically as a <main> HTML element
+          component="main"
           sx={{
-            flexGrow: 1,           // Takes up remaining horizontal space
-            overflowY: 'auto',     // Enables vertical scrolling *within* this content area if content overflows.
-            boxSizing: 'border-box', // Standard box model; padding/border are included in the element's total size.
+            flexGrow: 1,
+            overflowY: 'auto',
+            boxSizing: 'border-box',
             background: theme.palette.background.default,
-
-            // Ensure the main content box fills available vertical space and has no default min-height pushing it.
             minHeight: 0,
-            height: '100%', // Take 100% height of its flex parent (the Box above)
-
-            // Internal horizontal padding (from theme spacing)
-            px: isMobile ? 2 : 4, // Shorthand for paddingLeft and paddingRight
-            
-            // *** Increased top vertical space to 70px ***
-            paddingTop: '70px', // Direct pixel value as requested
-            pb: 0, // paddingBottom: 0
+            height: '100%',
+            px: isMobile ? 2 : 4,
+            paddingTop: '70px',
+            pb: 0,
           }}
         >
           {children} {/* Your Dashboard content goes here */}
@@ -71,6 +89,13 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
 
       {/* Bottom Navigation Bar */}
       {!hideLayout && isMobile && <BottomNavBar />}
+
+      {/* 4. RENDER THE DIALOG HERE */}
+      <LoanDetailDialog
+        open={loanDetailOpen}
+        onClose={handleCloseLoanDetail}
+        loanId={selectedLoanId}
+      />
     </Box>
   );
 };
