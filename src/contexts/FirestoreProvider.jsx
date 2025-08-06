@@ -16,6 +16,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "./AuthProvider";
+import dayjs from "dayjs"; // <-- dayjs imported for consistency
 
 const FirestoreContext = createContext();
 export const useFirestore = () => useContext(FirestoreContext);
@@ -116,6 +117,9 @@ export function FirestoreProvider({ children }) {
     });
   };
 
+  // === START OF CORRECTED CODE ===
+  // This function now correctly calculates the loan status based on all
+  // relevant factors (paid amount and due date) before updating the document.
   const addPayment = async (loanId, amount) => {
     const date = new Date().toISOString();
     await addDoc(collection(db, "payments"), {
@@ -131,8 +135,20 @@ export function FirestoreProvider({ children }) {
     if (loanSnap.exists()) {
       const loan = loanSnap.data();
       const repaidAmount = (loan.repaidAmount || 0) + amount;
-      const status = repaidAmount >= loan.totalRepayable ? "Paid" : "Active";
-      await updateLoan(loanId, { repaidAmount, status });
+      
+      // Determine the new status based on all conditions
+      let newStatus = "Active";
+      if (repaidAmount >= loan.totalRepayable && loan.totalRepayable > 0) {
+        newStatus = "Paid";
+      } else {
+        const now = dayjs();
+        const due = dayjs(loan.dueDate);
+        if (due.isBefore(now, "day")) {
+          newStatus = "Overdue";
+        }
+      }
+
+      await updateLoan(loanId, { repaidAmount, status: newStatus });
 
       await addActivityLog({
         type: "payment",
@@ -141,6 +157,7 @@ export function FirestoreProvider({ children }) {
       });
     }
   };
+  // === END OF CORRECTED CODE ===
 
   const getPaymentsByLoanId = async (loanId) => {
     const paymentsRef = collection(db, "payments");
@@ -181,4 +198,3 @@ export function FirestoreProvider({ children }) {
     </FirestoreContext.Provider>
   );
 }
-

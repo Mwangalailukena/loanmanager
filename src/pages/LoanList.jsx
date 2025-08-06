@@ -101,14 +101,29 @@ export default function LoanList() {
 
   const calculateInterest = (principal, weeks) => principal * (interestRates[weeks] || 0);
 
+  // === START OF CORRECTED CODE ===
+  // This function now calculates the status based on a loan's financial
+  // data and due date, without relying on a potentially outdated Firestore field.
   const calcStatus = (loan) => {
-    if (loan.status) return loan.status;
+    const totalRepayable = Number(loan.totalRepayable || 0);
+    const repaidAmount = Number(loan.repaidAmount || 0);
+
+    // Prioritize the 'Paid' status.
+    if (repaidAmount >= totalRepayable && totalRepayable > 0) {
+      return "Paid";
+    }
+
+    // Check for 'Overdue' status based on the due date.
     const now = dayjs();
     const due = dayjs(loan.dueDate);
-    if (loan.isPaid || (loan.repaidAmount >= loan.totalRepayable && loan.totalRepayable > 0)) return "Paid";
-    if (due.isBefore(now, "day")) return "Overdue";
+    if (due.isBefore(now, "day")) {
+      return "Overdue";
+    }
+
+    // Default to 'Active'.
     return "Active";
   };
+  // === END OF CORRECTED CODE ===
 
   // Reusable styles for the focused state of form fields
   const filterInputStyles = {
@@ -789,160 +804,157 @@ export default function LoanList() {
         <DialogActions sx={{ pb: 1 }}>
           <Button size="small" onClick={() => setPaymentModal({ open: false, loanId: null })} disabled={isAddingPayment}> Cancel </Button>
           <Button size="small" variant="contained" onClick={handlePaymentSubmit} disabled={isAddingPayment} color="secondary">
-            {isAddingPayment ? <CircularProgress size={20} color="inherit" /> : 'Submit'}
+            {isAddingPayment ? <CircularProgress size={20} color="inherit" /> : 'Add Payment'}
           </Button>
         </DialogActions>
       </Dialog>
-
+      
       {/* Edit Loan Modal */}
-      <Dialog open={editModal.open} onClose={() => setEditModal({ open: false, loan: null })} maxWidth="sm" fullWidth >
+      <Dialog open={editModal.open} onClose={() => setEditModal({ open: false, loan: null })} maxWidth="xs" fullWidth>
         <DialogTitle fontSize="1.1rem">Edit Loan</DialogTitle>
         <DialogContent sx={{ pb: 1 }}>
-          {editErrors.form && <Alert severity="error" sx={{ mb: 1 }}>{editErrors.form}</Alert>}
-          <Stack spacing={1}>
-            {/* CORRECTED: Merged sx props into one */}
+          {editErrors.form && <Alert severity="error" sx={{ mb: 2 }}>{editErrors.form}</Alert>}
+          <Stack spacing={2} mt={1}>
             <TextField
-              label="Borrower"
-              value={editData.borrower}
-              onChange={(e) => { setEditData({ ...editData, borrower: e.target.value }); setEditErrors(prev => ({ ...prev, borrower: '' })); }}
+              label="Borrower Name"
               size="small"
               fullWidth
+              value={editData.borrower}
+              onChange={(e) => setEditData({ ...editData, borrower: e.target.value })}
               error={!!editErrors.borrower}
               helperText={editErrors.borrower}
               sx={filterInputStyles}
             />
-            {/* CORRECTED: Merged sx props into one */}
             <TextField
-              label="Phone"
-              value={editData.phone}
-              onChange={(e) => { setEditData({ ...editData, phone: e.target.value }); setEditErrors(prev => ({ ...prev, phone: '' })); }}
+              label="Phone Number"
               size="small"
               fullWidth
+              value={editData.phone}
+              onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
               error={!!editErrors.phone}
               helperText={editErrors.phone}
               sx={filterInputStyles}
             />
-            {/* CORRECTED: Merged sx props into one */}
             <TextField
-              label="Principal (ZMW)"
-              type="number"
-              value={editData.principal}
-              onChange={(e) => { setEditData({ ...editData, principal: e.target.value }); setEditErrors(prev => ({ ...prev, principal: '' })); }}
+              label="Principal Amount (ZMW)"
               size="small"
+              type="number"
               fullWidth
+              value={editData.principal}
+              onChange={(e) => {
+                const principal = parseFloat(e.target.value);
+                const interest = calculateInterest(principal, editData.interestDuration);
+                const totalRepayable = principal + interest;
+                setEditData({ ...editData, principal: e.target.value, interest, totalRepayable });
+              }}
               error={!!editErrors.principal}
               helperText={editErrors.principal}
               sx={filterInputStyles}
             />
-            {/* CORRECTED: Merged sx props into one */}
-            <TextField
-              select
-              label="Interest Duration"
-              value={editData.interestDuration}
-              onChange={(e) => {
-                  const newDuration = Number(e.target.value);
-                  const calculatedDueDate = dayjs(editData.startDate).add(newDuration * 7, 'day').format("YYYY-MM-DD");
-                  setEditData({
-                      ...editData,
-                      interestDuration: newDuration,
-                      dueDate: calculatedDueDate,
-                  });
-              }}
-              fullWidth
-              size="small"
-              sx={filterInputStyles}
-            >
-              {interestOptions.map(({ label, value }) => (
-                <MenuItem key={value} value={value}>
-                  {label}
-                </MenuItem>
-              ))}
-            </TextField>
-            {/* CORRECTED: Merged sx props into one */}
+            <FormControl size="small" fullWidth sx={filterInputStyles}>
+              <InputLabel>Interest Duration</InputLabel>
+              <Select
+                value={editData.interestDuration}
+                label="Interest Duration"
+                onChange={(e) => {
+                  const duration = e.target.value;
+                  const interest = calculateInterest(parseFloat(editData.principal), duration);
+                  const totalRepayable = parseFloat(editData.principal) + interest;
+                  const finalDueDate = dayjs(editData.startDate).add(duration * 7, 'day').format("YYYY-MM-DD");
+                  setEditData({ ...editData, interestDuration: duration, interest, totalRepayable, dueDate: finalDueDate });
+                }}
+              >
+                {interestOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             <TextField
               label="Start Date"
               type="date"
-              value={editData.startDate}
-              onChange={(e) => {
-                  const newStartDate = e.target.value;
-                  const calculatedDueDate = dayjs(newStartDate).add(editData.interestDuration * 7, 'day').format("YYYY-MM-DD");
-                  setEditData({
-                      ...editData,
-                      startDate: newStartDate,
-                      dueDate: calculatedDueDate,
-                  });
-                  setEditErrors(prev => ({ ...prev, startDate: '' }));
-              }}
-              InputLabelProps={{ shrink: true }}
               size="small"
               fullWidth
+              InputLabelProps={{ shrink: true }}
+              value={editData.startDate}
+              onChange={(e) => {
+                const startDate = e.target.value;
+                const finalDueDate = dayjs(startDate).add(editData.interestDuration * 7, 'day').format("YYYY-MM-DD");
+                setEditData({ ...editData, startDate, dueDate: finalDueDate });
+              }}
               error={!!editErrors.startDate}
               helperText={editErrors.startDate}
               sx={filterInputStyles}
             />
-            {/* CORRECTED: Merged sx props into one */}
             <TextField
               label="Due Date"
               type="date"
-              value={editData.dueDate}
-              InputLabelProps={{ shrink: true }}
               size="small"
               fullWidth
-              InputProps={{ readOnly: true }}
+              InputLabelProps={{ shrink: true }}
+              value={editData.dueDate}
+              InputProps={{
+                readOnly: true,
+              }}
               sx={filterInputStyles}
             />
           </Stack>
         </DialogContent>
         <DialogActions sx={{ pb: 1 }}>
-          <Button size="small" onClick={() => setEditModal({ open: false, loan: null })} disabled={isSavingEdit}> Cancel </Button>
+          <Button size="small" onClick={() => setEditModal({ open: false, loan: null })} disabled={isSavingEdit}>Cancel</Button>
           <Button size="small" variant="contained" onClick={handleEditSubmit} disabled={isSavingEdit} color="secondary">
-            {isSavingEdit ? <CircularProgress size={20} color="inherit" /> : 'Save'}
+            {isSavingEdit ? <CircularProgress size={20} color="inherit" /> : 'Save Changes'}
           </Button>
         </DialogActions>
       </Dialog>
-
+      
       {/* Payment History Modal */}
-      <Dialog open={historyModal.open} onClose={() => setHistoryModal({ open: false, loanId: null, payments: [], loading: false })} maxWidth="sm" fullWidth >
+      <Dialog open={historyModal.open} onClose={() => setHistoryModal({ open: false, loanId: null, payments: [], loading: false })} maxWidth="xs" fullWidth>
         <DialogTitle fontSize="1.1rem">Payment History</DialogTitle>
-        <DialogContent dividers sx={{ maxHeight: 300 }}>
+        <DialogContent dividers>
           {historyModal.loading ? (
             <Box display="flex" justifyContent="center" alignItems="center" minHeight="100px">
               <CircularProgress size={24} />
-              <Typography ml={2} color="text.secondary">Loading history...</Typography>
             </Box>
           ) : historyModal.payments.length === 0 ? (
-            <Typography>No payments recorded for this loan.</Typography>
+            <Typography variant="body2" color="text.secondary" align="center">
+              No payments recorded for this loan.
+            </Typography>
           ) : (
-            <Table size="small" stickyHeader>
+            <Table size="small">
               <TableHead>
                 <TableRow>
                   <TableCell>Date</TableCell>
-                  <TableCell align="right">Amount (ZMW)</TableCell>
+                  <TableCell align="right">Amount</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {historyModal.payments.map((p) => (
+                {historyModal.payments.map((p, index) => (
                   <TableRow key={p.id}>
-                    <TableCell>{dayjs(p.date).format("DD MMM YYYY, h:mm A")}</TableCell>
-                    <TableCell align="right">{Number(p.amount).toFixed(2)}</TableCell>
+                    <TableCell>{dayjs(p.date).format('YYYY-MM-DD')}</TableCell>
+                    <TableCell align="right">ZMW {Number(p.amount).toFixed(2)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           )}
         </DialogContent>
-        <DialogActions sx={{ pb: 1 }}>
-          <Button size="small" onClick={() => setHistoryModal({ open: false, loanId: null, payments: [], loading: false })}> Close </Button>
+        <DialogActions>
+          <Button onClick={() => setHistoryModal({ open: false, loanId: null, payments: [], loading: false })} size="small" color="secondary">Close</Button>
         </DialogActions>
       </Dialog>
 
-      {/* Snackbar for payment confirmation */}
       <Snackbar
         open={paymentSuccess}
-        autoHideDuration={3000}
+        autoHideDuration={4000}
         onClose={() => setPaymentSuccess(false)}
-        message="Payment added successfully!"
-      />
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setPaymentSuccess(false)} severity="success" variant="filled" sx={{ width: '100%' }}>
+          Payment added successfully!
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

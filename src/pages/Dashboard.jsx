@@ -175,15 +175,35 @@ export default function Dashboard() {
         const UPCOMING_LOAN_THRESHOLD_DAYS = 3;
         const upcomingDueThreshold = now.add(UPCOMING_LOAN_THRESHOLD_DAYS, "day");
 
+        // === START OF CORRECTED CODE ===
+        // This function calculates the loan status dynamically.
+        const calcStatus = (loan) => {
+          const totalRepayable = Number(loan.totalRepayable || 0);
+          const repaidAmount = Number(loan.repaidAmount || 0);
+
+          if (repaidAmount >= totalRepayable && totalRepayable > 0) {
+            return "Paid";
+          }
+          const now = dayjs();
+          const due = dayjs(loan.dueDate);
+          if (due.isBefore(now, "day")) {
+            return "Overdue";
+          }
+          return "Active";
+        };
+        // === END OF CORRECTED CODE ===
+
         const upcomingLoans = loans.filter(
           (l) =>
-            l.status !== "Paid" &&
+            calcStatus(l) === "Active" &&
             dayjs(l.dueDate).isAfter(now) &&
             dayjs(l.dueDate).isBefore(upcomingDueThreshold)
         );
-        const overdueLoansList = loans.filter(
-          (l) => l.status !== "Paid" && dayjs(l.dueDate).isBefore(now, "day")
-        );
+
+        // === START OF CORRECTED CODE ===
+        // Filter for overdue loans using the new calcStatus function
+        const overdueLoansList = loans.filter((l) => calcStatus(l) === "Overdue");
+        // === END OF CORRECTED CODE ===
 
         if (upcomingLoans.length > 0)
           toast.info(
@@ -200,6 +220,24 @@ export default function Dashboard() {
   }, [loans]);
 
   const { loansForCalculations, defaultCards } = useMemo(() => {
+    // === START OF CORRECTED CODE ===
+    // This function calculates the loan status dynamically.
+    const calcStatus = (loan) => {
+      const totalRepayable = Number(loan.totalRepayable || 0);
+      const repaidAmount = Number(loan.repaidAmount || 0);
+
+      if (repaidAmount >= totalRepayable && totalRepayable > 0) {
+        return "Paid";
+      }
+      const now = dayjs();
+      const due = dayjs(loan.dueDate);
+      if (due.isBefore(now, "day")) {
+        return "Overdue";
+      }
+      return "Active";
+    };
+    // === END OF CORRECTED CODE ===
+
     const loansForCalculations = loans || [];
     const loansThisMonth = loansForCalculations.filter((loan) =>
       loan.startDate.startsWith(selectedMonth)
@@ -229,16 +267,16 @@ export default function Dashboard() {
     const initialCapital = Number(settings?.initialCapital) || 60000;
     const availableCapital = initialCapital - totalDisbursed + totalCollected;
     const totalLoansCount = loansThisMonth.length;
-    const paidLoansCount = loansThisMonth.filter((l) => l.status === "Paid").length;
-    const activeLoansCount = loansThisMonth.filter(
-      (l) => l.status === "Active"
-    ).length;
-    const overdueLoansCount = loansThisMonth.filter(
-      (l) => l.status === "Active" && dayjs(l.dueDate).isBefore(dayjs(), "day")
-    ).length;
+    
+    // === START OF CORRECTED CODE ===
+    // Filters now use the new calcStatus function to get accurate counts
+    const paidLoansCount = loansThisMonth.filter((l) => calcStatus(l) === "Paid").length;
+    const activeLoansCount = loansThisMonth.filter((l) => calcStatus(l) === "Active").length;
+    const overdueLoansCount = loansThisMonth.filter((l) => calcStatus(l) === "Overdue").length;
+    // === END OF CORRECTED CODE ===
 
     const totalOutstanding = loansThisMonth
-      .filter((loan) => loan.status === "Active")
+      .filter((loan) => calcStatus(loan) === "Active" || calcStatus(loan) === "Overdue")
       .reduce(
         (sum, loan) =>
           sum +
@@ -255,7 +293,7 @@ export default function Dashboard() {
     const actualProfit = loansThisMonth
       .filter(
         (loan) =>
-          loan.status === "Paid" &&
+          calcStatus(loan) === "Paid" &&
           Number(loan.repaidAmount || 0) >=
             Number(loan.principal || 0) + Number(loan.interest || 0)
       )
