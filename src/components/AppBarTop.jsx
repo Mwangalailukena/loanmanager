@@ -1,5 +1,4 @@
 // src/components/AppBarTop.jsx
-
 import React, { useState, useEffect } from "react";
 import {
   AppBar,
@@ -62,8 +61,8 @@ const Transition = React.forwardRef(function Transition(props, ref) {
   return <Slide direction="up" ref={ref} {...props} />;
 });
 
-// ACCEPT THE NEW PROP HERE
-const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail }) => {
+// UPDATED: Now accepts searchTerm and setSearchTerm as props
+const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail, searchTerm, setSearchTerm }) => {
   const { currentUser } = useAuth();
   const { loans } = useFirestore();
   const navigate = useNavigate();
@@ -76,9 +75,8 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail }) => {
   const [helpOpen, setHelpOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
+  // REMOVED: The local searchTerm state
   const [notifications, setNotifications] = useState([]);
-
   const [profileOpen, setProfileOpen] = useState(false);
 
   const openMenu = Boolean(anchorEl);
@@ -106,7 +104,6 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail }) => {
       notes.push({
         id: loan.id,
         message: `Loan for ${loan.borrower} is due on ${dayjs(loan.dueDate).format("MMM D")}.`,
-        // We now store the loan ID instead of a link
         loanId: loan.id,
       });
     });
@@ -115,7 +112,6 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail }) => {
       notes.push({
         id: loan.id,
         message: `Loan for ${loan.borrower} is overdue!`,
-        // We now store the loan ID instead of a link
         loanId: loan.id,
       });
     });
@@ -193,22 +189,24 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail }) => {
 
   const toggleSearch = () => {
     setSearchOpen((open) => !open);
-    setSearchTerm("");
+    setSearchTerm(""); // Clear the search term when closing
   };
 
-  const performSearch = () => {
-    if (searchTerm.trim()) {
-      navigate(`/loans?search=${encodeURIComponent(searchTerm.trim())}`);
+  // REMOVED: performSearch is no longer needed
+  // const performSearch = () => {
+  //   if (searchTerm.trim()) {
+  //     navigate(`/loans?search=${encodeURIComponent(searchTerm.trim())}`);
+  //     toggleSearch();
+  //   }
+  // };
+
+  const handleSearchKeyDown = (e) => {
+    // We only need to handle the Escape key to close the search
+    if (e.key === "Escape") {
       toggleSearch();
     }
   };
 
-  const handleSearchKeyDown = (e) => {
-    if (e.key === "Enter") performSearch();
-    if (e.key === "Escape") toggleSearch();
-  };
-
-  // This now calls the prop function with the loanId
   const handleNotificationItemClick = (loanId) => {
     onOpenLoanDetail(loanId);
     closeNotifications();
@@ -234,7 +232,6 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail }) => {
             </IconButton>
           )}
 
-          {/* NEW: Conditionally render the title */}
           {!searchOpen && (
             <Typography
               variant="h6"
@@ -250,19 +247,18 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail }) => {
             </Typography>
           )}
           
-          {/* NEW: Use a ternary to switch between search icon and search field */}
           {searchOpen ? (
             <TextField
               size="small"
               variant="outlined"
               placeholder="Search loans..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={searchTerm} // UPDATED: Controlled by props
+              onChange={(e) => setSearchTerm(e.target.value)} // UPDATED: Uses the prop function
               onKeyDown={handleSearchKeyDown}
               autoFocus
               sx={{
-                flexGrow: 1, // NEW: The key change to make it expand
-                width: isMobile ? "auto" : 250, // "auto" lets it fill the space on mobile
+                flexGrow: 1,
+                width: isMobile ? "auto" : 250,
                 bgcolor: 'rgba(255, 255, 255, 0.15)',
                 borderRadius: 2,
                 mr: 1,
@@ -473,7 +469,6 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail }) => {
           notifications.map(({ id, message, loanId }) => (
             <MenuItem
               key={id}
-              // Pass the loanId to the new handler function
               onClick={() => handleNotificationItemClick(loanId)}
               sx={{ whiteSpace: "normal", borderRadius: 1, mb: 0.5, "&:last-child": { mb: 0 } }}
             >
