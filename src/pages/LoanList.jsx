@@ -1,3 +1,5 @@
+// src/components/LoanList.jsx
+
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Box,
@@ -30,7 +32,7 @@ import {
   Snackbar,
   Chip,
   TableSortLabel,
-  InputAdornment, // <-- ADDED: InputAdornment
+  InputAdornment,
 } from "@mui/material";
 import {
   KeyboardArrowDown,
@@ -56,12 +58,14 @@ const interestOptions = [
   { label: "4 Weeks", value: 4 },
 ];
 
-export default function LoanList() {
+// UPDATED: Now accepts a new prop for the global search term
+export default function LoanList({ globalSearchTerm }) {
   const { loans, loadingLoans, deleteLoan, addPayment, updateLoan, getPaymentsByLoanId, settings } = useFirestore();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [searchParams, setSearchParams] = useSearchParams();
 
+  // KEEPING: The local searchTerm state for the local search field
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState(searchParams.get('filter') || "all");
   const [monthFilter, setMonthFilter] = useState(searchParams.get('month') || dayjs().format("YYYY-MM"));
@@ -174,6 +178,12 @@ export default function LoanList() {
     setPage(1);
   }, [searchParams, statusFilter, monthFilter]);
 
+  // NEW: A variable to decide which search term to use.
+  // It prefers the global search term if it exists, otherwise it uses the local one.
+  const activeSearchTerm = useMemo(() => {
+    return globalSearchTerm || searchTerm;
+  }, [globalSearchTerm, searchTerm]);
+
   const filteredLoans = useMemo(() => {
     let result = loans
       .filter((loan) => {
@@ -182,10 +192,10 @@ export default function LoanList() {
         if (statusFilter !== "all" && calcStatus(loan).toLowerCase() !== statusFilter.toLowerCase()) return false;
         
         if (
-          searchTerm &&
+          activeSearchTerm && // UPDATED: Use the new activeSearchTerm variable
           !(
-            loan.borrower.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            loan.phone.toLowerCase().includes(searchTerm.toLowerCase())
+            loan.borrower.toLowerCase().includes(activeSearchTerm.toLowerCase()) ||
+            loan.phone.toLowerCase().includes(activeSearchTerm.toLowerCase())
           )
         )
           return false;
@@ -218,8 +228,8 @@ export default function LoanList() {
     }
 
     return result;
-  }, [loans, searchTerm, statusFilter, monthFilter, sortKey, sortDirection]);
-
+  }, [loans, activeSearchTerm, statusFilter, monthFilter, sortKey, sortDirection]); // UPDATED: Dependency array
+  
   const displayedLoans = useMemo(() => {
     if (useInfiniteScroll && isMobile) {
       return filteredLoans.slice(0, page * PAGE_SIZE);
@@ -251,7 +261,7 @@ export default function LoanList() {
     setPage(1);
     setExpandedRow(null);
     setSelectedLoanIds([]);
-  }, [searchTerm, statusFilter, monthFilter, useInfiniteScroll]);
+  }, [activeSearchTerm, statusFilter, monthFilter, useInfiniteScroll]); // UPDATED: Dependency array
 
   const totals = useMemo(() => {
     return filteredLoans.reduce(
@@ -454,6 +464,7 @@ export default function LoanList() {
       </Typography>
 
       <Stack direction={isMobile ? "column" : "row"} spacing={1} mb={2} alignItems="center">
+        {/* KEEPING: The local search field */}
         <TextField
           label="Search"
           value={searchTerm}
