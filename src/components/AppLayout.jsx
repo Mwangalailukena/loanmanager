@@ -1,103 +1,141 @@
 // src/components/AppLayout.jsx
 
 import React, { useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import {
-  useTheme,
-  useMediaQuery,
-  Box,
-  CssBaseline,
-} from '@mui/material';
-
+import { Box, useTheme, useMediaQuery, CssBaseline, useScrollTrigger, Fab, Zoom } from '@mui/material';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import AppBarTop from './AppBarTop';
+import SideNav from './SideNav';
 import BottomNavBar from './BottomNavBar';
-import Sidebar from './Sidebar';
-import LoanDetailDialog from './LoanDetailDialog';
+import { useAuth } from '../contexts/AuthProvider';
+import LandingPage from '../pages/LandingPage';
+import { AnimatePresence, motion } from 'framer-motion';
 
-const drawerWidth = 220;
+const drawerWidth = 240;
+const transitionVariants = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+  exit: { opacity: 0, y: -20, transition: { duration: 0.2 } },
+};
 
-const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
-  const { pathname } = useLocation();
+function ScrollTop({ children }) {
+  const trigger = useScrollTrigger({
+    disableHysteresis: true,
+    threshold: 100,
+  });
+
+  const handleClick = (event) => {
+    const anchor = (event.target.ownerDocument || document).querySelector(
+      '#back-to-top-anchor',
+    );
+    if (anchor) {
+      anchor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
+  return (
+    <Zoom in={trigger}>
+      <Box
+        onClick={handleClick}
+        role="presentation"
+        sx={{ position: 'fixed', bottom: 16, right: 16, zIndex: 1000 }}
+      >
+        {children}
+      </Box>
+    </Zoom>
+  );
+}
+
+export default function AppLayout() {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { currentUser, isAuthLoading } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  // NEW: State for the live search term
-  const [searchTerm, setSearchTerm] = useState("");
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
 
-  // === DIALOG STATE AND HANDLERS ===
-  const [loanDetailOpen, setLoanDetailOpen] = useState(false);
-  const [selectedLoanId, setSelectedLoanId] = useState(null);
+  // NEW: State to hold the global search term
+  const [globalSearchTerm, setGlobalSearchTerm] = useState('');
+
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
+  };
+
+  const handleSearchChange = (term) => {
+    setGlobalSearchTerm(term);
+    // If the user searches from another page, navigate them to the loan list.
+    if (location.pathname !== '/loans' && term) {
+      navigate('/loans');
+    }
+  };
 
   const handleOpenLoanDetail = (loanId) => {
-    setSelectedLoanId(loanId);
-    setLoanDetailOpen(true);
+    // Implement this if you have a modal for loan details
+    // For now, let's just log it or navigate.
+    console.log(`Open loan detail for: ${loanId}`);
+    // Example: navigate(`/loans/${loanId}`);
   };
 
-  const handleCloseLoanDetail = () => {
-    setLoanDetailOpen(false);
-    setSelectedLoanId(null);
+  const handleToggleDarkMode = () => {
+    setDarkMode(!darkMode);
+    // You would typically save this to localStorage
   };
-  // ===================================
 
-  const hideLayout = ['/login', '/register', '/forgot-password'].includes(pathname);
-  const bottomNavHeight = isMobile && !hideLayout ? 64 : 0;
+  if (isAuthLoading) {
+    return null;
+  }
 
-  if (hideLayout) {
-    return <>{children}</>;
+  if (!currentUser) {
+    return <LandingPage />;
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <Box sx={{ display: 'flex' }}>
       <CssBaseline />
-      
-      {/* UPDATED: Pass the searchTerm and setSearchTerm props */}
-      <AppBarTop 
-        darkMode={darkMode} 
-        onToggleDarkMode={onToggleDarkMode} 
-        onOpenLoanDetail={handleOpenLoanDetail} 
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
+      <AppBarTop
+        onToggleDarkMode={handleToggleDarkMode}
+        darkMode={darkMode}
+        onSearchChange={handleSearchChange} // Pass the state handler
+        onToggleDrawer={handleDrawerToggle}
+        onOpenLoanDetail={handleOpenLoanDetail}
       />
+      <SideNav mobileOpen={mobileOpen} handleDrawerToggle={handleDrawerToggle} />
 
       <Box
+        component="main"
         sx={{
-          display: 'flex',
-          flex: 1,
-          paddingTop: theme.mixins.toolbar,
-          paddingBottom: `${bottomNavHeight}px`,
+          flexGrow: 1,
+          p: isMobile ? 1 : 3,
+          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          mt: 8,
+          background: theme.palette.background.default,
+          minHeight: '100vh',
         }}
       >
-        {!hideLayout && <Sidebar drawerWidth={drawerWidth} />}
-
-        <Box
-          component="main"
-          sx={{
-            flexGrow: 1,
-            overflowY: 'auto',
-            boxSizing: 'border-box',
-            background: theme.palette.background.default,
-            minHeight: 0,
-            height: '100%',
-            px: isMobile ? 2 : 4,
-            paddingTop: '70px',
-            pb: 0,
-          }}
-        >
-          {/* UPDATED: We need to pass the searchTerm to the child component */}
-          {React.cloneElement(children, { searchTerm })}
-        </Box>
+        <div id="back-to-top-anchor" />
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            variants={transitionVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            {/* The magic happens here: we pass the global search term to the LoanList component */}
+            <Outlet context={{ globalSearchTerm }} />
+          </motion.div>
+        </AnimatePresence>
       </Box>
 
-      {!hideLayout && isMobile && <BottomNavBar />}
+      {isMobile && <BottomNavBar />}
 
-      <LoanDetailDialog
-        key={selectedLoanId}
-        open={loanDetailOpen}
-        onClose={handleCloseLoanDetail}
-        loanId={selectedLoanId}
-      />
+      <ScrollTop>
+        <Fab color="secondary" size="small" aria-label="scroll back to top">
+          <KeyboardArrowUpIcon />
+        </Fab>
+      </ScrollTop>
     </Box>
   );
-};
-
-export default AppLayout;
+}
