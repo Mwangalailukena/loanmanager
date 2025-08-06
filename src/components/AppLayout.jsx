@@ -1,18 +1,18 @@
-import React, { useState } from 'react'; // <-- Import useState
+// src/components/AppLayout.jsx
+
+import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
   useTheme,
   useMediaQuery,
   Box,
-  CssBaseline // <-- Import CssBaseline if not already there
+  CssBaseline,
 } from '@mui/material';
 
 import AppBarTop from './AppBarTop';
 import BottomNavBar from './BottomNavBar';
 import Sidebar from './Sidebar';
-
-// <-- IMPORT THE NEW DIALOG COMPONENT
-import LoanDetailDialog from './LoanDetailDialog';
+import LoanDetailDialog from './LoanDetailDialog'; // <-- Import the dialog
 
 const drawerWidth = 220;
 
@@ -21,22 +21,26 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  // === DIALOG STATE AND HANDLERS GO HERE ===
+  // === DIALOG STATE AND HANDLERS ===
   const [loanDetailOpen, setLoanDetailOpen] = useState(false);
   const [selectedLoanId, setSelectedLoanId] = useState(null);
 
   const handleOpenLoanDetail = (loanId) => {
-    console.log("AppLayout: handleOpenLoanDetail called for ID:", loanId);
-    setSelectedLoanId(loanId);
-    setLoanDetailOpen(true);
+    // Force a state change to ensure the dialog re-renders
+    setLoanDetailOpen(false);
+    setSelectedLoanId(null);
+    
+    setTimeout(() => {
+      setSelectedLoanId(loanId);
+      setLoanDetailOpen(true);
+    }, 10);
   };
 
   const handleCloseLoanDetail = () => {
-    console.log("AppLayout: handleCloseLoanDetail called");
     setLoanDetailOpen(false);
     setSelectedLoanId(null);
   };
-  // =========================================
+  // ===================================
 
   const hideLayout = ['/login', '/register', '/forgot-password'].includes(pathname);
   const bottomNavHeight = isMobile && !hideLayout ? 64 : 0;
@@ -48,15 +52,15 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <CssBaseline />
-
-      {/* 1. Fixed AppBar - Pass the new handler to it */}
+      
+      {/* 1. AppBarTop with the new handler */}
       <AppBarTop 
         darkMode={darkMode} 
         onToggleDarkMode={onToggleDarkMode} 
-        onOpenLoanDetail={handleOpenLoanDetail} // <-- PASS THE FUNCTION HERE
+        onOpenLoanDetail={handleOpenLoanDetail} 
       />
 
-      {/* 2. This Box creates space BELOW the fixed AppBar and holds sidebar/main content */}
+      {/* 2. Main content area */}
       <Box
         sx={{
           display: 'flex',
@@ -65,10 +69,9 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
           paddingBottom: `${bottomNavHeight}px`,
         }}
       >
-        {/* Sidebar component */}
+        {/* Sidebar */}
         {!hideLayout && <Sidebar drawerWidth={drawerWidth} />}
 
-        {/* 3. This is the actual Main content area where your page components render. */}
         <Box
           component="main"
           sx={{
@@ -83,14 +86,14 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
             pb: 0,
           }}
         >
-          {children} {/* Your Dashboard content goes here */}
+          {children}
         </Box>
       </Box>
 
       {/* Bottom Navigation Bar */}
       {!hideLayout && isMobile && <BottomNavBar />}
 
-      {/* 4. RENDER THE DIALOG HERE */}
+      {/* 3. The Dialog component */}
       <LoanDetailDialog
         open={loanDetailOpen}
         onClose={handleCloseLoanDetail}
