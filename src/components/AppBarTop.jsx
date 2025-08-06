@@ -74,6 +74,7 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  // IMPORTANT: The notifications state now holds objects for individual loans
   const [notifications, setNotifications] = useState([]);
 
   const [profileOpen, setProfileOpen] = useState(false);
@@ -84,6 +85,8 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
   useEffect(() => {
     if (!loans) return;
     const now = dayjs();
+    
+    // Filter for upcoming loans due within 3 days
     const upcoming = loans.filter(
       (loan) =>
         loan.status !== "Paid" &&
@@ -91,23 +94,33 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
         dayjs(loan.dueDate).diff(now, "day") < 3 &&
         dayjs(loan.dueDate).diff(now, "day") >= 0
     );
+    
+    // Filter for overdue loans
     const overdue = loans.filter(
       (loan) => loan.status !== "Paid" && dayjs(loan.dueDate).isBefore(now, "day")
     );
 
     const notes = [];
-    if (upcoming.length)
+    
+    // === MODIFICATION START ===
+    // Loop through each upcoming loan and create a specific notification
+    upcoming.forEach(loan => {
       notes.push({
-        id: "upcoming",
-        message: `${upcoming.length} loan(s) due within 3 days`,
-        link: "/loans?filter=upcoming",
+        id: loan.id,
+        message: `Loan for ${loan.borrowerName} is due in ${dayjs(loan.dueDate).diff(now, 'day')} days.`,
+        link: `/loans/${loan.id}`, // Link to the individual loan's detail page
       });
-    if (overdue.length)
+    });
+
+    // Loop through each overdue loan and create a specific notification
+    overdue.forEach(loan => {
       notes.push({
-        id: "overdue",
-        message: `${overdue.length} overdue loan(s)`,
-        link: "/loans?filter=overdue",
+        id: loan.id,
+        message: `Loan for ${loan.borrowerName} is overdue!`,
+        link: `/loans/${loan.id}`, // Link to the individual loan's detail page
       });
+    });
+    // === MODIFICATION END ===
 
     setNotifications(notes);
   }, [loans]);
@@ -209,12 +222,10 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
         elevation={0}
         sx={{
           zIndex: theme.zIndex.drawer + 1,
-          // --- GLASSMORPHISM STYLES START ---
           backdropFilter: 'blur(12px) saturate(180%)',
           backgroundColor: 'rgba(255, 255, 255, 0.1)',
           borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
           boxShadow: theme.shadows[3],
-          // --- GLASSMORPHISM STYLES END ---
         }}
       >
         <Toolbar sx={{ px: isMobile ? 2 : 3 }}>
@@ -455,6 +466,8 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
             No new notifications.
           </Typography>
         ) : (
+          // === MODIFICATION START ===
+          // The key now includes the loan ID to avoid duplicate keys if multiple notifications are for the same loan.
           notifications.map(({ id, message, link }) => (
             <MenuItem
               key={id}
@@ -466,6 +479,7 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
               </Typography>
             </MenuItem>
           ))
+          // === MODIFICATION END ===
         )}
         {notifications.length > 0 && (
           <MenuItem
