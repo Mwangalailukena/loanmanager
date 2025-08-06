@@ -208,7 +208,7 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail }) => {
     if (e.key === "Escape") toggleSearch();
   };
 
-  // NEW: This now calls the prop function with the loanId
+  // This now calls the prop function with the loanId
   const handleNotificationItemClick = (loanId) => {
     onOpenLoanDetail(loanId);
     closeNotifications();
@@ -234,26 +234,24 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail }) => {
             </IconButton>
           )}
 
-          <Typography
-            variant="h6"
-            sx={{
-              flexGrow: 1,
-              cursor: "pointer",
-              fontWeight: 700,
-              color: theme.palette.primary.main,
-            }}
-            onClick={() => navigate("/dashboard")}
-          >
-            Loan Manager
-          </Typography>
-
-          {!searchOpen ? (
-            <Tooltip title="Search loans">
-              <IconButton color="inherit" onClick={toggleSearch} sx={{ color: theme.palette.text.secondary }}>
-                <SearchIcon />
-              </IconButton>
-            </Tooltip>
-          ) : (
+          {/* NEW: Conditionally render the title */}
+          {!searchOpen && (
+            <Typography
+              variant="h6"
+              sx={{
+                flexGrow: 1,
+                cursor: "pointer",
+                fontWeight: 700,
+                color: theme.palette.primary.main,
+              }}
+              onClick={() => navigate("/dashboard")}
+            >
+              Loan Manager
+            </Typography>
+          )}
+          
+          {/* NEW: Use a ternary to switch between search icon and search field */}
+          {searchOpen ? (
             <TextField
               size="small"
               variant="outlined"
@@ -263,7 +261,8 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail }) => {
               onKeyDown={handleSearchKeyDown}
               autoFocus
               sx={{
-                width: isMobile ? "60vw" : 250,
+                flexGrow: 1, // NEW: The key change to make it expand
+                width: isMobile ? "auto" : 250, // "auto" lets it fill the space on mobile
                 bgcolor: 'rgba(255, 255, 255, 0.15)',
                 borderRadius: 2,
                 mr: 1,
@@ -290,6 +289,12 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail }) => {
                 ),
               }}
             />
+          ) : (
+            <Tooltip title="Search loans">
+              <IconButton color="inherit" onClick={toggleSearch} sx={{ color: theme.palette.text.secondary }}>
+                <SearchIcon />
+              </IconButton>
+            </Tooltip>
           )}
 
           <Tooltip title="Notifications">
