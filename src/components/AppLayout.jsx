@@ -12,7 +12,7 @@ import {
 import AppBarTop from './AppBarTop';
 import BottomNavBar from './BottomNavBar';
 import Sidebar from './Sidebar';
-import LoanDetailDialog from './LoanDetailDialog'; // <-- Import the dialog
+import LoanDetailDialog from './LoanDetailDialog';
 
 const drawerWidth = 220;
 
@@ -25,15 +25,10 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   const [loanDetailOpen, setLoanDetailOpen] = useState(false);
   const [selectedLoanId, setSelectedLoanId] = useState(null);
 
+  // --- Simplified handler. No more setTimeout needed. ---
   const handleOpenLoanDetail = (loanId) => {
-    // Force a state change to ensure the dialog re-renders
-    setLoanDetailOpen(false);
-    setSelectedLoanId(null);
-    
-    setTimeout(() => {
-      setSelectedLoanId(loanId);
-      setLoanDetailOpen(true);
-    }, 10);
+    setSelectedLoanId(loanId);
+    setLoanDetailOpen(true);
   };
 
   const handleCloseLoanDetail = () => {
@@ -53,14 +48,12 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <CssBaseline />
       
-      {/* 1. AppBarTop with the new handler */}
       <AppBarTop 
         darkMode={darkMode} 
         onToggleDarkMode={onToggleDarkMode} 
         onOpenLoanDetail={handleOpenLoanDetail} 
       />
 
-      {/* 2. Main content area */}
       <Box
         sx={{
           display: 'flex',
@@ -69,7 +62,6 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
           paddingBottom: `${bottomNavHeight}px`,
         }}
       >
-        {/* Sidebar */}
         {!hideLayout && <Sidebar drawerWidth={drawerWidth} />}
 
         <Box
@@ -90,11 +82,11 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
         </Box>
       </Box>
 
-      {/* Bottom Navigation Bar */}
       {!hideLayout && isMobile && <BottomNavBar />}
 
-      {/* 3. The Dialog component */}
+      {/* --- ADD THE KEY PROP HERE --- */}
       <LoanDetailDialog
+        key={selectedLoanId} // <-- This will force a re-render when the ID changes
         open={loanDetailOpen}
         onClose={handleCloseLoanDetail}
         loanId={selectedLoanId}
