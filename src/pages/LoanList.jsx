@@ -41,6 +41,7 @@ import {
   Delete,
   Payment,
   History,
+  Close as CloseIcon,
 } from "@mui/icons-material";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { exportToCsv } from "../utils/exportCSV";
@@ -58,14 +59,12 @@ const interestOptions = [
   { label: "4 Weeks", value: 4 },
 ];
 
-// UPDATED: Now accepts a new prop for the global search term
 export default function LoanList({ globalSearchTerm }) {
   const { loans, loadingLoans, deleteLoan, addPayment, updateLoan, getPaymentsByLoanId, settings } = useFirestore();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // KEEPING: The local searchTerm state for the local search field
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState(searchParams.get('filter') || "all");
   const [monthFilter, setMonthFilter] = useState(searchParams.get('month') || dayjs().format("YYYY-MM"));
@@ -157,7 +156,9 @@ export default function LoanList({ globalSearchTerm }) {
       },
     },
   };
-
+  
+  // NEW/UPDATED: Sync the local search term with the global one.
+  // This hook ensures the local search TextField reflects the global search input.
   useEffect(() => {
     const urlFilter = searchParams.get('filter');
     const urlMonth = searchParams.get('month');
@@ -174,12 +175,10 @@ export default function LoanList({ globalSearchTerm }) {
       setMonthFilter(dayjs().format("YYYY-MM"));
     }
 
-    setSearchTerm("");
+    setSearchTerm(globalSearchTerm || "");
     setPage(1);
-  }, [searchParams, statusFilter, monthFilter]);
+  }, [searchParams, statusFilter, monthFilter, globalSearchTerm]);
 
-  // NEW: A variable to decide which search term to use.
-  // It prefers the global search term if it exists, otherwise it uses the local one.
   const activeSearchTerm = useMemo(() => {
     return globalSearchTerm || searchTerm;
   }, [globalSearchTerm, searchTerm]);
@@ -192,7 +191,7 @@ export default function LoanList({ globalSearchTerm }) {
         if (statusFilter !== "all" && calcStatus(loan).toLowerCase() !== statusFilter.toLowerCase()) return false;
         
         if (
-          activeSearchTerm && // UPDATED: Use the new activeSearchTerm variable
+          activeSearchTerm && 
           !(
             loan.borrower.toLowerCase().includes(activeSearchTerm.toLowerCase()) ||
             loan.phone.toLowerCase().includes(activeSearchTerm.toLowerCase())
@@ -228,7 +227,7 @@ export default function LoanList({ globalSearchTerm }) {
     }
 
     return result;
-  }, [loans, activeSearchTerm, statusFilter, monthFilter, sortKey, sortDirection]); // UPDATED: Dependency array
+  }, [loans, activeSearchTerm, statusFilter, monthFilter, sortKey, sortDirection]);
   
   const displayedLoans = useMemo(() => {
     if (useInfiniteScroll && isMobile) {
@@ -261,7 +260,7 @@ export default function LoanList({ globalSearchTerm }) {
     setPage(1);
     setExpandedRow(null);
     setSelectedLoanIds([]);
-  }, [activeSearchTerm, statusFilter, monthFilter, useInfiniteScroll]); // UPDATED: Dependency array
+  }, [activeSearchTerm, statusFilter, monthFilter, useInfiniteScroll]);
 
   const totals = useMemo(() => {
     return filteredLoans.reduce(
@@ -464,7 +463,6 @@ export default function LoanList({ globalSearchTerm }) {
       </Typography>
 
       <Stack direction={isMobile ? "column" : "row"} spacing={1} mb={2} alignItems="center">
-        {/* KEEPING: The local search field */}
         <TextField
           label="Search"
           value={searchTerm}
@@ -473,6 +471,21 @@ export default function LoanList({ globalSearchTerm }) {
           sx={{ ...filterInputStyles, minWidth: 160 }}
           variant="outlined"
           margin="dense"
+          disabled={!!globalSearchTerm}
+          helperText={globalSearchTerm ? "Using global search" : ""}
+          InputProps={{
+              endAdornment: searchTerm && !globalSearchTerm && (
+                <InputAdornment position="end">
+                  <IconButton
+                    size="small"
+                    onClick={() => setSearchTerm("")}
+                    aria-label="clear search"
+                  >
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              ),
+          }}
         />
         <FormControl size="small" sx={{ ...filterInputStyles, minWidth: 130 }}>
           <InputLabel>Status</InputLabel>
