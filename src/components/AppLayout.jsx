@@ -21,11 +21,13 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
+  // NEW: State for the live search term
+  const [searchTerm, setSearchTerm] = useState("");
+
   // === DIALOG STATE AND HANDLERS ===
   const [loanDetailOpen, setLoanDetailOpen] = useState(false);
   const [selectedLoanId, setSelectedLoanId] = useState(null);
 
-  // --- Simplified handler. No more setTimeout needed. ---
   const handleOpenLoanDetail = (loanId) => {
     setSelectedLoanId(loanId);
     setLoanDetailOpen(true);
@@ -48,10 +50,13 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <CssBaseline />
       
+      {/* UPDATED: Pass the searchTerm and setSearchTerm props */}
       <AppBarTop 
         darkMode={darkMode} 
         onToggleDarkMode={onToggleDarkMode} 
         onOpenLoanDetail={handleOpenLoanDetail} 
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
       />
 
       <Box
@@ -78,15 +83,15 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
             pb: 0,
           }}
         >
-          {children}
+          {/* UPDATED: We need to pass the searchTerm to the child component */}
+          {React.cloneElement(children, { searchTerm })}
         </Box>
       </Box>
 
       {!hideLayout && isMobile && <BottomNavBar />}
 
-      {/* --- ADD THE KEY PROP HERE --- */}
       <LoanDetailDialog
-        key={selectedLoanId} // <-- This will force a re-render when the ID changes
+        key={selectedLoanId}
         open={loanDetailOpen}
         onClose={handleCloseLoanDetail}
         loanId={selectedLoanId}
