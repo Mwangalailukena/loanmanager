@@ -19,7 +19,11 @@ import dayjs from "dayjs";
 
 // A reusable dialog component to show a single loan's details
 export default function LoanDetailDialog({ open, onClose, loanId }) {
-  const { loans, loadingLoans } = useFirestore();
+  // --- This is the only line that needs to change ---
+  // We're removing `loadingLoans` because it's not used.
+  const { loans } = useFirestore(); 
+  // ----------------------------------------------------
+
   const [loan, setLoan] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
