@@ -17,8 +17,6 @@ import {
   Badge,
   Backdrop,
   CircularProgress,
-  Snackbar,
-  Alert,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import PaidIcon from "@mui/icons-material/Payments";
@@ -35,8 +33,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import dayjs from "dayjs";
-// Removed `toast` import
-// import { toast } from "react-toastify";
+import { toast } from "react-toastify";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import Charts from "../components/Charts";
 import { BOTTOM_NAV_HEIGHT } from "../components/BottomNavBar";
@@ -56,15 +53,11 @@ const EXECUTIVE_SUMMARY_VISIBILITY_KEY = "dashboardExecutiveSummaryVisibility";
 const METRICS_VISIBILITY_KEY = "dashboardMetricsVisibility";
 const CHART_SECTION_VISIBILITY_KEY = "dashboardChartsVisibility";
 
-const EXECUTIVE_SUMMARY_IDS = [
+const DEFAULT_CARD_IDS = [
   "investedCapital",
   "availableCapital",
   "totalDisbursed",
   "totalCollected",
-];
-
-const DEFAULT_CARD_IDS = [
-  ...EXECUTIVE_SUMMARY_IDS,
   "totalLoans",
   "paidLoans",
   "activeLoans",
@@ -74,23 +67,12 @@ const DEFAULT_CARD_IDS = [
   "actualProfit",
   "averageLoan",
 ];
-
-// --- Helper Functions ---
-// Encapsulates loan status calculation to avoid repetition
-const calcLoanStatus = (loan) => {
-  const totalRepayable = Number(loan.totalRepayable || 0);
-  const repaidAmount = Number(loan.repaidAmount || 0);
-
-  if (repaidAmount >= totalRepayable && totalRepayable > 0) {
-    return "Paid";
-  }
-  const now = dayjs();
-  const due = dayjs(loan.dueDate);
-  if (due.isBefore(now, "day")) {
-    return "Overdue";
-  }
-  return "Active";
-};
+const EXECUTIVE_SUMMARY_IDS = [
+  "investedCapital",
+  "availableCapital",
+  "totalDisbursed",
+  "totalCollected",
+];
 
 const getInitialVisibility = (key, defaultValue) => {
   try {
@@ -118,34 +100,16 @@ export default function Dashboard() {
     charts: getInitialVisibility(CHART_SECTION_VISIBILITY_KEY, true),
   });
 
-  // --- Snackbar State and Handlers ---
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [snackbarSeverity, setSnackbarSeverity] = useState("info"); // Can be 'success', 'error', 'warning', 'info'
-
-  const handleSnackbarClose = (event, reason) => {
-    if (reason === 'clickaway') {
-      return;
-    }
-    setSnackbarOpen(false);
-  };
-
-  const showSnackbar = useCallback((message, severity) => {
-    setSnackbarMessage(message);
-    setSnackbarSeverity(severity);
-    setSnackbarOpen(true);
-  }, []);
-  // --- End Snackbar Handlers ---
-
   const handleToggleSection = useCallback((section) => {
     setShowSections((prev) => {
       const newState = { ...prev, [section]: !prev[section] };
-      const keyMap = {
-        executive: EXECUTIVE_SUMMARY_VISIBILITY_KEY,
-        metrics: METRICS_VISIBILITY_KEY,
-        charts: CHART_SECTION_VISIBILITY_KEY,
-      };
-      localStorage.setItem(keyMap[section], JSON.stringify(newState[section]));
+      const key =
+        section === "executive"
+          ? EXECUTIVE_SUMMARY_VISIBILITY_KEY
+          : section === "metrics"
+          ? METRICS_VISIBILITY_KEY
+          : CHART_SECTION_VISIBILITY_KEY;
+      localStorage.setItem(key, JSON.stringify(newState[section]));
       return newState;
     });
   }, []);
@@ -196,9 +160,10 @@ export default function Dashboard() {
       const savedOrder = localStorage.getItem(STORAGE_KEY);
       try {
         const parsedOrder = savedOrder ? JSON.parse(savedOrder) : [];
-        const finalOrder = [...new Set([...parsedOrder, ...DEFAULT_CARD_IDS])].filter((id) =>
+        const validOrder = parsedOrder.filter((id) =>
           DEFAULT_CARD_IDS.includes(id)
         );
+        const finalOrder = [...new Set([...validOrder, ...DEFAULT_CARD_IDS])];
         setCardsOrder(finalOrder);
       } catch (error) {
         console.error("Error parsing saved card order from localStorage:", error);
@@ -210,37 +175,70 @@ export default function Dashboard() {
         const UPCOMING_LOAN_THRESHOLD_DAYS = 3;
         const upcomingDueThreshold = now.add(UPCOMING_LOAN_THRESHOLD_DAYS, "day");
 
+        // === START OF CORRECTED CODE ===
+        // This function calculates the loan status dynamically.
+        const calcStatus = (loan) => {
+          const totalRepayable = Number(loan.totalRepayable || 0);
+          const repaidAmount = Number(loan.repaidAmount || 0);
+
+          if (repaidAmount >= totalRepayable && totalRepayable > 0) {
+            return "Paid";
+          }
+          const now = dayjs();
+          const due = dayjs(loan.dueDate);
+          if (due.isBefore(now, "day")) {
+            return "Overdue";
+          }
+          return "Active";
+        };
+        // === END OF CORRECTED CODE ===
+
         const upcomingLoans = loans.filter(
           (l) =>
-            calcLoanStatus(l) === "Active" &&
+            calcStatus(l) === "Active" &&
             dayjs(l.dueDate).isAfter(now) &&
             dayjs(l.dueDate).isBefore(upcomingDueThreshold)
         );
 
-        const overdueLoansList = loans.filter((l) => calcLoanStatus(l) === "Overdue");
+        // === START OF CORRECTED CODE ===
+        // Filter for overdue loans using the new calcStatus function
+        const overdueLoansList = loans.filter((l) => calcStatus(l) === "Overdue");
+        // === END OF CORRECTED CODE ===
 
         if (upcomingLoans.length > 0)
-          // Replaced `toast.info` with `showSnackbar`
-          showSnackbar(
-            `You have ${upcomingLoans.length} loan(s) due within ${UPCOMING_LOAN_THRESHOLD_DAYS} days!`,
-            "info"
+          toast.info(
+            `You have ${upcomingLoans.length} loan(s) due within ${UPCOMING_LOAN_THRESHOLD_DAYS} days!`
           );
         if (overdueLoansList.length > 0)
-          // Replaced `toast.error` with `showSnackbar`
-          showSnackbar(
-            `You have ${overdueLoansList.length} overdue loan(s)! Please take action.`,
-            "error"
+          toast.error(
+            `You have ${overdueLoansList.length} overdue loan(s)! Please take action.`
           );
       }
     }
 
     return () => clearTimeout(timer);
-  }, [loans, showSnackbar]); // Added `showSnackbar` to dependency array
+  }, [loans]);
 
-  const allCards = useMemo(() => {
-    if (!loans || !settings) return [];
+  const { loansForCalculations, defaultCards } = useMemo(() => {
+    // === START OF CORRECTED CODE ===
+    // This function calculates the loan status dynamically.
+    const calcStatus = (loan) => {
+      const totalRepayable = Number(loan.totalRepayable || 0);
+      const repaidAmount = Number(loan.repaidAmount || 0);
 
-    const loansForCalculations = loans;
+      if (repaidAmount >= totalRepayable && totalRepayable > 0) {
+        return "Paid";
+      }
+      const now = dayjs();
+      const due = dayjs(loan.dueDate);
+      if (due.isBefore(now, "day")) {
+        return "Overdue";
+      }
+      return "Active";
+    };
+    // === END OF CORRECTED CODE ===
+
+    const loansForCalculations = loans || [];
     const loansThisMonth = loansForCalculations.filter((loan) =>
       loan.startDate.startsWith(selectedMonth)
     );
@@ -269,11 +267,16 @@ export default function Dashboard() {
     const initialCapital = Number(settings?.initialCapital) || 60000;
     const availableCapital = initialCapital - totalDisbursed + totalCollected;
     const totalLoansCount = loansThisMonth.length;
-    const paidLoansCount = loansThisMonth.filter((l) => calcLoanStatus(l) === "Paid").length;
-    const activeLoansCount = loansThisMonth.filter((l) => calcLoanStatus(l) === "Active").length;
-    const overdueLoansCount = loansThisMonth.filter((l) => calcLoanStatus(l) === "Overdue").length;
+    
+    // === START OF CORRECTED CODE ===
+    // Filters now use the new calcStatus function to get accurate counts
+    const paidLoansCount = loansThisMonth.filter((l) => calcStatus(l) === "Paid").length;
+    const activeLoansCount = loansThisMonth.filter((l) => calcStatus(l) === "Active").length;
+    const overdueLoansCount = loansThisMonth.filter((l) => calcStatus(l) === "Overdue").length;
+    // === END OF CORRECTED CODE ===
+
     const totalOutstanding = loansThisMonth
-      .filter((loan) => calcLoanStatus(loan) === "Active" || calcLoanStatus(loan) === "Overdue")
+      .filter((loan) => calcStatus(loan) === "Active" || calcStatus(loan) === "Overdue")
       .reduce(
         (sum, loan) =>
           sum +
@@ -282,6 +285,7 @@ export default function Dashboard() {
             Number(loan.repaidAmount || 0)),
         0
       );
+
     const totalExpectedProfit = loansThisMonth.reduce(
       (sum, loan) => sum + Number(loan.interest || 0),
       0
@@ -289,11 +293,12 @@ export default function Dashboard() {
     const actualProfit = loansThisMonth
       .filter(
         (loan) =>
-          calcLoanStatus(loan) === "Paid" &&
+          calcStatus(loan) === "Paid" &&
           Number(loan.repaidAmount || 0) >=
             Number(loan.principal || 0) + Number(loan.interest || 0)
       )
       .reduce((sum, loan) => sum + Number(loan.interest || 0), 0);
+
     const averageLoan = totalLoansCount > 0 ? Math.round(totalDisbursed / totalLoansCount) : 0;
 
     const getTrendPercentage = (current, previous) => {
@@ -305,7 +310,7 @@ export default function Dashboard() {
     const disbursedTrend = getTrendPercentage(totalDisbursed, totalDisbursedLastMonth);
     const collectedTrend = getTrendPercentage(totalCollected, totalCollectedLastMonth);
 
-    return [
+    const defaultCards = [
       {
         id: "investedCapital",
         label: "Invested Capital",
@@ -403,7 +408,7 @@ export default function Dashboard() {
         id: "expectedProfit",
         label: "Interest Expected",
         value: `K ${totalExpectedProfit.toLocaleString()}`,
-        color: "secondary",
+        color: "secondary", // <-- Changed to accent color
         filter: "all",
         tooltip: "Total expected profit from interest",
         progress: null,
@@ -430,13 +435,17 @@ export default function Dashboard() {
         icon: iconMap.averageLoan,
       },
     ];
+
+    return { loansForCalculations, defaultCards };
   }, [loans, selectedMonth, settings, iconMap]);
 
   const cardsToRender = useMemo(
-    () => cardsOrder.map((id) => allCards.find((c) => c.id === id)).filter(Boolean),
-    [cardsOrder, allCards]
+    () =>
+      cardsOrder.length
+        ? cardsOrder.map((id) => defaultCards.find((c) => c.id === id)).filter(Boolean)
+        : defaultCards,
+    [cardsOrder, defaultCards]
   );
-
   const executiveSummaryCards = cardsToRender.filter((card) =>
     EXECUTIVE_SUMMARY_IDS.includes(card.id)
   );
@@ -444,36 +453,37 @@ export default function Dashboard() {
     (card) => !EXECUTIVE_SUMMARY_IDS.includes(card.id)
   );
 
-  const onDragEnd = useCallback((result) => {
-    const { source, destination } = result;
+  const onDragEnd = useCallback(
+    (result) => {
+      const { source, destination } = result;
+      if (!destination || source.droppableId !== destination.droppableId) {
+        toast.error("Cards cannot be moved between sections.");
+        return;
+      }
 
-    if (!destination) return;
-    if (source.droppableId !== destination.droppableId) {
-      showSnackbar("Cards cannot be moved between sections.", "error");
-      return;
-    }
+      let reorderedCards;
+      let newCardsOrder;
 
-    let items;
-    if (source.droppableId === "executive-summary-droppable") {
-      items = Array.from(executiveSummaryCards);
-    } else {
-      items = Array.from(metricsCards);
-    }
+      if (source.droppableId === "executive-summary-droppable") {
+        reorderedCards = Array.from(executiveSummaryCards);
+        const [removed] = reorderedCards.splice(source.index, 1);
+        reorderedCards.splice(destination.index, 0, removed);
+        const metricsSectionIds = metricsCards.map((c) => c.id);
+        newCardsOrder = [...reorderedCards.map((c) => c.id), ...metricsSectionIds];
+      } else {
+        reorderedCards = Array.from(metricsCards);
+        const [removed] = reorderedCards.splice(source.index, 1);
+        reorderedCards.splice(destination.index, 0, removed);
+        const executiveSectionIds = executiveSummaryCards.map((c) => c.id);
+        newCardsOrder = [...executiveSectionIds, ...reorderedCards.map((c) => c.id)];
+      }
 
-    const [reorderedItem] = items.splice(source.index, 1);
-    items.splice(destination.index, 0, reorderedItem);
-
-    let newCardsOrder;
-    if (source.droppableId === "executive-summary-droppable") {
-      newCardsOrder = [...items.map((c) => c.id), ...metricsCards.map((c) => c.id)];
-    } else {
-      newCardsOrder = [...executiveSummaryCards.map((c) => c.id), ...items.map((c) => c.id)];
-    }
-
-    setCardsOrder(newCardsOrder);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newCardsOrder));
-    showSnackbar("Dashboard layout saved!", "success");
-  }, [executiveSummaryCards, metricsCards, showSnackbar]);
+      setCardsOrder(newCardsOrder);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newCardsOrder));
+      toast.success("Dashboard layout saved!");
+    },
+    [executiveSummaryCards, metricsCards]
+  );
 
   const handleCardClick = (filter) => {
     const params = new URLSearchParams();
@@ -494,150 +504,6 @@ export default function Dashboard() {
     >
       {title}
     </Typography>
-  );
-
-  const renderCard = (card, index) => (
-    <Draggable key={card.id} draggableId={card.id} index={index}>
-      {(provided, snapshot) => (
-        <Grid
-          item
-          xs={6}
-          sm={6}
-          md={6}
-          lg={6}
-          ref={provided.innerRef}
-          {...provided.draggableProps}
-          {...provided.dragHandleProps}
-          style={{
-            ...provided.draggableProps.style,
-            userSelect: snapshot.isDragging ? "none" : "auto",
-          }}
-        >
-          <Tooltip title={card.tooltip} arrow placement="top">
-            <motion.div
-              variants={cardVariants}
-              initial="hidden"
-              animate="visible"
-              custom={index}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => handleCardClick(card.filter)}
-              style={{ height: "100%" }}
-            >
-              <Card
-                sx={{
-                  p: isMobile ? 1 : 1.5,
-                  borderRadius: 2,
-                  height: "100%",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  textAlign: "center",
-                  backgroundColor: theme.palette.background.paper,
-                  boxShadow: theme.shadows[0],
-                  border: `1px solid ${theme.palette.grey[200]}`,
-                  transition:
-                    "box-shadow 0.3s ease-in-out, border-color 0.3s ease-in-out",
-                  "&:hover": {
-                    boxShadow: theme.shadows[2],
-                    cursor: "pointer",
-                    borderColor:
-                      theme.palette[card.color]?.main ||
-                      theme.palette.primary.main,
-                  },
-                  ...(card.pulse && { animation: "pulse 1.5s infinite" }),
-                }}
-              >
-                <Box
-                  display="flex"
-                  justifyContent="center"
-                  alignItems="center"
-                  mb={0.5}
-                  gap={0.5}
-                >
-                  <Box
-                    sx={{
-                      color:
-                        theme.palette[card.color]?.main ||
-                        theme.palette.text.primary,
-                    }}
-                  >
-                    {typeof card.icon === "function" ? card.icon(card.value) : card.icon}
-                  </Box>
-                  <Typography
-                    variant="caption"
-                    sx={{ color: theme.palette.text.secondary, fontWeight: 500 }}
-                  >
-                    {card.label}
-                  </Typography>
-                </Box>
-                <Box
-                  sx={{
-                    flexGrow: 1,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      fontWeight: 800,
-                      lineHeight: 1.1,
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      fontSize: isMobile ? "1.5rem" : "1.8rem",
-                    }}
-                  >
-                    {card.value}
-                  </Typography>
-                </Box>
-                {card.progress !== null && (
-                  <LinearProgress
-                    variant="determinate"
-                    value={card.progress * 100}
-                    sx={{
-                      height: 5,
-                      borderRadius: 2,
-                      backgroundColor: theme.palette.grey[300],
-                      "& .MuiLinearProgress-bar": {
-                        backgroundColor:
-                          theme.palette[card.color]?.main ||
-                          theme.palette.primary.main,
-                      },
-                      width: "80%",
-                      mt: 0.5,
-                      mb: 0.5,
-                    }}
-                  />
-                )}
-                {card.trend && (
-                  <Box display="flex" alignItems="center" gap={0.5} mt={0.5}>
-                    {card.trend.startsWith("+") ? (
-                      <ArrowUpwardIcon fontSize="small" sx={{ color: theme.palette.success.main }} />
-                    ) : (
-                      <ArrowDownwardIcon fontSize="small" sx={{ color: theme.palette.error.main }} />
-                    )}
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        color: card.trend.startsWith("+")
-                          ? theme.palette.success.main
-                          : theme.palette.error.main,
-                        fontWeight: 600,
-                      }}
-                    >
-                      {card.trend} vs. last month
-                    </Typography>
-                  </Box>
-                )}
-              </Card>
-            </motion.div>
-          </Tooltip>
-        </Grid>
-      )}
-    </Draggable>
   );
 
   if (loading) {
@@ -661,6 +527,153 @@ export default function Dashboard() {
       </Backdrop>
     );
   }
+
+  const renderCardSection = (cards, droppableId) => (
+    <Droppable droppableId={droppableId} direction="horizontal">
+      {(provided) => (
+        <Grid
+          container
+          spacing={isMobile ? 1 : 1.5}
+          {...provided.droppableProps}
+          ref={provided.innerRef}
+        >
+          {cards.map((card, index) => (
+            <Draggable key={card.id} draggableId={card.id} index={index}>
+              {(provided, snapshot) => (
+                <Grid
+                  item
+                  xs={6}
+                  sm={6}
+                  md={6}
+                  lg={6}
+                  ref={provided.innerRef}
+                  {...provided.draggableProps}
+                  {...provided.dragHandleProps}
+                  style={{
+                    ...provided.draggableProps.style,
+                    userSelect: snapshot.isDragging ? "none" : "auto",
+                  }}
+                >
+                  <Tooltip title={card.tooltip} arrow placement="top">
+                    <motion.div
+                      variants={cardVariants}
+                      initial="hidden"
+                      animate="visible"
+                      custom={index}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleCardClick(card.filter)}
+                      style={{ height: "100%" }}
+                    >
+                      <Card
+                        sx={{
+                          p: isMobile ? 1 : 1.5,
+                          borderRadius: 2,
+                          height: "100%",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          textAlign: "center",
+                          backgroundColor: theme.palette.background.paper,
+                          boxShadow: theme.shadows[0],
+                          border: `1px solid ${theme.palette.grey[200]}`,
+                          transition: "box-shadow 0.3s ease-in-out, border-color 0.3s ease-in-out",
+                          "&:hover": {
+                            boxShadow: theme.shadows[2],
+                            cursor: "pointer",
+                            borderColor: theme.palette[card.color]?.main || theme.palette.primary.main,
+                          },
+                          ...(card.pulse && { animation: "pulse 1.5s infinite" }),
+                        }}
+                      >
+                        <Box
+                          display="flex"
+                          justifyContent="center"
+                          alignItems="center"
+                          mb={0.5}
+                          gap={0.5}
+                        >
+                          <Box sx={{ color: theme.palette[card.color]?.main || theme.palette.text.primary }}>
+                            {typeof card.icon === "function" ? card.icon(card.value) : card.icon}
+                          </Box>
+                          <Typography
+                            variant="caption"
+                            sx={{ color: theme.palette.text.secondary, fontWeight: 500 }}
+                          >
+                            {card.label}
+                          </Typography>
+                        </Box>
+                        <Box
+                          sx={{
+                            flexGrow: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <Typography
+                            variant="h6"
+                            sx={{
+                              fontWeight: 800,
+                              lineHeight: 1.1,
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              fontSize: isMobile ? "1.5rem" : "1.8rem",
+                            }}
+                          >
+                            {card.value}
+                          </Typography>
+                        </Box>
+                        {card.progress !== null && (
+                          <LinearProgress
+                            variant="determinate"
+                            value={card.progress * 100}
+                            sx={{
+                              height: 5,
+                              borderRadius: 2,
+                              backgroundColor: theme.palette.grey[300],
+                              "& .MuiLinearProgress-bar": {
+                                backgroundColor: theme.palette[card.color]?.main || theme.palette.primary.main,
+                              },
+                              width: "80%",
+                              mt: 0.5,
+                              mb: 0.5,
+                            }}
+                          />
+                        )}
+                        {card.trend && (
+                          <Box display="flex" alignItems="center" gap={0.5} mt={0.5}>
+                            {card.trend.startsWith("+") ? (
+                              <ArrowUpwardIcon fontSize="small" sx={{ color: theme.palette.success.main }} />
+                            ) : (
+                              <ArrowDownwardIcon fontSize="small" sx={{ color: theme.palette.error.main }} />
+                            )}
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                color: card.trend.startsWith("+")
+                                  ? theme.palette.success.main
+                                  : theme.palette.error.main,
+                                fontWeight: 600,
+                              }}
+                            >
+                              {card.trend} vs. last month
+                            </Typography>
+                          </Box>
+                        )}
+                      </Card>
+                    </motion.div>
+                  </Tooltip>
+                </Grid>
+              )}
+            </Draggable>
+          ))}
+          {provided.placeholder}
+        </Grid>
+      )}
+    </Droppable>
+  );
 
   return (
     <Box
@@ -744,19 +757,7 @@ export default function Dashboard() {
             <AccordionTitle title="Executive Summary" sx={{ color: theme.palette.primary.contrastText }} />
           </AccordionSummary>
           <AccordionDetails sx={{ p: isMobile ? 1.5 : 2, pb: isMobile ? 2 : 3 }}>
-            <Droppable droppableId="executive-summary-droppable" direction="horizontal">
-              {(provided) => (
-                <Grid
-                  container
-                  spacing={isMobile ? 1 : 1.5}
-                  {...provided.droppableProps}
-                  ref={provided.innerRef}
-                >
-                  {executiveSummaryCards.map((card, index) => renderCard(card, index))}
-                  {provided.placeholder}
-                </Grid>
-              )}
-            </Droppable>
+            {renderCardSection(executiveSummaryCards, "executive-summary-droppable")}
           </AccordionDetails>
         </Accordion>
 
@@ -796,19 +797,7 @@ export default function Dashboard() {
             <AccordionTitle title="Metrics" sx={{ color: theme.palette.primary.contrastText }} />
           </AccordionSummary>
           <AccordionDetails sx={{ p: isMobile ? 1.5 : 2, pb: isMobile ? 2 : 3 }}>
-            <Droppable droppableId="metrics-droppable" direction="horizontal">
-              {(provided) => (
-                <Grid
-                  container
-                  spacing={isMobile ? 1 : 1.5}
-                  {...provided.droppableProps}
-                  ref={provided.innerRef}
-                >
-                  {metricsCards.map((card, index) => renderCard(card, index))}
-                  {provided.placeholder}
-                </Grid>
-              )}
-            </Droppable>
+            {renderCardSection(metricsCards, "metrics-droppable")}
           </AccordionDetails>
         </Accordion>
       </DragDropContext>
@@ -818,7 +807,7 @@ export default function Dashboard() {
         onChange={() => handleToggleSection("charts")}
         sx={{
           borderRadius: 2,
-          mb: isMobile ? 2 : `calc(${BOTTOM_NAV_HEIGHT}px + ${theme.spacing(2)})`,
+          mb: `calc(${BOTTOM_NAV_HEIGHT}px + ${theme.spacing(2)})`,
           backgroundColor: theme.palette.background.paper,
           boxShadow: theme.shadows[1],
           overflow: "hidden",
@@ -870,30 +859,13 @@ export default function Dashboard() {
         unmountOnExit
       >
         <Fab
-          color="secondary"
+          color="secondary" // <-- Changed to accent color
           aria-label="add loan"
           onClick={() => navigate("/new-loan")}
         >
           <AddIcon />
         </Fab>
       </Zoom>
-
-      {/* --- Snackbar Component Rendered Here --- */}
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={6000}
-        onClose={handleSnackbarClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-      >
-        <Alert
-          onClose={handleSnackbarClose}
-          severity={snackbarSeverity}
-          variant="filled"
-          sx={{ width: '100%' }}
-        >
-          {snackbarMessage}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 }
