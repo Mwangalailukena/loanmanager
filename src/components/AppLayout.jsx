@@ -1,49 +1,103 @@
 // src/components/AppLayout.jsx
 
-import React, { useState } from "react";
-import { Box, Toolbar, useTheme } from "@mui/material";
-import AppBarTop from "./AppBarTop";
-import Sidebar from "./Sidebar";
-import LoanList from "../pages/LoanList"; // Make sure to import LoanList to use its name for the check
+import React, { useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import {
+  useTheme,
+  useMediaQuery,
+  Box,
+  CssBaseline,
+} from '@mui/material';
 
-export default function AppLayout({ children }) {
-  const [mobileOpen, setMobileOpen] = useState(false);
+import AppBarTop from './AppBarTop';
+import BottomNavBar from './BottomNavBar';
+import Sidebar from './Sidebar';
+import LoanDetailDialog from './LoanDetailDialog';
+
+const drawerWidth = 220;
+
+const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
+  const { pathname } = useLocation();
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
+  // NEW: State for the live search term
   const [searchTerm, setSearchTerm] = useState("");
 
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
+  // === DIALOG STATE AND HANDLERS ===
+  const [loanDetailOpen, setLoanDetailOpen] = useState(false);
+  const [selectedLoanId, setSelectedLoanId] = useState(null);
+
+  const handleOpenLoanDetail = (loanId) => {
+    setSelectedLoanId(loanId);
+    setLoanDetailOpen(true);
   };
-  
-  // CORRECTED: Use React.Children.map to carefully pass the prop
-  const childrenWithProps = React.Children.map(children, child => {
-    if (React.isValidElement(child)) {
-      // We check if the child component is specifically the LoanList component
-      // Only then do we inject the globalSearchTerm prop
-      if (child.type.name === LoanList.name) {
-        return React.cloneElement(child, { globalSearchTerm: searchTerm });
-      }
-    }
-    return child;
-  });
+
+  const handleCloseLoanDetail = () => {
+    setLoanDetailOpen(false);
+    setSelectedLoanId(null);
+  };
+  // ===================================
+
+  const hideLayout = ['/login', '/register', '/forgot-password'].includes(pathname);
+  const bottomNavHeight = isMobile && !hideLayout ? 64 : 0;
+
+  if (hideLayout) {
+    return <>{children}</>;
+  }
 
   return (
-    <Box sx={{ display: "flex" }}>
-      <AppBarTop onDrawerToggle={handleDrawerToggle} onSearchChange={setSearchTerm} />
-      <Sidebar mobileOpen={mobileOpen} onDrawerToggle={handleDrawerToggle} />
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <CssBaseline />
+      
+      {/* UPDATED: Pass the searchTerm and setSearchTerm props */}
+      <AppBarTop 
+        darkMode={darkMode} 
+        onToggleDarkMode={onToggleDarkMode} 
+        onOpenLoanDetail={handleOpenLoanDetail} 
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+      />
+
       <Box
-        component="main"
         sx={{
-          flexGrow: 1,
-          p: 3,
-          width: { sm: `calc(100% - ${240}px)` },
-          [theme.breakpoints.up("sm")]: { ml: `${240}px` },
+          display: 'flex',
+          flex: 1,
+          paddingTop: theme.mixins.toolbar,
+          paddingBottom: `${bottomNavHeight}px`,
         }}
       >
-        <Toolbar />
-        {childrenWithProps}
+        {!hideLayout && <Sidebar drawerWidth={drawerWidth} />}
+
+        <Box
+          component="main"
+          sx={{
+            flexGrow: 1,
+            overflowY: 'auto',
+            boxSizing: 'border-box',
+            background: theme.palette.background.default,
+            minHeight: 0,
+            height: '100%',
+            px: isMobile ? 2 : 4,
+            paddingTop: '70px',
+            pb: 0,
+          }}
+        >
+          {/* UPDATED: We need to pass the searchTerm to the child component */}
+          {React.cloneElement(children, { searchTerm })}
+        </Box>
       </Box>
+
+      {!hideLayout && isMobile && <BottomNavBar />}
+
+      <LoanDetailDialog
+        key={selectedLoanId}
+        open={loanDetailOpen}
+        onClose={handleCloseLoanDetail}
+        loanId={selectedLoanId}
+      />
     </Box>
   );
-}
+};
+
+export default AppLayout;
