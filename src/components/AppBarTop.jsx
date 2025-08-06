@@ -1,3 +1,5 @@
+// src/components/AppBarTop.jsx
+
 import React, { useState, useEffect } from "react";
 import {
   AppBar,
@@ -60,7 +62,8 @@ const Transition = React.forwardRef(function Transition(props, ref) {
   return <Slide direction="up" ref={ref} {...props} />;
 });
 
-const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
+// ACCEPT THE NEW PROP HERE
+const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail }) => {
   const { currentUser } = useAuth();
   const { loans } = useFirestore();
   const navigate = useNavigate();
@@ -85,7 +88,6 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
     if (!loans) return;
     const now = dayjs();
     
-    // Filter for upcoming loans due within 3 days
     const upcoming = loans.filter(
       (loan) =>
         loan.status !== "Paid" &&
@@ -94,37 +96,29 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
         dayjs(loan.dueDate).diff(now, "day") >= 0
     );
     
-    // Filter for overdue loans
     const overdue = loans.filter(
       (loan) => loan.status !== "Paid" && dayjs(loan.dueDate).isBefore(now, "day")
     );
 
     const notes = [];
     
-    // =========================================================
-    // === MODIFICATION START: Create notifications per loan ===
-    // =========================================================
-    
-    // Loop through each upcoming loan and create a specific notification
     upcoming.forEach(loan => {
       notes.push({
         id: loan.id,
         message: `Loan for ${loan.borrower} is due on ${dayjs(loan.dueDate).format("MMM D")}.`,
-        link: `/loans/${loan.id}`, // Correctly links to individual loan's detail page
+        // We now store the loan ID instead of a link
+        loanId: loan.id,
       });
     });
 
-    // Loop through each overdue loan and create a specific notification
     overdue.forEach(loan => {
       notes.push({
         id: loan.id,
         message: `Loan for ${loan.borrower} is overdue!`,
-        link: `/loans/${loan.id}`, // Correctly links to individual loan's detail page
+        // We now store the loan ID instead of a link
+        loanId: loan.id,
       });
     });
-    // =======================================================
-    // === MODIFICATION END ==================================
-    // =======================================================
 
     setNotifications(notes);
   }, [loans]);
@@ -214,8 +208,9 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
     if (e.key === "Escape") toggleSearch();
   };
 
-  const handleNotificationItemClick = (link) => {
-    navigate(link);
+  // NEW: This now calls the prop function with the loanId
+  const handleNotificationItemClick = (loanId) => {
+    onOpenLoanDetail(loanId);
     closeNotifications();
   };
 
@@ -226,12 +221,10 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
         elevation={0}
         sx={{
           zIndex: theme.zIndex.drawer + 1,
-          // --- GLASSMORPHISM STYLES START ---
           backdropFilter: 'blur(12px) saturate(180%)',
           backgroundColor: 'rgba(255, 255, 255, 0.1)',
           borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
           boxShadow: theme.shadows[3],
-          // --- GLASSMORPHISM STYLES END ---
         }}
       >
         <Toolbar sx={{ px: isMobile ? 2 : 3 }}>
@@ -472,10 +465,11 @@ const AppBarTop = ({ onToggleDarkMode, darkMode }) => {
             No new notifications.
           </Typography>
         ) : (
-          notifications.map(({ id, message, link }) => (
+          notifications.map(({ id, message, loanId }) => (
             <MenuItem
               key={id}
-              onClick={() => handleNotificationItemClick(link)}
+              // Pass the loanId to the new handler function
+              onClick={() => handleNotificationItemClick(loanId)}
               sx={{ whiteSpace: "normal", borderRadius: 1, mb: 0.5, "&:last-child": { mb: 0 } }}
             >
               <Typography variant="body2" color="text.primary">
