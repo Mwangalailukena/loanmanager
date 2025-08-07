@@ -44,8 +44,6 @@ import {
   Close as CloseIcon,
 } from "@mui/icons-material";
 import { useFirestore } from "../contexts/FirestoreProvider";
-import { useAuth } from "../contexts/AuthProvider"; // <-- Added this missing import
-import { useSnackbar } from "../contexts/SnackbarProvider"; // <-- Added this missing import
 import { exportToCsv } from "../utils/exportCSV";
 import { motion, AnimatePresence } from "framer-motion";
 import dayjs from "dayjs";
@@ -63,9 +61,6 @@ const interestOptions = [
 
 export default function LoanList({ globalSearchTerm }) {
   const { loans, loadingLoans, deleteLoan, addPayment, updateLoan, getPaymentsByLoanId, settings } = useFirestore();
-  const { showSnackbar } = useSnackbar(); // Now correctly imported
-  const { user } = useAuth(); // Now correctly imported
-  
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [searchParams, setSearchParams] = useSearchParams();
@@ -162,6 +157,8 @@ export default function LoanList({ globalSearchTerm }) {
     },
   };
   
+  // NEW/UPDATED: Sync the local search term with the global one.
+  // This hook ensures the local search TextField reflects the global search input.
   useEffect(() => {
     const urlFilter = searchParams.get('filter');
     const urlMonth = searchParams.get('month');
@@ -307,7 +304,6 @@ export default function LoanList({ globalSearchTerm }) {
         setSelectedLoanIds((prev) => prev.filter(id => id !== confirmDelete.loanId));
       } catch (error) {
         console.error("Error deleting loan:", error);
-        showSnackbar("Failed to delete loan.", "error");
       } finally {
         setIsDeleting(false);
       }
@@ -320,16 +316,15 @@ export default function LoanList({ globalSearchTerm }) {
       await Promise.all(selectedLoanIds.map(id => deleteLoan(id)));
       setSelectedLoanIds([]);
       setConfirmBulkDelete(false);
-      showSnackbar(`${selectedLoanIds.length} loans deleted successfully!`, "success");
     } catch (error) {
       console.error("Error bulk deleting loans:", error);
-      showSnackbar("Failed to delete loans.", "error");
     } finally {
       setIsBulkDeleting(false);
     }
   };
 
   const openEditModal = (loan) => {
+    // The initial due date is set from the loan record, not recalculated
     setEditData({
       borrower: loan.borrower,
       phone: loan.phone,
@@ -360,6 +355,7 @@ export default function LoanList({ globalSearchTerm }) {
     const calculatedInterestAmount = calculateInterest(principalAmount, selectedDuration);
     const calculatedTotalRepayable = principalAmount + calculatedInterestAmount;
 
+    // The dueDate is not recalculated here; it is preserved from the original record.
     const updatedLoan = {
       ...editModal.loan,
       borrower: editData.borrower,
@@ -375,11 +371,9 @@ export default function LoanList({ globalSearchTerm }) {
     try {
       await updateLoan(editModal.loan.id, updatedLoan);
       setEditModal({ open: false, loan: null });
-      showSnackbar("Loan updated successfully!", "success");
     } catch (error) {
       console.error("Error updating loan:", error);
       setEditErrors({ form: "Failed to update loan. Please try again." });
-      showSnackbar("Failed to update loan.", "error");
     } finally {
       setIsSavingEdit(false);
     }
@@ -414,7 +408,6 @@ export default function LoanList({ globalSearchTerm }) {
     } catch (error) {
       console.error("Error adding payment:", error);
       setPaymentError("Failed to add payment. Please try again.");
-      showSnackbar("Failed to add payment.", "error");
     } finally {
       setIsAddingPayment(false);
     }
@@ -428,7 +421,6 @@ export default function LoanList({ globalSearchTerm }) {
     } catch (error) {
       console.error("Error fetching payment history:", error);
       setHistoryModal((prev) => ({ ...prev, payments: [], loading: false }));
-      showSnackbar("Failed to load payment history.", "error");
     }
   };
 
@@ -928,6 +920,7 @@ export default function LoanList({ globalSearchTerm }) {
         </>
       )}
 
+      {/* Confirm Delete Dialog */}
       <Dialog open={confirmDelete.open} onClose={() => setConfirmDelete({ open: false, loanId: null })} maxWidth="xs" fullWidth >
         <DialogTitle fontSize="1.1rem">Confirm Delete</DialogTitle>
         <DialogContent sx={{ pb: 1 }}>
@@ -939,6 +932,7 @@ export default function LoanList({ globalSearchTerm }) {
         </DialogActions>
       </Dialog>
 
+      {/* Confirm Bulk Delete Dialog */}
       <Dialog open={confirmBulkDelete} onClose={() => setConfirmBulkDelete(false)} maxWidth="xs" fullWidth >
         <DialogTitle fontSize="1.1rem">Confirm Bulk Delete</DialogTitle>
         <DialogContent sx={{ pb: 1 }}>
@@ -950,6 +944,7 @@ export default function LoanList({ globalSearchTerm }) {
         </DialogActions>
       </Dialog>
 
+      {/* Payment Modal */}
       <Dialog open={paymentModal.open} onClose={() => setPaymentModal({ open: false, loanId: null })} maxWidth="xs" fullWidth >
         <DialogTitle fontSize="1.1rem">Add Payment</DialogTitle>
         <DialogContent sx={{ pb: 1 }}>
@@ -982,6 +977,7 @@ export default function LoanList({ globalSearchTerm }) {
         </DialogActions>
       </Dialog>
       
+      {/* Edit Loan Modal */}
       <Dialog open={editModal.open} onClose={() => setEditModal({ open: false, loan: null })} maxWidth="xs" fullWidth>
         <DialogTitle fontSize="1.1rem">Edit Loan</DialogTitle>
         <DialogContent sx={{ pb: 1 }}>
@@ -1039,6 +1035,7 @@ export default function LoanList({ globalSearchTerm }) {
                   const interest = calculateInterest(principal, duration);
                   const totalRepayable = principal + interest;
                   
+                  // This fix ensures the dueDate is NOT recalculated when changing duration
                   setEditData({ ...editData, interestDuration: duration, interest, totalRepayable });
                 }}
               >
@@ -1090,6 +1087,7 @@ export default function LoanList({ globalSearchTerm }) {
         </DialogActions>
       </Dialog>
       
+      {/* Payment History Modal */}
       <Dialog open={historyModal.open} onClose={() => setHistoryModal({ open: false, loanId: null, payments: [], loading: false })} maxWidth="xs" fullWidth>
         <DialogTitle fontSize="1.1rem">Payment History</DialogTitle>
         <DialogContent dividers>
