@@ -50,13 +50,12 @@ const BottomNavBar = () => {
         bottom: 12,
         left: 0,
         right: 0,
-        // Center the paper horizontally with a max-width
-        width: "calc(100% - 24px)", // 12px padding on each side
-        maxWidth: 600, // Or a suitable max width for your design
+        width: "calc(100% - 24px)",
+        maxWidth: 600,
         margin: "0 auto",
         display: { xs: "block", sm: "none" },
         zIndex: theme.zIndex.appBar + 1,
-        borderRadius: 16, // Apply consistent border radius
+        borderRadius: 16,
         overflow: "hidden",
         backdropFilter: "blur(12px) saturate(180%)",
         backgroundColor: "rgba(255, 255, 255, 0.1)",
@@ -72,34 +71,34 @@ const BottomNavBar = () => {
         sx={{
           height: BOTTOM_NAV_HEIGHT,
           backgroundColor: "transparent",
-          // General styles for all actions
           "& .MuiBottomNavigationAction-root": {
-            position: "relative", // Needed for the pill animation
+            position: "relative",
             minWidth: 0,
             px: 1,
             color: theme.palette.text.secondary,
             transition: "color 0.3s ease-in-out",
 
-            // Pill-shaped highlight animation
+            // --- HALO/SPOTLIGHT ANIMATION ---
             "&::before": {
               content: '""',
               position: "absolute",
               top: "50%",
               left: "50%",
-              transform: "translate(-50%, -50%) scale(0.7)", // Start small and slightly transparent
-              width: "calc(100% - 16px)", // Adjust pill width
-              height: "80%",
-              borderRadius: 12,
+              // Make it a circle and set initial size and opacity
+              width: 50, // Fixed size for a consistent circle
+              height: 50,
+              borderRadius: "50%",
               backgroundColor: "transparent",
+              // Animate scale and background color for a halo effect
+              transform: "translate(-50%, -50%) scale(0)",
               transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease-in-out",
             },
 
-            // Selected state styles
             "&.Mui-selected": {
               color: theme.palette.primary.main,
               fontWeight: theme.typography.fontWeightMedium,
 
-              // Animate the pill to its full size and color
+              // Animate the halo to appear
               "&::before": {
                 transform: "translate(-50%, -50%) scale(1)",
                 backgroundColor: theme.palette.mode === 'light' ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.08)',
@@ -118,7 +117,6 @@ const BottomNavBar = () => {
               transform: "translateY(0)",
             },
           },
-          // Custom label styles
           "& .MuiBottomNavigationAction-label.Mui-selected": {
             fontSize: "0.75rem",
             transform: "scale(1)",
