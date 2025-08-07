@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   TextField,
@@ -15,29 +15,22 @@ import {
   DialogActions,
   Paper,
   useTheme,
-  // NEW IMPORTS FOR DISPLAY IMPROVEMENTS
   Divider,
   Card,
   CardContent,
+  Chip,
 } from "@mui/material";
-// NEW IMPORTS FOR ICONS
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
-import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import PersonIcon from '@mui/icons-material/Person';
 import PhoneIcon from '@mui/icons-material/Phone';
-// EXISTING IMPORTS
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { toast } from "react-toastify";
 
 const OFFLINE_PAYMENTS_KEY = "offlinePayments";
 
-/**
- * Renders a form for adding a new payment to a loan.
- * Includes features for searching loans, displaying loan details,
- * and handling offline payments.
- */
 export default function AddPaymentPage() {
   const theme = useTheme();
   const { loans, addPayment, loadingLoans } = useFirestore();
@@ -49,7 +42,6 @@ export default function AddPaymentPage() {
   const [loading, setLoading] = useState(false);
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
 
-  // Syncs offline payments when the user comes online
   useEffect(() => {
     async function syncOfflinePayments() {
       const savedPayments = JSON.parse(localStorage.getItem(OFFLINE_PAYMENTS_KEY) || "[]");
@@ -79,14 +71,22 @@ export default function AddPaymentPage() {
     return () => window.removeEventListener("online", handleOnline);
   }, [addPayment]);
 
-  // Memoizes the list of active loans to prevent re-filtering on every render
-  const activeLoans = useMemo(() => loans.filter(loan => loan.status === "Active"), [loans]);
+  const getUniqueActiveLoans = () => {
+    const uniqueIds = new Set();
+    const result = loans.filter(loan => {
+      if (loan.status === "Active" && !uniqueIds.has(loan.id)) {
+        uniqueIds.add(loan.id);
+        return true;
+      }
+      return false;
+    });
+    return result;
+  };
 
   const setFieldError = (field, message) => {
     setFieldErrors(prev => ({ ...prev, [field]: message }));
   };
 
-  // NEW: Real-time clearing of errors for a better user experience
   useEffect(() => { setFieldError('loan', ''); setGeneralError(''); }, [selectedLoan]);
   useEffect(() => { setFieldError('amount', ''); setGeneralError(''); }, [paymentAmount]);
 
@@ -160,7 +160,6 @@ export default function AddPaymentPage() {
   const remainingBalance = selectedLoan ? selectedLoan.totalRepayable - currentRepaid : 0;
   const prospectiveRemaining = remainingBalance - Number(paymentAmount || 0);
   
-  // Reusable styles for the focused state of form fields
   const textFieldStyles = {
     "& .MuiOutlinedInput-root": {
       "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
@@ -199,10 +198,8 @@ export default function AddPaymentPage() {
           <Autocomplete
             sx={textFieldStyles}
             id="loan-borrower-search"
-            options={activeLoans}
-            getOptionLabel={(option) =>
-              `${option.borrower} (Phone: ${option.phone})`
-            }
+            options={getUniqueActiveLoans()}
+            getOptionLabel={(option) => option.borrower}
             value={selectedLoan}
             onChange={(e, newValue) => setSelectedLoan(newValue)}
             loading={loadingLoans}
@@ -226,6 +223,28 @@ export default function AddPaymentPage() {
               />
             )}
             isOptionEqualToValue={(option, value) => option.id === value.id}
+            renderOption={(props, option) => {
+              const outstandingAmount = (option.totalRepayable - (option.repaidAmount || 0)).toFixed(2).toLocaleString();
+              return (
+                <Box 
+                  component="li" 
+                  {...props} 
+                  // The following `sx` properties create the desired layout:
+                  sx={{ 
+                    display: 'flex', // Use Flexbox for alignment
+                    alignItems: 'center', // Vertically center the items
+                    justifyContent: 'space-between' // Pushes the name to the left and the chip to the far right
+                  }}
+                >
+                  <Typography variant="body1" fontWeight="bold">{option.borrower}</Typography>
+                  <Chip
+                    label={`ZMW ${outstandingAmount}`}
+                    color="primary"
+                    size="small"
+                  />
+                </Box>
+              );
+            }}
             filterOptions={(options, { inputValue }) => {
               const search = inputValue.toLowerCase();
               return options.filter(
@@ -238,7 +257,6 @@ export default function AddPaymentPage() {
           />
 
           {selectedLoan && (
-            // NEW: Using a Card for a more defined, elevated look
             <Card
               variant="outlined"
               sx={{
@@ -255,36 +273,35 @@ export default function AddPaymentPage() {
                   <Box display="flex" alignItems="center" gap={1}>
                     <PersonIcon color="primary" fontSize="small" />
                     <Typography variant="body2" sx={{ flexGrow: 1 }}>
-                      Borrower: **{selectedLoan.borrower}**
+                      Borrower: {selectedLoan.borrower}
                     </Typography>
                   </Box>
                   <Box display="flex" alignItems="center" gap={1}>
                     <PhoneIcon color="primary" fontSize="small" />
                     <Typography variant="body2" sx={{ flexGrow: 1 }}>
-                      Phone: **{selectedLoan.phone}**
+                      Phone: {selectedLoan.phone}
                     </Typography>
                   </Box>
                   <Box display="flex" alignItems="center" gap={1}>
                     <MonetizationOnIcon color="primary" fontSize="small" />
                     <Typography variant="body2" sx={{ flexGrow: 1 }}>
-                      Principal: **ZMW {selectedLoan.principal.toFixed(2).toLocaleString()}**
+                      Principal: ZMW {selectedLoan.principal.toFixed(2).toLocaleString()}
                     </Typography>
                   </Box>
                   <Box display="flex" alignItems="center" gap={1}>
                     <AccountBalanceWalletIcon color="primary" fontSize="small" />
                     <Typography variant="body2" sx={{ flexGrow: 1 }}>
-                      Total Repayable: **ZMW {selectedLoan.totalRepayable.toFixed(2).toLocaleString()}**
+                      Total Repayable: ZMW {selectedLoan.totalRepayable.toFixed(2).toLocaleString()}
                     </Typography>
                   </Box>
                   <Box display="flex" alignItems="center" gap={1}>
                     <CheckCircleOutlineIcon color="primary" fontSize="small" />
                     <Typography variant="body2" sx={{ flexGrow: 1 }}>
-                      Already Repaid: **ZMW {currentRepaid.toFixed(2).toLocaleString()}**
+                      Already Repaid: ZMW {currentRepaid.toFixed(2).toLocaleString()}
                     </Typography>
                   </Box>
                 </Stack>
                 
-                {/* NEW: A divider to separate the main balance from the rest */}
                 <Divider sx={{ my: 1 }} />
 
                 <Box display="flex" alignItems="center" gap={1} sx={{ mt: 1 }}>
@@ -322,7 +339,6 @@ export default function AddPaymentPage() {
           />
 
           {selectedLoan && parseFloat(paymentAmount) > 0 && (
-            // NEW: Enhanced styling for the prospective balance box
             <Box
               sx={{
                 p: 2,
@@ -333,14 +349,14 @@ export default function AddPaymentPage() {
               }}
             >
               <Typography variant="body2" color="text.secondary">
-                After this payment, **{selectedLoan.borrower}'s** loan balance will be:
+                After this payment, {selectedLoan.borrower}'s loan balance will be:
               </Typography>
               <Typography
                 variant="h6"
                 fontWeight="bold"
                 color={prospectiveRemaining <= 0.01 ? "success.main" : "text.primary"}
               >
-                **ZMW {Math.max(0, prospectiveRemaining).toFixed(2).toLocaleString()}**
+                ZMW {Math.max(0, prospectiveRemaining).toFixed(2).toLocaleString()}
                 {prospectiveRemaining <= 0.01 && " (Loan will be paid in full)"}
               </Typography>
             </Box>
@@ -368,16 +384,16 @@ export default function AddPaymentPage() {
         <DialogContent>
           {selectedLoan && (
             <DialogContentText id="confirm-payment-description">
-              You are about to add a payment of **ZMW {Number(paymentAmount).toFixed(2).toLocaleString()}**
-              for **{selectedLoan.borrower}**'s loan.
+              You are about to add a payment of ZMW {Number(paymentAmount).toFixed(2).toLocaleString()}
+              for {selectedLoan.borrower}'s loan.
               <br />
-              The current remaining balance is **ZMW {remainingBalance.toFixed(2).toLocaleString()}**.
+              The current remaining balance is ZMW {remainingBalance.toFixed(2).toLocaleString()}.
               <br />
-              After this payment, the remaining balance will be **ZMW {Math.max(0, prospectiveRemaining).toFixed(2).toLocaleString()}**.
+              After this payment, the remaining balance will be ZMW {Math.max(0, prospectiveRemaining).toFixed(2).toLocaleString()}.
               {prospectiveRemaining <= 0.01 && " (This loan will be marked as Paid.)"}
               <br />
               <br />
-              **Confirm to proceed?**
+              Confirm to proceed?
             </DialogContentText>
           )}
         </DialogContent>
