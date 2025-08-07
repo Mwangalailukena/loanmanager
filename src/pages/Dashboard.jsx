@@ -905,7 +905,7 @@ export default function Dashboard() {
         <Fab
           color="secondary"
           aria-label="add loan"
-          onClick={() => navigate("/new-loan-form")}
+          onClick={() => navigate("/add-loan")}
         >
           <AddIcon />
         </Fab>
