@@ -71,17 +71,8 @@ export default function AddPaymentPage() {
     return () => window.removeEventListener("online", handleOnline);
   }, [addPayment]);
 
-  const getUniqueActiveLoans = () => {
-    const uniqueIds = new Set();
-    const result = loans.filter(loan => {
-      if (loan.status === "Active" && !uniqueIds.has(loan.id)) {
-        uniqueIds.add(loan.id);
-        return true;
-      }
-      return false;
-    });
-    return result;
-  };
+  // Removed getUniqueActiveLoans as it's no longer needed.
+  // The filtering is now handled directly in the Autocomplete options prop.
 
   const setFieldError = (field, message) => {
     setFieldErrors(prev => ({ ...prev, [field]: message }));
@@ -198,7 +189,8 @@ export default function AddPaymentPage() {
           <Autocomplete
             sx={textFieldStyles}
             id="loan-borrower-search"
-            options={getUniqueActiveLoans()}
+            // FIX #1: Filter loans directly in the options prop
+            options={loans.filter(loan => loan.status === "Active")}
             getOptionLabel={(option) => option.borrower}
             value={selectedLoan}
             onChange={(e, newValue) => setSelectedLoan(newValue)}
@@ -229,14 +221,26 @@ export default function AddPaymentPage() {
                 <Box 
                   component="li" 
                   {...props} 
-                  // The following `sx` properties create the desired layout:
                   sx={{ 
-                    display: 'flex', // Use Flexbox for alignment
-                    alignItems: 'center', // Vertically center the items
-                    justifyContent: 'space-between' // Pushes the name to the left and the chip to the far right
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    width: '100%', // Ensure the container takes full width
                   }}
                 >
-                  <Typography variant="body1" fontWeight="bold">{option.borrower}</Typography>
+                  {/* FIX #2: Add flexGrow: 1 to Typography to push the chip to the far right */}
+                  <Typography 
+                    variant="body1" 
+                    fontWeight="bold"
+                    sx={{
+                      flexGrow: 1, 
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}
+                  >
+                    {option.borrower}
+                  </Typography>
                   <Chip
                     label={`ZMW ${outstandingAmount}`}
                     color="primary"
