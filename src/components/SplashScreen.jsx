@@ -51,7 +51,7 @@ const fadeIn = keyframes`
   }
 `;
 
-const SplashScreen = ({ onFadeOutComplete, duration = 3000 }) => {
+const SplashScreen = ({ onFadeOutComplete, duration = 5000 }) => {
   const theme = useTheme();
   const [progress, setProgress] = useState(0); // State for progress bar
 
