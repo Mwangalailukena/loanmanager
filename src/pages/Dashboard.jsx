@@ -24,6 +24,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PendingIcon from "@mui/icons-material/Pending";
 import WarningIcon from "@mui/icons-material/Warning";
 import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
+import AccountBalanceIcon from "@mui/icons-material/AccountBalance"; // NEW: Imported the bank icon
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -54,11 +55,13 @@ const EXECUTIVE_SUMMARY_VISIBILITY_KEY = "dashboardExecutiveSummaryVisibility";
 const METRICS_VISIBILITY_KEY = "dashboardMetricsVisibility";
 const CHART_SECTION_VISIBILITY_KEY = "dashboardChartsVisibility";
 
+// --- UPDATED: Added 'partnerDividends' to the card IDs list ---
 const DEFAULT_CARD_IDS = [
   "investedCapital",
   "availableCapital",
   "totalDisbursed",
   "totalCollected",
+  "partnerDividends", // Added new card ID
   "totalLoans",
   "paidLoans",
   "activeLoans",
@@ -73,6 +76,7 @@ const EXECUTIVE_SUMMARY_IDS = [
   "availableCapital",
   "totalDisbursed",
   "totalCollected",
+  "partnerDividends", // Added new card ID
 ];
 
 const getInitialVisibility = (key, defaultValue) => {
@@ -147,6 +151,8 @@ export default function Dashboard() {
       expectedProfit: <BarChartIcon sx={iconSize} />,
       actualProfit: <CheckCircleIcon sx={iconSize} />,
       averageLoan: <MonetizationOnIcon sx={iconSize} />,
+      // UPDATED: Used AccountBalanceIcon (bank icon) for Partner Dividends
+      partnerDividends: <AccountBalanceIcon sx={iconSize} />,
     };
   }, [isMobile]);
 
@@ -255,11 +261,13 @@ export default function Dashboard() {
       (sum, loan) => sum + Number(loan.repaidAmount || 0),
       0
     );
+    
+    // UPDATED: Added calculation for partner dividends
+    const partnerDividends = totalCollected / 2;
 
     const initialCapital = Number(settings?.initialCapital) || 60000;
     const availableCapital = initialCapital - totalDisbursed + totalCollected;
     const totalLoansCount = loansThisMonth.length;
-    
     const paidLoansCount = loansThisMonth.filter((l) => calcStatus(l) === "Paid").length;
     const activeLoansCount = loansThisMonth.filter((l) => calcStatus(l) === "Active").length;
     const overdueLoansCount = loansThisMonth.filter((l) => calcStatus(l) === "Overdue").length;
@@ -341,6 +349,17 @@ export default function Dashboard() {
         progress: totalDisbursed > 0 ? totalCollected / totalDisbursed : null,
         icon: iconMap.totalCollected,
         trend: collectedTrend,
+      },
+      // UPDATED: Added the new Partner Dividends card object
+      {
+        id: "partnerDividends",
+        label: "Partner Dividends",
+        value: `K ${partnerDividends.toLocaleString()}`,
+        color: "secondary",
+        filter: "paid",
+        tooltip: "Half of the total amount collected this month, allocated as partner dividends.",
+        progress: null,
+        icon: iconMap.partnerDividends,
       },
       {
         id: "totalLoans",
