@@ -24,7 +24,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PendingIcon from "@mui/icons-material/Pending";
 import WarningIcon from "@mui/icons-material/Warning";
 import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
-import AccountBalanceIcon from "@mui/icons-material/AccountBalance"; // NEW: Imported the bank icon
+import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -55,13 +55,12 @@ const EXECUTIVE_SUMMARY_VISIBILITY_KEY = "dashboardExecutiveSummaryVisibility";
 const METRICS_VISIBILITY_KEY = "dashboardMetricsVisibility";
 const CHART_SECTION_VISIBILITY_KEY = "dashboardChartsVisibility";
 
-// --- UPDATED: Added 'partnerDividends' to the card IDs list ---
 const DEFAULT_CARD_IDS = [
   "investedCapital",
   "availableCapital",
   "totalDisbursed",
   "totalCollected",
-  "partnerDividends", // Added new card ID
+  "partnerDividends",
   "totalLoans",
   "paidLoans",
   "activeLoans",
@@ -76,7 +75,7 @@ const EXECUTIVE_SUMMARY_IDS = [
   "availableCapital",
   "totalDisbursed",
   "totalCollected",
-  "partnerDividends", // Added new card ID
+  "partnerDividends",
 ];
 
 const getInitialVisibility = (key, defaultValue) => {
@@ -151,7 +150,6 @@ export default function Dashboard() {
       expectedProfit: <BarChartIcon sx={iconSize} />,
       actualProfit: <CheckCircleIcon sx={iconSize} />,
       averageLoan: <MonetizationOnIcon sx={iconSize} />,
-      // UPDATED: Used AccountBalanceIcon (bank icon) for Partner Dividends
       partnerDividends: <AccountBalanceIcon sx={iconSize} />,
     };
   }, [isMobile]);
@@ -262,8 +260,24 @@ export default function Dashboard() {
       0
     );
     
-    // UPDATED: Added calculation for partner dividends
-    const partnerDividends = totalCollected / 2;
+    // NEW: Profit calculation for dividends
+    const actualProfit = loansThisMonth
+        .filter(
+            (loan) =>
+            calcStatus(loan) === "Paid" &&
+            Number(loan.repaidAmount || 0) >=
+                Number(loan.principal || 0) + Number(loan.interest || 0)
+        )
+        .reduce((sum, loan) => sum + Number(loan.interest || 0), 0);
+
+    // NEW: Partner dividends are now based on actual profit
+    const totalPartnerDividends = actualProfit * 0.5;
+
+    // NEW: Assume two partners with a 50/50 split
+    const individualPartnerDividends = [
+        { name: "Partner A", amount: totalPartnerDividends * 0.5 },
+        { name: "Partner B", amount: totalPartnerDividends * 0.5 },
+    ];
 
     const initialCapital = Number(settings?.initialCapital) || 60000;
     const availableCapital = initialCapital - totalDisbursed + totalCollected;
@@ -287,15 +301,7 @@ export default function Dashboard() {
       (sum, loan) => sum + Number(loan.interest || 0),
       0
     );
-    const actualProfit = loansThisMonth
-      .filter(
-        (loan) =>
-          calcStatus(loan) === "Paid" &&
-          Number(loan.repaidAmount || 0) >=
-            Number(loan.principal || 0) + Number(loan.interest || 0)
-      )
-      .reduce((sum, loan) => sum + Number(loan.interest || 0), 0);
-
+    
     const averageLoan = totalLoansCount > 0 ? Math.round(totalDisbursed / totalLoansCount) : 0;
 
     const getTrendPercentage = (current, previous) => {
@@ -350,15 +356,29 @@ export default function Dashboard() {
         icon: iconMap.totalCollected,
         trend: collectedTrend,
       },
-      // UPDATED: Added the new Partner Dividends card object
+      // UPDATED: The Partner Dividends card with new calculations and tooltip
       {
         id: "partnerDividends",
         label: "Partner Dividends",
-        value: `K ${partnerDividends.toLocaleString()}`,
+        value: `K ${totalPartnerDividends.toLocaleString()}`,
         color: "secondary",
         filter: "paid",
-        tooltip: "Half of the total amount collected this month, allocated as partner dividends.",
-        progress: null,
+        tooltip: (
+            <Box>
+                <Typography variant="body2" fontWeight="bold">
+                    Total Dividends (50% of Actual Profit)
+                </Typography>
+                <Typography variant="caption" display="block" mb={1}>
+                    Actual Profit this month: K {actualProfit.toLocaleString()}
+                </Typography>
+                {individualPartnerDividends.map((p) => (
+                    <Typography key={p.name} variant="caption" display="block">
+                        {`${p.name}: K ${p.amount.toLocaleString()}`}
+                    </Typography>
+                ))}
+            </Box>
+        ),
+        progress: totalExpectedProfit > 0 ? totalPartnerDividends / totalExpectedProfit : 0,
         icon: iconMap.partnerDividends,
       },
       {
