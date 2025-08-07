@@ -1,5 +1,3 @@
-// src/components/AppBarTop.jsx
-
 import React, { useState, useEffect } from "react";
 import {
   AppBar,
@@ -19,8 +17,11 @@ import {
   TextField,
   InputAdornment,
   Box,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
 } from "@mui/material";
-// NEW IMPORT: alpha is needed to create semi-transparent colors from the theme palette
 import { alpha } from "@mui/material/styles";
 import {
   Logout,
@@ -78,7 +79,16 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail, onSearchChang
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [notifications, setNotifications] = useState([]);
+  const [allNotifications, setAllNotifications] = useState([]);
+  const [readNotifications, setReadNotifications] = useState(() => {
+    try {
+      const saved = localStorage.getItem("readNotifications");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [allNotificationsDialogOpen, setAllNotificationsDialogOpen] = useState(false);
 
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -88,39 +98,42 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail, onSearchChang
   useEffect(() => {
     if (!loans) return;
     const now = dayjs();
-    
-    const upcoming = loans.filter(
-      (loan) =>
-        loan.status !== "Paid" &&
-        dayjs(loan.dueDate).isAfter(now) &&
-        dayjs(loan.dueDate).diff(now, "day") < 3 &&
-        dayjs(loan.dueDate).diff(now, "day") >= 0
-    );
-    
-    const overdue = loans.filter(
-      (loan) => loan.status !== "Paid" && dayjs(loan.dueDate).isBefore(now, "day")
-    );
-
     const notes = [];
     
-    upcoming.forEach(loan => {
-      notes.push({
-        id: loan.id,
-        message: `Loan for ${loan.borrower} is due on ${dayjs(loan.dueDate).format("MMM D")}.`,
-        loanId: loan.id,
-      });
+    loans.forEach(loan => {
+      if (loan.status === "Paid") return;
+
+      const dueDate = dayjs(loan.dueDate);
+      const diffInDays = dueDate.diff(now, "day");
+
+      if (diffInDays < 3 && diffInDays >= 0) {
+        notes.push({
+          id: `${loan.id}-upcoming`,
+          message: `Loan for ${loan.borrower} is due on ${dueDate.format("MMM D")}.`,
+          loanId: loan.id,
+          isOverdue: false,
+        });
+      } else if (dueDate.isBefore(now, "day")) {
+        notes.push({
+          id: `${loan.id}-overdue`,
+          message: `Loan for ${loan.borrower} is overdue!`,
+          loanId: loan.id,
+          isOverdue: true,
+        });
+      }
     });
 
-    overdue.forEach(loan => {
-      notes.push({
-        id: loan.id,
-        message: `Loan for ${loan.borrower} is overdue!`,
-        loanId: loan.id,
-      });
-    });
-
-    setNotifications(notes);
+    setAllNotifications(notes);
   }, [loans]);
+
+  const unreadNotifications = allNotifications.filter(
+    (note) => !readNotifications.includes(note.id)
+  );
+
+  useEffect(() => {
+    localStorage.setItem("readNotifications", JSON.stringify(readNotifications));
+  }, [readNotifications]);
+
 
   const handleMenuClick = (e) => setAnchorEl(e.currentTarget);
   const handleMenuClose = () => setAnchorEl(null);
@@ -186,6 +199,18 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail, onSearchChang
     setNotificationAnchor(e.currentTarget);
   };
   const closeNotifications = () => setNotificationAnchor(null);
+  const openAllNotificationsDialog = () => {
+    closeNotifications();
+    setAllNotificationsDialogOpen(true);
+  };
+  const closeAllNotificationsDialog = () => {
+    setAllNotificationsDialogOpen(false);
+  };
+  const handleMarkAllAsRead = () => {
+    const allIds = allNotifications.map(note => note.id);
+    setReadNotifications(allIds);
+  };
+
   const closeSettingsDialog = () => setSettingsOpen(false);
   const closeHelpDialog = () => setHelpOpen(false);
   const closeChangePasswordDialog = () => setChangePasswordOpen(false);
@@ -198,9 +223,9 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail, onSearchChang
     }
   };
 
-  const handleNotificationItemClick = (loanId) => {
+  const handleNotificationItemClick = (notificationId, loanId) => {
     onOpenLoanDetail(loanId);
-    closeNotifications();
+    setReadNotifications((prev) => [...prev, notificationId]);
   };
   
   const handleSearchChange = (e) => {
@@ -217,7 +242,6 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail, onSearchChang
         sx={{
           zIndex: theme.zIndex.drawer + 1,
           backdropFilter: 'blur(12px) saturate(180%)',
-          // UPDATED: Use theme colors with alpha utility
           backgroundColor: alpha(theme.palette.background.paper, 0.1),
           borderBottom: '1px solid ' + alpha(theme.palette.background.paper, 0.2),
           boxShadow: theme.shadows[3],
@@ -254,7 +278,6 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail, onSearchChang
               sx={{
                 flexGrow: 1,
                 width: isMobile ? "auto" : 250,
-                // UPDATED: Use theme colors with alpha utility
                 bgcolor: alpha(theme.palette.background.paper, 0.15),
                 borderRadius: 2,
                 mr: 1,
@@ -295,8 +318,8 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail, onSearchChang
               onClick={handleNotificationsClick}
               sx={{ position: "relative", color: theme.palette.text.secondary }}
             >
-              <NotificationsIcon color={notifications.length > 0 ? "error" : "inherit"} />
-              {notifications.length > 0 && (
+              <NotificationsIcon color={unreadNotifications.length > 0 ? "error" : "inherit"} />
+              {unreadNotifications.length > 0 && (
                 <Box
                   component="span"
                   sx={{
@@ -352,6 +375,9 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail, onSearchChang
             filter: "drop-shadow(0px 2px 8px rgba(0,0,0,0.32))",
             mt: 1.5,
             borderRadius: 2,
+            backdropFilter: 'blur(12px) saturate(180%)',
+            backgroundColor: alpha(theme.palette.background.paper, 0.1),
+            border: '1px solid ' + alpha(theme.palette.divider, 0.2),
             "& .MuiAvatar-root": {
               width: 32,
               height: 32,
@@ -366,7 +392,7 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail, onSearchChang
               right: 14,
               width: 10,
               height: 10,
-              bgcolor: "background.paper",
+              bgcolor: alpha(theme.palette.background.paper, 0.1),
               transform: "translateY(-50%) rotate(45deg)",
               zIndex: 0,
             },
@@ -375,7 +401,14 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail, onSearchChang
         transformOrigin={{ horizontal: "right", vertical: "top" }}
         anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
       >
-        <MenuItem onClick={handleProfileClick}>
+        <MenuItem 
+          onClick={handleProfileClick}
+          sx={{
+            "&:hover": {
+              backgroundColor: alpha(theme.palette.primary.main, 0.1),
+            },
+          }}
+        >
           <ListItemIcon>
             <AccountCircleIcon fontSize="small" sx={{ color: theme.palette.text.secondary }} />
           </ListItemIcon>
@@ -384,7 +417,14 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail, onSearchChang
           </Typography>
         </MenuItem>
 
-        <MenuItem onClick={handleReportsClick}>
+        <MenuItem 
+          onClick={handleReportsClick}
+          sx={{
+            "&:hover": {
+              backgroundColor: alpha(theme.palette.primary.main, 0.1),
+            },
+          }}
+        >
           <ListItemIcon>
             <AssessmentIcon fontSize="small" sx={{ color: theme.palette.text.secondary }} />
           </ListItemIcon>
@@ -393,7 +433,14 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail, onSearchChang
           </Typography>
         </MenuItem>
 
-        <MenuItem onClick={handleSettingsClick}>
+        <MenuItem 
+          onClick={handleSettingsClick}
+          sx={{
+            "&:hover": {
+              backgroundColor: alpha(theme.palette.primary.main, 0.1),
+            },
+          }}
+        >
           <ListItemIcon>
             <SettingsIcon fontSize="small" sx={{ color: theme.palette.text.secondary }} />
           </ListItemIcon>
@@ -401,7 +448,14 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail, onSearchChang
             App Settings
           </Typography>
         </MenuItem>
-        <MenuItem onClick={handleChangePasswordClick}>
+        <MenuItem 
+          onClick={handleChangePasswordClick}
+          sx={{
+            "&:hover": {
+              backgroundColor: alpha(theme.palette.primary.main, 0.1),
+            },
+          }}
+        >
           <ListItemIcon>
             <LockResetIcon fontSize="small" sx={{ color: theme.palette.text.secondary }} />
           </ListItemIcon>
@@ -409,7 +463,14 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail, onSearchChang
             Change Password
           </Typography>
         </MenuItem>
-        <MenuItem onClick={handleActivityClick}>
+        <MenuItem 
+          onClick={handleActivityClick}
+          sx={{
+            "&:hover": {
+              backgroundColor: alpha(theme.palette.primary.main, 0.1),
+            },
+          }}
+        >
           <ListItemIcon>
             <History fontSize="small" sx={{ color: theme.palette.text.secondary }} />
           </ListItemIcon>
@@ -417,7 +478,14 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail, onSearchChang
             Activity Log
           </Typography>
         </MenuItem>
-        <MenuItem onClick={openHelpDialog}>
+        <MenuItem 
+          onClick={openHelpDialog}
+          sx={{
+            "&:hover": {
+              backgroundColor: alpha(theme.palette.primary.main, 0.1),
+            },
+          }}
+        >
           <ListItemIcon>
             <HelpOutline fontSize="small" sx={{ color: theme.palette.text.secondary }} />
           </ListItemIcon>
@@ -425,8 +493,15 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail, onSearchChang
             Help
           </Typography>
         </MenuItem>
-        <Divider sx={{ my: 0.5 }} />
-        <MenuItem onClick={handleLogout}>
+        <Divider sx={{ my: 0.5, bgcolor: alpha(theme.palette.divider, 0.4) }} />
+        <MenuItem 
+          onClick={handleLogout}
+          sx={{
+            "&:hover": {
+              backgroundColor: alpha(theme.palette.error.main, 0.1),
+            },
+          }}
+        >
           <ListItemIcon>
             <Logout fontSize="small" color="error" />
           </ListItemIcon>
@@ -436,7 +511,7 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail, onSearchChang
         </MenuItem>
       </Menu>
 
-      {/* Notifications Popover */}
+      {/* Unread Notifications Popover (for quick access) */}
       <Popover
         open={openNotifications}
         anchorEl={notificationAnchor}
@@ -451,21 +526,27 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail, onSearchChang
             p: 2,
             borderRadius: 2,
             boxShadow: theme.shadows[4],
+            backdropFilter: 'blur(12px) saturate(180%)',
+            backgroundColor: alpha(theme.palette.background.paper, 0.1),
+            border: '1px solid ' + alpha(theme.palette.divider, 0.2),
           },
         }}
       >
         <Typography variant="h6" mb={1} sx={{ fontWeight: 600 }}>
           Notifications
         </Typography>
-        {notifications.length === 0 ? (
+        {unreadNotifications.length === 0 ? (
           <Typography variant="body2" color="text.secondary" sx={{ py: 1, textAlign: "center" }}>
             No new notifications.
           </Typography>
         ) : (
-          notifications.map(({ id, message, loanId }) => (
+          unreadNotifications.map(({ id, message, loanId }) => (
             <MenuItem
               key={id}
-              onClick={() => handleNotificationItemClick(loanId)}
+              onClick={() => {
+                handleNotificationItemClick(id, loanId);
+                closeNotifications();
+              }}
               sx={{ whiteSpace: "normal", borderRadius: 1, mb: 0.5, "&:last-child": { mb: 0 } }}
             >
               <Typography variant="body2" color="text.primary">
@@ -474,22 +555,105 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail, onSearchChang
             </MenuItem>
           ))
         )}
-        {notifications.length > 0 && (
+        {allNotifications.length > 0 && (
           <MenuItem
-            onClick={() => {
-              navigate("/activity");
-              closeNotifications();
-            }}
+            onClick={openAllNotificationsDialog}
             sx={{ justifyContent: "center", mt: 1, bgcolor: theme.palette.action.hover, borderRadius: 1 }}
           >
             <Typography variant="body2" color="text.secondary">
-              View all activity
+              View all notifications
             </Typography>
           </MenuItem>
         )}
       </Popover>
 
-      {/* Dialogs (Settings, Change Password, Help, Profile) */}
+      {/* Dialog to show all notifications */}
+      <Dialog
+        open={allNotificationsDialogOpen}
+        onClose={closeAllNotificationsDialog}
+        TransitionComponent={Transition}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            mx: 2,
+            p: 2,
+            backdropFilter: 'blur(12px) saturate(180%)',
+            backgroundColor: alpha(theme.palette.background.paper, 0.85),
+            border: '1px solid ' + alpha(theme.palette.divider, 0.2),
+            boxShadow: theme.shadows[12],
+          }
+        }}
+      >
+        <DialogTitle sx={{ p: 0, pb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>All Notifications</Typography>
+          <IconButton onClick={closeAllNotificationsDialog}><CloseIcon /></IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 0, m: 0 }}>
+          {allNotifications.length === 0 ? (
+            <Box sx={{ py: 3, textAlign: "center" }}>
+              <Typography variant="body2" color="text.secondary">
+                No notifications to display.
+              </Typography>
+            </Box>
+          ) : (
+            allNotifications.map(({ id, message, loanId, isOverdue }) => (
+              <MenuItem
+                key={id}
+                onClick={() => {
+                  handleNotificationItemClick(id, loanId);
+                  closeAllNotificationsDialog();
+                }}
+                sx={{
+                  whiteSpace: "normal",
+                  borderRadius: 1,
+                  mb: 1,
+                  py: 1.5,
+                  bgcolor: readNotifications.includes(id) ? 'transparent' : alpha(theme.palette.primary.main, 0.1),
+                  "&:hover": {
+                    bgcolor: readNotifications.includes(id) ? theme.palette.action.hover : alpha(theme.palette.primary.main, 0.2),
+                  },
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                  <NotificationsIcon 
+                    fontSize="small" 
+                    color={isOverdue ? "error" : "primary"} 
+                    sx={{ mr: 2, opacity: readNotifications.includes(id) ? 0.5 : 1 }} 
+                  />
+                  <Typography variant="body2" color="text.primary" sx={{ flexGrow: 1, opacity: readNotifications.includes(id) ? 0.5 : 1 }}>
+                    {message}
+                  </Typography>
+                  {!readNotifications.includes(id) && (
+                    <Box
+                      component="span"
+                      sx={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        bgcolor: "error.main",
+                        ml: 2,
+                        flexShrink: 0
+                      }}
+                    />
+                  )}
+                </Box>
+              </MenuItem>
+            ))
+          )}
+        </DialogContent>
+        {allNotifications.length > 0 && (
+          <DialogActions sx={{ p: 0, pt: 2, justifyContent: 'center' }}>
+            <Button onClick={handleMarkAllAsRead} color="primary" sx={{ textTransform: 'none' }}>
+              Mark all as read
+            </Button>
+          </DialogActions>
+        )}
+      </Dialog>
+
+
+      {/* Other Dialogs */}
       <Dialog
         open={settingsOpen}
         onClose={closeSettingsDialog}

@@ -29,7 +29,7 @@ import BarChartIcon from "@mui/icons-material/BarChart";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
-import DragIndicatorIcon from "@mui/icons-material/DragIndicator"; // --- ADDED: Drag handle icon
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useFirestore } from "../contexts/FirestoreProvider";
@@ -397,7 +397,7 @@ export default function Dashboard() {
         id: "expectedProfit",
         label: "Interest Expected",
         value: `K ${totalExpectedProfit.toLocaleString()}`,
-        color: "secondary", // <-- Changed to accent color
+        color: "secondary",
         filter: "all",
         tooltip: "Total expected profit from interest",
         progress: null,
@@ -537,7 +537,6 @@ export default function Dashboard() {
                   lg={6}
                   ref={provided.innerRef}
                   {...provided.draggableProps}
-                  // --- MODIFIED: Conditionally apply dragHandleProps
                   {...(!isMobile && provided.dragHandleProps)}
                   style={{
                     ...provided.draggableProps.style,
@@ -574,21 +573,20 @@ export default function Dashboard() {
                             borderColor: theme.palette[card.color]?.main || theme.palette.primary.main,
                           },
                           ...(card.pulse && { animation: "pulse 1.5s infinite" }),
-                          position: 'relative', // --- ADDED: For positioning the drag handle
+                          position: 'relative',
                         }}
                       >
-                        {/* --- ADDED: The dedicated drag handle, shown only on mobile --- */}
                         {isMobile && (
                             <Box
-                                {...provided.dragHandleProps} // This is where the drag props are applied on mobile
-                                sx={{
-                                    position: 'absolute',
-                                    top: 4,
-                                    right: 4,
-                                    cursor: 'grab',
-                                    color: theme.palette.grey[500],
-                                    zIndex: 1, // Ensure handle is on top of card content
-                                }}
+                              {...provided.dragHandleProps}
+                              sx={{
+                                  position: 'absolute',
+                                  top: 4,
+                                  right: 4,
+                                  cursor: 'grab',
+                                  color: theme.palette.grey[500],
+                                  zIndex: 1,
+                              }}
                             >
                                 <DragIndicatorIcon fontSize="small" />
                             </Box>
@@ -754,7 +752,7 @@ export default function Dashboard() {
           <AccordionSummary
             expandIcon={<ExpandMoreIcon fontSize="small" sx={{ color: theme.palette.primary.contrastText }} />}
             sx={{
-              backgroundColor: theme.palette.primary.main,
+              background: `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
               p: isMobile ? "8px 16px" : "12px 24px",
               minHeight: "48px !important",
               "&.Mui-expanded": { minHeight: "48px !important" },
@@ -794,7 +792,7 @@ export default function Dashboard() {
           <AccordionSummary
             expandIcon={<ExpandMoreIcon fontSize="small" sx={{ color: theme.palette.primary.contrastText }} />}
             sx={{
-              backgroundColor: theme.palette.primary.main,
+              background: `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
               p: isMobile ? "8px 16px" : "12px 24px",
               minHeight: "48px !important",
               "&.Mui-expanded": { minHeight: "48px !important" },
@@ -835,7 +833,7 @@ export default function Dashboard() {
         <AccordionSummary
           expandIcon={<ExpandMoreIcon fontSize="small" sx={{ color: theme.palette.primary.contrastText }} />}
           sx={{
-            backgroundColor: theme.palette.primary.main,
+            background: `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
             p: isMobile ? "8px 16px" : "12px 24px",
             minHeight: "48px !important",
             "&.Mui-expanded": { minHeight: "48px !important" },
