@@ -430,7 +430,7 @@ function AutoLoanForm() {
       )}
 
       <form onSubmit={handleSubmit}>
-        <Stack spacing={2}>
+        <Stack spacing={1}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <TextField
               label="Borrower Name"
@@ -807,7 +807,7 @@ function ManualLoanForm() {
       )}
 
       <form onSubmit={handleSubmit}>
-        <Stack spacing={2}>
+        <Stack spacing={1}>
           <TextField
             label="Borrower Name"
             value={borrower}
