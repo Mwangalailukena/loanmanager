@@ -18,6 +18,7 @@ import {
   Divider,
   Card,
   CardContent,
+  Chip, // NEW IMPORT
 } from "@mui/material";
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
@@ -70,7 +71,6 @@ export default function AddPaymentPage() {
     return () => window.removeEventListener("online", handleOnline);
   }, [addPayment]);
 
-  // CORRECTED: Filter for unique and active loans to prevent duplicate entries in the search
   const uniqueActiveLoans = useMemo(() => {
     const uniqueIds = new Set();
     return loans.filter(loan => {
@@ -197,8 +197,9 @@ export default function AddPaymentPage() {
           <Autocomplete
             sx={textFieldStyles}
             id="loan-borrower-search"
-            options={uniqueActiveLoans} // CORRECTED: Now uses the unique loans array
-            getOptionLabel={(option) => `${option.borrower} (Phone: ${option.phone})`}
+            options={uniqueActiveLoans}
+            // MODIFIED: getOptionLabel now returns only the borrower name
+            getOptionLabel={(option) => option.borrower}
             value={selectedLoan}
             onChange={(e, newValue) => setSelectedLoan(newValue)}
             loading={loadingLoans}
@@ -222,6 +223,20 @@ export default function AddPaymentPage() {
               />
             )}
             isOptionEqualToValue={(option, value) => option.id === value.id}
+            // NEW: Custom render for each option in the dropdown
+            renderOption={(props, option) => {
+              const outstandingAmount = (option.totalRepayable - (option.repaidAmount || 0)).toFixed(2).toLocaleString();
+              return (
+                <Box component="li" {...props} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Typography variant="body1" fontWeight="bold">{option.borrower}</Typography>
+                  <Chip
+                    label={`ZMW ${outstandingAmount}`}
+                    color="primary"
+                    size="small"
+                  />
+                </Box>
+              );
+            }}
             filterOptions={(options, { inputValue }) => {
               const search = inputValue.toLowerCase();
               return options.filter(
