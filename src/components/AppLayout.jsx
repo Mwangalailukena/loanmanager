@@ -21,10 +21,9 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  // NEW: State for the live search term
+  // State for the live search term
   const [searchTerm, setSearchTerm] = useState("");
 
-  // === DIALOG STATE AND HANDLERS ===
   const [loanDetailOpen, setLoanDetailOpen] = useState(false);
   const [selectedLoanId, setSelectedLoanId] = useState(null);
 
@@ -37,7 +36,6 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
     setLoanDetailOpen(false);
     setSelectedLoanId(null);
   };
-  // ===================================
 
   const hideLayout = ['/login', '/register', '/forgot-password'].includes(pathname);
   const bottomNavHeight = isMobile && !hideLayout ? 64 : 0;
@@ -54,8 +52,8 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
         darkMode={darkMode} 
         onToggleDarkMode={onToggleDarkMode} 
         onOpenLoanDetail={handleOpenLoanDetail} 
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
+        // CORRECTED: Pass the prop with the expected name 'onSearchChange'
+        onSearchChange={setSearchTerm}
       />
 
       <Box
@@ -78,11 +76,10 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
             minHeight: 0,
             height: '100%',
             px: isMobile ? 2 : 4,
-            paddingTop: '70px',
+            paddingTop: '70px', // Note: This is an additional paddingTop that might cause spacing issues.
             pb: 0,
           }}
         >
-          {/* CORRECTED: Pass the search term using the prop name 'globalSearchTerm' */}
           {React.cloneElement(children, { globalSearchTerm: searchTerm })}
         </Box>
       </Box>

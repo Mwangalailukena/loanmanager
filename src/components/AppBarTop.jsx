@@ -20,6 +20,8 @@ import {
   InputAdornment,
   Box,
 } from "@mui/material";
+// NEW IMPORT: alpha is needed to create semi-transparent colors from the theme palette
+import { alpha } from "@mui/material/styles";
 import {
   Logout,
   Settings as SettingsIcon,
@@ -62,7 +64,6 @@ const Transition = React.forwardRef(function Transition(props, ref) {
   return <Slide direction="up" ref={ref} {...props} />;
 });
 
-// UPDATED: Now accepts `onSearchChange` and `onToggleDrawer` as new props
 const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail, onSearchChange, onToggleDrawer }) => {
   const { currentUser } = useAuth();
   const { loans } = useFirestore();
@@ -76,7 +77,6 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail, onSearchChang
   const [helpOpen, setHelpOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  // The local state for the search bar is still needed for the UI
   const [searchTerm, setSearchTerm] = useState("");
   const [notifications, setNotifications] = useState([]);
 
@@ -135,7 +135,7 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail, onSearchChang
       setSettingsOpen(true);
     } else {
       if (window.location.pathname !== "/settings") {
-         navigate("/settings");
+        navigate("/settings");
       }
     }
   };
@@ -192,34 +192,17 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail, onSearchChang
 
   const toggleSearch = () => {
     setSearchOpen((open) => !open);
-    // NEW: When the search is closed, clear the search term, and tell the parent.
     if (searchOpen) {
       setSearchTerm("");
       onSearchChange("");
     }
   };
 
-  // UPDATED: This function is no longer needed, as filtering is now handled live.
-  // const performSearch = () => {
-  //   if (searchTerm.trim()) {
-  //     navigate(`/loans?search=${encodeURIComponent(searchTerm.trim())}`);
-  //     toggleSearch();
-  //   }
-  // };
-
-  // UPDATED: No longer needed to trigger a navigation on Enter.
-  // const handleSearchKeyDown = (e) => {
-  //   if (e.key === "Enter") performSearch();
-  //   if (e.key === "Escape") toggleSearch();
-  // };
-
-  // This now calls the prop function with the loanId
   const handleNotificationItemClick = (loanId) => {
     onOpenLoanDetail(loanId);
     closeNotifications();
   };
   
-  // NEW: Handler to update local state and notify the parent
   const handleSearchChange = (e) => {
     const value = e.target.value;
     setSearchTerm(value);
@@ -234,8 +217,9 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail, onSearchChang
         sx={{
           zIndex: theme.zIndex.drawer + 1,
           backdropFilter: 'blur(12px) saturate(180%)',
-          backgroundColor: 'rgba(255, 255, 255, 0.1)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
+          // UPDATED: Use theme colors with alpha utility
+          backgroundColor: alpha(theme.palette.background.paper, 0.1),
+          borderBottom: '1px solid ' + alpha(theme.palette.background.paper, 0.2),
           boxShadow: theme.shadows[3],
         }}
       >
@@ -265,13 +249,13 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail, onSearchChang
               variant="outlined"
               placeholder="Search loans..."
               value={searchTerm}
-              // UPDATED: The onChange handler now calls our new function
               onChange={handleSearchChange}
               autoFocus
               sx={{
                 flexGrow: 1,
                 width: isMobile ? "auto" : 250,
-                bgcolor: 'rgba(255, 255, 255, 0.15)',
+                // UPDATED: Use theme colors with alpha utility
+                bgcolor: alpha(theme.palette.background.paper, 0.15),
                 borderRadius: 2,
                 mr: 1,
                 "& .MuiOutlinedInput-root": {
