@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   TextField,
@@ -71,16 +71,17 @@ export default function AddPaymentPage() {
     return () => window.removeEventListener("online", handleOnline);
   }, [addPayment]);
 
-  const uniqueActiveLoans = useMemo(() => {
+  const getUniqueActiveLoans = () => {
     const uniqueIds = new Set();
-    return loans.filter(loan => {
+    const result = loans.filter(loan => {
       if (loan.status === "Active" && !uniqueIds.has(loan.id)) {
         uniqueIds.add(loan.id);
         return true;
       }
       return false;
     });
-  }, [loans]);
+    return result;
+  };
 
   const setFieldError = (field, message) => {
     setFieldErrors(prev => ({ ...prev, [field]: message }));
@@ -197,7 +198,7 @@ export default function AddPaymentPage() {
           <Autocomplete
             sx={textFieldStyles}
             id="loan-borrower-search"
-            options={uniqueActiveLoans}
+            options={getUniqueActiveLoans()}
             getOptionLabel={(option) => option.borrower}
             value={selectedLoan}
             onChange={(e, newValue) => setSelectedLoan(newValue)}
@@ -225,7 +226,16 @@ export default function AddPaymentPage() {
             renderOption={(props, option) => {
               const outstandingAmount = (option.totalRepayable - (option.repaidAmount || 0)).toFixed(2).toLocaleString();
               return (
-                <Box component="li" {...props} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box 
+                  component="li" 
+                  {...props} 
+                  // The following `sx` properties create the desired layout:
+                  sx={{ 
+                    display: 'flex', // Use Flexbox for alignment
+                    alignItems: 'center', // Vertically center the items
+                    justifyContent: 'space-between' // Pushes the name to the left and the chip to the far right
+                  }}
+                >
                   <Typography variant="body1" fontWeight="bold">{option.borrower}</Typography>
                   <Chip
                     label={`ZMW ${outstandingAmount}`}
