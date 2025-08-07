@@ -22,21 +22,29 @@ import {
   ListItemText,
   Tabs,
   Tab,
+  Fade,
 } from "@mui/material";
 // Changed ErrorIcon to WarningIcon
 import WarningIcon from "@mui/icons-material/Warning";
 import ContactPhoneIcon from "@mui/icons-material/ContactPhone";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import CloseIcon from "@mui/icons-material/Close";
-import FileDownloadIcon from '@mui/icons-material/FileDownload'; // NEW: Added download icon import
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
 
 // --- NEW IMPORTS FOR DATE PICKERS ---
+// These are required for the DatePicker components in the Manual Loan tab.
+// Please ensure you have '@mui/x-date-pickers' and 'dayjs' installed:
+// npm install @mui/x-date-pickers dayjs
+// or yarn add @mui/x-date-pickers dayjs
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 // --- END NEW IMPORTS ---
 
 // --- ORIGINAL IMPORTS (as provided by you, untouched) ---
+// This component assumes your FirestoreProvider is correctly set up
+// and provides the 'useFirestore' hook.
+// CORRECTED PATH: Changed from "../contents/FirestoreProvider" to "../contexts/FirestoreProvider"
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { toast } from "react-toastify";
 import dayjs from "dayjs";
@@ -88,7 +96,7 @@ function AutoLoanForm() {
   const [phoneError, setPhoneError] = useState("");
   const [amountError, setAmountError] = useState("");
   const [csvErrors, setCsvErrors] = useState([]);
-  const [processedCount, setProcessedCount] = useState(0); // NEW: State to track processed loans
+  const [processedCount, setProcessedCount] = useState(0);
 
   const [contactPickerSupported, setContactPickerSupported] = useState(false);
   const fileInputRef = useRef(null);
@@ -158,10 +166,10 @@ function AutoLoanForm() {
   const calculateInterest = (principal, weeks) =>
     principal * (interestRates[weeks] || 0);
 
-  // NEW: Real-time validation handlers for onBlur event
+  // NEW: Refactored validation functions with new regex for name
   const handleBorrowerBlur = () => {
-    if (!borrower.trim() || !/^[a-zA-Z\s.-]{2,50}$/.test(borrower.trim())) {
-      setBorrowerError("Borrower name must be 2-50 characters, containing only letters, spaces, hyphens, and periods.");
+    if (!borrower.trim() || !/^[a-zA-Z]{2,50}$/.test(borrower.trim())) {
+      setBorrowerError("Borrower name must be 2-50 characters, containing only letters.");
     } else {
       setBorrowerError("");
     }
@@ -183,10 +191,9 @@ function AutoLoanForm() {
       setAmountError("");
     }
   };
-  
-  // Form validation for individual fields in the Auto Loan form
+
+  // The main validation function for submission
   const validateFields = () => {
-    // Trigger onBlur validation for all fields before final submission
     handleBorrowerBlur();
     handlePhoneBlur();
     handleAmountBlur();
@@ -199,6 +206,7 @@ function AutoLoanForm() {
     setError("");
     setLoading(true);
 
+    // Call validateFields for final check
     if (!validateFields()) {
       setLoading(false);
       return;
@@ -224,22 +232,18 @@ function AutoLoanForm() {
         interestDuration,  // Store the selected interest duration
       });
 
-      // Log the loan creation activity using your Firestore context function
       await addActivityLog({
         action: "Loan Created",
         details: `Loan created for ${borrower} (ZMW ${principal.toLocaleString()}) [Loan ID: ${loanDocRef.id}]`,
         timestamp: new Date().toISOString(),
       });
 
-      // Display success toast notification
       toast.success(`Loan added successfully! Loan ID: ${loanDocRef.id}`);
 
-      // Trigger haptic feedback on success for devices that support it
       if (navigator.vibrate) {
         navigator.vibrate([100, 50, 100]);
       }
 
-      // Clear form fields after successful submission
       setBorrower("");
       setPhone("");
       setAmount("");
@@ -269,45 +273,13 @@ function AutoLoanForm() {
 
     setImportLoading(true);
     setCsvErrors([]); // Clear any previous CSV errors
-    setProcessedCount(0); // NEW: Reset processed count for new import
+    setProcessedCount(0);
 
     Papa.parse(file, {
-      header: true, // Treat the first row as headers
-      skipEmptyLines: true, // Ignore empty rows
-      transformHeader: (header) => header.trim(), // Trim headers to ensure exact matching
-      step: (row, parser) => { // NEW: Use 'step' to provide real-time feedback
-        setProcessedCount(prev => prev + 1);
-        const data = row.data;
-        const lineNumber = processedCount + 2; // Approximate line number
-
-        const borrowerName = String(data["Borrower Name"] || "").trim();
-        const phoneNumber = String(data["Phone Number"] || "").trim();
-        const loanAmount = Number(data["Loan Amount (ZMW)"]);
-        const interestDur = Number(data["Interest Duration (Weeks)"]);
-
-        if (!borrowerName || !/^[a-zA-Z\s.-]{2,50}$/.test(borrowerName)) {
-            setCsvErrors(prev => [...prev, `Row ${lineNumber}: Invalid 'Borrower Name'.`]);
-            parser.abort(); // Abort parsing on first error for a simpler user experience
-        } else if (!phoneNumber || !/^\d{10}$/.test(phoneNumber)) {
-            setCsvErrors(prev => [...prev, `Row ${lineNumber}: Invalid 'Phone Number'. It must be 10 digits.`]);
-            parser.abort();
-        } else if (isNaN(loanAmount) || loanAmount <= 0) {
-            setCsvErrors(prev => [...prev, `Row ${lineNumber}: Invalid 'Loan Amount (ZMW)'. Must be a positive number.`]);
-            parser.abort();
-        } else if (isNaN(interestDur) || !interestOptions.some((opt) => opt.value === interestDur)) {
-            setCsvErrors(prev => [...prev, `Row ${lineNumber}: Invalid 'Interest Duration (Weeks)'. Must be 1, 2, 3, or 4.`]);
-            parser.abort();
-        } else {
-          // You could also add the loan to the database here, but for now we'll process at the end
-        }
-      },
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: (header) => header.trim(),
       complete: async (results) => {
-        // ... (The original bulk processing logic is removed here to simplify)
-        // This is a trade-off: The step-based validation is simpler for the user,
-        // but it doesn't allow for a full batch import. The original code's `complete`
-        // function is better for bulk operations.
-        // Let's stick with the original `complete` function and just add the counter.
-
         const importedLoans = results.data;
         const errors = [];
         let successCount = 0;
@@ -315,16 +287,17 @@ function AutoLoanForm() {
         for (let i = 0; i < importedLoans.length; i++) {
           const row = importedLoans[i];
           const lineNumber = i + 2;
-          
-          setProcessedCount(i + 1); // NEW: Update processed count
-          
+
+          setProcessedCount(i + 1);
+
           const borrowerName = String(row["Borrower Name"] || "").trim();
           const phoneNumber = String(row["Phone Number"] || "").trim();
           const loanAmount = Number(row["Loan Amount (ZMW)"]);
           const interestDur = Number(row["Interest Duration (Weeks)"]);
 
-          if (!borrowerName || !/^[a-zA-Z\s.-]{2,50}$/.test(borrowerName)) {
-            errors.push(`Row ${lineNumber}: Invalid 'Borrower Name'.`);
+          // UPDATED: Name validation with new regex
+          if (!borrowerName || !/^[a-zA-Z]{2,50}$/.test(borrowerName)) {
+            errors.push(`Row ${lineNumber}: Invalid 'Borrower Name'. Must be 2-50 letters.`);
             continue;
           }
           if (!phoneNumber || !/^\d{10}$/.test(phoneNumber)) {
@@ -377,10 +350,10 @@ function AutoLoanForm() {
             );
           }
         }
-        
-        setImportLoading(false); // End import loading state
-        setProcessedCount(0); // NEW: Reset processed count
-        
+
+        setImportLoading(false);
+        setProcessedCount(0);
+
         if (successCount > 0) {
           toast.success(`Successfully imported ${successCount} loan(s)!`);
         }
@@ -407,7 +380,6 @@ function AutoLoanForm() {
 
   const textFieldStyles = getTextFieldStyles(theme);
 
-  // NEW: Function to download a sample CSV file
   const handleDownloadSample = () => {
     const headers = '"Borrower Name","Phone Number","Loan Amount (ZMW)","Interest Duration (Weeks)"';
     const sampleData = `\n"John Doe","1234567890","1000","1"\n"Jane Smith","0987654321","500","2"`;
@@ -419,13 +391,12 @@ function AutoLoanForm() {
     link.click();
     document.body.removeChild(link);
   };
-  
-  // Function to close the import dialog and reset related states
+
   const handleCloseImportDialog = () => {
     setOpenImportDialog(false);
-    setCsvErrors([]); // Clear CSV errors when the dialog is closed
+    setCsvErrors([]);
     if (fileInputRef.current) {
-      fileInputRef.current.value = null; // Clear the file input value to allow re-selecting the same file
+      fileInputRef.current.value = null;
     }
   };
 
@@ -475,7 +446,7 @@ function AutoLoanForm() {
               label="Borrower Name"
               value={borrower}
               onChange={(e) => setBorrower(e.target.value)}
-              onBlur={handleBorrowerBlur} // NEW: onBlur validation
+              onBlur={handleBorrowerBlur}
               fullWidth
               required
               inputProps={{ maxLength: 50 }}
@@ -509,7 +480,7 @@ function AutoLoanForm() {
             label="Phone Number"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            onBlur={handlePhoneBlur} // NEW: onBlur validation
+            onBlur={handlePhoneBlur}
             fullWidth
             required
             inputProps={{ maxLength: 10, inputMode: "numeric", pattern: "[0-9]*" }}
@@ -521,7 +492,7 @@ function AutoLoanForm() {
             label="Loan Amount (ZMW)"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            onBlur={handleAmountBlur} // NEW: onBlur validation
+            onBlur={handleAmountBlur}
             type="number"
             inputProps={{ min: 1 }}
             fullWidth
@@ -546,12 +517,13 @@ function AutoLoanForm() {
             ))}
           </TextField>
 
-          {displayPrincipal > 0 && (
+          {/* IMPROVED: Fade animation and enhanced styling for the summary box */}
+          <Fade in={displayPrincipal > 0}>
             <Box sx={{
-              p: 2, // NEW: Increased padding for more space
-              bgcolor: theme.palette.mode === 'light' ? theme.palette.secondary.light : theme.palette.secondary.dark, // NEW: Theme-aware background
-              borderRadius: 2, // NEW: Rounded corners
-              borderLeft: `5px solid ${theme.palette.secondary.main}`, // NEW: Accent line
+              p: 2,
+              bgcolor: theme.palette.mode === 'light' ? theme.palette.secondary.light : theme.palette.secondary.dark,
+              borderRadius: 2,
+              borderLeft: `5px solid ${theme.palette.secondary.main}`,
             }}>
               <Typography variant="body2" color="text.secondary">
                 Calculated Interest: ZMW{" "}
@@ -560,7 +532,7 @@ function AutoLoanForm() {
                   maximumFractionDigits: 2,
                 })}
               </Typography>
-              <Typography variant="h6" fontWeight="bold"> {/* NEW: h6 for emphasis */}
+              <Typography variant="h6" fontWeight="bold">
                 Total Repayable: ZMW{" "}
                 {displayTotalRepayable.toLocaleString(undefined, {
                   minimumFractionDigits: 2,
@@ -568,7 +540,8 @@ function AutoLoanForm() {
                 })}
               </Typography>
             </Box>
-          )}
+          </Fade>
+
 
           <Button
             type="submit"
@@ -613,7 +586,7 @@ function AutoLoanForm() {
               "Borrower Name","Phone Number","Loan Amount (ZMW)","Interest Duration (Weeks)"
             </Typography>
           </Paper>
-          {/* NEW: Download sample CSV button */}
+
           <Button
             onClick={handleDownloadSample}
             color="primary"
@@ -662,7 +635,6 @@ function AutoLoanForm() {
               disabled={importLoading}
               fullWidth
             >
-              {/* NEW: Updated progress indicator text */}
               {importLoading ? `Importing... (${processedCount} processed)` : "Select CSV File"}
             </Button>
           </label>
@@ -683,16 +655,14 @@ function AutoLoanForm() {
  */
 function ManualLoanForm() {
   const theme = useTheme();
-  // Destructure addLoan and addActivityLog from your existing Firestore context.
   const { addLoan, addActivityLog } = useFirestore();
 
   const [borrower, setBorrower] = useState("");
   const [phone, setPhone] = useState("");
   const [amount, setAmount] = useState("");
-  // Initialize dates with dayjs objects for DatePicker compatibility
   const [startDate, setStartDate] = useState(dayjs());
-  const [dueDate, setDueDate] = useState(dayjs().add(1, 'week')); // Default to 1 week after start date
-  const [manualInterestRate, setManualInterestRate] = useState(""); // Stored as a string, converted to number for calculations
+  const [dueDate, setDueDate] = useState(dayjs().add(1, 'week'));
+  const [manualInterestRate, setManualInterestRate] = useState("");
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -703,8 +673,7 @@ function ManualLoanForm() {
   const [startDateError, setStartDateError] = useState("");
   const [dueDateError, setDueDateError] = useState("");
   const [manualInterestRateError, setManualInterestRateError] = useState("");
-  
-  // NEW: State and useEffect for contact picker support
+
   const [contactPickerSupported, setContactPickerSupported] = useState(false);
   useEffect(() => {
     if ("contacts" in navigator && "select" in navigator.contacts) {
@@ -714,7 +683,6 @@ function ManualLoanForm() {
     }
   }, []);
 
-  // NEW: Function to handle contact selection
   const handleSelectContact = async () => {
     if (!contactPickerSupported) {
       toast.warn("Your browser does not support picking contacts directly.");
@@ -753,13 +721,12 @@ function ManualLoanForm() {
     }
   };
 
-  // Function to calculate interest for manual loans (rate is a percentage, e.g., 15 for 15%)
   const calculateInterest = (principal, rate) => principal * (rate / 100);
 
-  // NEW: Real-time validation handlers
+  // UPDATED: Name validation with new regex
   const handleBorrowerBlur = () => {
-    if (!borrower.trim() || !/^[a-zA-Z\s.-]{2,50}$/.test(borrower.trim())) {
-      setBorrowerError("Borrower name must be 2-50 characters, containing only letters, spaces, hyphens, and periods.");
+    if (!borrower.trim() || !/^[a-zA-Z]{2,50}$/.test(borrower.trim())) {
+      setBorrowerError("Borrower name must be 2-50 characters, containing only letters.");
     } else {
       setBorrowerError("");
     }
@@ -788,7 +755,6 @@ function ManualLoanForm() {
     }
   };
 
-  // Form validation for fields in the Manual Loan form
   const validateFields = () => {
     let isValid = true;
     setBorrowerError("");
@@ -798,34 +764,28 @@ function ManualLoanForm() {
     setDueDateError("");
     setManualInterestRateError("");
 
-    // Borrower name validation
-    if (!borrower.trim() || !/^[a-zA-Z\s.-]{2,50}$/.test(borrower.trim())) {
-      setBorrowerError(
-        "Borrower name must be 2-50 characters, containing only letters, spaces, hyphens, and periods."
-      );
+    // UPDATED: Name validation with new regex
+    if (!borrower.trim() || !/^[a-zA-Z]{2,50}$/.test(borrower.trim())) {
+      setBorrowerError("Borrower name must be 2-50 characters, containing only letters.");
       isValid = false;
     }
 
-    // Phone number validation
     if (!phone.trim() || !/^\d{10}$/.test(phone.trim())) {
       setPhoneError("Phone number must be exactly 10 digits.");
       isValid = false;
     }
 
-    // Loan amount validation
     const numAmount = Number(amount);
     if (isNaN(numAmount) || numAmount <= 0) {
       setAmountError("Loan amount must be a valid positive number.");
       isValid = false;
     }
 
-    // Start Date validation: must be a valid date
     if (!startDate || !startDate.isValid()) {
       setStartDateError("Invalid start date.");
       isValid = false;
     }
 
-    // Due Date validation: must be a valid date and not before start date
     if (!dueDate || !dueDate.isValid()) {
       setDueDateError("Invalid due date.");
       isValid = false;
@@ -834,7 +794,6 @@ function ManualLoanForm() {
       isValid = false;
     }
 
-    // Manual Interest Rate validation: must be a number between 0 and 100
     const numInterestRate = Number(manualInterestRate);
     if (isNaN(numInterestRate) || numInterestRate < 0 || numInterestRate > 100) {
       setManualInterestRateError("Interest rate must be a number between 0 and 100.");
@@ -844,7 +803,6 @@ function ManualLoanForm() {
     return isValid;
   };
 
-  // Handle form submission for adding a manual loan
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -860,12 +818,10 @@ function ManualLoanForm() {
     const interest = calculateInterest(principal, interestRateDecimal);
     const totalRepayable = principal + interest;
 
-    // Format dayjs objects to "YYYY-MM-DD" strings for storage
     const formattedStartDate = startDate.format("YYYY-MM-DD");
     const formattedDueDate = dueDate.format("YYYY-MM-DD");
 
     try {
-      // Call the addLoan function from your Firestore context
       const loanDocRef = await addLoan({
         borrower,
         phone,
@@ -876,30 +832,26 @@ function ManualLoanForm() {
         dueDate: formattedDueDate,
         status: "Active",
         repaidAmount: 0,
-        manualInterestRate: interestRateDecimal, // Store the manually set rate
+        manualInterestRate: interestRateDecimal,
       });
 
-      // Log the manual loan creation activity
       await addActivityLog({
         action: "Loan Created (Manual)",
         details: `Manual loan created for ${borrower} (ZMW ${principal.toLocaleString()}) [Loan ID: ${loanDocRef.id}]`,
         timestamp: new Date().toISOString(),
       });
 
-      // Display success toast notification
       toast.success(`Manual loan added successfully! Loan ID: ${loanDocRef.id}`);
 
-      // Trigger haptic feedback on success
       if (navigator.vibrate) {
         navigator.vibrate([100, 50, 100]);
       }
 
-      // Clear form fields after successful submission
       setBorrower("");
       setPhone("");
       setAmount("");
-      setStartDate(dayjs()); // Reset to current date
-      setDueDate(dayjs().add(1, 'week')); // Reset to 1 week from current date
+      setStartDate(dayjs());
+      setDueDate(dayjs().add(1, 'week'));
       setManualInterestRate("");
       setBorrowerError("");
       setPhoneError("");
@@ -911,11 +863,10 @@ function ManualLoanForm() {
       console.error("Manual loan creation failed:", err);
       setError("Failed to add manual loan. Please try again.");
     } finally {
-      setLoading(false); // End loading state
+      setLoading(false);
     }
   };
 
-  // Calculated values for display in the UI for manual loans
   const displayPrincipal = Number(amount);
   const displayInterest = calculateInterest(displayPrincipal, Number(manualInterestRate));
   const displayTotalRepayable = displayPrincipal + displayInterest;
@@ -951,7 +902,7 @@ function ManualLoanForm() {
               label="Borrower Name"
               value={borrower}
               onChange={(e) => setBorrower(e.target.value)}
-              onBlur={handleBorrowerBlur} // NEW: onBlur validation
+              onBlur={handleBorrowerBlur}
               fullWidth
               required
               inputProps={{ maxLength: 50 }}
@@ -959,7 +910,6 @@ function ManualLoanForm() {
               helperText={borrowerError}
               sx={textFieldStyles}
             />
-            {/* NEW: Contact picker button from AutoLoanForm */}
             {contactPickerSupported ? (
               <Tooltip title="Import from device contacts">
                 <IconButton
@@ -986,7 +936,7 @@ function ManualLoanForm() {
             label="Phone Number"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            onBlur={handlePhoneBlur} // NEW: onBlur validation
+            onBlur={handlePhoneBlur}
             fullWidth
             required
             inputProps={{ maxLength: 10, inputMode: "numeric", pattern: "[0-9]*" }}
@@ -998,7 +948,7 @@ function ManualLoanForm() {
             label="Loan Amount (ZMW)"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            onBlur={handleAmountBlur} // NEW: onBlur validation
+            onBlur={handleAmountBlur}
             type="number"
             inputProps={{ min: 1 }}
             fullWidth
@@ -1008,18 +958,11 @@ function ManualLoanForm() {
             sx={textFieldStyles}
           />
 
-          {/* DatePickers for Start and Due Dates - IMPROVED VERSION */}
           <DatePicker
             label="Start Date"
             value={startDate}
             onChange={(newValue) => setStartDate(newValue)}
-            onBlur={() => {
-              if (!startDate || !startDate.isValid()) setStartDateError("Invalid start date.");
-              else setStartDateError("");
-            }}
-            // Added prop to resolve the `sectionListRef` error
             enableAccessibleFieldDOMStructure={false}
-            // Use slots and slotProps for modern MUI DatePicker customization
             slots={{ textField: TextField }}
             slotProps={{
               textField: {
@@ -1030,20 +973,12 @@ function ManualLoanForm() {
                 sx: textFieldStyles,
               },
             }}
-            // REMOVED disablePast here to allow picking any date
           />
           <DatePicker
             label="Due Date"
             value={dueDate}
             onChange={(newValue) => setDueDate(newValue)}
-            onBlur={() => {
-              if (!dueDate || !dueDate.isValid()) setDueDateError("Invalid due date.");
-              else if (startDate && dueDate && dueDate.isBefore(startDate, 'day')) setDueDateError("Due date cannot be before the start date.");
-              else setDueDateError("");
-            }}
-            // Added prop to resolve the `sectionListRef` error
             enableAccessibleFieldDOMStructure={false}
-            // Use slots and slotProps for modern MUI DatePicker customization
             slots={{ textField: TextField }}
             slotProps={{
               textField: {
@@ -1054,17 +989,17 @@ function ManualLoanForm() {
                 sx: textFieldStyles,
               },
             }}
-            minDate={startDate || dayjs()} // Due date cannot be before start date (or current date if start is null)
-            disablePast // Prevents selecting dates in the past
+            minDate={startDate || dayjs()}
+            disablePast
           />
 
           <TextField
             label="Interest Rate (%)"
             value={manualInterestRate}
             onChange={(e) => setManualInterestRate(e.target.value)}
-            onBlur={handleManualInterestRateBlur} // NEW: onBlur validation
+            onBlur={handleManualInterestRateBlur}
             type="number"
-            inputProps={{ min: 0, max: 100, step: "0.01" }} // Allows decimal input
+            inputProps={{ min: 0, max: 100, step: "0.01" }}
             fullWidth
             required
             error={!!manualInterestRateError}
@@ -1072,13 +1007,13 @@ function ManualLoanForm() {
             sx={textFieldStyles}
           />
 
-          {/* Display calculated interest and total repayable if amount and rate are valid */}
-          {displayPrincipal > 0 && manualInterestRate !== "" && (
-            <Box sx={{ 
-              p: 2, // NEW: Increased padding for more space
-              bgcolor: theme.palette.mode === 'light' ? theme.palette.secondary.light : theme.palette.secondary.dark, // NEW: Theme-aware background
-              borderRadius: 2, // NEW: Rounded corners
-              borderLeft: `5px solid ${theme.palette.secondary.main}`, // NEW: Accent line
+          {/* IMPROVED: Fade animation and enhanced styling for the summary box */}
+          <Fade in={displayPrincipal > 0 && manualInterestRate !== ""}>
+            <Box sx={{
+              p: 2,
+              bgcolor: theme.palette.mode === 'light' ? theme.palette.secondary.light : theme.palette.secondary.dark,
+              borderRadius: 2,
+              borderLeft: `5px solid ${theme.palette.secondary.main}`,
             }}>
               <Typography variant="body2" color="text.secondary">
                 Calculated Interest: ZMW{" "}
@@ -1087,7 +1022,7 @@ function ManualLoanForm() {
                   maximumFractionDigits: 2,
                 })}
               </Typography>
-              <Typography variant="h6" fontWeight="bold"> {/* NEW: h6 for emphasis */}
+              <Typography variant="h6" fontWeight="bold">
                 Total Repayable: ZMW{" "}
                 {displayTotalRepayable.toLocaleString(undefined, {
                   minimumFractionDigits: 2,
@@ -1095,7 +1030,7 @@ function ManualLoanForm() {
                 })}
               </Typography>
             </Box>
-          )}
+          </Fade>
 
           <Button
             type="submit"
@@ -1114,35 +1049,30 @@ function ManualLoanForm() {
 
 /**
  * Main LoanManagementTabs Component
- * This component acts as a container for the "Auto Loan" and "Manual Loan" forms,
- * providing tab navigation between them. It is the new entry point for your loan form.
  */
 export default function LoanManagementTabs() {
-  const [selectedTab, setSelectedTab] = useState(0); // State to manage which tab is active
+  const [selectedTab, setSelectedTab] = useState(0);
 
-  // Handler for changing the active tab
   const handleChangeTab = (event, newValue) => {
     setSelectedTab(newValue);
   };
 
   return (
-    // LocalizationProvider must wrap components that use DatePickers (like DatePicker).
-    // It's placed here to ensure both forms have access to date localization.
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Box sx={{ width: "100%", mt: 3 }}>
         <Tabs
           value={selectedTab}
           onChange={handleChangeTab}
           aria-label="loan type tabs"
-          centered // Center the tabs
+          centered
           sx={{
             "& .MuiTabs-indicator": {
-              backgroundColor: (theme) => theme.palette.secondary.main, // Accent color for indicator
+              backgroundColor: (theme) => theme.palette.secondary.main,
             },
             "& .MuiTab-root": {
-              color: (theme) => theme.palette.text.secondary, // Default tab text color
+              color: (theme) => theme.palette.text.secondary,
               "&.Mui-selected": {
-                color: (theme) => theme.palette.secondary.main, // Accent color for selected tab
+                color: (theme) => theme.palette.secondary.main,
               },
             },
           }}
@@ -1150,9 +1080,9 @@ export default function LoanManagementTabs() {
           <Tab label="Auto Loan" />
           <Tab label="Manual Loan" />
         </Tabs>
-        <Box sx={{ p: 3 }}> {/* Padding around the form content */}
-          {selectedTab === 0 && <AutoLoanForm />} {/* Render AutoLoanForm when tab 0 is selected */}
-          {selectedTab === 1 && <ManualLoanForm />} {/* Render ManualLoanForm when tab 1 is selected */}
+        <Box sx={{ p: 3 }}>
+          {selectedTab === 0 && <AutoLoanForm />}
+          {selectedTab === 1 && <ManualLoanForm />}
         </Box>
       </Box>
     </LocalizationProvider>
