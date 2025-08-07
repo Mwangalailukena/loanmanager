@@ -24,9 +24,9 @@ import {
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
-import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import PersonIcon from '@mui/icons-material/Person';
 import PhoneIcon from '@mui/icons-material/Phone';
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 // EXISTING IMPORTS
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { toast } from "react-toastify";
@@ -238,7 +238,6 @@ export default function AddPaymentPage() {
           />
 
           {selectedLoan && (
-            // NEW: Using a Card for a more defined, elevated look
             <Card
               variant="outlined"
               sx={{
@@ -255,36 +254,35 @@ export default function AddPaymentPage() {
                   <Box display="flex" alignItems="center" gap={1}>
                     <PersonIcon color="primary" fontSize="small" />
                     <Typography variant="body2" sx={{ flexGrow: 1 }}>
-                      Borrower: **{selectedLoan.borrower}**
+                      Borrower: {selectedLoan.borrower}
                     </Typography>
                   </Box>
                   <Box display="flex" alignItems="center" gap={1}>
                     <PhoneIcon color="primary" fontSize="small" />
                     <Typography variant="body2" sx={{ flexGrow: 1 }}>
-                      Phone: **{selectedLoan.phone}**
+                      Phone: {selectedLoan.phone}
                     </Typography>
                   </Box>
                   <Box display="flex" alignItems="center" gap={1}>
                     <MonetizationOnIcon color="primary" fontSize="small" />
                     <Typography variant="body2" sx={{ flexGrow: 1 }}>
-                      Principal: **ZMW {selectedLoan.principal.toFixed(2).toLocaleString()}**
+                      Principal: ZMW {selectedLoan.principal.toFixed(2).toLocaleString()}
                     </Typography>
                   </Box>
                   <Box display="flex" alignItems="center" gap={1}>
                     <AccountBalanceWalletIcon color="primary" fontSize="small" />
                     <Typography variant="body2" sx={{ flexGrow: 1 }}>
-                      Total Repayable: **ZMW {selectedLoan.totalRepayable.toFixed(2).toLocaleString()}**
+                      Total Repayable: ZMW {selectedLoan.totalRepayable.toFixed(2).toLocaleString()}
                     </Typography>
                   </Box>
                   <Box display="flex" alignItems="center" gap={1}>
                     <CheckCircleOutlineIcon color="primary" fontSize="small" />
                     <Typography variant="body2" sx={{ flexGrow: 1 }}>
-                      Already Repaid: **ZMW {currentRepaid.toFixed(2).toLocaleString()}**
+                      Already Repaid: ZMW {currentRepaid.toFixed(2).toLocaleString()}
                     </Typography>
                   </Box>
                 </Stack>
                 
-                {/* NEW: A divider to separate the main balance from the rest */}
                 <Divider sx={{ my: 1 }} />
 
                 <Box display="flex" alignItems="center" gap={1} sx={{ mt: 1 }}>
@@ -322,7 +320,6 @@ export default function AddPaymentPage() {
           />
 
           {selectedLoan && parseFloat(paymentAmount) > 0 && (
-            // NEW: Enhanced styling for the prospective balance box
             <Box
               sx={{
                 p: 2,
@@ -333,14 +330,14 @@ export default function AddPaymentPage() {
               }}
             >
               <Typography variant="body2" color="text.secondary">
-                After this payment, **{selectedLoan.borrower}'s** loan balance will be:
+                After this payment, {selectedLoan.borrower}'s loan balance will be:
               </Typography>
               <Typography
                 variant="h6"
                 fontWeight="bold"
                 color={prospectiveRemaining <= 0.01 ? "success.main" : "text.primary"}
               >
-                **ZMW {Math.max(0, prospectiveRemaining).toFixed(2).toLocaleString()}**
+                ZMW {Math.max(0, prospectiveRemaining).toFixed(2).toLocaleString()}
                 {prospectiveRemaining <= 0.01 && " (Loan will be paid in full)"}
               </Typography>
             </Box>
@@ -368,16 +365,16 @@ export default function AddPaymentPage() {
         <DialogContent>
           {selectedLoan && (
             <DialogContentText id="confirm-payment-description">
-              You are about to add a payment of **ZMW {Number(paymentAmount).toFixed(2).toLocaleString()}**
-              for **{selectedLoan.borrower}**'s loan.
+              You are about to add a payment of ZMW {Number(paymentAmount).toFixed(2).toLocaleString()}
+              for {selectedLoan.borrower}'s loan.
               <br />
-              The current remaining balance is **ZMW {remainingBalance.toFixed(2).toLocaleString()}**.
+              The current remaining balance is ZMW {remainingBalance.toFixed(2).toLocaleString()}.
               <br />
-              After this payment, the remaining balance will be **ZMW {Math.max(0, prospectiveRemaining).toFixed(2).toLocaleString()}**.
+              After this payment, the remaining balance will be ZMW {Math.max(0, prospectiveRemaining).toFixed(2).toLocaleString()}.
               {prospectiveRemaining <= 0.01 && " (This loan will be marked as Paid.)"}
               <br />
               <br />
-              **Confirm to proceed?**
+              Confirm to proceed?
             </DialogContentText>
           )}
         </DialogContent>
