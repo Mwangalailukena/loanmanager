@@ -15,29 +15,21 @@ import {
   DialogActions,
   Paper,
   useTheme,
-  // NEW IMPORTS FOR DISPLAY IMPROVEMENTS
   Divider,
   Card,
   CardContent,
 } from "@mui/material";
-// NEW IMPORTS FOR ICONS
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import PersonIcon from '@mui/icons-material/Person';
 import PhoneIcon from '@mui/icons-material/Phone';
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
-// EXISTING IMPORTS
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { toast } from "react-toastify";
 
 const OFFLINE_PAYMENTS_KEY = "offlinePayments";
 
-/**
- * Renders a form for adding a new payment to a loan.
- * Includes features for searching loans, displaying loan details,
- * and handling offline payments.
- */
 export default function AddPaymentPage() {
   const theme = useTheme();
   const { loans, addPayment, loadingLoans } = useFirestore();
@@ -49,7 +41,6 @@ export default function AddPaymentPage() {
   const [loading, setLoading] = useState(false);
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
 
-  // Syncs offline payments when the user comes online
   useEffect(() => {
     async function syncOfflinePayments() {
       const savedPayments = JSON.parse(localStorage.getItem(OFFLINE_PAYMENTS_KEY) || "[]");
@@ -79,14 +70,22 @@ export default function AddPaymentPage() {
     return () => window.removeEventListener("online", handleOnline);
   }, [addPayment]);
 
-  // Memoizes the list of active loans to prevent re-filtering on every render
-  const activeLoans = useMemo(() => loans.filter(loan => loan.status === "Active"), [loans]);
+  // CORRECTED: Filter for unique and active loans to prevent duplicate entries in the search
+  const uniqueActiveLoans = useMemo(() => {
+    const uniqueIds = new Set();
+    return loans.filter(loan => {
+      if (loan.status === "Active" && !uniqueIds.has(loan.id)) {
+        uniqueIds.add(loan.id);
+        return true;
+      }
+      return false;
+    });
+  }, [loans]);
 
   const setFieldError = (field, message) => {
     setFieldErrors(prev => ({ ...prev, [field]: message }));
   };
 
-  // NEW: Real-time clearing of errors for a better user experience
   useEffect(() => { setFieldError('loan', ''); setGeneralError(''); }, [selectedLoan]);
   useEffect(() => { setFieldError('amount', ''); setGeneralError(''); }, [paymentAmount]);
 
@@ -160,7 +159,6 @@ export default function AddPaymentPage() {
   const remainingBalance = selectedLoan ? selectedLoan.totalRepayable - currentRepaid : 0;
   const prospectiveRemaining = remainingBalance - Number(paymentAmount || 0);
   
-  // Reusable styles for the focused state of form fields
   const textFieldStyles = {
     "& .MuiOutlinedInput-root": {
       "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
@@ -199,10 +197,8 @@ export default function AddPaymentPage() {
           <Autocomplete
             sx={textFieldStyles}
             id="loan-borrower-search"
-            options={activeLoans}
-            getOptionLabel={(option) =>
-              `${option.borrower} (Phone: ${option.phone})`
-            }
+            options={uniqueActiveLoans} // CORRECTED: Now uses the unique loans array
+            getOptionLabel={(option) => `${option.borrower} (Phone: ${option.phone})`}
             value={selectedLoan}
             onChange={(e, newValue) => setSelectedLoan(newValue)}
             loading={loadingLoans}
