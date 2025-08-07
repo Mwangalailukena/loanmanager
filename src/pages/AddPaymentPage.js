@@ -18,7 +18,7 @@ import {
   Divider,
   Card,
   CardContent,
-  Chip, // NEW IMPORT
+  Chip,
 } from "@mui/material";
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
@@ -198,7 +198,6 @@ export default function AddPaymentPage() {
             sx={textFieldStyles}
             id="loan-borrower-search"
             options={uniqueActiveLoans}
-            // MODIFIED: getOptionLabel now returns only the borrower name
             getOptionLabel={(option) => option.borrower}
             value={selectedLoan}
             onChange={(e, newValue) => setSelectedLoan(newValue)}
@@ -223,7 +222,6 @@ export default function AddPaymentPage() {
               />
             )}
             isOptionEqualToValue={(option, value) => option.id === value.id}
-            // NEW: Custom render for each option in the dropdown
             renderOption={(props, option) => {
               const outstandingAmount = (option.totalRepayable - (option.repaidAmount || 0)).toFixed(2).toLocaleString();
               return (
