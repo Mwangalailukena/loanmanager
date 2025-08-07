@@ -1,435 +1,466 @@
 // src/components/LoanList.jsx
-import React, { useState, useEffect, useMemo, useContext } from "react";
-import dayjs from "dayjs";
-import { AnimatePresence, motion } from "framer-motion";
+
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Box,
   Typography,
+  TextField,
+  Select,
+  MenuItem,
+  InputLabel,
+  FormControl,
   Table,
   TableHead,
   TableBody,
   TableRow,
   TableCell,
   TableFooter,
-  TableSortLabel,
-  Stack,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Button,
-  Chip,
   IconButton,
-  InputAdornment,
-  Tooltip,
+  Collapse,
+  Stack,
+  Button,
   useMediaQuery,
   useTheme,
+  CircularProgress,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  CircularProgress,
-  Collapse,
   Alert,
   Checkbox,
+  Tooltip,
   Snackbar,
+  Chip,
+  TableSortLabel,
+  InputAdornment,
 } from "@mui/material";
-import { visuallyHidden } from "@mui/utils";
-import CloseIcon from "@mui/icons-material/Close";
-import Edit from "@mui/icons-material/Edit";
-import Delete from "@mui/icons-material/Delete";
-import Payment from "@mui/icons-material/Payment";
-import History from "@mui/icons-material/History";
-import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
-import KeyboardArrowUp from "@mui/icons-material/KeyboardArrowUp";
+import {
+  KeyboardArrowDown,
+  KeyboardArrowUp,
+  Edit,
+  Delete,
+  Payment,
+  History,
+  Close as CloseIcon,
+} from "@mui/icons-material";
 import { useFirestore } from "../contexts/FirestoreProvider";
-import { useSettings } from "../contexts/SettingsProvider";
-import { useSnackbar } from "../contexts/SnackbarProvider";
-import { v4 as uuidv4 } from "uuid";
-import { useAuth } from "../contexts/AuthProvider";
+import { useAuth } from "../contexts/AuthProvider"; // <-- Added this missing import
+import { useSnackbar } from "../contexts/SnackbarProvider"; // <-- Added this missing import
+import { exportToCsv } from "../utils/exportCSV";
+import { motion, AnimatePresence } from "framer-motion";
+import dayjs from "dayjs";
+import { useSearchParams } from "react-router-dom";
+import { visuallyHidden } from '@mui/utils';
 
-const PAGE_SIZE = 15;
+const PAGE_SIZE = 10;
 
-function getStatusChipProps(status) {
-  switch (status.toLowerCase()) {
-    case "active":
-      return {
-        label: "Active",
-        color: "secondary",
-        variant: "outlined",
-      };
-    case "paid":
-      return {
-        label: "Paid",
-        color: "success",
-        variant: "filled",
-      };
-    case "overdue":
-      return {
-        label: "Overdue",
-        color: "error",
-        variant: "filled",
-      };
-    default:
-      return { label: status, color: "default" };
-  }
-}
-
-function calculateInterest(principal, duration) {
-  if (isNaN(principal) || principal <= 0) return 0;
-  const rates = {
-    "weekly": 0.05,
-    "monthly": 0.15,
-    "annually": 0.5,
-  };
-  return principal * (rates[duration] || 0);
-}
-
-const filterInputStyles = {
-  "& .MuiOutlinedInput-root": {
-    "&.Mui-focused fieldset": {
-      borderColor: "secondary.main",
-    },
-  },
-  "& .MuiInputLabel-root.Mui-focused": {
-    color: "secondary.main",
-  },
-};
+const interestOptions = [
+  { label: "1 Week", value: 1 },
+  { label: "2 Weeks", value: 2 },
+  { label: "3 Weeks", value: 3 },
+  { label: "4 Weeks", value: 4 },
+];
 
 export default function LoanList({ globalSearchTerm }) {
-  const {
-    loans,
-    loadingLoans,
-    deleteLoan,
-    updateLoan,
-    addPayment,
-    getPaymentsForLoan,
-    deleteLoans,
-  } = useFirestore();
-  const { settings } = useSettings();
-  const { showSnackbar } = useSnackbar();
+  const { loans, loadingLoans, deleteLoan, addPayment, updateLoan, getPaymentsByLoanId, settings } = useFirestore();
+  const { showSnackbar } = useSnackbar(); // Now correctly imported
+  const { user } = useAuth(); // Now correctly imported
+  
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [monthFilter, setMonthFilter] = useState("");
-  const [sortKey, setSortKey] = useState("borrower");
-  const [sortDirection, setSortDirection] = useState("asc");
+  const [statusFilter, setStatusFilter] = useState(searchParams.get('filter') || "all");
+  const [monthFilter, setMonthFilter] = useState(searchParams.get('month') || dayjs().format("YYYY-MM"));
   const [page, setPage] = useState(1);
-  const [useInfiniteScroll, setUseInfiniteScroll] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
+  const [useInfiniteScroll] = useState(isMobile);
+  const [expandedRow, setExpandedRow] = useState(null);
+
+  const [confirmDelete, setConfirmDelete] = useState({ open: false, loanId: null });
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState({
-    open: false,
-    loanId: null,
-  });
-  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
-  const [paymentModal, setPaymentModal] = useState({
-    open: false,
-    loanId: null,
-  });
+
+  const [paymentModal, setPaymentModal] = useState({ open: false, loanId: null });
   const [paymentAmount, setPaymentAmount] = useState("");
-  const [isAddingPayment, setIsAddingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState("");
+  const [isAddingPayment, setIsAddingPayment] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+
   const [editModal, setEditModal] = useState({ open: false, loan: null });
   const [editData, setEditData] = useState({
     borrower: "",
     phone: "",
-    principal: 0,
-    interest: 0,
-    interestDuration: "monthly",
-    totalRepayable: 0,
+    principal: "",
+    interestDuration: 1,
     startDate: "",
     dueDate: "",
   });
   const [editErrors, setEditErrors] = useState({});
   const [isSavingEdit, setIsSavingEdit] = useState(false);
-  const [historyModal, setHistoryModal] = useState({
-    open: false,
-    loanId: null,
-    payments: [],
-    loading: false,
-  });
+
+  const [historyModal, setHistoryModal] = useState({ open: false, loanId: null, payments: [], loading: false });
+
   const [selectedLoanIds, setSelectedLoanIds] = useState([]);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  
+  const [sortKey, setSortKey] = useState("startDate");
+  const [sortDirection, setSortDirection] = useState("desc");
 
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-  const [expandedRow, setExpandedRow] = useState(null);
-  const { user } = useAuth();
-
-  const toggleRow = (id) => {
-    setExpandedRow(expandedRow === id ? null : id);
+  const interestRates = settings.interestRates || {
+    1: 0.15,
+    2: 0.2,
+    3: 0.3,
+    4: 0.3,
   };
 
-  const interestOptions = useMemo(() => {
-    if (!settings) return [];
-    return [
-      { label: "Weekly", value: "weekly" },
-      { label: "Monthly", value: "monthly" },
-      { label: "Annually", value: "annually" },
-    ];
-  }, [settings]);
+  const calculateInterest = (principal, weeks) => principal * (interestRates[weeks] || 0);
 
   const calcStatus = (loan) => {
-    if ((loan.totalRepayable || 0) <= (loan.repaidAmount || 0)) {
+    const totalRepayable = Number(loan.totalRepayable || 0);
+    const repaidAmount = Number(loan.repaidAmount || 0);
+
+    if (repaidAmount >= totalRepayable && totalRepayable > 0) {
       return "Paid";
     }
-    if (dayjs(loan.dueDate).isBefore(dayjs(), "day")) {
+
+    const now = dayjs();
+    const due = dayjs(loan.dueDate);
+    if (due.isBefore(now, "day")) {
       return "Overdue";
     }
+
     return "Active";
   };
-
-  useEffect(() => {
-    if (globalSearchTerm) {
-      setSearchTerm(globalSearchTerm);
+  
+  const getStatusChipProps = (status) => {
+    const statusLower = status.toLowerCase();
+    switch (statusLower) {
+      case "paid":
+        return { label: "Paid", color: "success" };
+      case "overdue":
+        return { label: "Overdue", color: "error" };
+      case "active":
+      default:
+        return { label: "Active", color: "primary" };
     }
-  }, [globalSearchTerm]);
+  };
+
+  const filterInputStyles = {
+    "& .MuiOutlinedInput-root": {
+      "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+        borderColor: theme.palette.secondary.main,
+      },
+    },
+    "& .MuiInputLabel-root.Mui-focused": {
+      color: theme.palette.secondary.main,
+    },
+    "& .MuiSvgIcon-root": {
+      "&.Mui-focused": {
+        color: theme.palette.secondary.main,
+      },
+    },
+  };
+  
+  useEffect(() => {
+    const urlFilter = searchParams.get('filter');
+    const urlMonth = searchParams.get('month');
+
+    if (urlFilter && urlFilter.toLowerCase() !== statusFilter.toLowerCase()) {
+      setStatusFilter(urlFilter);
+    } else if (!urlFilter && statusFilter !== "all") {
+      setStatusFilter("all");
+    }
+
+    if (urlMonth && urlMonth !== monthFilter) {
+      setMonthFilter(urlMonth);
+    } else if (!urlMonth && monthFilter !== dayjs().format("YYYY-MM")) {
+      setMonthFilter(dayjs().format("YYYY-MM"));
+    }
+
+    setSearchTerm(globalSearchTerm || "");
+    setPage(1);
+  }, [searchParams, statusFilter, monthFilter, globalSearchTerm]);
+
+  const activeSearchTerm = useMemo(() => {
+    return globalSearchTerm || searchTerm;
+  }, [globalSearchTerm, searchTerm]);
 
   const filteredLoans = useMemo(() => {
-    if (loadingLoans || !loans) {
-      return [];
+    let result = loans
+      .filter((loan) => {
+        if (monthFilter && dayjs(loan.startDate).format("YYYY-MM") !== monthFilter) return false;
+        
+        if (statusFilter !== "all" && calcStatus(loan).toLowerCase() !== statusFilter.toLowerCase()) return false;
+        
+        if (
+          activeSearchTerm && 
+          !(
+            loan.borrower.toLowerCase().includes(activeSearchTerm.toLowerCase()) ||
+            loan.phone.toLowerCase().includes(activeSearchTerm.toLowerCase())
+          )
+        )
+          return false;
+        return true;
+      });
+      
+    if (sortKey) {
+      result.sort((a, b) => {
+        let valA = a[sortKey];
+        let valB = b[sortKey];
+
+        if (sortKey === "borrower" || sortKey === "phone") {
+          valA = valA.toLowerCase();
+          valB = valB.toLowerCase();
+        } else if (sortKey.includes("Date")) {
+          valA = dayjs(valA).unix();
+          valB = dayjs(valB).unix();
+        } else if (sortKey === 'outstanding') {
+           valA = (a.totalRepayable || 0) - (a.repaidAmount || 0);
+           valB = (b.totalRepayable || 0) - (b.repaidAmount || 0);
+        } else {
+          valA = Number(valA);
+          valB = Number(valB);
+        }
+
+        if (valA < valB) return sortDirection === "asc" ? -1 : 1;
+        if (valA > valB) return sortDirection === "asc" ? 1 : -1;
+        return 0;
+      });
     }
 
-    let filtered = loans;
-
-    if (globalSearchTerm) {
-      const lowerSearch = globalSearchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (loan) =>
-          loan.borrower.toLowerCase().includes(lowerSearch) ||
-          loan.phone.toLowerCase().includes(lowerSearch) ||
-          loan.id.toLowerCase().includes(lowerSearch)
-      );
-    } else if (searchTerm) {
-      const lowerSearch = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (loan) =>
-          loan.borrower.toLowerCase().includes(lowerSearch) ||
-          loan.phone.toLowerCase().includes(lowerSearch)
-      );
-    }
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((loan) =>
-        calcStatus(loan).toLowerCase().includes(statusFilter)
-      );
-    }
-
-    if (monthFilter) {
-      filtered = filtered.filter(
-        (loan) => dayjs(loan.startDate).format("YYYY-MM") === monthFilter
-      );
-    }
-
-    const outstanding = (loan) =>
-      (loan.totalRepayable || 0) - (loan.repaidAmount || 0);
-
-    const sorted = [...filtered].sort((a, b) => {
-      let aValue = a[sortKey];
-      let bValue = b[sortKey];
-
-      if (sortKey === "outstanding") {
-        aValue = outstanding(a);
-        bValue = outstanding(b);
-      }
-
-      if (typeof aValue === "string") {
-        return sortDirection === "asc"
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue);
-      } else {
-        return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
-      }
-    });
-
-    return sorted;
-  }, [loans, searchTerm, statusFilter, monthFilter, sortKey, sortDirection, loadingLoans, globalSearchTerm]);
-
-  const onStatusChange = (e) => {
-    setStatusFilter(e.target.value);
-    setPage(1);
-  };
-  const onMonthChange = (e) => {
-    setMonthFilter(e.target.value);
-    setPage(1);
-  };
-  const handleSort = (key) => {
-    if (sortKey === key) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
-      setSortKey(key);
-      setSortDirection("asc");
-    }
-  };
-  const handleDelete = async () => {
-    if (!confirmDelete.loanId) return;
-    setIsDeleting(true);
-    try {
-      await deleteLoan(confirmDelete.loanId);
-      showSnackbar("Loan deleted successfully!", "success");
-    } catch (error) {
-      showSnackbar("Failed to delete loan.", "error");
-    } finally {
-      setIsDeleting(false);
-      setConfirmDelete({ open: false, loanId: null });
-    }
-  };
-  const handleBulkDelete = async () => {
-    if (selectedLoanIds.length === 0) return;
-    setIsBulkDeleting(true);
-    try {
-      await deleteLoans(selectedLoanIds);
-      showSnackbar(`${selectedLoanIds.length} loans deleted successfully!`, "success");
-      setSelectedLoanIds([]);
-    } catch (error) {
-      showSnackbar("Failed to delete loans.", "error");
-    } finally {
-      setIsBulkDeleting(false);
-      setConfirmBulkDelete(false);
-    }
-  };
-  const openPaymentModal = (loanId) => {
-    setPaymentModal({ open: true, loanId });
-  };
-  const handlePaymentSubmit = async () => {
-    if (paymentAmount <= 0) {
-      setPaymentError("Amount must be greater than zero.");
-      return;
-    }
-    setIsAddingPayment(true);
-    try {
-      await addPayment(paymentModal.loanId, parseFloat(paymentAmount));
-      showSnackbar("Payment added successfully!", "success");
-      setPaymentModal({ open: false, loanId: null });
-      setPaymentAmount("");
-      setPaymentSuccess(true);
-    } catch (error) {
-      showSnackbar("Failed to add payment.", "error");
-    } finally {
-      setIsAddingPayment(false);
-    }
-  };
-  const openEditModal = (loan) => {
-    setEditData({
-      id: loan.id,
-      borrower: loan.borrower,
-      phone: loan.phone,
-      principal: loan.principal,
-      interest: loan.interest,
-      interestDuration: loan.interestDuration,
-      totalRepayable: loan.totalRepayable,
-      startDate: loan.startDate,
-      dueDate: loan.dueDate,
-    });
-    setEditModal({ open: true, loan });
-  };
-  const handleEditSubmit = async () => {
-    setIsSavingEdit(true);
-    const errors = {};
-    if (!editData.borrower) errors.borrower = "Borrower name is required.";
-    if (editData.principal <= 0) errors.principal = "Principal must be greater than zero.";
-    if (!editData.startDate) errors.startDate = "Start date is required.";
-
-    if (Object.keys(errors).length > 0) {
-      setEditErrors(errors);
-      setIsSavingEdit(false);
-      return;
-    }
-
-    try {
-      const updatedLoan = {
-        ...editModal.loan,
-        ...editData,
-        principal: parseFloat(editData.principal),
-        interest: parseFloat(editData.interest),
-        totalRepayable: parseFloat(editData.totalRepayable),
-      };
-      await updateLoan(updatedLoan);
-      showSnackbar("Loan updated successfully!", "success");
-      setEditModal({ open: false, loan: null });
-    } catch (error) {
-      setEditErrors({ form: "Failed to update loan." });
-    } finally {
-      setIsSavingEdit(false);
-    }
-  };
-  const openHistoryModal = async (loanId) => {
-    setHistoryModal({ open: true, loanId, payments: [], loading: true });
-    try {
-      const payments = await getPaymentsForLoan(loanId);
-      setHistoryModal((prev) => ({ ...prev, payments, loading: false }));
-    } catch (error) {
-      showSnackbar("Failed to load payment history.", "error");
-      setHistoryModal((prev) => ({ ...prev, loading: false }));
-    }
-  };
-
+    return result;
+  }, [loans, activeSearchTerm, statusFilter, monthFilter, sortKey, sortDirection]);
+  
   const displayedLoans = useMemo(() => {
-    if (useInfiniteScroll) {
-      return filteredLoans;
+    if (useInfiniteScroll && isMobile) {
+      return filteredLoans.slice(0, page * PAGE_SIZE);
+    } else {
+      const start = (page - 1) * PAGE_SIZE;
+      return filteredLoans.slice(start, start + PAGE_SIZE);
     }
-    const start = (page - 1) * PAGE_SIZE;
-    const end = start + PAGE_SIZE;
-    return filteredLoans.slice(start, end);
-  }, [filteredLoans, page, useInfiniteScroll]);
+  }, [filteredLoans, page, useInfiniteScroll, isMobile]);
+
+  const handleScroll = useCallback(() => {
+    if (
+      window.innerHeight + window.scrollY + 50 >=
+      document.documentElement.scrollHeight
+    ) {
+      if (useInfiniteScroll && displayedLoans.length < filteredLoans.length && !loadingLoans) {
+        setPage((p) => p + 1);
+      }
+    }
+  }, [displayedLoans.length, filteredLoans.length, useInfiniteScroll, loadingLoans]);
+
+  useEffect(() => {
+    if (useInfiniteScroll && isMobile) {
+      window.addEventListener("scroll", handleScroll);
+      return () => window.removeEventListener("scroll", handleScroll);
+    }
+  }, [handleScroll, useInfiniteScroll, isMobile]);
+
+  useEffect(() => {
+    setPage(1);
+    setExpandedRow(null);
+    setSelectedLoanIds([]);
+  }, [activeSearchTerm, statusFilter, monthFilter, useInfiniteScroll]);
 
   const totals = useMemo(() => {
     return filteredLoans.reduce(
       (acc, loan) => {
-        const outstanding = (loan.totalRepayable || 0) - (loan.repaidAmount || 0);
         acc.principal += Number(loan.principal || 0);
         acc.interest += Number(loan.interest || 0);
         acc.totalRepayable += Number(loan.totalRepayable || 0);
-        acc.outstanding += outstanding;
+        acc.outstanding += Number(loan.totalRepayable || 0) - Number(loan.repaidAmount || 0);
         return acc;
       },
       { principal: 0, interest: 0, totalRepayable: 0, outstanding: 0 }
     );
   }, [filteredLoans]);
 
-  const handleScroll = () => {
-    if (!useInfiniteScroll || !hasMore || loadingLoans) return;
-    const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
-    if (scrollTop + clientHeight >= scrollHeight - 300) {
-      setPage(prevPage => prevPage + 1);
+  const toggleSelectAll = () => {
+    if (selectedLoanIds.length === displayedLoans.length && displayedLoans.length > 0) {
+      setSelectedLoanIds([]);
+    } else {
+      setSelectedLoanIds(displayedLoans.map((loan) => loan.id));
     }
   };
 
-  useEffect(() => {
-    if (isMobile) {
-      setUseInfiniteScroll(true);
-      window.addEventListener("scroll", handleScroll);
-    } else {
-      setUseInfiniteScroll(false);
-      window.removeEventListener("scroll", handleScroll);
-    }
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [isMobile, useInfiniteScroll, hasMore, loadingLoans]);
+  const toggleSelectLoan = (id) => {
+    setSelectedLoanIds((prev) =>
+      prev.includes(id) ? prev.filter((sid) => sid !== id) : [...prev, id]
+    );
+  };
+  
+  const handleSort = (key) => {
+    const isAsc = sortKey === key && sortDirection === 'asc';
+    setSortDirection(isAsc ? 'desc' : 'asc');
+    setSortKey(key);
+  };
 
-  useEffect(() => {
-    if (useInfiniteScroll) {
-      setHasMore(displayedLoans.length < filteredLoans.length);
+  const handleDelete = async () => {
+    if (confirmDelete.loanId) {
+      setIsDeleting(true);
+      try {
+        await deleteLoan(confirmDelete.loanId);
+        setConfirmDelete({ open: false, loanId: null });
+        setSelectedLoanIds((prev) => prev.filter(id => id !== confirmDelete.loanId));
+      } catch (error) {
+        console.error("Error deleting loan:", error);
+        showSnackbar("Failed to delete loan.", "error");
+      } finally {
+        setIsDeleting(false);
+      }
     }
-  }, [displayedLoans, filteredLoans, useInfiniteScroll]);
+  };
 
-  const toggleSelectAll = (event) => {
-    if (event.target.checked) {
-      const newSelectedIds = displayedLoans.map((loan) => loan.id);
-      setSelectedLoanIds(newSelectedIds);
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    try {
+      await Promise.all(selectedLoanIds.map(id => deleteLoan(id)));
+      setSelectedLoanIds([]);
+      setConfirmBulkDelete(false);
+      showSnackbar(`${selectedLoanIds.length} loans deleted successfully!`, "success");
+    } catch (error) {
+      console.error("Error bulk deleting loans:", error);
+      showSnackbar("Failed to delete loans.", "error");
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
+  const openEditModal = (loan) => {
+    setEditData({
+      borrower: loan.borrower,
+      phone: loan.phone,
+      principal: loan.principal,
+      interestDuration: loan.interestDuration || 1,
+      startDate: loan.startDate,
+      dueDate: loan.dueDate,
+    });
+    setEditErrors({});
+    setEditModal({ open: true, loan });
+  };
+
+  const handleEditSubmit = async () => {
+    const errors = {};
+    if (!editData.borrower) errors.borrower = "Borrower name is required.";
+    if (!editData.phone) errors.phone = "Phone number is required.";
+    if (isNaN(parseFloat(editData.principal)) || parseFloat(editData.principal) < 0) errors.principal = "Valid principal required.";
+    if (!editData.startDate) errors.startDate = "Start date is required.";
+
+    setEditErrors(errors);
+    if (Object.keys(errors).length > 0) {
       return;
     }
-    setSelectedLoanIds([]);
-  };
 
-  const toggleSelectLoan = (loanId) => {
-    if (selectedLoanIds.includes(loanId)) {
-      setSelectedLoanIds(selectedLoanIds.filter((id) => id !== loanId));
-    } else {
-      setSelectedLoanIds([...selectedLoanIds, loanId]);
+    const principalAmount = parseFloat(editData.principal);
+    const selectedDuration = editData.interestDuration;
+
+    const calculatedInterestAmount = calculateInterest(principalAmount, selectedDuration);
+    const calculatedTotalRepayable = principalAmount + calculatedInterestAmount;
+
+    const updatedLoan = {
+      ...editModal.loan,
+      borrower: editData.borrower,
+      phone: editData.phone,
+      principal: principalAmount,
+      interest: calculatedInterestAmount,
+      totalRepayable: calculatedTotalRepayable,
+      startDate: editData.startDate,
+      dueDate: editData.dueDate,
+      interestDuration: selectedDuration,
+    };
+    setIsSavingEdit(true);
+    try {
+      await updateLoan(editModal.loan.id, updatedLoan);
+      setEditModal({ open: false, loan: null });
+      showSnackbar("Loan updated successfully!", "success");
+    } catch (error) {
+      console.error("Error updating loan:", error);
+      setEditErrors({ form: "Failed to update loan. Please try again." });
+      showSnackbar("Failed to update loan.", "error");
+    } finally {
+      setIsSavingEdit(false);
     }
   };
+
+  const openPaymentModal = (loanId) => {
+    setPaymentAmount("");
+    setPaymentError("");
+    setPaymentModal({ open: true, loanId });
+  };
+
+  const handlePaymentSubmit = async () => {
+    const amountNum = parseFloat(paymentAmount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      setPaymentError("Payment amount must be a positive number.");
+      return;
+    }
+
+    const loan = loans.find(l => l.id === paymentModal.loanId);
+    const outstanding = (loan?.totalRepayable || 0) - (loan?.repaidAmount || 0);
+
+    if (amountNum > outstanding) {
+      setPaymentError(`Payment cannot exceed outstanding amount (ZMW ${outstanding.toFixed(2)}).`);
+      return;
+    }
+
+    setIsAddingPayment(true);
+    try {
+      await addPayment(paymentModal.loanId, amountNum);
+      setPaymentModal({ open: false, loanId: null });
+      setPaymentSuccess(true);
+    } catch (error) {
+      console.error("Error adding payment:", error);
+      setPaymentError("Failed to add payment. Please try again.");
+      showSnackbar("Failed to add payment.", "error");
+    } finally {
+      setIsAddingPayment(false);
+    }
+  };
+
+  const openHistoryModal = async (loanId) => {
+    setHistoryModal({ open: true, loanId, payments: [], loading: true });
+    try {
+      const payments = await getPaymentsByLoanId(loanId);
+      setHistoryModal((prev) => ({ ...prev, payments, loading: false }));
+    } catch (error) {
+      console.error("Error fetching payment history:", error);
+      setHistoryModal((prev) => ({ ...prev, payments: [], loading: false }));
+      showSnackbar("Failed to load payment history.", "error");
+    }
+  };
+
+  const toggleRow = (id) => {
+    setExpandedRow(expandedRow === id ? null : id);
+  };
+  
+  const onMonthChange = useCallback(
+    (e) => {
+      const newMonth = e.target.value;
+      if (newMonth) {
+        searchParams.set("month", newMonth);
+      } else {
+        searchParams.delete("month");
+      }
+      setSearchParams(searchParams);
+    },
+    [searchParams, setSearchParams]
+  );
+  
+  const onStatusChange = useCallback(
+    (e) => {
+      const newStatus = e.target.value;
+      if (newStatus === "all") {
+        searchParams.delete("filter");
+      } else {
+        searchParams.set("filter", newStatus);
+      }
+      setSearchParams(searchParams);
+    },
+    [searchParams, setSearchParams]
+  );
 
   return (
     <Box sx={{ p: isMobile ? 1 : 3 }}>
@@ -546,21 +577,6 @@ export default function LoanList({ globalSearchTerm }) {
                             {loan.phone}
                           </Typography>
                         </Box>
-                        
-                        {expandedRow !== loan.id && (
-                          <Stack alignItems="flex-end" spacing={0.5}>
-                            <Chip size="small" {...getStatusChipProps(calcStatus(loan))} />
-                            <Typography 
-                              variant="body2" 
-                              fontWeight="bold" 
-                              color="secondary.main" 
-                              noWrap
-                            >
-                              ZMW {outstanding.toFixed(2)}
-                            </Typography>
-                          </Stack>
-                        )}
-                        
                         <IconButton size="small" onClick={() => toggleRow(loan.id)} aria-label="expand" color="secondary">
                           {expandedRow === loan.id ? <KeyboardArrowUp fontSize="small" /> : <KeyboardArrowDown fontSize="small" />}
                         </IconButton>
@@ -570,7 +586,6 @@ export default function LoanList({ globalSearchTerm }) {
                           <Typography noWrap>Principal: ZMW {Number(loan.principal).toFixed(2)}</Typography>
                           <Typography noWrap>Interest: ZMW {Number(loan.interest).toFixed(2)}</Typography>
                           <Typography noWrap>Total Repayable: ZMW {Number(loan.totalRepayable).toFixed(2)}</Typography>
-                          
                           <Typography noWrap>Outstanding: <Typography component="span" fontWeight="bold" color="secondary.main">{outstanding.toFixed(2)}</Typography></Typography>
                           <Typography noWrap>Start: {loan.startDate}</Typography>
                           <Typography noWrap>Due: {loan.dueDate}</Typography>
@@ -578,7 +593,6 @@ export default function LoanList({ globalSearchTerm }) {
                             <Typography component="span" noWrap sx={{ mr: 1, color: 'text.secondary', fontSize: '0.85rem' }}>Status:</Typography>
                             <Chip size="small" {...getStatusChipProps(calcStatus(loan))} />
                           </Box>
-                          
                           <Stack direction="row" spacing={0.5} mt={1} justifyContent="flex-start">
                             <Tooltip title="Edit">
                               <span>
