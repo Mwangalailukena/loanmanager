@@ -324,15 +324,14 @@ export default function LoanList({ globalSearchTerm }) {
   };
 
   const openEditModal = (loan) => {
-    const initialDueDate = dayjs(loan.startDate).add((loan.interestDuration || 1) * 7, 'day').format("YYYY-MM-DD");
-
+    // The initial due date is set from the loan record, not recalculated
     setEditData({
       borrower: loan.borrower,
       phone: loan.phone,
       principal: loan.principal,
       interestDuration: loan.interestDuration || 1,
       startDate: loan.startDate,
-      dueDate: initialDueDate,
+      dueDate: loan.dueDate,
     });
     setEditErrors({});
     setEditModal({ open: true, loan });
@@ -356,8 +355,7 @@ export default function LoanList({ globalSearchTerm }) {
     const calculatedInterestAmount = calculateInterest(principalAmount, selectedDuration);
     const calculatedTotalRepayable = principalAmount + calculatedInterestAmount;
 
-    const finalDueDate = dayjs(editData.startDate).add(selectedDuration * 7, 'day').format("YYYY-MM-DD");
-
+    // The dueDate is not recalculated here; it is preserved from the original record.
     const updatedLoan = {
       ...editModal.loan,
       borrower: editData.borrower,
@@ -366,7 +364,7 @@ export default function LoanList({ globalSearchTerm }) {
       interest: calculatedInterestAmount,
       totalRepayable: calculatedTotalRepayable,
       startDate: editData.startDate,
-      dueDate: finalDueDate,
+      dueDate: editData.dueDate,
       interestDuration: selectedDuration,
     };
     setIsSavingEdit(true);
@@ -1033,17 +1031,22 @@ export default function LoanList({ globalSearchTerm }) {
                 label="Interest Duration"
                 onChange={(e) => {
                   const duration = e.target.value;
-                  const interest = calculateInterest(parseFloat(editData.principal), duration);
-                  const totalRepayable = parseFloat(editData.principal) + interest;
-                  const finalDueDate = dayjs(editData.startDate).add(duration * 7, 'day').format("YYYY-MM-DD");
-                  setEditData({ ...editData, interestDuration: duration, interest, totalRepayable, dueDate: finalDueDate });
+                  const principal = parseFloat(editData.principal);
+                  const interest = calculateInterest(principal, duration);
+                  const totalRepayable = principal + interest;
+                  
+                  // This fix ensures the dueDate is NOT recalculated when changing duration
+                  setEditData({ ...editData, interestDuration: duration, interest, totalRepayable });
                 }}
               >
-                {interestOptions.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
+                {interestOptions.map((option) => {
+                  const rate = (settings.interestRates[option.value] || 0) * 100;
+                  return (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label} ({rate.toFixed(0)}%)
+                    </MenuItem>
+                  );
+                })}
               </Select>
             </FormControl>
             <TextField
@@ -1055,8 +1058,7 @@ export default function LoanList({ globalSearchTerm }) {
               value={editData.startDate}
               onChange={(e) => {
                 const startDate = e.target.value;
-                const finalDueDate = dayjs(startDate).add(editData.interestDuration * 7, 'day').format("YYYY-MM-DD");
-                setEditData({ ...editData, startDate, dueDate: finalDueDate });
+                setEditData({ ...editData, startDate });
               }}
               error={!!editErrors.startDate}
               helperText={editErrors.startDate}
@@ -1069,8 +1071,9 @@ export default function LoanList({ globalSearchTerm }) {
               fullWidth
               InputLabelProps={{ shrink: true }}
               value={editData.dueDate}
-              InputProps={{
-                readOnly: true,
+              onChange={(e) => {
+                const dueDate = e.target.value;
+                setEditData({ ...editData, dueDate });
               }}
               sx={filterInputStyles}
             />
