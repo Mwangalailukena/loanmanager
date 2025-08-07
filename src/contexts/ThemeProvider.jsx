@@ -1,3 +1,5 @@
+// src/contexts/ThemeProvider.jsx
+
 import React, { createContext, useContext, useMemo, useState, useEffect } from "react";
 import { createTheme, ThemeProvider as MuiThemeProvider, CssBaseline } from "@mui/material";
 
@@ -25,14 +27,12 @@ export function ThemeProvider({ children }) {
       createTheme({
         palette: {
           mode: darkMode ? "dark" : "light",
-          // The new primary color is a modern, soft blue-purple
           primary: {
             main: darkMode ? '#8561c5' : '#6c63ff',
             light: darkMode ? '#b68efc' : '#8e88ff',
             dark: darkMode ? '#3e3776' : '#5750cc',
             contrastText: '#ffffff',
           },
-          // A clean, classic blue for secondary accent
           secondary: {
             main: darkMode ? '#a7c0f1' : '#42a5f5',
             light: darkMode ? '#d9efff' : '#81d4fa',
@@ -40,13 +40,10 @@ export function ThemeProvider({ children }) {
             contrastText: '#ffffff',
           },
           background: {
-            // Very light gray background for the overall dashboard
-            default: darkMode ? '#121212' : '#f9fafc',
-            // Pure white for card backgrounds
+            default: darkMode ? '#121212' : '#E8F5E9',
             paper: darkMode ? '#1e1e1e' : '#ffffff',
           },
           text: {
-            // Darker, cleaner text for better readability
             primary: darkMode ? '#ffffff' : '#212121',
             secondary: darkMode ? '#b0b0b0' : '#757575',
             disabled: darkMode ? 'rgba(255, 255, 255, 0.38)' : 'rgba(0, 0, 0, 0.38)',
@@ -89,7 +86,7 @@ export function ThemeProvider({ children }) {
           MuiAppBar: {
             styleOverrides: {
               root: ({ theme }) => ({
-                backgroundColor: theme.palette.background.paper,
+                // Removed the conflicting backgroundColor style
                 boxShadow: theme.shadows[theme.palette.mode === 'dark' ? 0 : 1],
               }),
             },
@@ -107,8 +104,7 @@ export function ThemeProvider({ children }) {
               root: ({ theme }) => ({
                 backgroundColor: theme.palette.background.paper,
                 borderRadius: theme.shape.borderRadius,
-                // Soft, subtle shadow to match the reference image
-                boxShadow: `0px 4px 20px rgba(0, 0, 0, 0.05)`, 
+                boxShadow: `0px 4px 20px rgba(0, 0, 0, 0.05)`,
               }),
             },
           },
@@ -135,7 +131,7 @@ export function ThemeProvider({ children }) {
           MuiToolbar: {
             styleOverrides: {
               root: ({ theme }) => ({
-                backgroundColor: theme.palette.background.paper,
+                // Removed the conflicting backgroundColor style
               }),
             },
           },
@@ -196,7 +192,7 @@ export function ThemeProvider({ children }) {
                   margin: '0 !important',
                 },
                 '&:before': {
-                  display: 'none', // Removes the default Material-UI border
+                  display: 'none',
                 },
               }),
             },

@@ -29,6 +29,7 @@ import BarChartIcon from "@mui/icons-material/BarChart";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator"; // --- ADDED: Drag handle icon
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useFirestore } from "../contexts/FirestoreProvider";
@@ -175,8 +176,6 @@ export default function Dashboard() {
         const UPCOMING_LOAN_THRESHOLD_DAYS = 3;
         const upcomingDueThreshold = now.add(UPCOMING_LOAN_THRESHOLD_DAYS, "day");
 
-        // === START OF CORRECTED CODE ===
-        // This function calculates the loan status dynamically.
         const calcStatus = (loan) => {
           const totalRepayable = Number(loan.totalRepayable || 0);
           const repaidAmount = Number(loan.repaidAmount || 0);
@@ -191,7 +190,6 @@ export default function Dashboard() {
           }
           return "Active";
         };
-        // === END OF CORRECTED CODE ===
 
         const upcomingLoans = loans.filter(
           (l) =>
@@ -200,10 +198,7 @@ export default function Dashboard() {
             dayjs(l.dueDate).isBefore(upcomingDueThreshold)
         );
 
-        // === START OF CORRECTED CODE ===
-        // Filter for overdue loans using the new calcStatus function
         const overdueLoansList = loans.filter((l) => calcStatus(l) === "Overdue");
-        // === END OF CORRECTED CODE ===
 
         if (upcomingLoans.length > 0)
           toast.info(
@@ -220,8 +215,6 @@ export default function Dashboard() {
   }, [loans]);
 
   const { loansForCalculations, defaultCards } = useMemo(() => {
-    // === START OF CORRECTED CODE ===
-    // This function calculates the loan status dynamically.
     const calcStatus = (loan) => {
       const totalRepayable = Number(loan.totalRepayable || 0);
       const repaidAmount = Number(loan.repaidAmount || 0);
@@ -236,7 +229,6 @@ export default function Dashboard() {
       }
       return "Active";
     };
-    // === END OF CORRECTED CODE ===
 
     const loansForCalculations = loans || [];
     const loansThisMonth = loansForCalculations.filter((loan) =>
@@ -268,12 +260,9 @@ export default function Dashboard() {
     const availableCapital = initialCapital - totalDisbursed + totalCollected;
     const totalLoansCount = loansThisMonth.length;
     
-    // === START OF CORRECTED CODE ===
-    // Filters now use the new calcStatus function to get accurate counts
     const paidLoansCount = loansThisMonth.filter((l) => calcStatus(l) === "Paid").length;
     const activeLoansCount = loansThisMonth.filter((l) => calcStatus(l) === "Active").length;
     const overdueLoansCount = loansThisMonth.filter((l) => calcStatus(l) === "Overdue").length;
-    // === END OF CORRECTED CODE ===
 
     const totalOutstanding = loansThisMonth
       .filter((loan) => calcStatus(loan) === "Active" || calcStatus(loan) === "Overdue")
@@ -548,7 +537,8 @@ export default function Dashboard() {
                   lg={6}
                   ref={provided.innerRef}
                   {...provided.draggableProps}
-                  {...provided.dragHandleProps}
+                  // --- MODIFIED: Conditionally apply dragHandleProps
+                  {...(!isMobile && provided.dragHandleProps)}
                   style={{
                     ...provided.draggableProps.style,
                     userSelect: snapshot.isDragging ? "none" : "auto",
@@ -584,8 +574,25 @@ export default function Dashboard() {
                             borderColor: theme.palette[card.color]?.main || theme.palette.primary.main,
                           },
                           ...(card.pulse && { animation: "pulse 1.5s infinite" }),
+                          position: 'relative', // --- ADDED: For positioning the drag handle
                         }}
                       >
+                        {/* --- ADDED: The dedicated drag handle, shown only on mobile --- */}
+                        {isMobile && (
+                            <Box
+                                {...provided.dragHandleProps} // This is where the drag props are applied on mobile
+                                sx={{
+                                    position: 'absolute',
+                                    top: 4,
+                                    right: 4,
+                                    cursor: 'grab',
+                                    color: theme.palette.grey[500],
+                                    zIndex: 1, // Ensure handle is on top of card content
+                                }}
+                            >
+                                <DragIndicatorIcon fontSize="small" />
+                            </Box>
+                        )}
                         <Box
                           display="flex"
                           justifyContent="center"
@@ -859,7 +866,7 @@ export default function Dashboard() {
         unmountOnExit
       >
         <Fab
-          color="secondary" // <-- Changed to accent color
+          color="secondary"
           aria-label="add loan"
           onClick={() => navigate("/new-loan")}
         >
