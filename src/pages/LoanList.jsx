@@ -172,7 +172,7 @@ export default function LoanList({ globalSearchTerm }) {
     if (urlMonth && urlMonth !== monthFilter) {
       setMonthFilter(urlMonth);
     } else if (!urlMonth && monthFilter !== dayjs().format("YYYY-MM")) {
-      setMonthFilter(dayjs().format("YYYY-MM"));
+      setMonthFilter("2024-03");
     }
 
     setSearchTerm(globalSearchTerm || "");
@@ -560,6 +560,7 @@ export default function LoanList({ globalSearchTerm }) {
                         background: theme.palette.background.paper,
                       }}
                     >
+                      {/* MODIFIED: This is the new Stack for the initial card view */}
                       <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
                         <Box>
                           <Typography variant="subtitle1" fontWeight="600" noWrap>
@@ -569,6 +570,12 @@ export default function LoanList({ globalSearchTerm }) {
                             {loan.phone}
                           </Typography>
                         </Box>
+                        <Stack alignItems="flex-end" spacing={0.5}>
+                          <Chip size="small" {...getStatusChipProps(calcStatus(loan))} />
+                          <Typography variant="body2" fontWeight="bold" sx={{ color: theme.palette.secondary.main }} noWrap>
+                            ZMW {(outstanding).toFixed(2)}
+                          </Typography>
+                        </Stack>
                         <IconButton size="small" onClick={() => toggleRow(loan.id)} aria-label="expand" color="secondary">
                           {expandedRow === loan.id ? <KeyboardArrowUp fontSize="small" /> : <KeyboardArrowDown fontSize="small" />}
                         </IconButton>
