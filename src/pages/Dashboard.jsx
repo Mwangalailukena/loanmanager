@@ -271,12 +271,12 @@ export default function Dashboard() {
         .reduce((sum, loan) => sum + Number(loan.interest || 0), 0);
 
     // NEW: Partner dividends are now based on actual profit
-    const totalPartnerDividends = actualProfit * 0.5;
+    const totalPartnerDividends = actualProfit;
 
     // NEW: Assume two partners with a 50/50 split
     const individualPartnerDividends = [
-        { name: "Partner A", amount: totalPartnerDividends * 0.5 },
-        { name: "Partner B", amount: totalPartnerDividends * 0.5 },
+        { name: "Agnes Ilukena", amount: totalPartnerDividends * 0.5 },
+        { name: "Jones Ilukena", amount: totalPartnerDividends * 0.5 },
     ];
 
     const initialCapital = Number(settings?.initialCapital) || 60000;
@@ -366,7 +366,7 @@ export default function Dashboard() {
         tooltip: (
             <Box>
                 <Typography variant="body2" fontWeight="bold">
-                    Total Dividends (50% of Actual Profit)
+                    Total Dividends (100% of Actual Profit)
                 </Typography>
                 <Typography variant="caption" display="block" mb={1}>
                     Actual Profit this month: K {actualProfit.toLocaleString()}
