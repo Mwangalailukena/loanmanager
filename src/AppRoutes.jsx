@@ -1,12 +1,11 @@
 // src/AppRoutes.js
 import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-
-// All imports must be at the top of the file.
-// Import the correct AppLayout component from its dedicated file
 import AppLayout from './components/AppLayout';
+import ProtectedRoute from './components/ProtectedRoute';
 
-// Dynamically import all your page components using React.lazy
+// All `lazy` declarations must be grouped with the other imports at the top
+// to satisfy the linter's `import/first` rule.
 const LazyDashboard = lazy(() => import('./pages/Dashboard'));
 const LazyLoanList = lazy(() => import('./pages/LoanList'));
 const LazyAddLoanForm = lazy(() => import('./pages/AddLoanForm'));
@@ -19,9 +18,6 @@ const LazyLogin = lazy(() => import('./pages/Login'));
 const LazyRegister = lazy(() => import('./pages/Register'));
 const LazyForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 const LazyReportsPage = lazy(() => import('./pages/ReportsPage'));
-
-// Import your ProtectedRoute component
-import ProtectedRoute from './components/ProtectedRoute';
 
 function AppRoutes({ darkMode, onToggleDarkMode }) {
   const location = useLocation();
