@@ -4,8 +4,9 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import AppLayout from './components/AppLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 
-// All `lazy` declarations must be grouped with the other imports at the top
-// to satisfy the linter's `import/first` rule.
+// Import Material-UI components for the loader
+import { Box, LinearProgress, useTheme } from '@mui/material';
+
 const LazyDashboard = lazy(() => import('./pages/Dashboard'));
 const LazyLoanList = lazy(() => import('./pages/LoanList'));
 const LazyAddLoanForm = lazy(() => import('./pages/AddLoanForm'));
@@ -21,19 +22,32 @@ const LazyReportsPage = lazy(() => import('./pages/ReportsPage'));
 
 function AppRoutes({ darkMode, onToggleDarkMode }) {
   const location = useLocation();
+  const theme = useTheme();
 
   return (
     <AppLayout darkMode={darkMode} onToggleDarkMode={onToggleDarkMode}>
       <div className="page-transition-container">
         <div key={location.pathname} className="page-transition">
-          <Suspense fallback={<div>Loading page...</div>}>
+          <Suspense
+            fallback={
+              // The linear progress bar is placed at the top of the viewport
+              <Box
+                sx={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  zIndex: theme.zIndex.appBar + 1, // Ensures it's on top of everything
+                }}
+              >
+                <LinearProgress color="secondary" />
+              </Box>
+            }
+          >
             <Routes location={location}>
-              {/* Public Routes */}
               <Route path="/login" element={<LazyLogin />} />
               <Route path="/register" element={<LazyRegister />} />
               <Route path="/forgot-password" element={<LazyForgotPassword />} />
-
-              {/* Protected Routes */}
               <Route path="/dashboard" element={<ProtectedRoute><LazyDashboard /></ProtectedRoute>} />
               <Route path="/loans" element={<ProtectedRoute><LazyLoanList /></ProtectedRoute>} />
               <Route path="/add-loan" element={<ProtectedRoute><LazyAddLoanForm /></ProtectedRoute>} />
@@ -43,8 +57,6 @@ function AppRoutes({ darkMode, onToggleDarkMode }) {
               <Route path="/profile" element={<ProtectedRoute><LazyProfile /></ProtectedRoute>} />
               <Route path="/change-password" element={<ProtectedRoute><LazyChangePassword /></ProtectedRoute>} />
               <Route path="/reports" element={<ProtectedRoute><LazyReportsPage /></ProtectedRoute>} />
-
-              {/* Catch-all route */}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </Suspense>
