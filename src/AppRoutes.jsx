@@ -2,6 +2,7 @@
 import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
+// All imports must be at the top of the file.
 // Import the correct AppLayout component from its dedicated file
 import AppLayout from './components/AppLayout';
 
