@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from "react";
 import {
   Box,
   Grid,
@@ -37,8 +37,12 @@ import { useFirestore } from "../contexts/FirestoreProvider";
 import dayjs from "dayjs";
 import { toast } from "react-toastify";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import Charts from "../components/Charts";
 import { BOTTOM_NAV_HEIGHT } from "../components/BottomNavBar";
+
+// --------------------------------------------------------------------------------------
+// NEW: Lazy loading for Charts component
+const LazyCharts = lazy(() => import("../components/Charts"));
+// --------------------------------------------------------------------------------------
 
 // --- Constants & Animations ---
 const cardVariants = {
@@ -882,13 +886,21 @@ export default function Dashboard() {
           <AccordionTitle title="Charts & Analytics" sx={{ color: theme.palette.primary.contrastText }} />
         </AccordionSummary>
         <AccordionDetails sx={{ p: isMobile ? 1.5 : 2, pb: isMobile ? 2 : 3 }}>
-          {loansForCalculations.length > 0 ? (
-            <Charts loans={loansForCalculations} selectedMonth={selectedMonth} />
-          ) : (
-            <Typography variant="body2" color="text.secondary">
-              No loan data available for charts.
-            </Typography>
-          )}
+          <Suspense
+            fallback={
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                <CircularProgress color="primary" />
+              </Box>
+            }
+          >
+            {loansForCalculations.length > 0 ? (
+              <LazyCharts loans={loansForCalculations} selectedMonth={selectedMonth} />
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                No loan data available for charts.
+              </Typography>
+            )}
+          </Suspense>
         </AccordionDetails>
       </Accordion>
 
