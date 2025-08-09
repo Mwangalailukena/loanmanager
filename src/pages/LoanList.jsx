@@ -146,6 +146,10 @@ export default function LoanList({ globalSearchTerm }) {
       "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
         borderColor: theme.palette.secondary.main,
       },
+      // Smaller padding
+      "& .MuiInputBase-input": {
+        padding: "8.5px 14px",
+      },
     },
     "& .MuiInputLabel-root.Mui-focused": {
       color: theme.palette.secondary.main,
@@ -155,10 +159,15 @@ export default function LoanList({ globalSearchTerm }) {
         color: theme.palette.secondary.main,
       },
     },
+    "& .MuiInputLabel-root": {
+      fontSize: "0.875rem",
+      transform: "translate(14px, 8.5px) scale(1)",
+    },
+    "& .MuiInputLabel-shrink": {
+      transform: "translate(14px, -9px) scale(0.75)",
+    },
   };
   
-  // NEW/UPDATED: Sync the local search term with the global one.
-  // This hook ensures the local search TextField reflects the global search input.
   useEffect(() => {
     const urlFilter = searchParams.get('filter');
     const urlMonth = searchParams.get('month');
@@ -324,7 +333,6 @@ export default function LoanList({ globalSearchTerm }) {
   };
 
   const openEditModal = (loan) => {
-    // The initial due date is set from the loan record, not recalculated
     setEditData({
       borrower: loan.borrower,
       phone: loan.phone,
@@ -355,7 +363,6 @@ export default function LoanList({ globalSearchTerm }) {
     const calculatedInterestAmount = calculateInterest(principalAmount, selectedDuration);
     const calculatedTotalRepayable = principalAmount + calculatedInterestAmount;
 
-    // The dueDate is not recalculated here; it is preserved from the original record.
     const updatedLoan = {
       ...editModal.loan,
       borrower: editData.borrower,
@@ -455,8 +462,8 @@ export default function LoanList({ globalSearchTerm }) {
   );
 
   return (
-    <Box sx={{ p: isMobile ? 1 : 3 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
+    <Box sx={{ p: isMobile ? 1 : 2 }}>
+      <Typography variant="h6" component="h1" gutterBottom fontWeight="bold" sx={{ mb: 1 }}>
         Loan Records
       </Typography>
 
@@ -541,7 +548,7 @@ export default function LoanList({ globalSearchTerm }) {
           {isMobile ? (
             <>
               <AnimatePresence>
-                {displayedLoans.map((loan, index) => {
+                {displayedLoans.map((loan) => {
                   const outstanding = (loan.totalRepayable || 0) - (loan.repaidAmount || 0);
                   const isPaid = calcStatus(loan).toLowerCase() === "paid";
                   return (
@@ -560,10 +567,9 @@ export default function LoanList({ globalSearchTerm }) {
                         background: theme.palette.background.paper,
                       }}
                     >
-                      {/* MODIFIED: This is the new Stack for the initial card view */}
                       <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
-                        <Box>
-                          <Typography variant="subtitle1" fontWeight="600" noWrap>
+                        <Box flexGrow={1} minWidth={0}>
+                          <Typography variant="subtitle2" fontWeight="bold" noWrap>
                             {loan.borrower}
                           </Typography>
                           <Typography variant="caption" color="textSecondary" noWrap>
@@ -581,17 +587,13 @@ export default function LoanList({ globalSearchTerm }) {
                         </IconButton>
                       </Stack>
                       <Collapse in={expandedRow === loan.id} timeout="auto" unmountOnExit>
-                        <Box mt={1} fontSize="0.85rem" sx={{ color: theme.palette.text.secondary }}>
+                        <Box mt={1} fontSize="0.8rem" sx={{ color: theme.palette.text.secondary }}>
                           <Typography noWrap>Principal: ZMW {Number(loan.principal).toFixed(2)}</Typography>
                           <Typography noWrap>Interest: ZMW {Number(loan.interest).toFixed(2)}</Typography>
                           <Typography noWrap>Total Repayable: ZMW {Number(loan.totalRepayable).toFixed(2)}</Typography>
                           <Typography noWrap>Outstanding: <Typography component="span" fontWeight="bold" color="secondary.main">{outstanding.toFixed(2)}</Typography></Typography>
                           <Typography noWrap>Start: {loan.startDate}</Typography>
                           <Typography noWrap>Due: {loan.dueDate}</Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', my: 1 }}>
-                            <Typography component="span" noWrap sx={{ mr: 1, color: 'text.secondary', fontSize: '0.85rem' }}>Status:</Typography>
-                            <Chip size="small" {...getStatusChipProps(calcStatus(loan))} />
-                          </Box>
                           <Stack direction="row" spacing={0.5} mt={1} justifyContent="flex-start">
                             <Tooltip title="Edit">
                               <span>
@@ -1115,7 +1117,7 @@ export default function LoanList({ globalSearchTerm }) {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {historyModal.payments.map((p, index) => (
+                {historyModal.payments.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell>{dayjs(p.date).format('YYYY-MM-DD')}</TableCell>
                     <TableCell align="right">ZMW {Number(p.amount).toFixed(2)}</TableCell>
