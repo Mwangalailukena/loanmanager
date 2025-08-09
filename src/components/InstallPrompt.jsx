@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { Fab } from "@mui/material";
+import InstallMobileIcon from '@mui/icons-material/InstallMobile';
 
 const InstallPrompt = () => {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -6,7 +8,7 @@ const InstallPrompt = () => {
   useEffect(() => {
     const handler = (e) => {
       e.preventDefault();
-      setDeferredPrompt(e); // Save for later
+      setDeferredPrompt(e);
     };
 
     window.addEventListener("beforeinstallprompt", handler);
@@ -16,12 +18,10 @@ const InstallPrompt = () => {
 
   const handleInstallClick = () => {
     if (deferredPrompt) {
-      deferredPrompt.prompt(); // ✅ Trigger the prompt
+      deferredPrompt.prompt();
       deferredPrompt.userChoice.then((choiceResult) => {
         if (choiceResult.outcome === "accepted") {
           console.log("User accepted the install prompt");
-        } else {
-          console.log("User dismissed the install prompt");
         }
         setDeferredPrompt(null);
       });
@@ -30,9 +30,20 @@ const InstallPrompt = () => {
 
   return (
     deferredPrompt && (
-      <button onClick={handleInstallClick}>
+      <Fab
+        variant="extended"
+        sx={{
+          position: 'fixed',
+          bottom: 16,
+          right: 16,
+          zIndex: 1000,
+        }}
+        color="primary"
+        onClick={handleInstallClick}
+      >
+        <InstallMobileIcon sx={{ mr: 1 }} />
         Install App
-      </button>
+      </Fab>
     )
   );
 };

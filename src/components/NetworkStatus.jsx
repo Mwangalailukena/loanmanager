@@ -1,35 +1,63 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef } from "react";
+import useOfflineStatus from "../hooks/useOfflineStatus";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { syncPendingData } from "../utils/offlineQueue";
+import { showToast } from "./toastConfig";
 
 export default function NetworkStatus() {
-  const [online, setOnline] = useState(navigator.onLine);
+  const isOnline = useOfflineStatus(1000);
+  const wasOffline = useRef(false);
+  const syncInProgress = useRef(false);
+  const syncExecutedOnce = useRef(false);
 
   useEffect(() => {
-    const goOnline = () => setOnline(true);
-    const goOffline = () => setOnline(false);
+    if (!isOnline) {
+      wasOffline.current = true;
+      syncExecutedOnce.current = false;
+      showToast("You're offline. Changes will sync once you're back online.", "warning");
+    } else if (isOnline && wasOffline.current) {
+      if (!syncExecutedOnce.current) {
+        syncExecutedOnce.current = true;
+        wasOffline.current = false;
 
-    window.addEventListener("online", goOnline);
-    window.addEventListener("offline", goOffline);
+        if (!syncInProgress.current) {
+          syncInProgress.current = true;
+          showToast("You're back online. Syncing data...", "info");
 
-    return () => {
-      window.removeEventListener("online", goOnline);
-      window.removeEventListener("offline", goOffline);
-    };
-  }, []);
-
-  if (online) return null;
+          syncPendingData()
+            .then(() => {
+              showToast("Offline data synced successfully!", "success");
+            })
+            .catch((err) => {
+              console.error("Failed to sync offline data:", err);
+              showToast("Failed to sync offline data. Please try again.", "error");
+            })
+            .finally(() => {
+              syncInProgress.current = false;
+            });
+        }
+      }
+    }
+  }, [isOnline]);
 
   return (
-    <div
-      style={{
-        backgroundColor: "#f44336",
-        color: "white",
-        padding: "0.5rem",
-        textAlign: "center",
-        fontWeight: "bold",
-      }}
-      role="alert"
-    >
-      You are offline. Some features may not be available.
-    </div>
+    <>
+      {!isOnline && (
+        <div
+          style={{
+            backgroundColor: "#f44336",
+            color: "white",
+            padding: "0.5rem",
+            textAlign: "center",
+            fontWeight: "bold",
+          }}
+          role="alert"
+        >
+          You are offline. Some features may not be available.
+        </div>
+      )}
+      <ToastContainer />
+    </>
   );
 }
