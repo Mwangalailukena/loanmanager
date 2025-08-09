@@ -65,9 +65,25 @@ const getTextFieldStyles = (theme) => ({
     "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
       borderColor: theme.palette.secondary.main,
     },
+    // Smaller padding for a more compact feel
+    "& .MuiInputBase-input": {
+      padding: "10px 12px",
+      fontSize: "0.875rem",
+    },
   },
   "& .MuiInputLabel-root.Mui-focused": {
     color: theme.palette.secondary.main,
+  },
+  // Smaller label text
+  "& .MuiInputLabel-root": {
+    fontSize: "0.875rem",
+    transform: "translate(12px, 12px) scale(1)",
+  },
+  "& .MuiInputLabel-shrink": {
+    transform: "translate(12px, -9px) scale(0.75)",
+  },
+  "& .MuiFormHelperText-root": {
+    fontSize: "0.75rem",
   },
 });
 
@@ -78,8 +94,8 @@ const ColorlibStepIconRoot = styled('div')(({ theme, ownerState }) => ({
   backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[700] : '#ccc',
   zIndex: 1,
   color: '#fff',
-  width: 50,
-  height: 50,
+  width: 40, // Smaller icon size
+  height: 40, // Smaller icon size
   display: 'flex',
   borderRadius: '50%',
   justifyContent: 'center',
@@ -96,9 +112,9 @@ const ColorlibStepIconRoot = styled('div')(({ theme, ownerState }) => ({
 function ColorlibStepIcon(props) {
   const { active, completed, className, icon } = props;
   const icons = {
-    1: <AssignmentIcon />,
-    2: <PaidIcon />,
-    3: <CheckCircleIcon />,
+    1: <AssignmentIcon sx={{ fontSize: 20 }} />, // Smaller icon inside
+    2: <PaidIcon sx={{ fontSize: 20 }} />,
+    3: <CheckCircleIcon sx={{ fontSize: 20 }} />,
   };
   return (
     <ColorlibStepIconRoot ownerState={{ completed, active }} className={className}>
@@ -463,7 +479,7 @@ function AutoLoanForm() {
     switch (step) {
       case 0:
         return (
-          <Stack spacing={2} sx={{ py: 2 }}>
+          <Stack spacing={1.5} sx={{ py: 1.5 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <TextField
                 label="Borrower Name"
@@ -479,14 +495,14 @@ function AutoLoanForm() {
               />
               {contactPickerSupported ? (
                 <Tooltip title="Import from device contacts">
-                  <IconButton color="secondary" onClick={handleSelectContact} disabled={loading || importLoading} aria-label="import contact">
+                  <IconButton color="secondary" onClick={handleSelectContact} disabled={loading || importLoading} aria-label="import contact" size="small">
                     <ContactPhoneIcon />
                   </IconButton>
                 </Tooltip>
               ) : (
                 <Tooltip title="Your browser does not support the Contact Picker API.">
                   <span>
-                    <IconButton color="primary" disabled aria-label="import contact not supported">
+                    <IconButton color="primary" disabled aria-label="import contact not supported" size="small">
                       <ContactPhoneIcon />
                     </IconButton>
                   </span>
@@ -509,7 +525,7 @@ function AutoLoanForm() {
         );
       case 1:
         return (
-          <Stack spacing={2} sx={{ py: 2 }}>
+          <Stack spacing={1.5} sx={{ py: 1.5 }}>
             <TextField
               label="Loan Amount (ZMW)"
               value={amount}
@@ -540,19 +556,19 @@ function AutoLoanForm() {
             </TextField>
             <Fade in={displayPrincipal > 0}>
               <Box sx={{
-                p: 2,
+                p: 1.5, // Reduced padding
                 bgcolor: theme.palette.mode === 'light' ? theme.palette.secondary.light : theme.palette.secondary.dark,
                 borderRadius: 2,
                 borderLeft: `5px solid ${theme.palette.secondary.main}`,
               }}>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="caption" color="text.secondary">
                   Calculated Interest: ZMW{" "}
                   {displayInterest.toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}
                 </Typography>
-                <Typography variant="h6" fontWeight="bold">
+                <Typography variant="body1" fontWeight="bold"> {/* Smaller variant */}
                   Total Repayable: ZMW{" "}
                   {displayTotalRepayable.toLocaleString(undefined, {
                     minimumFractionDigits: 2,
@@ -565,15 +581,15 @@ function AutoLoanForm() {
         );
       case 2:
         return (
-          <Stack spacing={2} sx={{ py: 2 }}>
-            <Paper variant="outlined" sx={{ p: 2, width: '100%' }}>
-              <Typography variant="h6" gutterBottom>Review Details</Typography>
-              <Typography variant="body1"><strong>Borrower:</strong> {borrower}</Typography>
-              <Typography variant="body1"><strong>Phone:</strong> {phone}</Typography>
-              <Typography variant="body1"><strong>Principal:</strong> ZMW {displayPrincipal.toLocaleString()}</Typography>
-              <Typography variant="body1"><strong>Interest Duration:</strong> {interestDuration} week{interestDuration > 1 ? 's' : ''}</Typography>
-              <Typography variant="body1"><strong>Calculated Interest:</strong> ZMW {displayInterest.toLocaleString()}</Typography>
-              <Typography variant="body1" fontWeight="bold"><strong>Total Repayable:</strong> ZMW {displayTotalRepayable.toLocaleString()}</Typography>
+          <Stack spacing={1.5} sx={{ py: 1.5 }}>
+            <Paper variant="outlined" sx={{ p: 1.5, width: '100%' }}>
+              <Typography variant="subtitle2" gutterBottom>Review Details</Typography>
+              <Typography variant="caption" display="block"><strong>Borrower:</strong> {borrower}</Typography>
+              <Typography variant="caption" display="block"><strong>Phone:</strong> {phone}</Typography>
+              <Typography variant="caption" display="block"><strong>Principal:</strong> ZMW {displayPrincipal.toLocaleString()}</Typography>
+              <Typography variant="caption" display="block"><strong>Interest Duration:</strong> {interestDuration} week{interestDuration > 1 ? 's' : ''}</Typography>
+              <Typography variant="caption" display="block"><strong>Calculated Interest:</strong> ZMW {displayInterest.toLocaleString()}</Typography>
+              <Typography variant="body2" fontWeight="bold" display="block"><strong>Total Repayable:</strong> ZMW {displayTotalRepayable.toLocaleString()}</Typography>
             </Paper>
           </Stack>
         );
@@ -588,42 +604,42 @@ function AutoLoanForm() {
       sx={{
         maxWidth: 500,
         mx: "auto",
-        mt: 3,
-        p: 3,
+        mt: 2, // Reduced margin top
+        p: 2, // Reduced padding
         borderRadius: 3,
         border: (theme) => `1px solid ${theme.palette.divider}`,
       }}
     >
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-        <Typography variant="h5" fontWeight="bold">Add New Loan (Auto)</Typography>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+        <Typography variant="h6" fontWeight="bold">Add New Loan (Auto)</Typography>
         <Tooltip title="Import multiple loans from CSV">
-          <IconButton color="secondary" onClick={() => setOpenImportDialog(true)} disabled={loading || importLoading} aria-label="import loans">
+          <IconButton color="secondary" onClick={() => setOpenImportDialog(true)} disabled={loading || importLoading} aria-label="import loans" size="small">
             <UploadFileIcon />
           </IconButton>
         </Tooltip>
       </Box>
 
-      <Stepper alternativeLabel activeStep={activeStep} connector={<CustomStepConnector />} sx={{ mb: 4 }}>
+      <Stepper alternativeLabel activeStep={activeStep} connector={<CustomStepConnector />} sx={{ mb: 3 }}>
         {steps.map((label) => (
           <Step key={label}>
-            <StepLabel StepIconComponent={ColorlibStepIcon}>{label}</StepLabel>
+            <StepLabel StepIconComponent={ColorlibStepIcon} sx={{ fontSize: '0.875rem' }}>{label}</StepLabel>
           </Step>
         ))}
       </Stepper>
 
       {error && (
-        <Alert severity="error" onClose={() => setError("")} sx={{ mb: 2 }}>
+        <Alert severity="error" onClose={() => setError("")} sx={{ mb: 1.5, fontSize: '0.875rem' }}>
           {error}
         </Alert>
       )}
 
       {getStepContent(activeStep)}
-      <Box sx={{ display: 'flex', flexDirection: 'row', pt: 3 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'row', pt: 2 }}>
         <Button
           color="inherit"
           disabled={activeStep === 0 || loading || importLoading}
           onClick={handleBack}
-          sx={{ mr: 1 }}
+          sx={{ mr: 1, px: 1, fontSize: '0.875rem' }}
         >
           Back
         </Button>
@@ -634,47 +650,48 @@ function AutoLoanForm() {
             variant="contained"
             color="secondary"
             disabled={loading || importLoading}
-            startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
+            startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}
+            sx={{ fontSize: '0.875rem' }}
           >
             {loading ? "Adding Loan..." : "Add Loan"}
           </Button>
         ) : (
-          <Button onClick={handleNext} variant="contained" color="secondary" disabled={loading || importLoading}>
+          <Button onClick={handleNext} variant="contained" color="secondary" disabled={loading || importLoading} sx={{ fontSize: '0.875rem' }}>
             Next
           </Button>
         )}
       </Box>
 
-      {/* Dialog for CSV Import (remains unchanged) */}
+      {/* Dialog for CSV Import (remains largely unchanged) */}
       <Dialog open={openImportDialog} onClose={handleCloseImportDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>
+        <DialogTitle sx={{ py: 1.5, px: 2 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            Import Loans from CSV
-            <IconButton onClick={handleCloseImportDialog} aria-label="close">
+            <Typography variant="h6">Import Loans from CSV</Typography>
+            <IconButton onClick={handleCloseImportDialog} aria-label="close" size="small">
               <CloseIcon />
             </IconButton>
           </Box>
         </DialogTitle>
-        <DialogContent dividers>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <DialogContent dividers sx={{ p: 2 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
             Upload a CSV file with loan data. Ensure the first row contains these exact headers.
           </Typography>
-          <Paper variant="outlined" sx={{ p: 1, mb: 2, bgcolor: "grey.100" }}>
-            <Typography variant="body2" component="pre" sx={{ overflowX: "auto", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+          <Paper variant="outlined" sx={{ p: 1, mb: 1.5, bgcolor: "grey.100" }}>
+            <Typography variant="body2" component="pre" sx={{ overflowX: "auto", whiteSpace: "pre-wrap", wordBreak: "break-all", fontSize: '0.8rem' }}>
               "Borrower Name","Phone Number","Loan Amount (ZMW)","Interest Duration (Weeks)"
             </Typography>
           </Paper>
-          <Button onClick={handleDownloadSample} color="primary" variant="outlined" size="small" startIcon={<FileDownloadIcon />} sx={{ mb: 2 }}>
+          <Button onClick={handleDownloadSample} color="primary" variant="outlined" size="small" startIcon={<FileDownloadIcon />} sx={{ mb: 1.5, fontSize: '0.75rem' }}>
             Download Sample CSV
           </Button>
           {csvErrors.length > 0 && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              <Typography variant="body1" fontWeight="bold">Errors found in CSV file:</Typography>
-              <List dense>
+            <Alert severity="error" sx={{ mb: 1.5, fontSize: '0.875rem' }}>
+              <Typography variant="subtitle2" fontWeight="bold">Errors found in CSV file:</Typography>
+              <List dense sx={{ mt: 0.5 }}>
                 {csvErrors.map((err, index) => (
-                  <ListItem key={index} disableGutters>
-                    <ListItemIcon sx={{ minWidth: "30px" }}><WarningIcon color="error" /></ListItemIcon>
-                    <ListItemText primary={err} />
+                  <ListItem key={index} disableGutters sx={{ py: 0, '& .MuiListItemIcon-root': { minWidth: '24px' }}}>
+                    <ListItemIcon><WarningIcon color="error" sx={{ fontSize: '1rem' }} /></ListItemIcon>
+                    <ListItemText primary={err} primaryTypographyProps={{ variant: 'caption' }} />
                   </ListItem>
                 ))}
               </List>
@@ -682,13 +699,13 @@ function AutoLoanForm() {
           )}
           <input accept=".csv" style={{ display: "none" }} id="csv-upload-button-dialog" type="file" onChange={handleCSVImport} ref={fileInputRef} />
           <label htmlFor="csv-upload-button-dialog">
-            <Button variant="contained" component="span" color="secondary" startIcon={importLoading ? <CircularProgress size={20} color="inherit" /> : <UploadFileIcon />} disabled={importLoading} fullWidth>
+            <Button variant="contained" component="span" color="secondary" startIcon={importLoading ? <CircularProgress size={16} color="inherit" /> : <UploadFileIcon />} disabled={importLoading} fullWidth>
               {importLoading ? `Importing... (${processedCount} processed)` : "Select CSV File"}
             </Button>
           </label>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseImportDialog} disabled={importLoading}>Cancel</Button>
+        <DialogActions sx={{ p: 1 }}>
+          <Button onClick={handleCloseImportDialog} disabled={importLoading} sx={{ fontSize: '0.875rem' }}>Cancel</Button>
         </DialogActions>
       </Dialog>
     </Paper>
@@ -913,7 +930,7 @@ function ManualLoanForm() {
     switch (step) {
       case 0:
         return (
-          <Stack spacing={2} sx={{ py: 2 }}>
+          <Stack spacing={1.5} sx={{ py: 1.5 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <TextField
                 label="Borrower Name"
@@ -929,14 +946,14 @@ function ManualLoanForm() {
               />
               {contactPickerSupported ? (
                 <Tooltip title="Import from device contacts">
-                  <IconButton color="secondary" onClick={handleSelectContact} disabled={loading} aria-label="import contact">
+                  <IconButton color="secondary" onClick={handleSelectContact} disabled={loading} aria-label="import contact" size="small">
                     <ContactPhoneIcon />
                   </IconButton>
                 </Tooltip>
               ) : (
                 <Tooltip title="Your browser does not support the Contact Picker API.">
                   <span>
-                    <IconButton color="primary" disabled aria-label="import contact not supported">
+                    <IconButton color="primary" disabled aria-label="import contact not supported" size="small">
                       <ContactPhoneIcon />
                     </IconButton>
                   </span>
@@ -959,7 +976,7 @@ function ManualLoanForm() {
         );
       case 1:
         return (
-          <Stack spacing={2} sx={{ py: 2 }}>
+          <Stack spacing={1.5} sx={{ py: 1.5 }}>
             <TextField
               label="Loan Amount (ZMW)"
               value={amount}
@@ -1022,19 +1039,19 @@ function ManualLoanForm() {
             />
             <Fade in={displayPrincipal > 0 && manualInterestRate !== ""}>
               <Box sx={{
-                p: 2,
+                p: 1.5,
                 bgcolor: theme.palette.mode === 'light' ? theme.palette.secondary.light : theme.palette.secondary.dark,
                 borderRadius: 2,
                 borderLeft: `5px solid ${theme.palette.secondary.main}`,
               }}>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="caption" color="text.secondary">
                   Calculated Interest: ZMW{" "}
                   {displayInterest.toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}
                 </Typography>
-                <Typography variant="h6" fontWeight="bold">
+                <Typography variant="body1" fontWeight="bold">
                   Total Repayable: ZMW{" "}
                   {displayTotalRepayable.toLocaleString(undefined, {
                     minimumFractionDigits: 2,
@@ -1047,17 +1064,17 @@ function ManualLoanForm() {
         );
       case 2:
         return (
-          <Stack spacing={2} sx={{ py: 2 }}>
-            <Paper variant="outlined" sx={{ p: 2, width: '100%' }}>
-              <Typography variant="h6" gutterBottom>Review Details</Typography>
-              <Typography variant="body1"><strong>Borrower:</strong> {borrower}</Typography>
-              <Typography variant="body1"><strong>Phone:</strong> {phone}</Typography>
-              <Typography variant="body1"><strong>Principal:</strong> ZMW {displayPrincipal.toLocaleString()}</Typography>
-              <Typography variant="body1"><strong>Start Date:</strong> {startDate.format("YYYY-MM-DD")}</Typography>
-              <Typography variant="body1"><strong>Due Date:</strong> {dueDate.format("YYYY-MM-DD")}</Typography>
-              <Typography variant="body1"><strong>Interest Rate:</strong> {manualInterestRate}%</Typography>
-              <Typography variant="body1"><strong>Calculated Interest:</strong> ZMW {displayInterest.toLocaleString()}</Typography>
-              <Typography variant="body1" fontWeight="bold"><strong>Total Repayable:</strong> ZMW {displayTotalRepayable.toLocaleString()}</Typography>
+          <Stack spacing={1.5} sx={{ py: 1.5 }}>
+            <Paper variant="outlined" sx={{ p: 1.5, width: '100%' }}>
+              <Typography variant="subtitle2" gutterBottom>Review Details</Typography>
+              <Typography variant="caption" display="block"><strong>Borrower:</strong> {borrower}</Typography>
+              <Typography variant="caption" display="block"><strong>Phone:</strong> {phone}</Typography>
+              <Typography variant="caption" display="block"><strong>Principal:</strong> ZMW {displayPrincipal.toLocaleString()}</Typography>
+              <Typography variant="caption" display="block"><strong>Start Date:</strong> {startDate.format("YYYY-MM-DD")}</Typography>
+              <Typography variant="caption" display="block"><strong>Due Date:</strong> {dueDate.format("YYYY-MM-DD")}</Typography>
+              <Typography variant="caption" display="block"><strong>Interest Rate:</strong> {manualInterestRate}%</Typography>
+              <Typography variant="caption" display="block"><strong>Calculated Interest:</strong> ZMW {displayInterest.toLocaleString()}</Typography>
+              <Typography variant="body2" fontWeight="bold" display="block"><strong>Total Repayable:</strong> ZMW {displayTotalRepayable.toLocaleString()}</Typography>
             </Paper>
           </Stack>
         );
@@ -1072,33 +1089,33 @@ function ManualLoanForm() {
       sx={{
         maxWidth: 500,
         mx: "auto",
-        mt: 3,
-        p: 3,
+        mt: 2,
+        p: 2,
         borderRadius: 3,
         border: (theme) => `1px solid ${theme.palette.divider}`,
       }}
     >
-      <Typography variant="h5" fontWeight="bold" sx={{ mb: 3 }}>Add New Loan (Manual)</Typography>
-      <Stepper alternativeLabel activeStep={activeStep} connector={<CustomStepConnector />} sx={{ mb: 4 }}>
+      <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>Add New Loan (Manual)</Typography>
+      <Stepper alternativeLabel activeStep={activeStep} connector={<CustomStepConnector />} sx={{ mb: 3 }}>
         {steps.map((label) => (
           <Step key={label}>
-            <StepLabel StepIconComponent={ColorlibStepIcon}>{label}</StepLabel>
+            <StepLabel StepIconComponent={ColorlibStepIcon} sx={{ fontSize: '0.875rem' }}>{label}</StepLabel>
           </Step>
         ))}
       </Stepper>
       {error && (
-        <Alert severity="error" onClose={() => setError("")} sx={{ mb: 2 }}>
+        <Alert severity="error" onClose={() => setError("")} sx={{ mb: 1.5, fontSize: '0.875rem' }}>
           {error}
         </Alert>
       )}
 
       {getStepContent(activeStep)}
-      <Box sx={{ display: 'flex', flexDirection: 'row', pt: 3 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'row', pt: 2 }}>
         <Button
           color="inherit"
           disabled={activeStep === 0 || loading}
           onClick={handleBack}
-          sx={{ mr: 1 }}
+          sx={{ mr: 1, px: 1, fontSize: '0.875rem' }}
         >
           Back
         </Button>
@@ -1109,12 +1126,13 @@ function ManualLoanForm() {
             variant="contained"
             color="secondary"
             disabled={loading}
-            startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
+            startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}
+            sx={{ fontSize: '0.875rem' }}
           >
             {loading ? "Adding Loan..." : "Add Loan"}
           </Button>
         ) : (
-          <Button onClick={handleNext} variant="contained" color="secondary" disabled={loading}>
+          <Button onClick={handleNext} variant="contained" color="secondary" disabled={loading} sx={{ fontSize: '0.875rem' }}>
             Next
           </Button>
         )}
@@ -1136,7 +1154,7 @@ export default function LoanManagementTabs() {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Box sx={{ width: "100%", mt: 3 }}>
+      <Box sx={{ width: "100%", mt: 2 }}>
         <Tabs
           value={selectedTab}
           onChange={handleChangeTab}
@@ -1151,13 +1169,16 @@ export default function LoanManagementTabs() {
               "&.Mui-selected": {
                 color: (theme) => theme.palette.secondary.main,
               },
+              fontSize: '0.875rem',
+              minHeight: '48px',
+              padding: '12px 16px',
             },
           }}
         >
           <Tab label="Auto Loan" />
           <Tab label="Manual Loan" />
         </Tabs>
-        <Box sx={{ p: 3 }}>
+        <Box sx={{ p: 2 }}>
           {selectedTab === 0 && <AutoLoanForm />}
           {selectedTab === 1 && <ManualLoanForm />}
         </Box>
