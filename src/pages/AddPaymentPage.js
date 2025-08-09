@@ -29,8 +29,6 @@ import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { toast } from "react-toastify";
 
-const OFFLINE_PAYMENTS_KEY = "offlinePayments";
-
 export default function AddPaymentPage() {
   const theme = useTheme();
   const { loans, addPayment, loadingLoans } = useFirestore();
@@ -41,38 +39,6 @@ export default function AddPaymentPage() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
-
-  useEffect(() => {
-    async function syncOfflinePayments() {
-      const savedPayments = JSON.parse(localStorage.getItem(OFFLINE_PAYMENTS_KEY) || "[]");
-      if (savedPayments.length === 0) return;
-
-      for (const payment of savedPayments) {
-        try {
-          await addPayment(payment.loanId, payment.amount);
-          toast.success(`Offline payment of ZMW ${payment.amount.toFixed(2).toLocaleString()} synced!`);
-        } catch (err) {
-          toast.error(`Failed to sync offline payment for loan ID ${payment.loanId}. Will retry later.`);
-          console.error("Offline payment sync error:", err);
-          return;
-        }
-      }
-      localStorage.removeItem(OFFLINE_PAYMENTS_KEY);
-    }
-
-    if (navigator.onLine) {
-      syncOfflinePayments();
-    }
-
-    function handleOnline() {
-      syncOfflinePayments();
-    }
-    window.addEventListener("online", handleOnline);
-    return () => window.removeEventListener("online", handleOnline);
-  }, [addPayment]);
-
-  // Removed getUniqueActiveLoans as it's no longer needed.
-  // The filtering is now handled directly in the Autocomplete options prop.
 
   const setFieldError = (field, message) => {
     setFieldErrors(prev => ({ ...prev, [field]: message }));
@@ -111,26 +77,14 @@ export default function AddPaymentPage() {
     if (validateForm()) setOpenConfirmDialog(true);
   };
 
-  const savePaymentOffline = (loanId, amount) => {
-    const offlinePayments = JSON.parse(localStorage.getItem(OFFLINE_PAYMENTS_KEY) || "[]");
-    offlinePayments.push({ loanId, amount, timestamp: Date.now() });
-    localStorage.setItem(OFFLINE_PAYMENTS_KEY, JSON.stringify(offlinePayments));
-  };
-
   const handleConfirmSubmit = async () => {
     setOpenConfirmDialog(false);
     setLoading(true);
 
     try {
       const numAmount = Number(paymentAmount);
-      
-      if (!navigator.onLine) {
-        savePaymentOffline(selectedLoan.id, numAmount);
-        toast.info("No internet connection. Payment saved locally and will sync when online.");
-      } else {
-        await addPayment(selectedLoan.id, numAmount);
-        toast.success(`Payment of ZMW ${numAmount.toFixed(2).toLocaleString()} added for ${selectedLoan.borrower}!`);
-      }
+      await addPayment(selectedLoan.id, numAmount);
+      toast.success(`Payment of ZMW ${numAmount.toFixed(2).toLocaleString()} added for ${selectedLoan.borrower}!`);
 
       setSelectedLoan(null);
       setPaymentAmount("");
@@ -189,7 +143,6 @@ export default function AddPaymentPage() {
           <Autocomplete
             sx={textFieldStyles}
             id="loan-borrower-search"
-            // FIX #1: Filter loans directly in the options prop
             options={loans.filter(loan => loan.status === "Active")}
             getOptionLabel={(option) => option.borrower}
             value={selectedLoan}
@@ -225,10 +178,9 @@ export default function AddPaymentPage() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    width: '100%', // Ensure the container takes full width
+                    width: '100%',
                   }}
                 >
-                  {/* FIX #2: Add flexGrow: 1 to Typography to push the chip to the far right */}
                   <Typography 
                     variant="body1" 
                     fontWeight="bold"
