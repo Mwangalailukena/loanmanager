@@ -33,6 +33,7 @@ import {
   Chip,
   TableSortLabel,
   InputAdornment,
+  Skeleton,
 } from "@mui/material";
 import {
   KeyboardArrowDown,
@@ -42,6 +43,7 @@ import {
   Payment,
   History,
   Close as CloseIcon,
+  AddCircleOutline as AddCircleOutlineIcon,
 } from "@mui/icons-material";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { exportToCsv } from "../utils/exportCSV";
@@ -58,6 +60,82 @@ const interestOptions = [
   { label: "3 Weeks", value: 3 },
   { label: "4 Weeks", value: 4 },
 ];
+
+const LoanListSkeleton = ({ isMobile }) => {
+  const theme = useTheme();
+  const rows = Array.from({ length: PAGE_SIZE });
+
+  if (isMobile) {
+    return (
+      <Box>
+        {rows.map((_, index) => (
+          <Box
+            key={index}
+            sx={{
+              marginBottom: 12,
+              boxShadow: theme.shadows[1],
+              borderRadius: theme.shape.borderRadius,
+              borderLeft: `5px solid ${theme.palette.secondary.main}`,
+              padding: 12,
+              background: theme.palette.background.paper,
+            }}
+          >
+            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+              <Box flexGrow={1} minWidth={0}>
+                <Skeleton variant="text" width="80%" height={20} />
+                <Skeleton variant="text" width="60%" height={15} />
+              </Box>
+              <Stack alignItems="flex-end" spacing={0.5}>
+                <Skeleton variant="rectangular" width={60} height={20} />
+                <Skeleton variant="text" width={80} height={20} />
+              </Stack>
+              <Skeleton variant="circular" width={24} height={24} />
+            </Stack>
+          </Box>
+        ))}
+      </Box>
+    );
+  } else {
+    return (
+      <Table stickyHeader size="small" sx={{ tableLayout: "fixed", minWidth: 900 }}>
+        <TableHead>
+          <TableRow>
+            <TableCell padding="checkbox" sx={{ py: 0.5 }}><Skeleton variant="rectangular" width={20} height={20} /></TableCell>
+            <TableCell align="center" sx={{ width: 30, py: 0.5 }}><Skeleton variant="text" width={20} height={20} /></TableCell>
+            <TableCell sx={{ width: 140 }}><Skeleton variant="text" width="80%" height={20} /></TableCell>
+            <TableCell sx={{ width: 110 }}><Skeleton variant="text" width="80%" height={20} /></TableCell>
+            <TableCell align="right" sx={{ width: 90 }}><Skeleton variant="text" width="80%" height={20} /></TableCell>
+            <TableCell align="right" sx={{ width: 90 }}><Skeleton variant="text" width="80%" height={20} /></TableCell>
+            <TableCell align="right" sx={{ width: 110 }}><Skeleton variant="text" width="80%" height={20} /></TableCell>
+            <TableCell align="right" sx={{ width: 110 }}><Skeleton variant="text" width="80%" height={20} /></TableCell>
+            <TableCell sx={{ width: 100 }}><Skeleton variant="text" width="80%" height={20} /></TableCell>
+            <TableCell sx={{ width: 100 }}><Skeleton variant="text" width="80%" height={20} /></TableCell>
+            <TableCell sx={{ width: 90 }}><Skeleton variant="text" width="80%" height={20} /></TableCell>
+            <TableCell align="center" sx={{ width: 120 }}><Skeleton variant="text" width="80%" height={20} /></TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {rows.map((_, index) => (
+            <TableRow key={index} sx={{ py: 0.5 }}>
+              <TableCell padding="checkbox" sx={{ py: 0.5 }}><Skeleton variant="rectangular" width={20} height={20} /></TableCell>
+              <TableCell align="center" sx={{ py: 0.5 }}><Skeleton variant="text" width={20} height={20} /></TableCell>
+              <TableCell sx={{ py: 0.5 }}><Skeleton variant="text" width="90%" height={20} /></TableCell>
+              <TableCell sx={{ py: 0.5 }}><Skeleton variant="text" width="90%" height={20} /></TableCell>
+              <TableCell align="right" sx={{ py: 0.5 }}><Skeleton variant="text" width="90%" height={20} /></TableCell>
+              <TableCell align="right" sx={{ py: 0.5 }}><Skeleton variant="text" width="90%" height={20} /></TableCell>
+              <TableCell align="right" sx={{ py: 0.5 }}><Skeleton variant="text" width="90%" height={20} /></TableCell>
+              <TableCell align="right" sx={{ py: 0.5 }}><Skeleton variant="text" width="90%" height={20} /></TableCell>
+              <TableCell sx={{ py: 0.5 }}><Skeleton variant="text" width="90%" height={20} /></TableCell>
+              <TableCell sx={{ py: 0.5 }}><Skeleton variant="text" width="90%" height={20} /></TableCell>
+              <TableCell sx={{ py: 0.5 }}><Skeleton variant="rectangular" width={50} height={20} /></TableCell>
+              <TableCell align="center" sx={{ py: 0.5 }}><Skeleton variant="rectangular" width={80} height={20} /></TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
+  }
+};
 
 export default function LoanList({ globalSearchTerm }) {
   const { loans, loadingLoans, deleteLoan, addPayment, updateLoan, getPaymentsByLoanId, settings } = useFirestore();
@@ -539,10 +617,7 @@ export default function LoanList({ globalSearchTerm }) {
       </Stack>
 
       {loadingLoans ? (
-        <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
-          <CircularProgress />
-          <Typography ml={2} color="text.secondary">Loading loans...</Typography>
-        </Box>
+        <LoanListSkeleton isMobile={isMobile} />
       ) : (
         <>
           {isMobile ? (
@@ -922,9 +997,17 @@ export default function LoanList({ globalSearchTerm }) {
             </>
           )}
           {!loadingLoans && filteredLoans.length === 0 && (
-            <Typography variant="body1" align="center" mt={4} color="text.secondary">
-              No loans found for the selected filters.
-            </Typography>
+            <Box textAlign="center" mt={4} p={2} border="1px dashed" borderColor="grey.400" borderRadius={2}>
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                No Loans Found
+              </Typography>
+              <Typography variant="body2" color="text.secondary" mb={2}>
+                It looks like there are no loans matching your current filters.
+              </Typography>
+              <Button variant="contained" color="secondary" onClick={() => setSearchParams({})} startIcon={<AddCircleOutlineIcon />}>
+                Clear Filters & Add Loan
+              </Button>
+            </Box>
           )}
         </>
       )}
