@@ -121,7 +121,7 @@ export default function Dashboard() {
   }, []);
 
   const iconMap = useMemo(() => {
-    const iconSize = { fontSize: isMobile ? 22 : 24 };
+    const iconSize = { fontSize: isMobile ? 20 : 24 }; // MODIFIED: Reduced mobile icon size to 20
     return {
       totalLoans: <MonetizationOnIcon sx={iconSize} />,
       paidLoans: <CheckCircleIcon sx={iconSize} />,
@@ -528,7 +528,7 @@ export default function Dashboard() {
       sx={{
         fontWeight: 600,
         color: theme.palette.text.primary,
-        fontSize: isMobile ? "0.9rem" : "1rem",
+        fontSize: isMobile ? "0.8rem" : "1rem", // MODIFIED: Reduced mobile font size to 0.8rem
         ...sx,
       }}
     >
@@ -570,10 +570,9 @@ export default function Dashboard() {
           {cards.map((card, index) => (
             <Draggable key={card.id} draggableId={card.id} index={index}>
               {(provided, snapshot) => (
-// Inside renderCardSection function in Dashboard.jsx
 <Grid
   item
-  xs={isMobile ? 4 : 6}  // 3 per row on mobile, original layout elsewhere
+  xs={isMobile ? 4 : 6}
   sm={6}
   md={4}
   lg={3}
@@ -607,11 +606,11 @@ export default function Dashboard() {
                           alignItems: "center",
                           textAlign: "center",
                           backgroundColor: theme.palette.background.paper,
-                          boxShadow: theme.shadows[1], // Softer default shadow
-                          border: `1px solid ${theme.palette.divider}`, // Subtle border
+                          boxShadow: theme.shadows[1],
+                          border: `1px solid ${theme.palette.divider}`,
                           transition: "box-shadow 0.3s ease-in-out, border-color 0.3s ease-in-out",
                           "&:hover": {
-                            boxShadow: theme.shadows[4], // More pronounced shadow on hover
+                            boxShadow: theme.shadows[4],
                             cursor: "pointer",
                             borderColor: theme.palette[card.color]?.main || theme.palette.primary.main,
                           },
@@ -646,7 +645,7 @@ export default function Dashboard() {
                           </Box>
                           <Typography
                             variant="caption"
-                            sx={{ color: theme.palette.text.secondary, fontWeight: 500 }}
+                            sx={{ color: theme.palette.text.secondary, fontWeight: 500, fontSize: isMobile ? "0.6rem" : "0.75rem" }} // MODIFIED: Added conditional font size for card label
                           >
                             {card.label}
                           </Typography>
@@ -667,7 +666,7 @@ export default function Dashboard() {
                               whiteSpace: "nowrap",
                               overflow: "hidden",
                               textOverflow: "ellipsis",
-                              fontSize: isMobile ? "1.5rem" : "1.8rem",
+                              fontSize: isMobile ? "1.2rem" : "1.8rem", // MODIFIED: Reduced mobile font size to 1.2rem
                             }}
                           >
                             {card.value}
@@ -746,7 +745,7 @@ export default function Dashboard() {
           InputLabelProps={{ shrink: true }}
           sx={{
             "& .MuiOutlinedInput-root": {
-              borderRadius: 2, // Increased border-radius
+              borderRadius: 2,
               backgroundColor: theme.palette.background.paper,
               "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
                 borderColor: theme.palette.secondary.main,
@@ -773,10 +772,10 @@ export default function Dashboard() {
           expanded={showSections.executive}
           onChange={() => handleToggleSection("executive")}
           sx={{
-            borderRadius: 3, // Increased border-radius
+            borderRadius: 3,
             mb: isMobile ? 2 : 4,
             backgroundColor: theme.palette.background.paper,
-            boxShadow: theme.shadows[2], // Softer shadow
+            boxShadow: theme.shadows[2],
             overflow: "hidden",
             "&.MuiAccordion-root": {
               p: 0,
@@ -787,7 +786,7 @@ export default function Dashboard() {
             "&.MuiAccordion-root.Mui-expanded": {
               margin: 0,
               "&:before": { opacity: 0 },
-              boxShadow: theme.shadows[6], // More pronounced shadow when expanded
+              boxShadow: theme.shadows[6],
               backgroundColor: theme.palette.background.paper,
             },
           }}
@@ -813,10 +812,10 @@ export default function Dashboard() {
           expanded={showSections.metrics}
           onChange={() => handleToggleSection("metrics")}
           sx={{
-            borderRadius: 3, // Increased border-radius
+            borderRadius: 3,
             mb: isMobile ? 2 : 4,
             backgroundColor: theme.palette.background.paper,
-            boxShadow: theme.shadows[2], // Softer shadow
+            boxShadow: theme.shadows[2],
             overflow: "hidden",
             "&.MuiAccordion-root": {
               p: 0,
@@ -827,7 +826,7 @@ export default function Dashboard() {
             "&.MuiAccordion-root.Mui-expanded": {
               margin: 0,
               "&:before": { opacity: 0 },
-              boxShadow: theme.shadows[6], // More pronounced shadow when expanded
+              boxShadow: theme.shadows[6],
               backgroundColor: theme.palette.background.paper,
             },
           }}
@@ -854,10 +853,10 @@ export default function Dashboard() {
         expanded={showSections.charts}
         onChange={() => handleToggleSection("charts")}
         sx={{
-          borderRadius: 3, // Increased border-radius
+          borderRadius: 3,
           mb: `calc(${BOTTOM_NAV_HEIGHT}px + ${theme.spacing(2)})`,
           backgroundColor: theme.palette.background.paper,
-          boxShadow: theme.shadows[2], // Softer shadow
+          boxShadow: theme.shadows[2],
           overflow: "hidden",
           "&.MuiAccordion-root": {
             p: 0,
@@ -868,7 +867,7 @@ export default function Dashboard() {
           "&.MuiAccordion-root.Mui-expanded": {
             margin: 0,
             "&:before": { opacity: 0 },
-            boxShadow: theme.shadows[6], // More pronounced shadow when expanded
+            boxShadow: theme.shadows[6],
             backgroundColor: theme.palette.background.paper,
           },
         }}
