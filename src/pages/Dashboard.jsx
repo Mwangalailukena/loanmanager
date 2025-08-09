@@ -570,20 +570,22 @@ export default function Dashboard() {
           {cards.map((card, index) => (
             <Draggable key={card.id} draggableId={card.id} index={index}>
               {(provided, snapshot) => (
-                <Grid
-                  item
-                  xs={6}
-                  sm={6}
-                  md={4}
-                  lg={3}
-                  ref={provided.innerRef}
-                  {...provided.draggableProps}
-                  {...(!isMobile && provided.dragHandleProps)}
-                  style={{
-                    ...provided.draggableProps.style,
-                    userSelect: snapshot.isDragging ? "none" : "auto",
-                  }}
-                >
+// Inside renderCardSection function in Dashboard.jsx
+<Grid
+  item
+  xs={isMobile ? 4 : 6}  // 3 per row on mobile, original layout elsewhere
+  sm={6}
+  md={4}
+  lg={3}
+  ref={provided.innerRef}
+  {...provided.draggableProps}
+  {...(!isMobile && provided.dragHandleProps)}
+  style={{
+    ...provided.draggableProps.style,
+    userSelect: snapshot.isDragging ? "none" : "auto",
+  }}
+>
+
                   <Tooltip title={card.tooltip} arrow placement="top">
                     <motion.div
                       variants={cardVariants}
