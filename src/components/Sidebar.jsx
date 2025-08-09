@@ -47,13 +47,13 @@ const Sidebar = () => {
       <Toolbar />
       <List sx={{ pt: 2, px: 1 }}>
         {navItems.map((item) => (
-          <ListItem key={item.text} disablePadding sx={{ mb: 1 }}>
+          <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
             <ListItemButton
               selected={location.pathname.startsWith(item.path)}
               onClick={() => navigate(item.path)}
               sx={{
                 borderRadius: 2,
-                py: 1.2,
+                py: 1, // Reduced padding
                 '&.Mui-selected': {
                   backgroundColor: theme.palette.primary.light + '20',
                   color: theme.palette.primary.main,
@@ -72,11 +72,12 @@ const Sidebar = () => {
                 color: theme.palette.text.secondary,
                 '& .MuiListItemIcon-root': {
                   color: theme.palette.text.secondary,
+                  minWidth: 40, // Ensure consistent spacing for icons
                 },
               }}
             >
               <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.text} primaryTypographyProps={{ fontSize: '0.9rem' }} />
+              <ListItemText primary={item.text} primaryTypographyProps={{ fontSize: '0.875rem' }} /> {/* Smaller font size */}
             </ListItemButton>
           </ListItem>
         ))}

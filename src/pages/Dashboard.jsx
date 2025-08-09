@@ -121,7 +121,7 @@ export default function Dashboard() {
   }, []);
 
   const iconMap = useMemo(() => {
-    const iconSize = { fontSize: isMobile ? 18 : 20 };
+    const iconSize = { fontSize: isMobile ? 22 : 24 };
     return {
       totalLoans: <MonetizationOnIcon sx={iconSize} />,
       paidLoans: <CheckCircleIcon sx={iconSize} />,
@@ -134,10 +134,10 @@ export default function Dashboard() {
           anchorOrigin={{ vertical: "top", horizontal: "right" }}
           sx={{
             "& .MuiBadge-badge": {
-              height: "16px",
-              minWidth: "16px",
-              padding: "0 3px",
-              fontSize: "10px",
+              height: "18px",
+              minWidth: "18px",
+              padding: "0 4px",
+              fontSize: "12px",
             },
           }}
         >
@@ -261,7 +261,7 @@ export default function Dashboard() {
       (sum, loan) => sum + Number(loan.repaidAmount || 0),
       0
     );
-
+    
     // NEW: Profit calculation for dividends
     const actualProfit = loansThisMonth
         .filter(
@@ -303,7 +303,7 @@ export default function Dashboard() {
       (sum, loan) => sum + Number(loan.interest || 0),
       0
     );
-
+    
     const averageLoan = totalLoansCount > 0 ? Math.round(totalDisbursed / totalLoansCount) : 0;
 
     const getTrendPercentage = (current, previous) => {
@@ -524,11 +524,11 @@ export default function Dashboard() {
 
   const AccordionTitle = ({ title, sx }) => (
     <Typography
-      variant="body2"
+      variant="body1"
       sx={{
         fontWeight: 600,
         color: theme.palette.text.primary,
-        fontSize: isMobile ? "0.85rem" : "0.95rem",
+        fontSize: isMobile ? "0.9rem" : "1rem",
         ...sx,
       }}
     >
@@ -563,7 +563,7 @@ export default function Dashboard() {
       {(provided) => (
         <Grid
           container
-          spacing={isMobile ? 0.75 : 1}
+          spacing={isMobile ? 1.5 : 2}
           {...provided.droppableProps}
           ref={provided.innerRef}
         >
@@ -597,19 +597,19 @@ export default function Dashboard() {
                     >
                       <Card
                         sx={{
-                          p: isMobile ? 0.75 : 1.25,
-                          borderRadius: 2,
+                          p: isMobile ? 1.5 : 2,
+                          borderRadius: 3,
                           height: "100%",
                           display: "flex",
                           flexDirection: "column",
                           alignItems: "center",
                           textAlign: "center",
                           backgroundColor: theme.palette.background.paper,
-                          boxShadow: theme.shadows[1],
-                          border: `1px solid ${theme.palette.divider}`,
+                          boxShadow: theme.shadows[1], // Softer default shadow
+                          border: `1px solid ${theme.palette.divider}`, // Subtle border
                           transition: "box-shadow 0.3s ease-in-out, border-color 0.3s ease-in-out",
                           "&:hover": {
-                            boxShadow: theme.shadows[4],
+                            boxShadow: theme.shadows[4], // More pronounced shadow on hover
                             cursor: "pointer",
                             borderColor: theme.palette[card.color]?.main || theme.palette.primary.main,
                           },
@@ -644,7 +644,7 @@ export default function Dashboard() {
                           </Box>
                           <Typography
                             variant="caption"
-                            sx={{ color: theme.palette.text.secondary, fontWeight: 500, lineHeight: 1.2, fontSize: isMobile ? "0.65rem" : "0.75rem" }}
+                            sx={{ color: theme.palette.text.secondary, fontWeight: 500 }}
                           >
                             {card.label}
                           </Typography>
@@ -665,7 +665,7 @@ export default function Dashboard() {
                               whiteSpace: "nowrap",
                               overflow: "hidden",
                               textOverflow: "ellipsis",
-                              fontSize: isMobile ? "1rem" : "1.2rem",
+                              fontSize: isMobile ? "1.5rem" : "1.8rem",
                             }}
                           >
                             {card.value}
@@ -676,7 +676,7 @@ export default function Dashboard() {
                             variant="determinate"
                             value={card.progress * 100}
                             sx={{
-                              height: 3,
+                              height: 5,
                               borderRadius: 2,
                               backgroundColor: theme.palette.grey[300],
                               "& .MuiLinearProgress-bar": {
@@ -691,9 +691,9 @@ export default function Dashboard() {
                         {card.trend && (
                           <Box display="flex" alignItems="center" gap={0.5} mt={0.5}>
                             {card.trend.startsWith("+") ? (
-                              <ArrowUpwardIcon sx={{ fontSize: "1rem", color: theme.palette.success.main }} />
+                              <ArrowUpwardIcon fontSize="small" sx={{ color: theme.palette.success.main }} />
                             ) : (
-                              <ArrowDownwardIcon sx={{ fontSize: "1rem", color: theme.palette.error.main }} />
+                              <ArrowDownwardIcon fontSize="small" sx={{ color: theme.palette.error.main }} />
                             )}
                             <Typography
                               variant="caption"
@@ -702,7 +702,6 @@ export default function Dashboard() {
                                   ? theme.palette.success.main
                                   : theme.palette.error.main,
                                 fontWeight: 600,
-                                fontSize: isMobile ? "0.6rem" : "0.7rem",
                               }}
                             >
                               {card.trend} vs. last month
@@ -727,14 +726,14 @@ export default function Dashboard() {
       sx={{
         minHeight: "100vh",
         background: theme.palette.background.default,
-        p: isMobile ? 1 : 1.5,
-        pb: isMobile ? `calc(${BOTTOM_NAV_HEIGHT}px + ${theme.spacing(1)})` : 2.5,
+        p: isMobile ? 2 : 3,
+        pb: isMobile ? `calc(${BOTTOM_NAV_HEIGHT}px + ${theme.spacing(2)})` : 3,
       }}
     >
-      <Typography variant="h6" gutterBottom sx={{ fontWeight: 800, mb: 1, color: theme.palette.text.primary, fontSize: { xs: "1.5rem", md: "1.75rem" } }}>
+      <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 0.5, fontSize: { xs: "1.5rem", md: "2rem" } }}>
         Dashboard
       </Typography>
-      <Box mb={isMobile ? 0.5 : 1} maxWidth={isMobile ? "100%" : 200}>
+      <Box mb={isMobile ? 1.5 : 2} maxWidth={isMobile ? "100%" : 200}>
         <TextField
           label="Select Month"
           type="month"
@@ -745,25 +744,23 @@ export default function Dashboard() {
           InputLabelProps={{ shrink: true }}
           sx={{
             "& .MuiOutlinedInput-root": {
-              borderRadius: 1.5,
+              borderRadius: 2, // Increased border-radius
               backgroundColor: theme.palette.background.paper,
               "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
                 borderColor: theme.palette.secondary.main,
               },
             },
             "& .MuiInputBase-input": {
-              padding: isMobile ? "6px 10px" : "8px 12px",
-              fontSize: "0.875rem",
+              padding: isMobile ? "10px 14px" : "12px 16px",
             },
             "& .MuiInputLabel-root": {
-              transform: isMobile ? "translate(10px, 6px) scale(0.75)" : "translate(12px, 8px) scale(0.75)",
-              fontSize: "0.875rem",
+              transform: isMobile ? "translate(14px, 10px) scale(0.75)" : "translate(14px, 12px) scale(0.75)",
             },
             "& .MuiInputLabel-root.Mui-focused": {
               color: theme.palette.secondary.main,
             },
             "& .MuiInputLabel-shrink": {
-              transform: "translate(10px, -7px) scale(0.75)",
+              transform: "translate(14px, -9px) scale(0.75)",
             },
           }}
         />
@@ -774,10 +771,10 @@ export default function Dashboard() {
           expanded={showSections.executive}
           onChange={() => handleToggleSection("executive")}
           sx={{
-            borderRadius: 1.5,
-            mb: isMobile ? 1.5 : 2,
+            borderRadius: 3, // Increased border-radius
+            mb: isMobile ? 2 : 4,
             backgroundColor: theme.palette.background.paper,
-            boxShadow: theme.shadows[1],
+            boxShadow: theme.shadows[2], // Softer shadow
             overflow: "hidden",
             "&.MuiAccordion-root": {
               p: 0,
@@ -788,7 +785,7 @@ export default function Dashboard() {
             "&.MuiAccordion-root.Mui-expanded": {
               margin: 0,
               "&:before": { opacity: 0 },
-              boxShadow: theme.shadows[3],
+              boxShadow: theme.shadows[6], // More pronounced shadow when expanded
               backgroundColor: theme.palette.background.paper,
             },
           }}
@@ -797,15 +794,15 @@ export default function Dashboard() {
             expandIcon={<ExpandMoreIcon fontSize="small" sx={{ color: theme.palette.primary.contrastText }} />}
             sx={{
               background: `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              p: isMobile ? "6px 10px" : "10px 16px",
-              minHeight: "40px !important",
-              "&.Mui-expanded": { minHeight: "40px !important" },
+              p: isMobile ? "10px 16px" : "14px 24px",
+              minHeight: "56px !important",
+              "&.Mui-expanded": { minHeight: "56px !important" },
               "& .MuiAccordionSummary-content": { margin: 0, alignItems: "center" },
             }}
           >
-            <AccordionTitle title="Executive Summary" sx={{ color: theme.palette.primary.contrastText, fontSize: { xs: "0.8rem", md: "0.9rem" } }} />
+            <AccordionTitle title="Executive Summary" sx={{ color: theme.palette.primary.contrastText }} />
           </AccordionSummary>
-          <AccordionDetails sx={{ p: isMobile ? 1 : 1.5, pb: isMobile ? 1.5 : 2 }}>
+          <AccordionDetails sx={{ p: isMobile ? 2 : 3, pb: isMobile ? 2.5 : 4 }}>
             {renderCardSection(executiveSummaryCards, "executive-summary-droppable")}
           </AccordionDetails>
         </Accordion>
@@ -814,10 +811,10 @@ export default function Dashboard() {
           expanded={showSections.metrics}
           onChange={() => handleToggleSection("metrics")}
           sx={{
-            borderRadius: 1.5,
-            mb: isMobile ? 1.5 : 2,
+            borderRadius: 3, // Increased border-radius
+            mb: isMobile ? 2 : 4,
             backgroundColor: theme.palette.background.paper,
-            boxShadow: theme.shadows[1],
+            boxShadow: theme.shadows[2], // Softer shadow
             overflow: "hidden",
             "&.MuiAccordion-root": {
               p: 0,
@@ -828,7 +825,7 @@ export default function Dashboard() {
             "&.MuiAccordion-root.Mui-expanded": {
               margin: 0,
               "&:before": { opacity: 0 },
-              boxShadow: theme.shadows[3],
+              boxShadow: theme.shadows[6], // More pronounced shadow when expanded
               backgroundColor: theme.palette.background.paper,
             },
           }}
@@ -837,15 +834,15 @@ export default function Dashboard() {
             expandIcon={<ExpandMoreIcon fontSize="small" sx={{ color: theme.palette.primary.contrastText }} />}
             sx={{
               background: `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              p: isMobile ? "6px 10px" : "10px 16px",
-              minHeight: "40px !important",
-              "&.Mui-expanded": { minHeight: "40px !important" },
+              p: isMobile ? "10px 16px" : "14px 24px",
+              minHeight: "56px !important",
+              "&.Mui-expanded": { minHeight: "56px !important" },
               "& .MuiAccordionSummary-content": { margin: 0, alignItems: "center" },
             }}
           >
-            <AccordionTitle title="Metrics" sx={{ color: theme.palette.primary.contrastText, fontSize: { xs: "0.8rem", md: "0.9rem" } }} />
+            <AccordionTitle title="Metrics" sx={{ color: theme.palette.primary.contrastText }} />
           </AccordionSummary>
-          <AccordionDetails sx={{ p: isMobile ? 1 : 1.5, pb: isMobile ? 1.5 : 2 }}>
+          <AccordionDetails sx={{ p: isMobile ? 2 : 3, pb: isMobile ? 2.5 : 4 }}>
             {renderCardSection(metricsCards, "metrics-droppable")}
           </AccordionDetails>
         </Accordion>
@@ -855,10 +852,10 @@ export default function Dashboard() {
         expanded={showSections.charts}
         onChange={() => handleToggleSection("charts")}
         sx={{
-          borderRadius: 1.5,
-          mb: `calc(${BOTTOM_NAV_HEIGHT}px + ${theme.spacing(1.5)})`,
+          borderRadius: 3, // Increased border-radius
+          mb: `calc(${BOTTOM_NAV_HEIGHT}px + ${theme.spacing(2)})`,
           backgroundColor: theme.palette.background.paper,
-          boxShadow: theme.shadows[1],
+          boxShadow: theme.shadows[2], // Softer shadow
           overflow: "hidden",
           "&.MuiAccordion-root": {
             p: 0,
@@ -869,7 +866,7 @@ export default function Dashboard() {
           "&.MuiAccordion-root.Mui-expanded": {
             margin: 0,
             "&:before": { opacity: 0 },
-            boxShadow: theme.shadows[3],
+            boxShadow: theme.shadows[6], // More pronounced shadow when expanded
             backgroundColor: theme.palette.background.paper,
           },
         }}
@@ -878,15 +875,15 @@ export default function Dashboard() {
           expandIcon={<ExpandMoreIcon fontSize="small" sx={{ color: theme.palette.primary.contrastText }} />}
           sx={{
             background: `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-            p: isMobile ? "6px 10px" : "10px 16px",
-            minHeight: "40px !important",
-            "&.Mui-expanded": { minHeight: "40px !important" },
+            p: isMobile ? "10px 16px" : "14px 24px",
+            minHeight: "56px !important",
+            "&.Mui-expanded": { minHeight: "56px !important" },
             "& .MuiAccordionSummary-content": { margin: 0, alignItems: "center" },
           }}
         >
-          <AccordionTitle title="Charts & Analytics" sx={{ color: theme.palette.primary.contrastText, fontSize: { xs: "0.8rem", md: "0.9rem" } }} />
+          <AccordionTitle title="Charts & Analytics" sx={{ color: theme.palette.primary.contrastText }} />
         </AccordionSummary>
-        <AccordionDetails sx={{ p: isMobile ? 1 : 1.5, pb: isMobile ? 1.5 : 2 }}>
+        <AccordionDetails sx={{ p: isMobile ? 2 : 3, pb: isMobile ? 2.5 : 4 }}>
           <Suspense
             fallback={
               <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
