@@ -1,56 +1,30 @@
-import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from "react";
+import React, { useState, useEffect, useCallback, lazy, Suspense, useMemo } from "react";
 import {
   Box,
-  Grid,
-  Card,
   Typography,
   useTheme,
   useMediaQuery,
   TextField,
-  Tooltip,
-  LinearProgress,
   Fab,
   Zoom,
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  Badge,
   Backdrop,
   CircularProgress,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
-import PaidIcon from "@mui/icons-material/Payments";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import PendingIcon from "@mui/icons-material/Pending";
-import WarningIcon from "@mui/icons-material/Warning";
-import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
-import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
-import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
-import BarChartIcon from "@mui/icons-material/BarChart";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
-import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
-import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import dayjs from "dayjs";
 import { toast } from "react-toastify";
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { DragDropContext } from "@hello-pangea/dnd";
 import { BOTTOM_NAV_HEIGHT } from "../components/BottomNavBar";
+import { useDashboardCalculations } from "../hooks/dashboard/useDashboardCalculations";
+import DashboardSection from "../components/dashboard/DashboardSection";
 
-// Lazy loading for Charts component
 const LazyCharts = lazy(() => import("../components/Charts"));
-
-// --- Constants & Animations ---
-const cardVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: (i) => ({
-    opacity: 1,
-    y: 0,
-    transition: { delay: i * 0.1, duration: 0.4, ease: "easeOut" },
-  }),
-};
 
 const STORAGE_KEY = "dashboardCardOrder";
 const EXECUTIVE_SUMMARY_VISIBILITY_KEY = "dashboardExecutiveSummaryVisibility";
@@ -106,55 +80,12 @@ export default function Dashboard() {
     charts: getInitialVisibility(CHART_SECTION_VISIBILITY_KEY, true),
   });
 
-  const handleToggleSection = useCallback((section) => {
-    setShowSections((prev) => {
-      const newState = { ...prev, [section]: !prev[section] };
-      const key =
-        section === "executive"
-          ? EXECUTIVE_SUMMARY_VISIBILITY_KEY
-          : section === "metrics"
-          ? METRICS_VISIBILITY_KEY
-          : CHART_SECTION_VISIBILITY_KEY;
-      localStorage.setItem(key, JSON.stringify(newState[section]));
-      return newState;
-    });
-  }, []);
-
-  const iconMap = useMemo(() => {
-    const iconSize = { fontSize: isMobile ? 20 : 24 }; // MODIFIED: Reduced mobile icon size to 20
-    return {
-      totalLoans: <MonetizationOnIcon sx={iconSize} />,
-      paidLoans: <CheckCircleIcon sx={iconSize} />,
-      activeLoans: <PendingIcon sx={iconSize} />,
-      overdueLoans: (overdueCount) => (
-        <Badge
-          badgeContent={overdueCount > 0 ? overdueCount : null}
-          color="error"
-          overlap="circular"
-          anchorOrigin={{ vertical: "top", horizontal: "right" }}
-          sx={{
-            "& .MuiBadge-badge": {
-              height: "18px",
-              minWidth: "18px",
-              padding: "0 4px",
-              fontSize: "12px",
-            },
-          }}
-        >
-          <WarningIcon sx={iconSize} />
-        </Badge>
-      ),
-      totalDisbursed: <MonetizationOnIcon sx={iconSize} />,
-      investedCapital: <AccountBalanceWalletIcon sx={iconSize} />,
-      availableCapital: <AccountBalanceWalletIcon sx={iconSize} />,
-      totalCollected: <PaidIcon sx={iconSize} />,
-      totalOutstanding: <WarningIcon sx={iconSize} />,
-      expectedProfit: <BarChartIcon sx={iconSize} />,
-      actualProfit: <CheckCircleIcon sx={iconSize} />,
-      averageLoan: <MonetizationOnIcon sx={iconSize} />,
-      partnerDividends: <AccountBalanceIcon sx={iconSize} />,
-    };
-  }, [isMobile]);
+  const { loansForCalculations, defaultCards } = useDashboardCalculations(
+    loans,
+    selectedMonth,
+    settings,
+    isMobile
+  );
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -220,254 +151,19 @@ export default function Dashboard() {
     return () => clearTimeout(timer);
   }, [loans]);
 
-  const { loansForCalculations, defaultCards } = useMemo(() => {
-    const calcStatus = (loan) => {
-      const totalRepayable = Number(loan.totalRepayable || 0);
-      const repaidAmount = Number(loan.repaidAmount || 0);
-
-      if (repaidAmount >= totalRepayable && totalRepayable > 0) {
-        return "Paid";
-      }
-      const now = dayjs();
-      const due = dayjs(loan.dueDate);
-      if (due.isBefore(now, "day")) {
-        return "Overdue";
-      }
-      return "Active";
-    };
-
-    const loansForCalculations = loans || [];
-    const loansThisMonth = loansForCalculations.filter((loan) =>
-      loan.startDate.startsWith(selectedMonth)
-    );
-    const previousMonth = dayjs(selectedMonth).subtract(1, "month").format("YYYY-MM");
-    const loansLastMonth = loansForCalculations.filter(
-      (loan) => dayjs(loan.startDate).format("YYYY-MM") === previousMonth
-    );
-
-    const totalDisbursed = loansThisMonth.reduce(
-      (sum, loan) => sum + Number(loan.principal || 0),
-      0
-    );
-    const totalCollected = loansThisMonth.reduce(
-      (sum, loan) => sum + Number(loan.repaidAmount || 0),
-      0
-    );
-    const totalDisbursedLastMonth = loansLastMonth.reduce(
-      (sum, loan) => sum + Number(loan.principal || 0),
-      0
-    );
-    const totalCollectedLastMonth = loansLastMonth.reduce(
-      (sum, loan) => sum + Number(loan.repaidAmount || 0),
-      0
-    );
-    
-    // NEW: Profit calculation for dividends
-    const actualProfit = loansThisMonth
-        .filter(
-            (loan) =>
-            calcStatus(loan) === "Paid" &&
-            Number(loan.repaidAmount || 0) >=
-                Number(loan.principal || 0) + Number(loan.interest || 0)
-        )
-        .reduce((sum, loan) => sum + Number(loan.interest || 0), 0);
-
-    // NEW: Partner dividends are now based on actual profit
-    const totalPartnerDividends = actualProfit;
-
-    // NEW: Assume two partners with a 50/50 split
-    const individualPartnerDividends = [
-        { name: "Agnes Ilukena", amount: totalPartnerDividends * 0.5 },
-        { name: "Jones Ilukena", amount: totalPartnerDividends * 0.5 },
-    ];
-
-    const initialCapital = Number(settings?.initialCapital) || 60000;
-    const availableCapital = initialCapital - totalDisbursed + totalCollected;
-    const totalLoansCount = loansThisMonth.length;
-    const paidLoansCount = loansThisMonth.filter((l) => calcStatus(l) === "Paid").length;
-    const activeLoansCount = loansThisMonth.filter((l) => calcStatus(l) === "Active").length;
-    const overdueLoansCount = loansThisMonth.filter((l) => calcStatus(l) === "Overdue").length;
-
-    const totalOutstanding = loansThisMonth
-      .filter((loan) => calcStatus(loan) === "Active" || calcStatus(loan) === "Overdue")
-      .reduce(
-        (sum, loan) =>
-          sum +
-          (Number(loan.principal || 0) +
-            Number(loan.interest || 0) -
-            Number(loan.repaidAmount || 0)),
-        0
-      );
-
-    const totalExpectedProfit = loansThisMonth.reduce(
-      (sum, loan) => sum + Number(loan.interest || 0),
-      0
-    );
-    
-    const averageLoan = totalLoansCount > 0 ? Math.round(totalDisbursed / totalLoansCount) : 0;
-
-    const getTrendPercentage = (current, previous) => {
-      if (previous === 0) return current > 0 ? "New" : null;
-      const change = ((current - previous) / previous) * 100;
-      return `${change >= 0 ? "+" : ""}${change.toFixed(1)}%`;
-    };
-
-    const disbursedTrend = getTrendPercentage(totalDisbursed, totalDisbursedLastMonth);
-    const collectedTrend = getTrendPercentage(totalCollected, totalCollectedLastMonth);
-
-    const defaultCards = [
-      {
-        id: "investedCapital",
-        label: "Invested Capital",
-        value: `K ${initialCapital.toLocaleString()}`,
-        color: "primary",
-        filter: "all",
-        tooltip: "Initial capital invested into loans",
-        progress: null,
-        icon: iconMap.investedCapital,
-      },
-      {
-        id: "availableCapital",
-        label: "Available Capital",
-        value: `K ${availableCapital.toLocaleString()}`,
-        color: "success",
-        filter: "all",
-        tooltip: "Capital currently available to issue new loans. Progress against initial capital.",
-        progress: initialCapital > 0 ? availableCapital / initialCapital : 0,
-        icon: iconMap.availableCapital,
-      },
-      {
-        id: "totalDisbursed",
-        label: "Total Disbursed",
-        value: `K ${totalDisbursed.toLocaleString()}`,
-        color: "primary",
-        filter: "all",
-        tooltip: "Total principal amount disbursed this month",
-        progress: null,
-        icon: iconMap.totalDisbursed,
-        trend: disbursedTrend,
-      },
-      {
-        id: "totalCollected",
-        label: "Total Collected",
-        value: `K ${totalCollected.toLocaleString()}`,
-        color: "info",
-        filter: "paid",
-        tooltip: "Total amount collected from repayments this month",
-        progress: totalDisbursed > 0 ? totalCollected / totalDisbursed : null,
-        icon: iconMap.totalCollected,
-        trend: collectedTrend,
-      },
-      // UPDATED: The Partner Dividends card with new calculations and tooltip
-      {
-        id: "partnerDividends",
-        label: "Partner Dividends",
-        value: `K ${totalPartnerDividends.toLocaleString()}`,
-        color: "secondary",
-        filter: "paid",
-        tooltip: (
-            <Box>
-                <Typography variant="body2" fontWeight="bold">
-                    Total Dividends (100% of Actual Profit)
-                </Typography>
-                <Typography variant="caption" display="block" mb={1}>
-                    Actual Profit this month: K {actualProfit.toLocaleString()}
-                </Typography>
-                {individualPartnerDividends.map((p) => (
-                    <Typography key={p.name} variant="caption" display="block">
-                        {`${p.name}: K ${p.amount.toLocaleString()}`}
-                    </Typography>
-                ))}
-            </Box>
-        ),
-        progress: totalExpectedProfit > 0 ? totalPartnerDividends / totalExpectedProfit : 0,
-        icon: iconMap.partnerDividends,
-      },
-      {
-        id: "totalLoans",
-        label: "Total Loans",
-        value: totalLoansCount,
-        color: "primary",
-        filter: "all",
-        tooltip: "Total number of loans issued this month",
-        progress: null,
-        icon: iconMap.totalLoans,
-      },
-      {
-        id: "paidLoans",
-        label: "Paid Loans",
-        value: paidLoansCount,
-        color: "success",
-        filter: "paid",
-        tooltip: "Loans fully paid back this month",
-        progress: totalLoansCount ? paidLoansCount / totalLoansCount : 0,
-        icon: iconMap.paidLoans,
-      },
-      {
-        id: "activeLoans",
-        label: "Active Loans",
-        value: activeLoansCount,
-        color: "info",
-        filter: "active",
-        tooltip: "Loans currently active and being repaid",
-        progress: totalLoansCount ? activeLoansCount / totalLoansCount : 0,
-        icon: iconMap.activeLoans,
-      },
-      {
-        id: "overdueLoans",
-        label: "Overdue Loans",
-        value: overdueLoansCount,
-        color: "error",
-        filter: "overdue",
-        tooltip: "Loans overdue for repayment",
-        progress: totalLoansCount ? overdueLoansCount / totalLoansCount : 0,
-        icon: iconMap.overdueLoans(overdueLoansCount),
-        pulse: overdueLoansCount > 0,
-      },
-      {
-        id: "totalOutstanding",
-        label: "Total Outstanding",
-        value: `K ${totalOutstanding.toLocaleString()}`,
-        color: "warning",
-        filter: "active",
-        tooltip: "Total outstanding repayments still due",
-        progress: null,
-        icon: iconMap.totalOutstanding,
-      },
-      {
-        id: "expectedProfit",
-        label: "Interest Expected",
-        value: `K ${totalExpectedProfit.toLocaleString()}`,
-        color: "secondary",
-        filter: "all",
-        tooltip: "Total expected profit from interest",
-        progress: null,
-        icon: iconMap.expectedProfit,
-      },
-      {
-        id: "actualProfit",
-        label: "Actual Interest",
-        value: `K ${actualProfit.toLocaleString()}`,
-        color: "success",
-        filter: "paid",
-        tooltip: "Profit earned from fully repaid loans",
-        progress: totalExpectedProfit > 0 ? actualProfit / totalExpectedProfit : null,
-        icon: iconMap.actualProfit,
-      },
-      {
-        id: "averageLoan",
-        label: "Average Loan",
-        value: `K ${averageLoan.toLocaleString()}`,
-        color: "primary",
-        filter: "all",
-        tooltip: "Average loan amount issued this month",
-        progress: null,
-        icon: iconMap.averageLoan,
-      },
-    ];
-
-    return { loansForCalculations, defaultCards };
-  }, [loans, selectedMonth, settings, iconMap]);
+  const handleToggleSection = useCallback((section) => {
+    setShowSections((prev) => {
+      const newState = { ...prev, [section]: !prev[section] };
+      const key =
+        section === "executive"
+          ? EXECUTIVE_SUMMARY_VISIBILITY_KEY
+          : section === "metrics"
+          ? METRICS_VISIBILITY_KEY
+          : CHART_SECTION_VISIBILITY_KEY;
+      localStorage.setItem(key, JSON.stringify(newState[section]));
+      return newState;
+    });
+  }, []);
 
   const cardsToRender = useMemo(
     () =>
@@ -528,7 +224,7 @@ export default function Dashboard() {
       sx={{
         fontWeight: 600,
         color: theme.palette.text.primary,
-        fontSize: isMobile ? "0.8rem" : "1rem", // MODIFIED: Reduced mobile font size to 0.8rem
+        fontSize: isMobile ? "0.8rem" : "1rem",
         ...sx,
       }}
     >
@@ -540,12 +236,12 @@ export default function Dashboard() {
     return (
       <Backdrop
         sx={{
-          color: '#fff',
+          color: "#fff",
           zIndex: (theme) => theme.zIndex.drawer + 1,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
           backgroundColor: theme.palette.background.default,
         }}
         open={loading}
@@ -557,170 +253,6 @@ export default function Dashboard() {
       </Backdrop>
     );
   }
-
-  const renderCardSection = (cards, droppableId) => (
-    <Droppable droppableId={droppableId} direction="horizontal">
-      {(provided) => (
-        <Grid
-          container
-          spacing={isMobile ? 1.5 : 2}
-          {...provided.droppableProps}
-          ref={provided.innerRef}
-        >
-          {cards.map((card, index) => (
-            <Draggable key={card.id} draggableId={card.id} index={index}>
-              {(provided, snapshot) => (
-<Grid
-  item
-  xs={isMobile ? 4 : 6}
-  sm={6}
-  md={4}
-  lg={3}
-  ref={provided.innerRef}
-  {...provided.draggableProps}
-  {...(!isMobile && provided.dragHandleProps)}
-  style={{
-    ...provided.draggableProps.style,
-    userSelect: snapshot.isDragging ? "none" : "auto",
-  }}
->
-
-                  <Tooltip title={card.tooltip} arrow placement="top">
-                    <motion.div
-                      variants={cardVariants}
-                      initial="hidden"
-                      animate="visible"
-                      custom={index}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => handleCardClick(card.filter)}
-                      style={{ height: "100%" }}
-                    >
-                      <Card
-                        sx={{
-                          p: isMobile ? 1.5 : 2,
-                          borderRadius: 3,
-                          height: "100%",
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          textAlign: "center",
-                          backgroundColor: theme.palette.background.paper,
-                          boxShadow: theme.shadows[1],
-                          border: `1px solid ${theme.palette.divider}`,
-                          transition: "box-shadow 0.3s ease-in-out, border-color 0.3s ease-in-out",
-                          "&:hover": {
-                            boxShadow: theme.shadows[4],
-                            cursor: "pointer",
-                            borderColor: theme.palette[card.color]?.main || theme.palette.primary.main,
-                          },
-                          ...(card.pulse && { animation: "pulse 1.5s infinite" }),
-                          position: 'relative',
-                        }}
-                      >
-                        {isMobile && (
-                            <Box
-                              {...provided.dragHandleProps}
-                              sx={{
-                                  position: 'absolute',
-                                  top: 4,
-                                  right: 4,
-                                  cursor: 'grab',
-                                  color: theme.palette.grey[500],
-                                  zIndex: 1,
-                              }}
-                            >
-                                <DragIndicatorIcon fontSize="small" />
-                            </Box>
-                        )}
-                        <Box
-                          display="flex"
-                          justifyContent="center"
-                          alignItems="center"
-                          mb={0.5}
-                          gap={0.5}
-                        >
-                          <Box sx={{ color: theme.palette[card.color]?.main || theme.palette.text.primary }}>
-                            {typeof card.icon === "function" ? card.icon(card.value) : card.icon}
-                          </Box>
-                          <Typography
-                            variant="caption"
-                            sx={{ color: theme.palette.text.secondary, fontWeight: 500, fontSize: isMobile ? "0.6rem" : "0.75rem" }} // MODIFIED: Added conditional font size for card label
-                          >
-                            {card.label}
-                          </Typography>
-                        </Box>
-                        <Box
-                          sx={{
-                            flexGrow: 1,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          <Typography
-                            variant="h6"
-                            sx={{
-                              fontWeight: 800,
-                              lineHeight: 1.1,
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              fontSize: isMobile ? "1.2rem" : "1.8rem", // MODIFIED: Reduced mobile font size to 1.2rem
-                            }}
-                          >
-                            {card.value}
-                          </Typography>
-                        </Box>
-                        {card.progress !== null && (
-                          <LinearProgress
-                            variant="determinate"
-                            value={card.progress * 100}
-                            sx={{
-                              height: 5,
-                              borderRadius: 2,
-                              backgroundColor: theme.palette.grey[300],
-                              "& .MuiLinearProgress-bar": {
-                                backgroundColor: theme.palette[card.color]?.main || theme.palette.primary.main,
-                              },
-                              width: "80%",
-                              mt: 0.5,
-                              mb: 0.5,
-                            }}
-                          />
-                        )}
-                        {card.trend && (
-                          <Box display="flex" alignItems="center" gap={0.5} mt={0.5}>
-                            {card.trend.startsWith("+") ? (
-                              <ArrowUpwardIcon fontSize="small" sx={{ color: theme.palette.success.main }} />
-                            ) : (
-                              <ArrowDownwardIcon fontSize="small" sx={{ color: theme.palette.error.main }} />
-                            )}
-                            <Typography
-                              variant="caption"
-                              sx={{
-                                color: card.trend.startsWith("+")
-                                  ? theme.palette.success.main
-                                  : theme.palette.error.main,
-                                fontWeight: 600,
-                              }}
-                            >
-                              {card.trend} vs. last month
-                            </Typography>
-                          </Box>
-                        )}
-                      </Card>
-                    </motion.div>
-                  </Tooltip>
-                </Grid>
-              )}
-            </Draggable>
-          ))}
-          {provided.placeholder}
-        </Grid>
-      )}
-    </Droppable>
-  );
 
   return (
     <Box
@@ -804,7 +336,12 @@ export default function Dashboard() {
             <AccordionTitle title="Executive Summary" sx={{ color: theme.palette.primary.contrastText }} />
           </AccordionSummary>
           <AccordionDetails sx={{ p: isMobile ? 2 : 3, pb: isMobile ? 2.5 : 4 }}>
-            {renderCardSection(executiveSummaryCards, "executive-summary-droppable")}
+            <DashboardSection
+              cards={executiveSummaryCards}
+              droppableId="executive-summary-droppable"
+              isMobile={isMobile}
+              handleCardClick={handleCardClick}
+            />
           </AccordionDetails>
         </Accordion>
 
@@ -844,7 +381,12 @@ export default function Dashboard() {
             <AccordionTitle title="Metrics" sx={{ color: theme.palette.primary.contrastText }} />
           </AccordionSummary>
           <AccordionDetails sx={{ p: isMobile ? 2 : 3, pb: isMobile ? 2.5 : 4 }}>
-            {renderCardSection(metricsCards, "metrics-droppable")}
+            <DashboardSection
+              cards={metricsCards}
+              droppableId="metrics-droppable"
+              isMobile={isMobile}
+              handleCardClick={handleCardClick}
+            />
           </AccordionDetails>
         </Accordion>
       </DragDropContext>
@@ -887,7 +429,7 @@ export default function Dashboard() {
         <AccordionDetails sx={{ p: isMobile ? 2 : 3, pb: isMobile ? 2.5 : 4 }}>
           <Suspense
             fallback={
-              <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+              <Box sx={{ display: "flex", justifyContent: "center", p: 2 }}>
                 <CircularProgress color="primary" />
               </Box>
             }
