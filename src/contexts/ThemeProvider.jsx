@@ -40,10 +40,8 @@ export function ThemeProvider({ children }) {
             contrastText: '#ffffff',
           },
           background: {
-            // Updated to use a subtle linear gradient
-            default: darkMode
-              ? 'linear-gradient(180deg, #121212, #0a0a0a)'
-              : 'linear-gradient(180deg, #E8F5E9, #f5fcf5)',
+            // Updated to use your new gradient
+            default: 'linear-gradient(90deg, rgba(131, 58, 180, 1) 0%, rgba(253, 29, 29, 1) 50%, rgba(252, 176, 69, 1) 100%)',
             paper: darkMode ? '#1e1e1e' : '#ffffff',
           },
           text: {
@@ -86,13 +84,11 @@ export function ThemeProvider({ children }) {
           borderRadius: 12,
         },
         components: {
-          // Add MuiCssBaseline to apply the gradient to the body
           MuiCssBaseline: {
             styleOverrides: {
               body: {
-                background: darkMode
-                  ? 'linear-gradient(180deg, #121212, #0a0a0a)'
-                  : 'linear-gradient(180deg, #E8F5E9, #f5fcf5)',
+                // Apply the same new gradient to the body
+                background: 'linear-gradient(90deg, rgba(131, 58, 180, 1) 0%, rgba(253, 29, 29, 1) 50%, rgba(252, 176, 69, 1) 100%)',
                 backgroundAttachment: 'fixed',
               },
             },
