@@ -53,38 +53,31 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
       )}
 
       <Box
+        component="main"
         sx={{
-          display: 'flex',
-          flex: 1,
-          paddingTop: 0,
-          paddingBottom: `${bottomNavHeight}px`,
+          flexGrow: 1,
+          overflowY: 'auto',
+          boxSizing: 'border-box',
+          background: theme.palette.background.default,
+          minHeight: 0,
+          height: '100%',
+          px: 0,
+          pb: 0,
+          // Corrected: Add a top padding to account for the FloatingNavBar
+          // The padding is only applied on desktop screens where the FloatingNavBar is present.
+          // A value of 100px is a safe estimate for the navbar's height and position.
+          paddingTop: isMobile ? 0 : '100px',
         }}
       >
-        <Box
-          component="main"
-          sx={{
-            flexGrow: 1,
-            overflowY: 'auto',
-            boxSizing: 'border-box',
-            background: theme.palette.background.default,
-            minHeight: 0,
-            height: '100%',
-            px: 0,
-            paddingTop: 0,
-            pb: 0,
+        <Container 
+          maxWidth="lg" 
+          sx={{ 
+            pb: 4, 
+            px: isMobile ? 2 : 4,
           }}
         >
-          {/* UPDATED: Removed the fixed top padding (pt) from this Container. */}
-          <Container 
-            maxWidth="lg" 
-            sx={{ 
-              pb: 4, 
-              px: isMobile ? 2 : 4,
-            }}
-          >
-            {React.cloneElement(children, { globalSearchTerm: searchTerm })}
-          </Container>
-        </Box>
+          {React.cloneElement(children, { globalSearchTerm: searchTerm })}
+        </Container>
       </Box>
 
       {!hideLayout && isMobile && <BottomNavBar />}
