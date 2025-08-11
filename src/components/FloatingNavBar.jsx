@@ -32,6 +32,8 @@ import {
   ListAlt as ListAltIcon,
   AttachMoney as AttachMoneyIcon,
   History as HistoryIcon,
+  LightMode as LightModeIcon, // Added Light Mode Icon
+  DarkMode as DarkModeIcon,   // Added Dark Mode Icon
 } from "@mui/icons-material";
 import { useLocation, useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
@@ -59,7 +61,8 @@ const pulse = keyframes`
   100% { transform: scale(1); }
 `;
 
-const FloatingNavBar = ({ onOpenLoanDetail, onSearchChange }) => {
+// Added onToggleDarkMode to the props
+const FloatingNavBar = ({ onOpenLoanDetail, onSearchChange, darkMode, onToggleDarkMode }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -163,7 +166,6 @@ const FloatingNavBar = ({ onOpenLoanDetail, onSearchChange }) => {
           border: "1px solid " + alpha(theme.palette.divider, 0.2),
           boxShadow: theme.shadows[3],
           zIndex: theme.zIndex.appBar + 1,
-          // --- FIX: Merged the two transform properties
           transform: barVisible ? "translateY(0)" : "translateY(-100px)",
           opacity: barVisible ? 1 : 0,
           transition: "transform 0.5s ease-out, opacity 0.5s ease-out",
@@ -289,6 +291,15 @@ const FloatingNavBar = ({ onOpenLoanDetail, onSearchChange }) => {
         <MenuItem onClick={handleSettingsClick}><ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>Interest Rate/ Capital</MenuItem>
         <MenuItem onClick={handleChangePasswordClick}><ListItemIcon><LockResetIcon fontSize="small" /></ListItemIcon>Change Password</MenuItem>
         <MenuItem onClick={openHelpDialog}><ListItemIcon><HelpOutline fontSize="small" /></ListItemIcon>Help</MenuItem>
+        
+        {/* NEW: Dark Mode Toggle */}
+        <MenuItem onClick={onToggleDarkMode}>
+          <ListItemIcon>
+            {darkMode ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
+          </ListItemIcon>
+          {darkMode ? 'Light Mode' : 'Dark Mode'}
+        </MenuItem>
+
         <Divider />
         <MenuItem onClick={handleLogout}><ListItemIcon><Logout fontSize="small" color="error" /></ListItemIcon>Logout</MenuItem>
       </Menu>
