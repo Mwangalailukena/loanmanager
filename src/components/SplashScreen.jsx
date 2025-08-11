@@ -2,75 +2,64 @@
 import React, { useState, useEffect } from 'react';
 import { Box, LinearProgress, Typography, keyframes, useTheme } from '@mui/material';
 
-// Define keyframe animations
+// Animations
 const fadeOut = keyframes`
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-    visibility: hidden; /* Hide element completely after fade */
-  }
+  from { opacity: 1; }
+  to { opacity: 0; visibility: hidden; }
 `;
 
-const pulse = keyframes`
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
+const pulseRotate = keyframes`
+  0% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.05) rotate(2deg); }
+  100% { transform: scale(1) rotate(0deg); }
 `;
 
-// NEW: Keyframe for entry animation (slide and fade in)
 const slideInUp = keyframes`
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 `;
 
-// NEW: Keyframe for progress bar shimmer effect
 const progressShimmer = keyframes`
-  0% {
-    background-position: 100% 0;
-  }
-  100% {
-    background-position: -100% 0;
-  }
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
 `;
 
-// NEW: Keyframe for a simple fade-in
 const fadeIn = keyframes`
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
+`;
+
+// Background pattern animation
+const backgroundMove = keyframes`
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 `;
 
 const SplashScreen = ({ onFadeOutComplete, duration = 5000 }) => {
   const theme = useTheme();
-  const [progress, setProgress] = useState(0); // State for progress bar
+  const [progress, setProgress] = useState(0);
+  const [dots, setDots] = useState('');
 
+  // Progress animation
   useEffect(() => {
-    // Calculate how often to update the progress bar
-    const intervalTime = duration / 100; // Update 100 times for 0-100%
+    const intervalTime = duration / 100;
     let currentProgress = 0;
-
     const timer = setInterval(() => {
       currentProgress += 1;
       setProgress(currentProgress);
-      if (currentProgress >= 100) {
-        clearInterval(timer);
-      }
+      if (currentProgress >= 100) clearInterval(timer);
     }, intervalTime);
-
-    // Clean up the interval on component unmount
     return () => clearInterval(timer);
   }, [duration]);
+
+  // Loading dots animation
+  useEffect(() => {
+    const dotTimer = setInterval(() => {
+      setDots((prev) => (prev.length < 3 ? prev + '.' : ''));
+    }, 500);
+    return () => clearInterval(dotTimer);
+  }, []);
 
   return (
     <Box
@@ -80,16 +69,16 @@ const SplashScreen = ({ onFadeOutComplete, duration = 5000 }) => {
         left: 0,
         width: '100vw',
         height: '100vh',
-        backgroundColor: theme.palette.background.default,
+        // Main gradient background
+        background: `linear-gradient(135deg, ${theme.palette.primary.light} 0%, ${theme.palette.background.default} 100%)`,
+        overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 9999,
-        // The main fade-out animation
         animation: `${fadeOut} 0.5s ease-out forwards`,
-        animationDelay: `${(duration / 1000) - 0.5}s`,
-        '@keyframes fadeOut': { from: { opacity: 1 }, to: { opacity: 0, visibility: 'hidden' } },
+        animationDelay: `${Math.max((duration / 1000) - 0.5, 0)}s`,
       }}
       onAnimationEnd={(e) => {
         if (e.animationName === fadeOut.name) {
@@ -97,67 +86,73 @@ const SplashScreen = ({ onFadeOutComplete, duration = 5000 }) => {
         }
       }}
     >
-      {/* Main centered content */}
+      {/* Animated radial glow background overlay */}
       <Box
         sx={{
+          position: 'absolute',
+          inset: 0,
+          background: `radial-gradient(circle at center, ${theme.palette.primary.main}20 0%, transparent 70%)`,
+          backgroundSize: '200% 200%',
+          animation: `${backgroundMove} 10s ease-in-out infinite`,
+          zIndex: 0,
+        }}
+      />
+
+      {/* Foreground content */}
+      <Box
+        sx={{
+          position: 'relative',
+          zIndex: 1,
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'center',
           alignItems: 'center',
         }}
       >
-        {/* LOGO with pulse and slide-in-up animation */}
+        {/* Logo */}
         <Box
           component="img"
           src="/android/android-launchericon-512-512.png"
           alt="Your App Logo"
           sx={{
-            maxWidth: '200px',
-            maxHeight: '200px',
+            maxWidth: '220px',
+            maxHeight: '220px',
             mb: 4,
-            animation: `${pulse} 1.5s infinite ease-in-out, ${slideInUp} 0.5s ease-out forwards`,
-            '@keyframes pulse': {
-              '0%': { transform: 'scale(1)' },
-              '50%': { transform: 'scale(1.05)' },
-              '100%': { transform: 'scale(1)' },
-            },
-            '@keyframes slideInUp': {
-              from: { opacity: 0, transform: 'translateY(20px)' },
-              to: { opacity: 1, transform: 'translateY(0)' },
-            },
+            animation: `${pulseRotate} 2s infinite ease-in-out, ${slideInUp} 0.5s ease-out forwards`,
           }}
         />
 
-        {/* LOADING MESSAGE with slide-in-up animation and a slight delay */}
+        {/* Animated loading text */}
         <Typography
           variant="h6"
           color="text.secondary"
           sx={{
             mb: 3,
             animation: `${slideInUp} 0.5s ease-out forwards`,
-            animationDelay: '0.2s', // Staggered animation
-            opacity: 0, // Start with opacity 0 so the animation works
+            animationDelay: '0.2s',
+            opacity: 0,
           }}
         >
-          Loading your application...
+          Loading your application{dots}
         </Typography>
 
-        {/* PROGRESS BAR with shimmer effect and slide-in-up animation */}
+        {/* Glowing pill-shaped progress bar */}
         <LinearProgress
           variant="determinate"
           value={progress}
           sx={{
             width: '70%',
             maxWidth: '400px',
-            height: 8,
+            height: 10,
             borderRadius: 5,
-            backgroundColor: theme.palette.mode === 'light' ? theme.palette.grey[300] : theme.palette.grey[700],
+            backgroundColor:
+              theme.palette.mode === 'light'
+                ? theme.palette.grey[300]
+                : theme.palette.grey[700],
             animation: `${slideInUp} 0.5s ease-out forwards`,
-            animationDelay: '0.4s', // Staggered animation
+            animationDelay: '0.4s',
             opacity: 0,
             '& .MuiLinearProgress-bar': {
               borderRadius: 5,
-              // NEW: Shimmer effect on the progress bar
               background: `linear-gradient(
                 to right,
                 ${theme.palette.primary.main} 0%,
@@ -166,16 +161,13 @@ const SplashScreen = ({ onFadeOutComplete, duration = 5000 }) => {
               )`,
               backgroundSize: '200% 100%',
               animation: `${progressShimmer} 2s linear infinite`,
-              '@keyframes progressShimmer': {
-                '0%': { backgroundPosition: '100% 0' },
-                '100%': { backgroundPosition: '-100% 0' },
-              },
+              boxShadow: `0 0 8px ${theme.palette.primary.light}`,
             },
           }}
         />
       </Box>
 
-      {/* Credit text positioned absolutely at the bottom with a fade-in animation */}
+      {/* Credit text */}
       <Typography
         variant="caption"
         color="text.disabled"
@@ -186,9 +178,9 @@ const SplashScreen = ({ onFadeOutComplete, duration = 5000 }) => {
           textAlign: 'center',
           lineHeight: 1.2,
           animation: `${fadeIn} 0.5s ease-in forwards`,
-          animationDelay: '0.5s', // Appear after the main content has started animating
-          opacity: 0, // Start with opacity 0
-          '@keyframes fadeIn': { from: { opacity: 0 }, to: { opacity: 1 } },
+          animationDelay: '0.6s',
+          opacity: 0,
+          zIndex: 1,
         }}
       >
         Developed by JeoTronix Technologies Limited
