@@ -1,8 +1,18 @@
-import React, { useMemo } from "react";
-import { createTheme, ThemeProvider, CssBaseline } from "@mui/material";
+import React, { useState, createContext, useContext, useMemo } from "react";
+import { createTheme, ThemeProvider as MuiThemeProvider, CssBaseline } from "@mui/material";
 
-export default function AppThemeProvider({ darkMode, children }) {
-  // Use useMemo to prevent the theme from being recreated on every render
+// 1. Create the context
+const ThemeContext = createContext();
+
+// 2. Create the provider component
+export default function AppThemeProvider({ children }) {
+  const [darkMode, setDarkMode] = useState(false); // Manages the dark mode state
+
+  const onToggleDarkMode = () => {
+    setDarkMode(prevMode => !prevMode);
+  };
+
+  // Memoize the theme creation to avoid unnecessary re-renders
   const theme = useMemo(
     () =>
       createTheme({
@@ -14,31 +24,28 @@ export default function AppThemeProvider({ darkMode, children }) {
           secondary: {
             main: "#93c4c1",
           },
-          // Removed the manual light mode background overrides, as MUI handles this.
-          // The palette.mode property automatically sets the correct
-          // background and text colors for light and dark modes.
-        },
-        components: {
-          MuiCssBaseline: {
-            styleOverrides: {
-              body: {
-                // Removed the manual body background color override.
-                // MUI's theme handles this automatically based on palette.mode.
-                // This ensures consistency across the entire theme.
-                margin: 0,
-                padding: 0,
-              },
-            },
-          },
         },
       }),
     [darkMode]
   );
 
+  const value = useMemo(() => ({ darkMode, onToggleDarkMode }), [darkMode]);
+
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      {children}
-    </ThemeProvider>
+    <ThemeContext.Provider value={value}>
+      <MuiThemeProvider theme={theme}>
+        <CssBaseline />
+        {children}
+      </MuiThemeProvider>
+    </ThemeContext.Provider>
   );
 }
+
+// 3. Create a custom hook to use the context
+export const useThemeContext = () => {
+  const context = useContext(ThemeContext);
+  if (context === undefined) {
+    throw new Error('useThemeContext must be used within a AppThemeProvider');
+  }
+  return context;
+};
