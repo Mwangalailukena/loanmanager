@@ -7,15 +7,65 @@ import {
   CssBaseline,
   Container,
   IconButton,
+  TextField,
+  InputAdornment,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
+  Search as SearchIcon,
+  Close as CloseIcon
 } from '@mui/icons-material';
 
 import FloatingNavBar from './FloatingNavBar';
 import BottomNavBar from './BottomNavBar';
 import MobileDrawer from './MobileDrawer';
 import LoanDetailDialog from './LoanDetailDialog';
+
+// Dedicated mobile search bar, controlled by the AppLayout state
+const MobileSearchBar = ({ onSearchChange, onClose, open, searchTerm }) => {
+  if (!open) return null;
+
+  return (
+    <Box
+      sx={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: (theme) => theme.zIndex.appBar + 2,
+        bgcolor: 'background.paper',
+        p: 1,
+        boxShadow: (theme) => theme.shadows[4],
+        display: 'flex',
+        alignItems: 'center',
+      }}
+    >
+      <TextField
+        fullWidth
+        autoFocus
+        variant="outlined"
+        placeholder="Search loans..."
+        onChange={(e) => onSearchChange(e.target.value)}
+        value={searchTerm}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <SearchIcon color="action" />
+            </InputAdornment>
+          ),
+          endAdornment: (
+            <InputAdornment position="end">
+              <IconButton onClick={onClose}>
+                <CloseIcon color="action" />
+              </IconButton>
+            </InputAdornment>
+          ),
+        }}
+      />
+    </Box>
+  );
+};
+
 
 const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   const { pathname } = useLocation();
@@ -25,6 +75,10 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [loanDetailOpen, setLoanDetailOpen] = useState(false);
   const [selectedLoanId, setSelectedLoanId] = useState(null);
+  
+  // Search State and Handlers
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
 
   const handleOpenLoanDetail = (loanId) => {
     setSelectedLoanId(loanId);
@@ -38,6 +92,20 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   
   const handleDrawerOpen = () => setMobileDrawerOpen(true);
   const handleDrawerClose = () => setMobileDrawerOpen(false);
+
+  // Mobile search specific handlers
+  const handleMobileSearchOpen = () => {
+    setIsMobileSearchOpen(true);
+    handleDrawerClose();
+  };
+  const handleMobileSearchClose = () => {
+    setIsMobileSearchOpen(false);
+    setSearchTerm(''); // Clear the search term when closing
+  };
+
+  const handleSearchChange = (value) => {
+    setSearchTerm(value);
+  };
   
   const hideLayout = ['/login', '/register', '/forgot-password'].includes(pathname);
   const bottomNavHeight = isMobile && !hideLayout ? 64 : 0;
@@ -56,6 +124,7 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
           darkMode={darkMode}
           onToggleDarkMode={onToggleDarkMode}
           onOpenLoanDetail={handleOpenLoanDetail}
+          onSearchChange={handleSearchChange}
         />
       )}
       
@@ -77,6 +146,14 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
           </IconButton>
         </Box>
       )}
+
+      {/* Mobile Search Bar, visible only when search is open */}
+      <MobileSearchBar
+        onSearchChange={handleSearchChange}
+        onClose={handleMobileSearchClose}
+        open={isMobileSearchOpen}
+        searchTerm={searchTerm}
+      />
       
       {/* Main Content Area */}
       <Box
@@ -90,6 +167,7 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
           height: '100%',
           pb: `${bottomNavHeight}px`,
           paddingTop: !isMobile ? '100px' : '64px',
+          pt: isMobileSearchOpen ? '76px' : null, // Adjust padding if search bar is open
         }}
       >
         <Container 
@@ -99,7 +177,8 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
             px: isMobile ? 2 : 4,
           }}
         >
-          {React.cloneElement(children, { onOpenLoanDetail: handleOpenLoanDetail })}
+          {/* Passing search term to child component */}
+          {React.cloneElement(children, { onOpenLoanDetail: handleOpenLoanDetail, searchTerm: searchTerm })}
         </Container>
       </Box>
 
@@ -111,10 +190,11 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
         darkMode={darkMode}
         onToggleDarkMode={onToggleDarkMode}
         onOpenLoanDetail={handleOpenLoanDetail}
+        onSearchOpen={handleMobileSearchOpen}
       />
       
       {/* Mobile Bottom Navbar */}
-      {!hideLayout && isMobile && <BottomNavBar />}
+      {!hideLayout && isMobile && !isMobileSearchOpen && <BottomNavBar />}
       
       {/* Loan Detail Dialog */}
       <LoanDetailDialog
