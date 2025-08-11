@@ -33,6 +33,7 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   };
 
   const hideLayout = ['/login', '/register', '/forgot-password'].includes(pathname);
+  // Corrected: bottomNavHeight is now used for padding
   const bottomNavHeight = isMobile && !hideLayout ? 64 : 0;
 
   if (hideLayout) {
@@ -62,10 +63,9 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
           minHeight: 0,
           height: '100%',
           px: 0,
-          pb: 0,
-          // Corrected: Add a top padding to account for the FloatingNavBar
-          // The padding is only applied on desktop screens where the FloatingNavBar is present.
-          // A value of 100px is a safe estimate for the navbar's height and position.
+          // Corrected: Now uses bottomNavHeight for padding on mobile
+          pb: `${bottomNavHeight}px`,
+          // Corrected: Add a top padding to account for the FloatingNavBar on desktop
           paddingTop: isMobile ? 0 : '100px',
         }}
       >
