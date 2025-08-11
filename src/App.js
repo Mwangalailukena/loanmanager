@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 
+import AppThemeProvider from './contexts/ThemeProvider.jsx';
 import { useThemeContext } from './contexts/ThemeProvider.jsx';
 import { FirestoreProvider } from './contexts/FirestoreProvider';
 import { AuthProvider } from './contexts/AuthProvider';
@@ -14,7 +15,7 @@ import { ToastContainer } from 'react-toastify';
 import NetworkStatus from './components/NetworkStatus';
 
 function App() {
-  const { darkMode, toggleDarkMode } = useThemeContext();
+  const { darkMode, onToggleDarkMode } = useThemeContext();
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
@@ -34,7 +35,7 @@ function App() {
       <AuthProvider>
         <FirestoreProvider>
           <NetworkStatus />
-          <AppRoutes darkMode={darkMode} onToggleDarkMode={toggleDarkMode} />
+          <AppRoutes darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} />
           <InstallPrompt />
           
           {/* Keep the ToastContainer, but remove the custom props */}
@@ -45,4 +46,11 @@ function App() {
   );
 }
 
-export default App;
+// Wrap the App component with the AppThemeProvider at the top level
+const AppWithProviders = () => (
+  <AppThemeProvider>
+    <App />
+  </AppThemeProvider>
+);
+
+export default AppWithProviders;
