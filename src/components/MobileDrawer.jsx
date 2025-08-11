@@ -11,8 +11,8 @@ import {
   ListItemText,
   IconButton,
   Avatar,
-  Menu,
-  MenuItem,
+  // Menu, // <-- Removed
+  // MenuItem, // <-- Removed
   useTheme,
   Dialog,
   Toolbar,
@@ -22,7 +22,7 @@ import {
 } from '@mui/material';
 import { alpha, keyframes } from '@mui/material/styles';
 import {
-  Menu as MenuIcon,
+  // Menu as MenuIcon, // <-- Removed
   Logout,
   Settings as SettingsIcon,
   LockReset as LockResetIcon,
