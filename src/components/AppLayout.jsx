@@ -9,7 +9,7 @@ import {
   IconButton,
   Typography,
 } from '@mui/material';
-import { Menu as MenuIcon, Search as SearchIcon, Close as CloseIcon } from '@mui/icons-material';
+import { Menu as MenuIcon } from '@mui/icons-material'; // SearchIcon and CloseIcon removed
 
 import FloatingNavBar from './FloatingNavBar';
 import BottomNavBar from './BottomNavBar';
