@@ -8,12 +8,28 @@ import {
   Container,
   IconButton,
 } from '@mui/material';
-import { Menu as MenuIcon } from '@mui/icons-material';
+import { Menu as MenuIcon, Search as SearchIcon, Close as CloseIcon } from '@mui/icons-material';
 
 import FloatingNavBar from './FloatingNavBar';
 import BottomNavBar from './BottomNavBar';
 import MobileDrawer from './MobileDrawer';
 import LoanDetailDialog from './LoanDetailDialog';
+
+// Placeholder for your SearchBar component (you need to create this)
+const SearchBar = ({ onSearchChange, onClose, open }) => {
+  if (!open) return null;
+  return (
+    <Box sx={{ p: 2, bgcolor: 'background.paper', display: 'flex', alignItems: 'center' }}>
+      <input 
+        type="text" 
+        placeholder="Search loans..." 
+        onChange={(e) => onSearchChange(e.target.value)}
+        style={{ flexGrow: 1, padding: '8px' }}
+      />
+      <IconButton onClick={onClose}><CloseIcon /></IconButton>
+    </Box>
+  );
+};
 
 const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   const { pathname } = useLocation();
@@ -23,7 +39,7 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [loanDetailOpen, setLoanDetailOpen] = useState(false);
   const [selectedLoanId, setSelectedLoanId] = useState(null);
-  const [isSearchOpen, setIsSearchOpen] = useState(false); // NEW STATE FOR SEARCH
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const handleOpenLoanDetail = (loanId) => {
     setSelectedLoanId(loanId);
@@ -38,15 +54,15 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   const handleDrawerOpen = () => setMobileDrawerOpen(true);
   const handleDrawerClose = () => setMobileDrawerOpen(false);
   
-  // NEW FUNCTION TO TOGGLE SEARCH
   const handleSearchOpen = () => {
     setIsSearchOpen(true);
-    // You'll likely need a handleSearchClose function as well
+    handleDrawerClose(); // Close the drawer when search is opened
   };
   
-  // You'll also need a function to handle the search input change
+  const handleSearchClose = () => setIsSearchOpen(false);
+  
   const handleSearchChange = (value) => {
-    // This is where you would filter your loans
+    // This is where you would filter your loans based on the value
     console.log("Searching for:", value);
   };
 
@@ -67,7 +83,9 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
           darkMode={darkMode}
           onToggleDarkMode={onToggleDarkMode}
           onOpenLoanDetail={handleOpenLoanDetail}
-          onSearchChange={handleSearchChange} // NEW PROP
+          onSearchChange={handleSearchChange}
+          searchOpen={isSearchOpen}
+          toggleSearch={handleSearchOpen} // You'll need to update FloatingNavBar to use this
         />
       )}
       
@@ -86,6 +104,11 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
             <MenuIcon />
           </IconButton>
         </Box>
+      )}
+
+      {/* Mobile search bar, visible only when search is open */}
+      {isMobile && isSearchOpen && (
+        <SearchBar onSearchChange={handleSearchChange} onClose={handleSearchClose} open={isSearchOpen} />
       )}
 
       {/* Main Content Area */}
@@ -121,7 +144,7 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
         darkMode={darkMode}
         onToggleDarkMode={onToggleDarkMode}
         onOpenLoanDetail={handleOpenLoanDetail}
-        onSearchOpen={handleSearchOpen} // <-- THE NEW PROP ADDED HERE
+        onSearchOpen={handleSearchOpen}
       />
       
       {/* Mobile Bottom Navbar */}
