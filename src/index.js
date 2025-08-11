@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import { ThemeProvider } from './contexts/ThemeProvider';
+import AppThemeProvider from './contexts/ThemeProvider'; // Corrected import
 import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 
 import { ToastContainer, toast } from 'react-toastify';
@@ -10,10 +10,10 @@ import 'react-toastify/dist/ReactToastify.css';
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <ThemeProvider>
+    <AppThemeProvider> {/* Corrected usage */}
       <App />
       <ToastContainer position="bottom-right" autoClose={4000} />
-    </ThemeProvider>
+    </AppThemeProvider>
   </React.StrictMode>
 );
 
