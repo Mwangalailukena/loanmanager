@@ -14,11 +14,10 @@ import {
   MenuItem,
   useTheme,
   Dialog,
-  Toolbar,
   Popover,
   Fade,
   Button,
-  ListSubheader, // <-- Added
+  ListSubheader,
 } from '@mui/material';
 import { alpha, keyframes } from '@mui/material/styles';
 import {
@@ -34,15 +33,15 @@ import {
   Assessment as AssessmentIcon,
   History as HistoryIcon,
   Search as SearchIcon,
-  Dashboard as DashboardIcon, // <-- Added
-  AttachMoney as AttachMoneyIcon, // <-- Added
-  Add as AddIcon // <-- Added
+  Dashboard as DashboardIcon,
+  AttachMoney as AttachMoneyIcon,
+  Add as AddIcon
 } from '@mui/icons-material';
-import { useNavigate, useLocation } from 'react-router-dom'; // <-- Added useLocation
+import { useNavigate, useLocation } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useAuth } from '../contexts/AuthProvider';
-import { useFirestore } from '../contexts/FirestoreProvider';
+import { useFirestore } from '../contexts/FirestoreProvider'; // <-- Corrected path
 import dayjs from 'dayjs';
 
 import ChangePassword from "../pages/ChangePassword.jsx";
@@ -66,7 +65,7 @@ function stringToInitials(name = "") {
 
 const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onOpenLoanDetail, onSearchOpen }) => {
   const navigate = useNavigate();
-  const { pathname } = useLocation(); // <-- Added
+  const { pathname } = useLocation();
   const theme = useTheme();
   const { currentUser } = useAuth();
   const { loans } = useFirestore();
@@ -152,6 +151,31 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onOpe
     },
   ];
 
+  const listItemSx = {
+    borderRadius: theme.shape.borderRadius,
+    mx: 1, 
+    my: 0.5,
+    transition: theme.transitions.create(['background-color', 'color']),
+    '& .MuiListItemIcon-root': {
+      transition: theme.transitions.create(['transform']),
+    },
+    '&:hover': {
+      '& .MuiListItemIcon-root': {
+        transform: 'scale(1.1)',
+      },
+    },
+    '&.Mui-selected': {
+      backgroundColor: alpha(theme.palette.primary.main, theme.palette.action.selectedOpacity),
+      color: theme.palette.primary.main,
+      '& .MuiListItemIcon-root': {
+        color: theme.palette.primary.main,
+      },
+    },
+    '&.Mui-selected:hover': {
+       backgroundColor: alpha(theme.palette.primary.main, theme.palette.action.selectedOpacity + theme.palette.action.hoverOpacity),
+    }
+  };
+
   return (
     <>
       <SwipeableDrawer
@@ -205,13 +229,7 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onOpe
                 }
               }}
             >
-              <ListItemButton 
-                selected={item.path === pathname}
-                sx={{ 
-                  borderRadius: theme.shape.borderRadius,
-                  mx: 1, 
-                }}
-              >
+              <ListItemButton selected={item.path === pathname} sx={listItemSx}>
                 <ListItemIcon>{item.icon}</ListItemIcon>
                 <ListItemText primary={item.text} />
                 {item.text === "Notifications" && unreadNotifications.length > 0 && (
@@ -234,7 +252,7 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onOpe
         <List subheader={<ListSubheader sx={{ bgcolor: 'transparent' }}>Account</ListSubheader>}>
           {accountItems.map((item) => (
             <ListItem key={item.text} disablePadding onClick={item.onClick}>
-              <ListItemButton sx={{ borderRadius: theme.shape.borderRadius, mx: 1, }}>
+              <ListItemButton sx={listItemSx}>
                 <ListItemIcon>{item.icon}</ListItemIcon>
                 <ListItemText primary={item.text} />
               </ListItemButton>
@@ -243,7 +261,7 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onOpe
         </List>
         <Divider />
         <ListItem disablePadding onClick={handleLogout}>
-          <ListItemButton sx={{ borderRadius: theme.shape.borderRadius, mx: 1, }}>
+          <ListItemButton sx={listItemSx}>
             <ListItemIcon><Logout color="error" /></ListItemIcon>
             <ListItemText primary="Logout" sx={{ color: 'error.main' }} />
           </ListItemButton>
