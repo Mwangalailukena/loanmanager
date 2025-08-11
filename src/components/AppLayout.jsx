@@ -7,7 +7,6 @@ import {
   CssBaseline,
   Container,
   IconButton,
-  // Typography, // <-- Removed
 } from '@mui/material';
 import { Menu as MenuIcon } from '@mui/icons-material';
 
@@ -58,6 +57,23 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
         />
       )}
       
+      {/* Mobile Fixed Hamburger Button */}
+      {isMobile && (
+        <Box sx={{
+          position: 'fixed',
+          top: 8,
+          left: 8,
+          zIndex: theme.zIndex.appBar + 1,
+          bgcolor: 'background.paper',
+          borderRadius: '50%',
+          boxShadow: theme.shadows[2],
+        }}>
+          <IconButton onClick={handleDrawerOpen}>
+            <MenuIcon />
+          </IconButton>
+        </Box>
+      )}
+
       {/* Main Content Area */}
       <Box
         component="main"
@@ -69,7 +85,7 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
           minHeight: 0,
           height: '100%',
           pb: `${bottomNavHeight}px`,
-          paddingTop: !isMobile ? '100px' : '20px',
+          paddingTop: !isMobile ? '100px' : '64px', // Increased padding for mobile
         }}
       >
         <Container 
@@ -79,15 +95,6 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
             px: isMobile ? 2 : 4,
           }}
         >
-          {/* Mobile Menu Button */}
-          {isMobile && (
-            <Box sx={{ mb: 2 }}>
-              <IconButton onClick={handleDrawerOpen} edge="start">
-                <MenuIcon />
-              </IconButton>
-            </Box>
-          )}
-
           {React.cloneElement(children, { onOpenLoanDetail: handleOpenLoanDetail })}
         </Container>
       </Box>
