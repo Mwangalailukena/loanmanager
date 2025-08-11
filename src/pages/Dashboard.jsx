@@ -332,7 +332,6 @@ export default function Dashboard() {
             <Box
                 sx={{
                     width: "100%",
-                    // A more elegant shadow and increased border radius for a modern, floating feel
                     boxShadow: theme.shadows[3],
                     borderRadius: 4,
                 }}
@@ -340,41 +339,41 @@ export default function Dashboard() {
                 <Box sx={{
                     backgroundColor: theme.palette.background.paper,
                     borderRadius: 4,
-                    // Use a flex container for tabs
                     display: 'flex',
                     alignItems: 'center',
-                    p: 1, // Padding inside the container
-                    flexWrap: 'wrap' // Allow tabs to wrap on smaller screens
+                    p: { xs: 0.5, sm: 1 },
+                    flexWrap: 'wrap'
                 }}>
                     <Tabs
                         value={activeTab}
                         onChange={handleTabChange}
                         aria-label="dashboard sections tabs"
-                        variant="scrollable" // Use scrollable for a cleaner look on mobile
-                        scrollButtons="auto" // Auto hide/show scroll buttons
-                        allowScrollButtonsMobile // Enable scroll buttons on mobile
+                        variant="scrollable"
+                        scrollButtons="auto"
+                        allowScrollButtonsMobile
                         sx={{
                             "& .MuiTabs-indicator": {
-                                display: "none", // Hide the default indicator
+                                display: "none",
                             },
                             "& .MuiTabs-flexContainer": {
-                                gap: { xs: 0, sm: 1 }, // Add a small gap between tabs on larger screens
+                                gap: { xs: 0, sm: 1 },
                             }
                         }}
                     >
                         <Tab
-                            label="Executive Summary"
+                            label="Summary"
                             {...a11yProps(0)}
                             sx={{
                                 color: activeTab === 0 ? theme.palette.text.primary : theme.palette.text.secondary,
                                 fontWeight: activeTab === 0 ? 600 : 500,
-                                // Floating, pill-shaped tab style with a subtle background
-                                borderRadius: 999, // A large value for a pill shape
+                                borderRadius: 999,
                                 backgroundColor: activeTab === 0 ? theme.palette.action.selected : 'transparent',
                                 boxShadow: activeTab === 0 ? theme.shadows[1] : 'none',
                                 textTransform: 'none',
                                 transition: 'all 0.3s ease',
-                                // Hover styling for active and inactive tabs
+                                minHeight: 48,
+                                minWidth: 'auto',
+                                px: { xs: 1.5, sm: 2 },
                                 "&:hover": {
                                     backgroundColor: activeTab === 0 ? theme.palette.action.selected : theme.palette.action.hover,
                                     color: theme.palette.text.primary,
@@ -392,6 +391,9 @@ export default function Dashboard() {
                                 boxShadow: activeTab === 1 ? theme.shadows[1] : 'none',
                                 textTransform: 'none',
                                 transition: 'all 0.3s ease',
+                                minHeight: 48,
+                                minWidth: 'auto',
+                                px: { xs: 1.5, sm: 2 },
                                 "&:hover": {
                                     backgroundColor: activeTab === 1 ? theme.palette.action.selected : theme.palette.action.hover,
                                     color: theme.palette.text.primary,
@@ -409,6 +411,9 @@ export default function Dashboard() {
                                 boxShadow: activeTab === 2 ? theme.shadows[1] : 'none',
                                 textTransform: 'none',
                                 transition: 'all 0.3s ease',
+                                minHeight: 48,
+                                minWidth: 'auto',
+                                px: { xs: 1.5, sm: 2 },
                                 "&:hover": {
                                     backgroundColor: activeTab === 2 ? theme.palette.action.selected : theme.palette.action.hover,
                                     color: theme.palette.text.primary,
@@ -475,4 +480,3 @@ export default function Dashboard() {
         </Box>
     );
 }
-
