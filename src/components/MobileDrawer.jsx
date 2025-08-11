@@ -42,7 +42,7 @@ import { useNavigate, useLocation } from 'react-router-dom'; // <-- Added useLoc
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useAuth } from '../contexts/AuthProvider';
-import { useFirestore } from '../contexts/FirestoreProviderProvider';
+import { useFirestore } from '../contexts/FirestoreProvider';
 import dayjs from 'dayjs';
 
 import ChangePassword from "../pages/ChangePassword.jsx";
