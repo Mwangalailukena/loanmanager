@@ -68,7 +68,7 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
           borderRadius: '50%',
           boxShadow: theme.shadows[2],
         }}>
-          <IconButton onClick={handleDrawerOpen}>
+          <IconButton onClick={handleDrawerOpen} sx={{ color: theme.palette.secondary.main }}>
             <MenuIcon />
           </IconButton>
         </Box>
@@ -85,7 +85,7 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
           minHeight: 0,
           height: '100%',
           pb: `${bottomNavHeight}px`,
-          paddingTop: !isMobile ? '100px' : '64px', // Increased padding for mobile
+          paddingTop: !isMobile ? '100px' : '64px',
         }}
       >
         <Container 
