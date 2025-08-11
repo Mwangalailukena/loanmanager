@@ -32,8 +32,8 @@ import {
   ListAlt as ListAltIcon,
   AttachMoney as AttachMoneyIcon,
   History as HistoryIcon,
-  LightMode as LightModeIcon, // Added Light Mode Icon
-  DarkMode as DarkModeIcon,   // Added Dark Mode Icon
+  LightMode as LightModeIcon,
+  DarkMode as DarkModeIcon,
 } from "@mui/icons-material";
 import { useLocation, useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
@@ -61,7 +61,6 @@ const pulse = keyframes`
   100% { transform: scale(1); }
 `;
 
-// Added onToggleDarkMode to the props
 const FloatingNavBar = ({ onOpenLoanDetail, onSearchChange, darkMode, onToggleDarkMode }) => {
   const navigate = useNavigate();
   const location = useLocation();
