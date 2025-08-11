@@ -11,13 +11,14 @@ import {
   ListItemText,
   IconButton,
   Avatar,
-  MenuItem, // <-- Added back
+  MenuItem,
   useTheme,
   Dialog,
   Toolbar,
   Popover,
   Fade,
-  Button
+  Button,
+  ListSubheader, // <-- Added
 } from '@mui/material';
 import { alpha, keyframes } from '@mui/material/styles';
 import {
@@ -33,12 +34,15 @@ import {
   Assessment as AssessmentIcon,
   History as HistoryIcon,
   Search as SearchIcon,
+  Dashboard as DashboardIcon, // <-- Added
+  AttachMoney as AttachMoneyIcon, // <-- Added
+  Add as AddIcon // <-- Added
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom'; // <-- Added useLocation
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useAuth } from '../contexts/AuthProvider';
-import { useFirestore } from '../contexts/FirestoreProvider';
+import { useFirestore } from '../contexts/FirestoreProviderProvider';
 import dayjs from 'dayjs';
 
 import ChangePassword from "../pages/ChangePassword.jsx";
@@ -62,6 +66,7 @@ function stringToInitials(name = "") {
 
 const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onOpenLoanDetail, onSearchOpen }) => {
   const navigate = useNavigate();
+  const { pathname } = useLocation(); // <-- Added
   const theme = useTheme();
   const { currentUser } = useAuth();
   const { loans } = useFirestore();
@@ -126,10 +131,13 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onOpe
   };
 
   const generalItems = [
-    { text: 'Search', icon: <SearchIcon />, onClick: () => { onClose(); onSearchOpen(); } },
+    { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
+    { text: 'Loans', icon: <AttachMoneyIcon />, path: '/loans' },
+    { text: 'Add Loan', icon: <AddIcon />, path: '/add-loan' },
+    { text: 'Activity', icon: <HistoryIcon />, path: '/activity' },
+    { text: 'Reports', icon: <AssessmentIcon />, path: '/reports' },
     { text: 'Notifications', icon: <NotificationsIcon />, onClick: (e) => setNotificationAnchor(e.currentTarget) },
-    { text: 'Reports', icon: <AssessmentIcon />, onClick: () => { onClose(); navigate('/reports'); } },
-    { text: 'Activity', icon: <HistoryIcon />, onClick: () => { onClose(); navigate('/activity'); } },
+    { text: 'Search', icon: <SearchIcon />, onClick: () => { onClose(); onSearchOpen(); } },
   ];
 
   const accountItems = [
@@ -161,7 +169,7 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onOpe
           },
         }}
       >
-        <Toolbar sx={{ justifyContent: 'space-between' }}>
+        <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Avatar
               sx={{ width: 40, height: 40, mr: 2 }}
@@ -169,19 +177,41 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onOpe
             >
               {stringToInitials(currentUser?.displayName || "U")}
             </Avatar>
-            <Typography variant="h6">
-              Menu
-            </Typography>
+            <Box>
+                <Typography variant="h6" noWrap>
+                  {currentUser?.displayName || "User"}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" noWrap>
+                  {currentUser?.email || ""}
+                </Typography>
+            </Box>
           </Box>
           <IconButton onClick={onClose}>
             <CloseIcon />
           </IconButton>
-        </Toolbar>
+        </Box>
         <Divider />
-        <List>
+        <List subheader={<ListSubheader sx={{ bgcolor: 'transparent' }}>General</ListSubheader>}>
           {generalItems.map((item) => (
-            <ListItem key={item.text} disablePadding onClick={item.onClick}>
-              <ListItemButton>
+            <ListItem 
+              key={item.text} 
+              disablePadding 
+              onClick={() => {
+                onClose();
+                if (item.path) {
+                  navigate(item.path);
+                } else if (item.onClick) {
+                  item.onClick();
+                }
+              }}
+            >
+              <ListItemButton 
+                selected={item.path === pathname}
+                sx={{ 
+                  borderRadius: theme.shape.borderRadius,
+                  mx: 1, 
+                }}
+              >
                 <ListItemIcon>{item.icon}</ListItemIcon>
                 <ListItemText primary={item.text} />
                 {item.text === "Notifications" && unreadNotifications.length > 0 && (
@@ -201,10 +231,10 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onOpe
           ))}
         </List>
         <Divider />
-        <List>
+        <List subheader={<ListSubheader sx={{ bgcolor: 'transparent' }}>Account</ListSubheader>}>
           {accountItems.map((item) => (
             <ListItem key={item.text} disablePadding onClick={item.onClick}>
-              <ListItemButton>
+              <ListItemButton sx={{ borderRadius: theme.shape.borderRadius, mx: 1, }}>
                 <ListItemIcon>{item.icon}</ListItemIcon>
                 <ListItemText primary={item.text} />
               </ListItemButton>
@@ -213,7 +243,7 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onOpe
         </List>
         <Divider />
         <ListItem disablePadding onClick={handleLogout}>
-          <ListItemButton>
+          <ListItemButton sx={{ borderRadius: theme.shape.borderRadius, mx: 1, }}>
             <ListItemIcon><Logout color="error" /></ListItemIcon>
             <ListItemText primary="Logout" sx={{ color: 'error.main' }} />
           </ListItemButton>
