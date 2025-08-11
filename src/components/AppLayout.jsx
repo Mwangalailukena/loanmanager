@@ -7,29 +7,64 @@ import {
   CssBaseline,
   Container,
   IconButton,
+  TextField,
+  InputAdornment,
 } from '@mui/material';
-import { Menu as MenuIcon, Search as SearchIcon, Close as CloseIcon } from '@mui/icons-material';
+import {
+  Menu as MenuIcon,
+  Search as SearchIcon,
+  Close as CloseIcon
+} from '@mui/icons-material';
 
 import FloatingNavBar from './FloatingNavBar';
 import BottomNavBar from './BottomNavBar';
 import MobileDrawer from './MobileDrawer';
 import LoanDetailDialog from './LoanDetailDialog';
 
-// Placeholder for your SearchBar component (you need to create this)
-const SearchBar = ({ onSearchChange, onClose, open }) => {
+// This is the SearchBar component for mobile, which is now functional.
+const MobileSearchBar = ({ onSearchChange, onClose, open }) => {
   if (!open) return null;
+
   return (
-    <Box sx={{ p: 2, bgcolor: 'background.paper', display: 'flex', alignItems: 'center' }}>
-      <input 
-        type="text" 
-        placeholder="Search loans..." 
+    <Box
+      sx={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: (theme) => theme.zIndex.appBar + 2,
+        bgcolor: 'background.paper',
+        p: 1,
+        boxShadow: (theme) => theme.shadows[4],
+        display: 'flex',
+        alignItems: 'center',
+      }}
+    >
+      <TextField
+        fullWidth
+        autoFocus
+        variant="outlined"
+        placeholder="Search loans..."
         onChange={(e) => onSearchChange(e.target.value)}
-        style={{ flexGrow: 1, padding: '8px' }}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <SearchIcon color="action" />
+            </InputAdornment>
+          ),
+          endAdornment: (
+            <InputAdornment position="end">
+              <IconButton onClick={onClose}>
+                <CloseIcon color="action" />
+              </IconButton>
+            </InputAdornment>
+          ),
+        }}
       />
-      <IconButton onClick={onClose}><CloseIcon /></IconButton>
     </Box>
   );
 };
+
 
 const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   const { pathname } = useLocation();
@@ -56,14 +91,14 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   
   const handleSearchOpen = () => {
     setIsSearchOpen(true);
-    handleDrawerClose(); // Close the drawer when search is opened
+    handleDrawerClose();
   };
   
   const handleSearchClose = () => setIsSearchOpen(false);
   
   const handleSearchChange = (value) => {
-    // This is where you would filter your loans based on the value
     console.log("Searching for:", value);
+    // You would integrate your search/filter logic here
   };
 
   const hideLayout = ['/login', '/register', '/forgot-password'].includes(pathname);
@@ -84,33 +119,39 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
           onToggleDarkMode={onToggleDarkMode}
           onOpenLoanDetail={handleOpenLoanDetail}
           onSearchChange={handleSearchChange}
-          searchOpen={isSearchOpen}
-          toggleSearch={handleSearchOpen} // You'll need to update FloatingNavBar to use this
         />
       )}
       
-      {/* Mobile Fixed Hamburger Button */}
+      {/* Mobile Fixed Hamburger Button & Search */}
       {isMobile && (
-        <Box sx={{
-          position: 'fixed',
-          top: 8,
-          left: 8,
-          zIndex: theme.zIndex.appBar + 1,
-          bgcolor: 'background.paper',
-          borderRadius: '50%',
-          boxShadow: theme.shadows[2],
-        }}>
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 8,
+            left: 8,
+            zIndex: theme.zIndex.appBar + 1,
+            bgcolor: 'background.paper',
+            borderRadius: '28px',
+            boxShadow: theme.shadows[2],
+            display: 'flex',
+          }}
+        >
           <IconButton onClick={handleDrawerOpen} sx={{ color: theme.palette.secondary.main }}>
             <MenuIcon />
+          </IconButton>
+          <IconButton onClick={handleSearchOpen} sx={{ color: theme.palette.secondary.main }}>
+            <SearchIcon />
           </IconButton>
         </Box>
       )}
 
-      {/* Mobile search bar, visible only when search is open */}
-      {isMobile && isSearchOpen && (
-        <SearchBar onSearchChange={handleSearchChange} onClose={handleSearchClose} open={isSearchOpen} />
-      )}
-
+      {/* Mobile Search Bar, visible only when search is open */}
+      <MobileSearchBar
+        onSearchChange={handleSearchChange}
+        onClose={handleSearchClose}
+        open={isSearchOpen}
+      />
+      
       {/* Main Content Area */}
       <Box
         component="main"
@@ -123,6 +164,7 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
           height: '100%',
           pb: `${bottomNavHeight}px`,
           paddingTop: !isMobile ? '100px' : '64px',
+          pt: isSearchOpen ? '76px' : null, // Adjust padding if search bar is open
         }}
       >
         <Container 
@@ -148,7 +190,7 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
       />
       
       {/* Mobile Bottom Navbar */}
-      {!hideLayout && isMobile && <BottomNavBar />}
+      {!hideLayout && isMobile && !isSearchOpen && <BottomNavBar />}
       
       {/* Loan Detail Dialog */}
       <LoanDetailDialog
