@@ -1,5 +1,3 @@
-// src/components/AppLayout.jsx
-
 import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
@@ -7,21 +5,18 @@ import {
   useMediaQuery,
   Box,
   CssBaseline,
+  Container, // Added Container component
 } from '@mui/material';
 
-import AppBarTop from './AppBarTop';
+import FloatingNavBar from './FloatingNavBar';
 import BottomNavBar from './BottomNavBar';
-import Sidebar from './Sidebar';
 import LoanDetailDialog from './LoanDetailDialog';
-
-const drawerWidth = 220;
 
 const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   const { pathname } = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  // State for the live search term
   const [searchTerm, setSearchTerm] = useState("");
 
   const [loanDetailOpen, setLoanDetailOpen] = useState(false);
@@ -47,25 +42,24 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <CssBaseline />
-      
-      <AppBarTop 
-        darkMode={darkMode} 
-        onToggleDarkMode={onToggleDarkMode} 
-        onOpenLoanDetail={handleOpenLoanDetail} 
-        // CORRECTED: Pass the prop with the expected name 'onSearchChange'
-        onSearchChange={setSearchTerm}
-      />
+
+      {!isMobile && (
+        <FloatingNavBar
+          darkMode={darkMode}
+          onToggleDarkMode={onToggleDarkMode}
+          onOpenLoanDetail={handleOpenLoanDetail}
+          onSearchChange={setSearchTerm}
+        />
+      )}
 
       <Box
         sx={{
           display: 'flex',
           flex: 1,
-          paddingTop: theme.mixins.toolbar,
+          paddingTop: 0,
           paddingBottom: `${bottomNavHeight}px`,
         }}
       >
-        {!hideLayout && <Sidebar drawerWidth={drawerWidth} />}
-
         <Box
           component="main"
           sx={{
@@ -75,12 +69,23 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
             background: theme.palette.background.default,
             minHeight: 0,
             height: '100%',
-            px: isMobile ? 2 : 4,
-            paddingTop: '70px', // Note: This is an additional paddingTop that might cause spacing issues.
+            // Removed horizontal padding and paddingTop from this box
+            px: 0,
+            paddingTop: 0,
             pb: 0,
           }}
         >
-          {React.cloneElement(children, { globalSearchTerm: searchTerm })}
+          {/* NEW: Use a Container to center and constrain the content */}
+          <Container 
+            maxWidth="lg" 
+            sx={{ 
+              pt: isMobile ? '70px' : '100px', // Apply the top padding here
+              pb: 4, 
+              px: isMobile ? 2 : 4,
+            }}
+          >
+            {React.cloneElement(children, { globalSearchTerm: searchTerm })}
+          </Container>
         </Box>
       </Box>
 
