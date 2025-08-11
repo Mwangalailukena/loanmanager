@@ -1,22 +1,22 @@
 import React, { useState, useEffect, useCallback, lazy, Suspense, useMemo } from "react";
 import {
-  Box,
-  Typography,
-  useTheme,
-  useMediaQuery,
-  TextField,
-  Fab,
-  Zoom,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Backdrop,
-  CircularProgress,
+    Box,
+    Typography,
+    useTheme,
+    useMediaQuery,
+    TextField,
+    Fab,
+    Zoom,
+    Backdrop,
+    CircularProgress,
+    Tabs,
+    Tab,
 } from "@mui/material";
+import { keyframes } from "@mui/system";
 import AddIcon from "@mui/icons-material/Add";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useNavigate } from "react-router-dom";
 import { useFirestore } from "../contexts/FirestoreProvider";
+import { useAuth } from "../contexts/AuthProvider.js";
 import dayjs from "dayjs";
 import { toast } from "react-toastify";
 import { DragDropContext } from "@hello-pangea/dnd";
@@ -27,442 +27,452 @@ import DashboardSection from "../components/dashboard/DashboardSection";
 const LazyCharts = lazy(() => import("../components/Charts"));
 
 const STORAGE_KEY = "dashboardCardOrder";
-const EXECUTIVE_SUMMARY_VISIBILITY_KEY = "dashboardExecutiveSummaryVisibility";
-const METRICS_VISIBILITY_KEY = "dashboardMetricsVisibility";
-const CHART_SECTION_VISIBILITY_KEY = "dashboardChartsVisibility";
 
 const DEFAULT_CARD_IDS = [
-  "investedCapital",
-  "availableCapital",
-  "totalDisbursed",
-  "totalCollected",
-  "partnerDividends",
-  "totalLoans",
-  "paidLoans",
-  "activeLoans",
-  "overdueLoans",
-  "totalOutstanding",
-  "expectedProfit",
-  "actualProfit",
-  "averageLoan",
+    "investedCapital",
+    "availableCapital",
+    "totalDisbursed",
+    "totalCollected",
+    "partnerDividends",
+    "totalLoans",
+    "paidLoans",
+    "activeLoans",
+    "overdueLoans",
+    "totalOutstanding",
+    "expectedProfit",
+    "actualProfit",
 ];
 const EXECUTIVE_SUMMARY_IDS = [
-  "investedCapital",
-  "availableCapital",
-  "totalDisbursed",
-  "totalCollected",
-  "partnerDividends",
+    "investedCapital",
+    "availableCapital",
+    "totalDisbursed",
+    "totalCollected",
+    "partnerDividends",
 ];
 
-const getInitialVisibility = (key, defaultValue) => {
-  try {
-    const saved = localStorage.getItem(key);
-    return saved !== null ? JSON.parse(saved) : defaultValue;
-  } catch (e) {
-    console.error("Failed to parse localStorage item:", key, e);
-    return defaultValue;
+function TabPanel(props) {
+    const { children, value, index, ...other } = props;
+    return (
+        <div
+            role="tabpanel"
+            hidden={value !== index}
+            id={`simple-tabpanel-${index}`}
+            aria-labelledby={`simple-tab-${index}`}
+            {...other}
+        >
+            {value === index && (
+                <Box sx={{ p: { xs: 2, md: 3 } }}>
+                    {children}
+                </Box>
+            )}
+        </div>
+    );
+}
+
+function a11yProps(index) {
+    return {
+        id: `simple-tab-${index}`,
+        "aria-controls": `simple-tabpanel-${index}`,
+    };
+}
+
+const popInAnimation = keyframes`
+  0% {
+    opacity: 0;
+    transform: scale(0.9) translateY(10px);
   }
-};
+  75% {
+    opacity: 1;
+    transform: scale(1.05) translateY(-5px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+`;
 
 export default function Dashboard() {
-  const navigate = useNavigate();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const { loans, settings } = useFirestore();
+    const navigate = useNavigate();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+    const { loans, settings } = useFirestore();
+    const { currentUser } = useAuth();
 
-  const [selectedMonth, setSelectedMonth] = useState(dayjs().format("YYYY-MM"));
-  const [cardsOrder, setCardsOrder] = useState([]);
-  const [loading, setLoading] = useState(true);
+    const [selectedMonth, setSelectedMonth] = useState(dayjs().format("YYYY-MM"));
+    const [cardsOrder, setCardsOrder] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState(0);
+    const [showWelcome, setShowWelcome] = useState(true);
 
-  const [showSections, setShowSections] = useState({
-    executive: getInitialVisibility(EXECUTIVE_SUMMARY_VISIBILITY_KEY, true),
-    metrics: getInitialVisibility(METRICS_VISIBILITY_KEY, true),
-    charts: getInitialVisibility(CHART_SECTION_VISIBILITY_KEY, true),
-  });
+    const { loansForCalculations, defaultCards } = useDashboardCalculations(
+        loans,
+        selectedMonth,
+        settings,
+        isMobile
+    );
 
-  const { loansForCalculations, defaultCards } = useDashboardCalculations(
-    loans,
-    selectedMonth,
-    settings,
-    isMobile
-  );
+    useEffect(() => {
+        if (currentUser) {
+            const timer = setTimeout(() => {
+                setShowWelcome(false);
+            }, 10000);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (loans) {
-        setLoading(false);
-      }
-    }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [currentUser]);
 
-    if (loans) {
-      const savedOrder = localStorage.getItem(STORAGE_KEY);
-      try {
-        const parsedOrder = savedOrder ? JSON.parse(savedOrder) : [];
-        const validOrder = parsedOrder.filter((id) =>
-          DEFAULT_CARD_IDS.includes(id)
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (loans) {
+                setLoading(false);
+            }
+        }, 500);
+
+        if (loans) {
+            const savedOrder = localStorage.getItem(STORAGE_KEY);
+            try {
+                const parsedOrder = savedOrder ? JSON.parse(savedOrder) : [];
+                const validOrder = parsedOrder.filter((id) =>
+                    DEFAULT_CARD_IDS.includes(id)
+                );
+                const finalOrder = [...new Set([...validOrder, ...DEFAULT_CARD_IDS])];
+                setCardsOrder(finalOrder);
+            } catch (error) {
+                console.error("Error parsing saved card order from localStorage:", error);
+                setCardsOrder(DEFAULT_CARD_IDS);
+            }
+
+            if (loans.length > 0) {
+                const now = dayjs();
+                const UPCOMING_LOAN_THRESHOLD_DAYS = 3;
+                const upcomingDueThreshold = now.add(UPCOMING_LOAN_THRESHOLD_DAYS, "day");
+
+                const calcStatus = (loan) => {
+                    const totalRepayable = Number(loan.totalRepayable || 0);
+                    const repaidAmount = Number(loan.repaidAmount || 0);
+
+                    if (repaidAmount >= totalRepayable && totalRepayable > 0) {
+                        return "Paid";
+                    }
+                    const due = dayjs(loan.dueDate);
+                    if (due.isBefore(now, "day")) {
+                        return "Overdue";
+                    }
+                    return "Active";
+                };
+
+                const upcomingLoans = loans.filter(
+                    (l) =>
+                        calcStatus(l) === "Active" &&
+                        dayjs(l.dueDate).isAfter(now) &&
+                        dayjs(l.dueDate).isBefore(upcomingDueThreshold)
+                );
+
+                const overdueLoansList = loans.filter((l) => calcStatus(l) === "Overdue");
+
+                if (upcomingLoans.length > 0)
+                    toast.info(
+                        `You have ${upcomingLoans.length} loan(s) due within ${UPCOMING_LOAN_THRESHOLD_DAYS} days!`
+                    );
+                if (overdueLoansList.length > 0)
+                    toast.error(
+                        `You have ${overdueLoansList.length} overdue loan(s)! Please take action.`
+                    );
+            }
+        }
+
+        return () => clearTimeout(timer);
+    }, [loans]);
+
+    const handleTabChange = (event, newValue) => {
+        setActiveTab(newValue);
+    };
+
+    const cardsToRender = useMemo(
+        () =>
+            cardsOrder.length
+                ? cardsOrder.map((id) => defaultCards.find((c) => c.id === id)).filter(Boolean)
+                : defaultCards,
+        [cardsOrder, defaultCards]
+    );
+
+    const executiveSummaryCards = cardsToRender.filter((card) =>
+        EXECUTIVE_SUMMARY_IDS.includes(card.id)
+    );
+    const metricsCards = cardsToRender.filter(
+        (card) => !EXECUTIVE_SUMMARY_IDS.includes(card.id)
+    );
+
+    const onDragEnd = useCallback(
+        (result) => {
+            const { source, destination } = result;
+            if (!destination || source.droppableId !== destination.droppableId) {
+                toast.error("Cards can only be reordered within their own section.");
+                return;
+            }
+
+            let reorderedCards;
+            let newCardsOrder;
+
+            if (source.droppableId === "executive-summary-droppable") {
+                reorderedCards = Array.from(executiveSummaryCards);
+                const [removed] = reorderedCards.splice(source.index, 1);
+                reorderedCards.splice(destination.index, 0, removed);
+                const metricsSectionIds = metricsCards.map((c) => c.id);
+                newCardsOrder = [...reorderedCards.map((c) => c.id), ...metricsSectionIds];
+            } else {
+                reorderedCards = Array.from(metricsCards);
+                const [removed] = reorderedCards.splice(source.index, 1);
+                reorderedCards.splice(destination.index, 0, removed);
+                const executiveSectionIds = executiveSummaryCards.map((c) => c.id);
+                newCardsOrder = [...executiveSectionIds, ...reorderedCards.map((c) => c.id)];
+            }
+
+            setCardsOrder(newCardsOrder);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(newCardsOrder));
+            toast.success("Dashboard layout saved!");
+        },
+        [executiveSummaryCards, metricsCards]
+    );
+
+    const handleCardClick = (filter) => {
+        const params = new URLSearchParams();
+        if (filter !== "all") params.set("filter", filter);
+        if (selectedMonth) params.set("month", selectedMonth);
+        navigate(`/loans?${params.toString()}`);
+    };
+
+    if (loading) {
+        return (
+            <Backdrop
+                sx={{
+                    color: "#fff",
+                    zIndex: (theme) => theme.zIndex.drawer + 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    backgroundColor: theme.palette.background.default,
+                }}
+                open={loading}
+            >
+                <CircularProgress color="primary" />
+                <Typography variant="h6" sx={{ mt: 2, color: theme.palette.text.primary }}>
+                    Loading dashboard...
+                </Typography>
+            </Backdrop>
         );
-        const finalOrder = [...new Set([...validOrder, ...DEFAULT_CARD_IDS])];
-        setCardsOrder(finalOrder);
-      } catch (error) {
-        console.error("Error parsing saved card order from localStorage:", error);
-        setCardsOrder(DEFAULT_CARD_IDS);
-      }
-
-      if (loans.length > 0) {
-        const now = dayjs();
-        const UPCOMING_LOAN_THRESHOLD_DAYS = 3;
-        const upcomingDueThreshold = now.add(UPCOMING_LOAN_THRESHOLD_DAYS, "day");
-
-        const calcStatus = (loan) => {
-          const totalRepayable = Number(loan.totalRepayable || 0);
-          const repaidAmount = Number(loan.repaidAmount || 0);
-
-          if (repaidAmount >= totalRepayable && totalRepayable > 0) {
-            return "Paid";
-          }
-          const now = dayjs();
-          const due = dayjs(loan.dueDate);
-          if (due.isBefore(now, "day")) {
-            return "Overdue";
-          }
-          return "Active";
-        };
-
-        const upcomingLoans = loans.filter(
-          (l) =>
-            calcStatus(l) === "Active" &&
-            dayjs(l.dueDate).isAfter(now) &&
-            dayjs(l.dueDate).isBefore(upcomingDueThreshold)
-        );
-
-        const overdueLoansList = loans.filter((l) => calcStatus(l) === "Overdue");
-
-        if (upcomingLoans.length > 0)
-          toast.info(
-            `You have ${upcomingLoans.length} loan(s) due within ${UPCOMING_LOAN_THRESHOLD_DAYS} days!`
-          );
-        if (overdueLoansList.length > 0)
-          toast.error(
-            `You have ${overdueLoansList.length} overdue loan(s)! Please take action.`
-          );
-      }
     }
 
-    return () => clearTimeout(timer);
-  }, [loans]);
+    const userName = currentUser?.displayName || currentUser?.email;
 
-  const handleToggleSection = useCallback((section) => {
-    setShowSections((prev) => {
-      const newState = { ...prev, [section]: !prev[section] };
-      const key =
-        section === "executive"
-          ? EXECUTIVE_SUMMARY_VISIBILITY_KEY
-          : section === "metrics"
-          ? METRICS_VISIBILITY_KEY
-          : CHART_SECTION_VISIBILITY_KEY;
-      localStorage.setItem(key, JSON.stringify(newState[section]));
-      return newState;
-    });
-  }, []);
-
-  const cardsToRender = useMemo(
-    () =>
-      cardsOrder.length
-        ? cardsOrder.map((id) => defaultCards.find((c) => c.id === id)).filter(Boolean)
-        : defaultCards,
-    [cardsOrder, defaultCards]
-  );
-  const executiveSummaryCards = cardsToRender.filter((card) =>
-    EXECUTIVE_SUMMARY_IDS.includes(card.id)
-  );
-  const metricsCards = cardsToRender.filter(
-    (card) => !EXECUTIVE_SUMMARY_IDS.includes(card.id)
-  );
-
-  const onDragEnd = useCallback(
-    (result) => {
-      const { source, destination } = result;
-      if (!destination || source.droppableId !== destination.droppableId) {
-        toast.error("Cards cannot be moved between sections.");
-        return;
-      }
-
-      let reorderedCards;
-      let newCardsOrder;
-
-      if (source.droppableId === "executive-summary-droppable") {
-        reorderedCards = Array.from(executiveSummaryCards);
-        const [removed] = reorderedCards.splice(source.index, 1);
-        reorderedCards.splice(destination.index, 0, removed);
-        const metricsSectionIds = metricsCards.map((c) => c.id);
-        newCardsOrder = [...reorderedCards.map((c) => c.id), ...metricsSectionIds];
-      } else {
-        reorderedCards = Array.from(metricsCards);
-        const [removed] = reorderedCards.splice(source.index, 1);
-        reorderedCards.splice(destination.index, 0, removed);
-        const executiveSectionIds = executiveSummaryCards.map((c) => c.id);
-        newCardsOrder = [...executiveSectionIds, ...reorderedCards.map((c) => c.id)];
-      }
-
-      setCardsOrder(newCardsOrder);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newCardsOrder));
-      toast.success("Dashboard layout saved!");
-    },
-    [executiveSummaryCards, metricsCards]
-  );
-
-  const handleCardClick = (filter) => {
-    const params = new URLSearchParams();
-    if (filter !== "all") params.set("filter", filter);
-    if (selectedMonth) params.set("month", selectedMonth);
-    navigate(`/loans?${params.toString()}`);
-  };
-
-  const AccordionTitle = ({ title, sx }) => (
-    <Typography
-      variant="body1"
-      sx={{
-        fontWeight: 600,
-        color: theme.palette.text.primary,
-        fontSize: isMobile ? "0.8rem" : "1rem",
-        ...sx,
-      }}
-    >
-      {title}
-    </Typography>
-  );
-
-  if (loading) {
     return (
-      <Backdrop
-        sx={{
-          color: "#fff",
-          zIndex: (theme) => theme.zIndex.drawer + 1,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: theme.palette.background.default,
-        }}
-        open={loading}
-      >
-        <CircularProgress color="primary" />
-        <Typography variant="h6" sx={{ mt: 2, color: theme.palette.text.primary }}>
-          Loading dashboard...
-        </Typography>
-      </Backdrop>
-    );
-  }
-
-  return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        background: theme.palette.background.default,
-        p: isMobile ? 2 : 3,
-        pb: isMobile ? `calc(${BOTTOM_NAV_HEIGHT}px + ${theme.spacing(2)})` : 3,
-      }}
-    >
-      <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 0.5, fontSize: { xs: "1.5rem", md: "2rem" } }}>
-        Dashboard
-      </Typography>
-      <Box mb={isMobile ? 1.5 : 2} maxWidth={isMobile ? "100%" : 200}>
-        <TextField
-          label="Select Month"
-          type="month"
-          value={selectedMonth}
-          onChange={(e) => setSelectedMonth(e.target.value)}
-          size="small"
-          fullWidth
-          InputLabelProps={{ shrink: true }}
-          sx={{
-            "& .MuiOutlinedInput-root": {
-              borderRadius: 2,
-              backgroundColor: theme.palette.background.paper,
-              "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                borderColor: theme.palette.secondary.main,
-              },
-            },
-            "& .MuiInputBase-input": {
-              padding: isMobile ? "10px 14px" : "12px 16px",
-            },
-            "& .MuiInputLabel-root": {
-              transform: isMobile ? "translate(14px, 10px) scale(0.75)" : "translate(14px, 12px) scale(0.75)",
-            },
-            "& .MuiInputLabel-root.Mui-focused": {
-              color: theme.palette.secondary.main,
-            },
-            "& .MuiInputLabel-shrink": {
-              transform: "translate(14px, -9px) scale(0.75)",
-            },
-          }}
-        />
-      </Box>
-
-      <DragDropContext onDragEnd={onDragEnd}>
-        <Accordion
-          expanded={showSections.executive}
-          onChange={() => handleToggleSection("executive")}
-          sx={{
-            borderRadius: 3,
-            mb: isMobile ? 2 : 4,
-            backgroundColor: theme.palette.background.paper,
-            boxShadow: theme.shadows[2],
-            overflow: "hidden",
-            "&.MuiAccordion-root": {
-              p: 0,
-              transition: theme.transitions.create(["box-shadow", "background-color"], {
-                duration: theme.transitions.duration.short,
-              }),
-            },
-            "&.MuiAccordion-root.Mui-expanded": {
-              margin: 0,
-              "&:before": { opacity: 0 },
-              boxShadow: theme.shadows[6],
-              backgroundColor: theme.palette.background.paper,
-            },
-          }}
-        >
-          <AccordionSummary
-            expandIcon={<ExpandMoreIcon fontSize="small" sx={{ color: theme.palette.primary.contrastText }} />}
+        <Box
             sx={{
-              background: `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              p: isMobile ? "10px 16px" : "14px 24px",
-              minHeight: "56px !important",
-              "&.Mui-expanded": { minHeight: "56px !important" },
-              "& .MuiAccordionSummary-content": { margin: 0, alignItems: "center" },
+                minHeight: "100vh",
+                background: theme.palette.background.default,
+                p: { xs: 2, md: 3 },
+                pb: isMobile ? `calc(${BOTTOM_NAV_HEIGHT}px + ${theme.spacing(2)})` : 3,
             }}
-          >
-            <AccordionTitle title="Executive Summary" sx={{ color: theme.palette.primary.contrastText }} />
-          </AccordionSummary>
-          <AccordionDetails sx={{ p: isMobile ? 2 : 3, pb: isMobile ? 2.5 : 4 }}>
-            <DashboardSection
-              cards={executiveSummaryCards}
-              droppableId="executive-summary-droppable"
-              isMobile={isMobile}
-              handleCardClick={handleCardClick}
-            />
-          </AccordionDetails>
-        </Accordion>
-
-        <Accordion
-          expanded={showSections.metrics}
-          onChange={() => handleToggleSection("metrics")}
-          sx={{
-            borderRadius: 3,
-            mb: isMobile ? 2 : 4,
-            backgroundColor: theme.palette.background.paper,
-            boxShadow: theme.shadows[2],
-            overflow: "hidden",
-            "&.MuiAccordion-root": {
-              p: 0,
-              transition: theme.transitions.create(["box-shadow", "background-color"], {
-                duration: theme.transitions.duration.short,
-              }),
-            },
-            "&.MuiAccordion-root.Mui-expanded": {
-              margin: 0,
-              "&:before": { opacity: 0 },
-              boxShadow: theme.shadows[6],
-              backgroundColor: theme.palette.background.paper,
-            },
-          }}
         >
-          <AccordionSummary
-            expandIcon={<ExpandMoreIcon fontSize="small" sx={{ color: theme.palette.primary.contrastText }} />}
-            sx={{
-              background: `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              p: isMobile ? "10px 16px" : "14px 24px",
-              minHeight: "56px !important",
-              "&.Mui-expanded": { minHeight: "56px !important" },
-              "& .MuiAccordionSummary-content": { margin: 0, alignItems: "center" },
-            }}
-          >
-            <AccordionTitle title="Metrics" sx={{ color: theme.palette.primary.contrastText }} />
-          </AccordionSummary>
-          <AccordionDetails sx={{ p: isMobile ? 2 : 3, pb: isMobile ? 2.5 : 4 }}>
-            <DashboardSection
-              cards={metricsCards}
-              droppableId="metrics-droppable"
-              isMobile={isMobile}
-              handleCardClick={handleCardClick}
-            />
-          </AccordionDetails>
-        </Accordion>
-      </DragDropContext>
-
-      <Accordion
-        expanded={showSections.charts}
-        onChange={() => handleToggleSection("charts")}
-        sx={{
-          borderRadius: 3,
-          mb: `calc(${BOTTOM_NAV_HEIGHT}px + ${theme.spacing(2)})`,
-          backgroundColor: theme.palette.background.paper,
-          boxShadow: theme.shadows[2],
-          overflow: "hidden",
-          "&.MuiAccordion-root": {
-            p: 0,
-            transition: theme.transitions.create(["box-shadow", "background-color"], {
-              duration: theme.transitions.duration.short,
-            }),
-          },
-          "&.MuiAccordion-root.Mui-expanded": {
-            margin: 0,
-            "&:before": { opacity: 0 },
-            boxShadow: theme.shadows[6],
-            backgroundColor: theme.palette.background.paper,
-          },
-        }}
-      >
-        <AccordionSummary
-          expandIcon={<ExpandMoreIcon fontSize="small" sx={{ color: theme.palette.primary.contrastText }} />}
-          sx={{
-            background: `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-            p: isMobile ? "10px 16px" : "14px 24px",
-            minHeight: "56px !important",
-            "&.Mui-expanded": { minHeight: "56px !important" },
-            "& .MuiAccordionSummary-content": { margin: 0, alignItems: "center" },
-          }}
-        >
-          <AccordionTitle title="Charts & Analytics" sx={{ color: theme.palette.primary.contrastText }} />
-        </AccordionSummary>
-        <AccordionDetails sx={{ p: isMobile ? 2 : 3, pb: isMobile ? 2.5 : 4 }}>
-          <Suspense
-            fallback={
-              <Box sx={{ display: "flex", justifyContent: "center", p: 2 }}>
-                <CircularProgress color="primary" />
-              </Box>
-            }
-          >
-            {loansForCalculations.length > 0 ? (
-              <LazyCharts loans={loansForCalculations} selectedMonth={selectedMonth} />
-            ) : (
-              <Typography variant="body2" color="text.secondary">
-                No loan data available for charts.
-              </Typography>
+            {userName && showWelcome && (
+                <Box
+                    sx={{
+                        animation: `${popInAnimation} 0.5s ease-out forwards`,
+                        mb: 1,
+                    }}
+                >
+                    <Typography
+                        variant="h5"
+                        sx={{
+                            color: theme.palette.text.secondary,
+                            fontWeight: 600,
+                        }}
+                    >
+                        Welcome back, {userName}!
+                    </Typography>
+                </Box>
             )}
-          </Suspense>
-        </AccordionDetails>
-      </Accordion>
+            <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 0.5, fontSize: { xs: "1.5rem", md: "2rem" } }}>
+                Dashboard
+            </Typography>
+            <Box mb={isMobile ? 1.5 : 2} maxWidth={isMobile ? "100%" : 200}>
+                <TextField
+                    label="Select Month"
+                    type="month"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    size="small"
+                    fullWidth
+                    InputLabelProps={{ shrink: true }}
+                    sx={{
+                        "& .MuiOutlinedInput-root": {
+                            borderRadius: 2,
+                            backgroundColor: theme.palette.background.paper,
+                            "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                                borderColor: theme.palette.secondary.main,
+                            },
+                        },
+                        "& .MuiInputBase-input": {
+                            padding: isMobile ? "10px 14px" : "12px 16px",
+                        },
+                        "& .MuiInputLabel-root": {
+                            transform: isMobile ? "translate(14px, 10px) scale(0.75)" : "translate(14px, 12px) scale(0.75)",
+                        },
+                        "& .MuiInputLabel-root.Mui-focused": {
+                            color: theme.palette.secondary.main,
+                        },
+                        "& .MuiInputLabel-shrink": {
+                            transform: "translate(14px, -9px) scale(0.75)",
+                        },
+                    }}
+                />
+            </Box>
 
-      <Zoom
-        in
-        style={{
-          position: "fixed",
-          bottom: isMobile ? `calc(${BOTTOM_NAV_HEIGHT}px + 16px)` : 16,
-          right: 16,
-        }}
-        timeout={500}
-        unmountOnExit
-      >
-        <Fab
-          color="secondary"
-          aria-label="add loan"
-          onClick={() => navigate("/add-loan")}
-        >
-          <AddIcon />
-        </Fab>
-      </Zoom>
-    </Box>
-  );
+            <Box
+                sx={{
+                    width: "100%",
+                    // A more elegant shadow and increased border radius for a modern, floating feel
+                    boxShadow: theme.shadows[3],
+                    borderRadius: 4,
+                }}
+            >
+                <Box sx={{
+                    backgroundColor: theme.palette.background.paper,
+                    borderRadius: 4,
+                    // Use a flex container for tabs
+                    display: 'flex',
+                    alignItems: 'center',
+                    p: 1, // Padding inside the container
+                    flexWrap: 'wrap' // Allow tabs to wrap on smaller screens
+                }}>
+                    <Tabs
+                        value={activeTab}
+                        onChange={handleTabChange}
+                        aria-label="dashboard sections tabs"
+                        variant="scrollable" // Use scrollable for a cleaner look on mobile
+                        scrollButtons="auto" // Auto hide/show scroll buttons
+                        allowScrollButtonsMobile // Enable scroll buttons on mobile
+                        sx={{
+                            "& .MuiTabs-indicator": {
+                                display: "none", // Hide the default indicator
+                            },
+                            "& .MuiTabs-flexContainer": {
+                                gap: { xs: 0, sm: 1 }, // Add a small gap between tabs on larger screens
+                            }
+                        }}
+                    >
+                        <Tab
+                            label="Executive Summary"
+                            {...a11yProps(0)}
+                            sx={{
+                                color: activeTab === 0 ? theme.palette.text.primary : theme.palette.text.secondary,
+                                fontWeight: activeTab === 0 ? 600 : 500,
+                                // Floating, pill-shaped tab style with a subtle background
+                                borderRadius: 999, // A large value for a pill shape
+                                backgroundColor: activeTab === 0 ? theme.palette.action.selected : 'transparent',
+                                boxShadow: activeTab === 0 ? theme.shadows[1] : 'none',
+                                textTransform: 'none',
+                                transition: 'all 0.3s ease',
+                                // Hover styling for active and inactive tabs
+                                "&:hover": {
+                                    backgroundColor: activeTab === 0 ? theme.palette.action.selected : theme.palette.action.hover,
+                                    color: theme.palette.text.primary,
+                                },
+                            }}
+                        />
+                        <Tab
+                            label="Metrics"
+                            {...a11yProps(1)}
+                            sx={{
+                                color: activeTab === 1 ? theme.palette.text.primary : theme.palette.text.secondary,
+                                fontWeight: activeTab === 1 ? 600 : 500,
+                                borderRadius: 999,
+                                backgroundColor: activeTab === 1 ? theme.palette.action.selected : 'transparent',
+                                boxShadow: activeTab === 1 ? theme.shadows[1] : 'none',
+                                textTransform: 'none',
+                                transition: 'all 0.3s ease',
+                                "&:hover": {
+                                    backgroundColor: activeTab === 1 ? theme.palette.action.selected : theme.palette.action.hover,
+                                    color: theme.palette.text.primary,
+                                },
+                            }}
+                        />
+                        <Tab
+                            label="Charts"
+                            {...a11yProps(2)}
+                            sx={{
+                                color: activeTab === 2 ? theme.palette.text.primary : theme.palette.text.secondary,
+                                fontWeight: activeTab === 2 ? 600 : 500,
+                                borderRadius: 999,
+                                backgroundColor: activeTab === 2 ? theme.palette.action.selected : 'transparent',
+                                boxShadow: activeTab === 2 ? theme.shadows[1] : 'none',
+                                textTransform: 'none',
+                                transition: 'all 0.3s ease',
+                                "&:hover": {
+                                    backgroundColor: activeTab === 2 ? theme.palette.action.selected : theme.palette.action.hover,
+                                    color: theme.palette.text.primary,
+                                },
+                            }}
+                        />
+                    </Tabs>
+                </Box>
+                <DragDropContext onDragEnd={onDragEnd}>
+                    <TabPanel value={activeTab} index={0}>
+                        <DashboardSection
+                            cards={executiveSummaryCards}
+                            droppableId="executive-summary-droppable"
+                            isMobile={isMobile}
+                            handleCardClick={handleCardClick}
+                        />
+                    </TabPanel>
+                    <TabPanel value={activeTab} index={1}>
+                        <DashboardSection
+                            cards={metricsCards}
+                            droppableId="metrics-droppable"
+                            isMobile={isMobile}
+                            handleCardClick={handleCardClick}
+                        />
+                    </TabPanel>
+                </DragDropContext>
+                <TabPanel value={activeTab} index={2}>
+                    <Suspense
+                        fallback={
+                            <Box sx={{ display: "flex", justifyContent: "center", p: 2 }}>
+                                <CircularProgress color="primary" />
+                            </Box>
+                        }
+                    >
+                        {loansForCalculations.length > 0 ? (
+                            <LazyCharts loans={loansForCalculations} selectedMonth={selectedMonth} />
+                        ) : (
+                            <Typography variant="body2" color="text.secondary">
+                                No loan data available for charts.
+                            </Typography>
+                        )}
+                    </Suspense>
+                </TabPanel>
+            </Box>
+
+            <Zoom
+                in
+                style={{
+                    position: "fixed",
+                    bottom: isMobile ? `calc(${BOTTOM_NAV_HEIGHT}px + 16px)` : 16,
+                    right: 16,
+                }}
+                timeout={500}
+                unmountOnExit
+            >
+                <Fab
+                    color="secondary"
+                    aria-label="add loan"
+                    onClick={() => navigate("/add-loan")}
+                >
+                    <AddIcon />
+                </Fab>
+            </Zoom>
+        </Box>
+    );
 }
+
