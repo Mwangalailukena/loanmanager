@@ -6,19 +6,22 @@ import {
   Box,
   CssBaseline,
   Container,
+  IconButton,
+  Typography,
 } from '@mui/material';
+import { Menu as MenuIcon, Search as SearchIcon, Close as CloseIcon } from '@mui/icons-material';
 
 import FloatingNavBar from './FloatingNavBar';
 import BottomNavBar from './BottomNavBar';
+import MobileDrawer from './MobileDrawer';
 import LoanDetailDialog from './LoanDetailDialog';
 
 const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   const { pathname } = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-
-  const [searchTerm, setSearchTerm] = useState("");
-
+  
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [loanDetailOpen, setLoanDetailOpen] = useState(false);
   const [selectedLoanId, setSelectedLoanId] = useState(null);
 
@@ -26,16 +29,18 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
     setSelectedLoanId(loanId);
     setLoanDetailOpen(true);
   };
-
+  
   const handleCloseLoanDetail = () => {
     setLoanDetailOpen(false);
     setSelectedLoanId(null);
   };
-
+  
+  const handleDrawerOpen = () => setMobileDrawerOpen(true);
+  const handleDrawerClose = () => setMobileDrawerOpen(false);
+  
   const hideLayout = ['/login', '/register', '/forgot-password'].includes(pathname);
-  // Corrected: bottomNavHeight is now used for padding
   const bottomNavHeight = isMobile && !hideLayout ? 64 : 0;
-
+  
   if (hideLayout) {
     return <>{children}</>;
   }
@@ -43,16 +48,34 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <CssBaseline />
-
+      
+      {/* Desktop Floating Navbar */}
       {!isMobile && (
         <FloatingNavBar
           darkMode={darkMode}
           onToggleDarkMode={onToggleDarkMode}
           onOpenLoanDetail={handleOpenLoanDetail}
-          onSearchChange={setSearchTerm}
         />
       )}
+      
+      {/* Mobile Top Bar with Hamburger */}
+      {isMobile && (
+        <Box sx={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: theme.zIndex.appBar,
+          display: 'flex', alignItems: 'center', p: 1,
+          bgcolor: theme.palette.background.default,
+          boxShadow: theme.shadows[1],
+        }}>
+          <IconButton onClick={handleDrawerOpen} edge="start" sx={{ mr: 2 }}>
+            <MenuIcon />
+          </IconButton>
+          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+            {/* You can set a dynamic title here if you want */}
+          </Typography>
+        </Box>
+      )}
 
+      {/* Main Content Area */}
       <Box
         component="main"
         sx={{
@@ -62,11 +85,8 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
           background: theme.palette.background.default,
           minHeight: 0,
           height: '100%',
-          px: 0,
-          // Corrected: Now uses bottomNavHeight for padding on mobile
           pb: `${bottomNavHeight}px`,
-          // Corrected: Add a top padding to account for the FloatingNavBar on desktop
-          paddingTop: isMobile ? 0 : '100px',
+          paddingTop: isMobile ? '64px' : '100px', // Adjusted padding for mobile top bar
         }}
       >
         <Container 
@@ -76,12 +96,24 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
             px: isMobile ? 2 : 4,
           }}
         >
-          {React.cloneElement(children, { globalSearchTerm: searchTerm })}
+          {React.cloneElement(children, { onOpenLoanDetail: handleOpenLoanDetail })}
         </Container>
       </Box>
 
+      {/* Mobile Drawer */}
+      <MobileDrawer
+        open={mobileDrawerOpen}
+        onClose={handleDrawerClose}
+        onOpen={handleDrawerOpen}
+        darkMode={darkMode}
+        onToggleDarkMode={onToggleDarkMode}
+        onOpenLoanDetail={handleOpenLoanDetail}
+      />
+      
+      {/* Mobile Bottom Navbar */}
       {!hideLayout && isMobile && <BottomNavBar />}
-
+      
+      {/* Loan Detail Dialog */}
       <LoanDetailDialog
         key={selectedLoanId}
         open={loanDetailOpen}
