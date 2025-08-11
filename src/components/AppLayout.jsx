@@ -5,7 +5,7 @@ import {
   useMediaQuery,
   Box,
   CssBaseline,
-  Container, // Added Container component
+  Container,
 } from '@mui/material';
 
 import FloatingNavBar from './FloatingNavBar';
@@ -69,17 +69,15 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
             background: theme.palette.background.default,
             minHeight: 0,
             height: '100%',
-            // Removed horizontal padding and paddingTop from this box
             px: 0,
             paddingTop: 0,
             pb: 0,
           }}
         >
-          {/* NEW: Use a Container to center and constrain the content */}
+          {/* UPDATED: Removed the fixed top padding (pt) from this Container. */}
           <Container 
             maxWidth="lg" 
             sx={{ 
-              pt: isMobile ? '70px' : '100px', // Apply the top padding here
               pb: 4, 
               px: isMobile ? 2 : 4,
             }}
