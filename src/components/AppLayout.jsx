@@ -7,9 +7,9 @@ import {
   CssBaseline,
   Container,
   IconButton,
-  Typography,
+  // Typography, // <-- Removed
 } from '@mui/material';
-import { Menu as MenuIcon } from '@mui/icons-material'; // SearchIcon and CloseIcon removed
+import { Menu as MenuIcon } from '@mui/icons-material';
 
 import FloatingNavBar from './FloatingNavBar';
 import BottomNavBar from './BottomNavBar';
@@ -58,23 +58,6 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
         />
       )}
       
-      {/* Mobile Top Bar with Hamburger */}
-      {isMobile && (
-        <Box sx={{
-          position: 'fixed', top: 0, left: 0, right: 0, zIndex: theme.zIndex.appBar,
-          display: 'flex', alignItems: 'center', p: 1,
-          bgcolor: theme.palette.background.default,
-          boxShadow: theme.shadows[1],
-        }}>
-          <IconButton onClick={handleDrawerOpen} edge="start" sx={{ mr: 2 }}>
-            <MenuIcon />
-          </IconButton>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            {/* You can set a dynamic title here if you want */}
-          </Typography>
-        </Box>
-      )}
-
       {/* Main Content Area */}
       <Box
         component="main"
@@ -86,7 +69,7 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
           minHeight: 0,
           height: '100%',
           pb: `${bottomNavHeight}px`,
-          paddingTop: isMobile ? '64px' : '100px', // Adjusted padding for mobile top bar
+          paddingTop: !isMobile ? '100px' : '20px',
         }}
       >
         <Container 
@@ -96,6 +79,15 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
             px: isMobile ? 2 : 4,
           }}
         >
+          {/* Mobile Menu Button */}
+          {isMobile && (
+            <Box sx={{ mb: 2 }}>
+              <IconButton onClick={handleDrawerOpen} edge="start">
+                <MenuIcon />
+              </IconButton>
+            </Box>
+          )}
+
           {React.cloneElement(children, { onOpenLoanDetail: handleOpenLoanDetail })}
         </Container>
       </Box>
