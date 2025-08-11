@@ -23,6 +23,7 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [loanDetailOpen, setLoanDetailOpen] = useState(false);
   const [selectedLoanId, setSelectedLoanId] = useState(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false); // NEW STATE FOR SEARCH
 
   const handleOpenLoanDetail = (loanId) => {
     setSelectedLoanId(loanId);
@@ -37,6 +38,18 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   const handleDrawerOpen = () => setMobileDrawerOpen(true);
   const handleDrawerClose = () => setMobileDrawerOpen(false);
   
+  // NEW FUNCTION TO TOGGLE SEARCH
+  const handleSearchOpen = () => {
+    setIsSearchOpen(true);
+    // You'll likely need a handleSearchClose function as well
+  };
+  
+  // You'll also need a function to handle the search input change
+  const handleSearchChange = (value) => {
+    // This is where you would filter your loans
+    console.log("Searching for:", value);
+  };
+
   const hideLayout = ['/login', '/register', '/forgot-password'].includes(pathname);
   const bottomNavHeight = isMobile && !hideLayout ? 64 : 0;
   
@@ -54,6 +67,7 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
           darkMode={darkMode}
           onToggleDarkMode={onToggleDarkMode}
           onOpenLoanDetail={handleOpenLoanDetail}
+          onSearchChange={handleSearchChange} // NEW PROP
         />
       )}
       
@@ -107,6 +121,7 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
         darkMode={darkMode}
         onToggleDarkMode={onToggleDarkMode}
         onOpenLoanDetail={handleOpenLoanDetail}
+        onSearchOpen={handleSearchOpen} // <-- THE NEW PROP ADDED HERE
       />
       
       {/* Mobile Bottom Navbar */}
