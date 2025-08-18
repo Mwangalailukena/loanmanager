@@ -1,3 +1,5 @@
+// src/contexts/FirestoreProvider.js
+
 import React, { createContext, useContext, useEffect, useState } from "react";
 import {
   collection,
@@ -16,7 +18,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "./AuthProvider";
-import dayjs from "dayjs"; // <-- dayjs imported for consistency
+import dayjs from "dayjs";
 
 const FirestoreContext = createContext();
 export const useFirestore = () => useContext(FirestoreContext);
@@ -122,21 +124,23 @@ export function FirestoreProvider({ children }) {
   // relevant factors (paid amount and due date) before updating the document.
   const addPayment = async (loanId, amount) => {
     const date = new Date().toISOString();
-    await addDoc(collection(db, "payments"), {
-      loanId,
-      amount,
-      date,
-      createdAt: serverTimestamp(),
-    });
-
-    const loanDocRef = doc(db, "loans", loanId);
-    const loanSnap = await getDoc(loanDocRef);
+    
+    // Use Promise.all to ensure both async operations (addDoc and updateLoan) complete
+    // before the function returns. This is more robust than a simple sequential await.
+    const [loanSnap] = await Promise.all([
+      getDoc(doc(db, "loans", loanId)),
+      addDoc(collection(db, "payments"), {
+        loanId,
+        amount,
+        date,
+        createdAt: serverTimestamp(),
+      }),
+    ]);
 
     if (loanSnap.exists()) {
       const loan = loanSnap.data();
       const repaidAmount = (loan.repaidAmount || 0) + amount;
       
-      // Determine the new status based on all conditions
       let newStatus = "Active";
       if (repaidAmount >= loan.totalRepayable && loan.totalRepayable > 0) {
         newStatus = "Paid";
@@ -149,12 +153,12 @@ export function FirestoreProvider({ children }) {
       }
 
       await updateLoan(loanId, { repaidAmount, status: newStatus });
-
       await addActivityLog({
         type: "payment",
         description: `Payment of ZMW ${amount} added for loan ID ${loanId}`,
         date: new Date().toISOString(),
       });
+      return true; // Return a value to indicate success
     }
   };
   // === END OF CORRECTED CODE ===
