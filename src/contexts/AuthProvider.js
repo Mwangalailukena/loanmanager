@@ -10,7 +10,7 @@ import {
   createUserWithEmailAndPassword,
   updateProfile,
 } from 'firebase/auth';
-import app from '../firebase'; // Your Firebase initialization
+import app from '../firebase';
 
 const AuthContext = createContext();
 
@@ -23,9 +23,11 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // This listener runs once when the component mounts and
+    // whenever the user's sign-in state changes.
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
-      setLoading(false);
+      setLoading(false); // Set to false once the initial check is complete
     });
     return () => unsubscribe();
   }, [auth]);
@@ -60,6 +62,7 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     currentUser,
+    loading, // Expose the loading state
     login,
     register,
     loginWithGoogle,
@@ -70,8 +73,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 };
-
