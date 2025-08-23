@@ -33,7 +33,9 @@ export function FirestoreProvider({ children }) {
     interestRates: { 1: 0.15, 2: 0.2, 3: 0.3, 4: 0.3 },
   });
   const [activityLogs, setActivityLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
 
+  // A single function to add activity logs
   const addActivityLog = async (logEntry) => {
     await addDoc(collection(db, "activityLogs"), {
       ...logEntry,
@@ -42,46 +44,58 @@ export function FirestoreProvider({ children }) {
     });
   };
 
+  // Consolidate all listeners into one useEffect hook
   useEffect(() => {
-    const q = query(collection(db, "loans"), orderBy("startDate", "desc"));
-    const unsub = onSnapshot(q, (snap) => {
+    const unsubscribes = [];
+    const dbRef = db; // A reference to your database instance
+
+    // Listener for loans
+    const loansUnsub = onSnapshot(query(collection(dbRef, "loans"), orderBy("startDate", "desc")), (snap) => {
       setLoans(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      // You can set loading to false here after all listeners have fetched their initial data
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching loans:", error);
+      setLoading(false);
     });
-    return unsub;
-  }, []);
+    unsubscribes.push(loansUnsub);
 
-  useEffect(() => {
-    const q = query(collection(db, "payments"), orderBy("date", "desc"));
-    const unsub = onSnapshot(q, (snap) => {
+    // Listener for payments
+    const paymentsUnsub = onSnapshot(query(collection(dbRef, "payments"), orderBy("date", "desc")), (snap) => {
       setPayments(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    }, (error) => {
+      console.error("Error fetching payments:", error);
     });
-    return unsub;
-  }, []);
+    unsubscribes.push(paymentsUnsub);
 
-  useEffect(() => {
-    const fetchSettings = async () => {
-      const docRef = doc(db, "settings", "config");
-      const docSnap = await getDoc(docRef);
+    // Listener for settings (using onSnapshot for real-time updates)
+    const settingsUnsub = onSnapshot(doc(dbRef, "settings", "config"), (docSnap) => {
       if (docSnap.exists()) {
         setSettings(docSnap.data());
       } else {
-        await setDoc(docRef, {
+        // If settings doc doesn't exist, create it with defaults
+        setDoc(doc(dbRef, "settings", "config"), {
           initialCapital: 50000,
           interestRates: { 1: 0.15, 2: 0.2, 3: 0.3, 4: 0.3 },
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
       }
-    };
-    fetchSettings();
-  }, []);
-
-  useEffect(() => {
-    const q = query(collection(db, "activityLogs"), orderBy("date", "desc"));
-    const unsub = onSnapshot(q, (snap) => {
-      setActivityLogs(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    }, (error) => {
+      console.error("Error fetching settings:", error);
     });
-    return unsub;
+    unsubscribes.push(settingsUnsub);
+
+    // Listener for activity logs
+    const activityUnsub = onSnapshot(query(collection(dbRef, "activityLogs"), orderBy("date", "desc")), (snap) => {
+      setActivityLogs(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    }, (error) => {
+      console.error("Error fetching activity logs:", error);
+    });
+    unsubscribes.push(activityUnsub);
+
+    // Cleanup function to unsubscribe from all listeners
+    return () => unsubscribes.forEach(unsub => unsub());
   }, []);
 
   const addLoan = async (loan) => {
@@ -119,14 +133,9 @@ export function FirestoreProvider({ children }) {
     });
   };
 
-  // === START OF CORRECTED CODE ===
-  // This function now correctly calculates the loan status based on all
-  // relevant factors (paid amount and due date) before updating the document.
   const addPayment = async (loanId, amount) => {
     const date = new Date().toISOString();
-    
-    // Use Promise.all to ensure both async operations (addDoc and updateLoan) complete
-    // before the function returns. This is more robust than a simple sequential await.
+
     const [loanSnap] = await Promise.all([
       getDoc(doc(db, "loans", loanId)),
       addDoc(collection(db, "payments"), {
@@ -140,7 +149,7 @@ export function FirestoreProvider({ children }) {
     if (loanSnap.exists()) {
       const loan = loanSnap.data();
       const repaidAmount = (loan.repaidAmount || 0) + amount;
-      
+
       let newStatus = "Active";
       if (repaidAmount >= loan.totalRepayable && loan.totalRepayable > 0) {
         newStatus = "Paid";
@@ -158,10 +167,9 @@ export function FirestoreProvider({ children }) {
         description: `Payment of ZMW ${amount} added for loan ID ${loanId}`,
         date: new Date().toISOString(),
       });
-      return true; // Return a value to indicate success
+      return true;
     }
   };
-  // === END OF CORRECTED CODE ===
 
   const getPaymentsByLoanId = async (loanId) => {
     const paymentsRef = collection(db, "payments");
@@ -182,22 +190,23 @@ export function FirestoreProvider({ children }) {
     });
   };
 
+  const value = {
+    loans,
+    payments,
+    settings,
+    activityLogs,
+    loading,
+    addLoan,
+    updateLoan,
+    deleteLoan,
+    addPayment,
+    getPaymentsByLoanId,
+    updateSettings,
+    addActivityLog,
+  };
+
   return (
-    <FirestoreContext.Provider
-      value={{
-        loans,
-        payments,
-        settings,
-        activityLogs,
-        addLoan,
-        updateLoan,
-        deleteLoan,
-        addPayment,
-        getPaymentsByLoanId,
-        updateSettings,
-        addActivityLog,
-      }}
-    >
+    <FirestoreContext.Provider value={value}>
       {children}
     </FirestoreContext.Provider>
   );
