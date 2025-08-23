@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, lazy, Suspense, useMemo } from "react";
+import React, { useState, useEffect, useCallback, lazy, Suspense, useMemo, useRef } from "react";
 import {
     Box,
     Typography,
@@ -111,6 +111,9 @@ export default function Dashboard() {
         isMobile
     );
 
+    // This ref will persist across component renders and prevent toasts from reappearing.
+    const toastShownRef = useRef(false);
+
     useEffect(() => {
         if (currentUser) {
             const timer = setTimeout(() => {
@@ -122,6 +125,8 @@ export default function Dashboard() {
     }, [currentUser]);
 
     useEffect(() => {
+        // This timer is a temporary fix. It's better to remove this and rely on the
+        // `FirestoreProvider`'s `loading` state for a more robust solution.
         const timer = setTimeout(() => {
             if (loans) {
                 setLoading(false);
@@ -141,8 +146,9 @@ export default function Dashboard() {
                 console.error("Error parsing saved card order from localStorage:", error);
                 setCardsOrder(DEFAULT_CARD_IDS);
             }
-
-            if (loans.length > 0) {
+            
+            // The key change to prevent repetitive toasts
+            if (loans.length > 0 && !toastShownRef.current) {
                 const now = dayjs();
                 const UPCOMING_LOAN_THRESHOLD_DAYS = 3;
                 const upcomingDueThreshold = now.add(UPCOMING_LOAN_THRESHOLD_DAYS, "day");
@@ -178,6 +184,9 @@ export default function Dashboard() {
                     toast.error(
                         `You have ${overdueLoansList.length} overdue loan(s)! Please take action.`
                     );
+
+                // Set the ref to true after the toasts are shown
+                toastShownRef.current = true;
             }
         }
 
