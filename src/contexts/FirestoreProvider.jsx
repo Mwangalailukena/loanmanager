@@ -1,6 +1,6 @@
 // src/contexts/FirestoreProvider.js
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useRef } from "react";
 import {
   collection,
   query,
@@ -19,6 +19,7 @@ import {
 import { db } from "../firebase";
 import { useAuth } from "./AuthProvider";
 import dayjs from "dayjs";
+import { toast } from "react-toastify";
 
 const FirestoreContext = createContext();
 export const useFirestore = () => useContext(FirestoreContext);
@@ -35,7 +36,9 @@ export function FirestoreProvider({ children }) {
   const [activityLogs, setActivityLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // A single function to add activity logs
+  // This ref tracks if notifications have been shown during this session.
+  const toastsShownRef = useRef(false);
+
   const addActivityLog = async (logEntry) => {
     await addDoc(collection(db, "activityLogs"), {
       ...logEntry,
@@ -44,16 +47,59 @@ export function FirestoreProvider({ children }) {
     });
   };
 
-  // Consolidate all listeners into one useEffect hook
   useEffect(() => {
     const unsubscribes = [];
-    const dbRef = db; // A reference to your database instance
+    const dbRef = db;
 
-    // Listener for loans
     const loansUnsub = onSnapshot(query(collection(dbRef, "loans"), orderBy("startDate", "desc")), (snap) => {
-      setLoans(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      // You can set loading to false here after all listeners have fetched their initial data
+      const loanData = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setLoans(loanData);
       setLoading(false);
+
+      // --- START OF NEW NOTIFICATION LOGIC ---
+      // This logic now lives here, running only once per session due to the ref
+      if (loanData.length > 0 && !toastsShownRef.current) {
+        const now = dayjs();
+        const UPCOMING_LOAN_THRESHOLD_DAYS = 3;
+        const upcomingDueThreshold = now.add(UPCOMING_LOAN_THRESHOLD_DAYS, "day");
+
+        const calcStatus = (loan) => {
+          const totalRepayable = Number(loan.totalRepayable || 0);
+          const repaidAmount = Number(loan.repaidAmount || 0);
+
+          if (repaidAmount >= totalRepayable && totalRepayable > 0) {
+            return "Paid";
+          }
+          const due = dayjs(loan.dueDate);
+          if (due.isBefore(now, "day")) {
+            return "Overdue";
+          }
+          return "Active";
+        };
+
+        const upcomingLoans = loanData.filter(
+          (l) =>
+            calcStatus(l) === "Active" &&
+            dayjs(l.dueDate).isAfter(now) &&
+            dayjs(l.dueDate).isBefore(upcomingDueThreshold)
+        );
+
+        const overdueLoansList = loanData.filter((l) => calcStatus(l) === "Overdue");
+
+        if (upcomingLoans.length > 0) {
+          toast.info(
+            `You have ${upcomingLoans.length} loan(s) due within ${UPCOMING_LOAN_THRESHOLD_DAYS} days!`
+          );
+        }
+        if (overdueLoansList.length > 0) {
+          toast.error(
+            `You have ${overdueLoansList.length} overdue loan(s)! Please take action.`
+          );
+        }
+        toastsShownRef.current = true;
+      }
+      // --- END OF NEW NOTIFICATION LOGIC ---
+
     }, (error) => {
       console.error("Error fetching loans:", error);
       setLoading(false);
@@ -68,12 +114,11 @@ export function FirestoreProvider({ children }) {
     });
     unsubscribes.push(paymentsUnsub);
 
-    // Listener for settings (using onSnapshot for real-time updates)
+    // Listener for settings
     const settingsUnsub = onSnapshot(doc(dbRef, "settings", "config"), (docSnap) => {
       if (docSnap.exists()) {
         setSettings(docSnap.data());
       } else {
-        // If settings doc doesn't exist, create it with defaults
         setDoc(doc(dbRef, "settings", "config"), {
           initialCapital: 50000,
           interestRates: { 1: 0.15, 2: 0.2, 3: 0.3, 4: 0.3 },
@@ -94,7 +139,6 @@ export function FirestoreProvider({ children }) {
     });
     unsubscribes.push(activityUnsub);
 
-    // Cleanup function to unsubscribe from all listeners
     return () => unsubscribes.forEach(unsub => unsub());
   }, []);
 
