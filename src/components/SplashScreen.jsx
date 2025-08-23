@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// src/components/SplashScreen.jsx
+import React from 'react';
 import { Box, LinearProgress, Typography, keyframes } from '@mui/material';
 
 // Animations
@@ -22,24 +23,12 @@ const slideInUp = keyframes`
   to { opacity: 1; transform: translateY(0); }
 `;
 
-const SplashScreen = ({ onFadeOutComplete, duration = 5000 }) => {
-  const [progress, setProgress] = useState(0);
-  const [dots, setDots] = useState('');
+// New prop 'isLoaded' will control when the splash screen fades out.
+const SplashScreen = ({ isLoaded }) => {
+  const [dots, setDots] = React.useState('');
 
-  // Progress animation
-  useEffect(() => {
-    const intervalTime = duration / 100;
-    let currentProgress = 0;
-    const timer = setInterval(() => {
-      currentProgress += 1;
-      setProgress(currentProgress);
-      if (currentProgress >= 100) clearInterval(timer);
-    }, intervalTime);
-    return () => clearInterval(timer);
-  }, [duration]);
-
-  // Loading dots animation
-  useEffect(() => {
+  // Loading dots animation remains, as it's a visual effect
+  React.useEffect(() => {
     const dotTimer = setInterval(() => {
       setDots((prev) => (prev.length < 3 ? prev + '.' : ''));
     }, 500);
@@ -60,13 +49,10 @@ const SplashScreen = ({ onFadeOutComplete, duration = 5000 }) => {
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 9999,
-        animation: `${fadeOut} 0.5s ease-out forwards`,
-        animationDelay: `${Math.max(duration / 1000 - 0.5, 0)}s`,
-      }}
-      onAnimationEnd={(e) => {
-        if (e.animationName === fadeOut.name) {
-          onFadeOutComplete();
-        }
+        // Apply fadeOut animation only when 'isLoaded' is true
+        animation: isLoaded ? `${fadeOut} 0.5s ease-out forwards` : 'none',
+        // Optional: you can add a small delay to make the transition smoother
+        animationDelay: '0.2s',
       }}
     >
       {/* Logo with fade-in + bounce */}
@@ -96,10 +82,8 @@ const SplashScreen = ({ onFadeOutComplete, duration = 5000 }) => {
         Loading your application{dots}
       </Typography>
 
-      {/* Simple progress bar */}
+      {/* A simple, non-deterministic loader is better for dynamic loading */}
       <LinearProgress
-        variant="determinate"
-        value={progress}
         sx={{
           width: '70%',
           maxWidth: '400px',
