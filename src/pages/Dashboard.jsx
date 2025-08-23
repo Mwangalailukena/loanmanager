@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useCallback, lazy, Suspense, useMemo, useRef } from "react";
+// src/pages/Dashboard.js
+
+import React, { useState, useEffect, useCallback, lazy, Suspense, useMemo } from "react";
 import {
     Box,
     Typography,
@@ -17,8 +19,6 @@ import AddIcon from "@mui/icons-material/Add";
 import { useNavigate } from "react-router-dom";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { useAuth } from "../contexts/AuthProvider.js";
-import dayjs from "dayjs";
-import { toast } from "react-toastify";
 import { DragDropContext } from "@hello-pangea/dnd";
 import { BOTTOM_NAV_HEIGHT } from "../components/BottomNavBar";
 import { useDashboardCalculations } from "../hooks/dashboard/useDashboardCalculations";
@@ -95,8 +95,7 @@ export default function Dashboard() {
     const navigate = useNavigate();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-    // Get the loading state directly from the FirestoreProvider
-    const { loans, settings, loading } = useFirestore(); 
+    const { loans, settings, loading } = useFirestore();
     const { currentUser } = useAuth();
 
     const [selectedMonth, setSelectedMonth] = useState(dayjs().format("YYYY-MM"));
@@ -110,9 +109,6 @@ export default function Dashboard() {
         settings,
         isMobile
     );
-
-    // This ref will persist across component renders and prevent toasts from reappearing.
-    const toastShownRef = useRef(false);
 
     useEffect(() => {
         if (currentUser) {
@@ -137,46 +133,6 @@ export default function Dashboard() {
             } catch (error) {
                 console.error("Error parsing saved card order from localStorage:", error);
                 setCardsOrder(DEFAULT_CARD_IDS);
-            }
-            
-            if (loans.length > 0 && !toastShownRef.current) {
-                const now = dayjs();
-                const UPCOMING_LOAN_THRESHOLD_DAYS = 3;
-                const upcomingDueThreshold = now.add(UPCOMING_LOAN_THRESHOLD_DAYS, "day");
-
-                const calcStatus = (loan) => {
-                    const totalRepayable = Number(loan.totalRepayable || 0);
-                    const repaidAmount = Number(loan.repaidAmount || 0);
-
-                    if (repaidAmount >= totalRepayable && totalRepayable > 0) {
-                        return "Paid";
-                    }
-                    const due = dayjs(loan.dueDate);
-                    if (due.isBefore(now, "day")) {
-                        return "Overdue";
-                    }
-                    return "Active";
-                };
-
-                const upcomingLoans = loans.filter(
-                    (l) =>
-                        calcStatus(l) === "Active" &&
-                        dayjs(l.dueDate).isAfter(now) &&
-                        dayjs(l.dueDate).isBefore(upcomingDueThreshold)
-                );
-
-                const overdueLoansList = loans.filter((l) => calcStatus(l) === "Overdue");
-
-                if (upcomingLoans.length > 0)
-                    toast.info(
-                        `You have ${upcomingLoans.length} loan(s) due within ${UPCOMING_LOAN_THRESHOLD_DAYS} days!`
-                    );
-                if (overdueLoansList.length > 0)
-                    toast.error(
-                        `You have ${overdueLoansList.length} overdue loan(s)! Please take action.`
-                    );
-
-                toastShownRef.current = true;
             }
         }
     }, [loans]);
