@@ -2,7 +2,7 @@
 import React from 'react';
 import { Box, LinearProgress, Typography, keyframes } from '@mui/material';
 
-// Animations
+// --- Animations ---
 const fadeOut = keyframes`
   from { opacity: 1; }
   to { opacity: 0; visibility: hidden; }
@@ -13,9 +13,10 @@ const fadeIn = keyframes`
   to { opacity: 1; }
 `;
 
-const bounce = keyframes`
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-20px); }
+const pulse = keyframes`
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
 `;
 
 const slideInUp = keyframes`
@@ -23,11 +24,10 @@ const slideInUp = keyframes`
   to { opacity: 1; transform: translateY(0); }
 `;
 
-// New prop 'isLoaded' will control when the splash screen fades out.
 const SplashScreen = ({ isLoaded }) => {
   const [dots, setDots] = React.useState('');
 
-  // Loading dots animation remains, as it's a visual effect
+  // Loading dots animation remains
   React.useEffect(() => {
     const dotTimer = setInterval(() => {
       setDots((prev) => (prev.length < 3 ? prev + '.' : ''));
@@ -49,13 +49,11 @@ const SplashScreen = ({ isLoaded }) => {
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 9999,
-        // Apply fadeOut animation only when 'isLoaded' is true
         animation: isLoaded ? `${fadeOut} 0.5s ease-out forwards` : 'none',
-        // Optional: you can add a small delay to make the transition smoother
-        animationDelay: '0.2s',
+        animationDelay: '0.2s', // Small delay for a smoother fade-out
       }}
     >
-      {/* Logo with fade-in + bounce */}
+      {/* Updated Logo Animation: fadeIn and pulse */}
       <Box
         component="img"
         src="/android/android-launchericon-512-512.png"
@@ -64,7 +62,7 @@ const SplashScreen = ({ isLoaded }) => {
           maxWidth: '220px',
           maxHeight: '220px',
           mb: 4,
-          animation: `${fadeIn} 0.8s ease forwards, ${bounce} 2s ease-in-out infinite`,
+          animation: `${fadeIn} 0.8s ease forwards, ${pulse} 2s ease-in-out infinite`,
         }}
       />
 
@@ -82,8 +80,9 @@ const SplashScreen = ({ isLoaded }) => {
         Loading your application{dots}
       </Typography>
 
-      {/* A simple, non-deterministic loader is better for dynamic loading */}
+      {/* Non-deterministic progress bar */}
       <LinearProgress
+        variant="indeterminate"
         sx={{
           width: '70%',
           maxWidth: '400px',
