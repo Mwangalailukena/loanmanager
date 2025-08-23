@@ -110,6 +110,27 @@ self.addEventListener('message', (event) => {
   }
 });
 
+self.addEventListener('periodicsync', (event) => {
+  if (event.tag === 'daily-sync') {
+    event.waitUntil(
+      console.log('Periodic sync event received')
+      // Add your data fetching and caching logic here
+    );
+  }
+});
+
+self.addEventListener('push', (event) => {
+  const data = event.data.json();
+  const options = {
+    body: data.body,
+    icon: 'logo192.png',
+    badge: 'logo192.png'
+  };
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
+});
+
 // Offline fallback
 setCatchHandler(async ({ event }) => {
   // Return the precached offline page if a navigation fails

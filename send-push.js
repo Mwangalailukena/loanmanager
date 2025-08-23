@@ -1,0 +1,34 @@
+const webpush = require('web-push');
+const admin = require('firebase-admin');
+const serviceAccount = require('./ilukenas-loan-management-firebase-adminsdk-4c23k-6a8d82e2d1.json'); // You need to download this file from your Firebase project settings
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  databaseURL: 'https://ilukenas-loan-management.firebaseio.com'
+});
+
+const vapidKeys = require('./vapid-keys.json');
+
+webpush.setVapidDetails(
+  'mailto:your-email@example.com', // Replace with your email
+  vapidKeys.publicKey,
+  vapidKeys.privateKey
+);
+
+const db = admin.firestore();
+
+async function sendPushNotifications() {
+  const subscriptions = await db.collection('subscriptions').get();
+  subscriptions.forEach(subscription => {
+    const pushSubscription = subscription.data();
+    const payload = JSON.stringify({
+      title: 'New Loan Added',
+      body: 'A new loan has been added to your account.'
+    });
+    webpush.sendNotification(pushSubscription, payload).catch(error => {
+      console.error(error.stack);
+    });
+  });
+}
+
+sendPushNotifications();

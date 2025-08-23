@@ -36,6 +36,22 @@ serviceWorkerRegistration.register({
   }
 });
 
+async function registerPeriodicSync() {
+  if ('serviceWorker' in navigator && 'periodicSync' in navigator) {
+    const registration = await navigator.serviceWorker.ready;
+    try {
+      await registration.periodicSync.register('daily-sync', {
+        minInterval: 24 * 60 * 60 * 1000, // 1 day
+      });
+      console.log('Periodic sync registered');
+    } catch (error) {
+      console.error('Periodic sync could not be registered:', error);
+    }
+  }
+}
+
+registerPeriodicSync();
+
 // Listen for background sync messages from service worker
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('message', event => {

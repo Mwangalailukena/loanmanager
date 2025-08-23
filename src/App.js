@@ -13,6 +13,7 @@ import NetworkStatus from './components/NetworkStatus';
 
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { requestNotificationPermission } from './utils/notifications';
 
 function App() {
   const { darkMode, onToggleDarkMode } = useThemeContext();
@@ -30,6 +31,7 @@ function App() {
         <AppRoutes darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} />
         <InstallPrompt />
         <ToastContainer position="top-center" />
+        <button onClick={requestNotificationPermission}>Enable Notifications</button>
       </FirestoreProvider>
     </Router>
   );
