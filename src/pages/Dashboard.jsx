@@ -95,12 +95,12 @@ export default function Dashboard() {
     const navigate = useNavigate();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-    const { loans, settings } = useFirestore();
+    // Get the loading state directly from the FirestoreProvider
+    const { loans, settings, loading } = useFirestore(); 
     const { currentUser } = useAuth();
 
     const [selectedMonth, setSelectedMonth] = useState(dayjs().format("YYYY-MM"));
     const [cardsOrder, setCardsOrder] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState(0);
     const [showWelcome, setShowWelcome] = useState(true);
 
@@ -125,14 +125,6 @@ export default function Dashboard() {
     }, [currentUser]);
 
     useEffect(() => {
-        // This timer is a temporary fix. It's better to remove this and rely on the
-        // `FirestoreProvider`'s `loading` state for a more robust solution.
-        const timer = setTimeout(() => {
-            if (loans) {
-                setLoading(false);
-            }
-        }, 500);
-
         if (loans) {
             const savedOrder = localStorage.getItem(STORAGE_KEY);
             try {
@@ -147,7 +139,6 @@ export default function Dashboard() {
                 setCardsOrder(DEFAULT_CARD_IDS);
             }
             
-            // The key change to prevent repetitive toasts
             if (loans.length > 0 && !toastShownRef.current) {
                 const now = dayjs();
                 const UPCOMING_LOAN_THRESHOLD_DAYS = 3;
@@ -185,12 +176,9 @@ export default function Dashboard() {
                         `You have ${overdueLoansList.length} overdue loan(s)! Please take action.`
                     );
 
-                // Set the ref to true after the toasts are shown
                 toastShownRef.current = true;
             }
         }
-
-        return () => clearTimeout(timer);
     }, [loans]);
 
     const handleTabChange = (event, newValue) => {
