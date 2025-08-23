@@ -1,5 +1,3 @@
-// src/pages/Dashboard.js
-
 import React, { useState, useEffect, useCallback, lazy, Suspense, useMemo } from "react";
 import {
     Box,
@@ -19,6 +17,8 @@ import AddIcon from "@mui/icons-material/Add";
 import { useNavigate } from "react-router-dom";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { useAuth } from "../contexts/AuthProvider.js";
+import dayjs from "dayjs"; // <-- Add this import
+import { toast } from "react-toastify"; // <-- Add this import
 import { DragDropContext } from "@hello-pangea/dnd";
 import { BOTTOM_NAV_HEIGHT } from "../components/BottomNavBar";
 import { useDashboardCalculations } from "../hooks/dashboard/useDashboardCalculations";
@@ -95,7 +95,7 @@ export default function Dashboard() {
     const navigate = useNavigate();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-    const { loans, settings, loading } = useFirestore();
+    const { loans, settings, loading } = useFirestore(); 
     const { currentUser } = useAuth();
 
     const [selectedMonth, setSelectedMonth] = useState(dayjs().format("YYYY-MM"));
