@@ -76,6 +76,39 @@ const bgSyncPlugin = new BackgroundSyncPlugin('mutations-queue', {
   maxRetentionTime: 24 * 60, // Retry for max 24 Hours
 });
 
+const loanSyncPlugin = new BackgroundSyncPlugin('loan-queue', {
+  maxRetentionTime: 24 * 60, // Retry for max 24 Hours
+});
+
+registerRoute(
+  ({ url, request }) => url.pathname === '/api/loans' && request.method === 'POST',
+  new NetworkOnly({
+    plugins: [loanSyncPlugin],
+  })
+);
+
+const paymentSyncPlugin = new BackgroundSyncPlugin('payment-queue', {
+  maxRetentionTime: 24 * 60, // Retry for max 24 Hours
+});
+
+registerRoute(
+  ({ url, request }) => url.pathname === '/api/payments' && request.method === 'POST',
+  new NetworkOnly({
+    plugins: [paymentSyncPlugin],
+  })
+);
+
+const deleteSyncPlugin = new BackgroundSyncPlugin('delete-queue', {
+  maxRetentionTime: 24 * 60, // Retry for max 24 Hours
+});
+
+registerRoute(
+  ({ url, request }) => (url.pathname.startsWith('/api/loans/') || url.pathname.startsWith('/api/payments/')) && request.method === 'DELETE',
+  new NetworkOnly({
+    plugins: [deleteSyncPlugin],
+  })
+);
+
 registerRoute(
   ({ url }) => url.host.includes('googleapis.com'),
   new StaleWhileRevalidate({
@@ -109,19 +142,53 @@ self.addEventListener('push', (event) => {
   const options = {
     body: data.body,
     icon: 'logo192.png',
-    badge: 'logo192.png'
+    badge: 'logo192.png',
+    data: {
+      url: data.url || '/' // Default to root if no URL is provided
+    },
+    actions: [
+      {
+        action: 'view-action',
+        title: 'View',
+      },
+      {
+        action: 'dismiss-action',
+        title: 'Dismiss',
+      },
+    ],
   };
   event.waitUntil(
     self.registration.showNotification(data.title, options)
   );
 });
 
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  if (event.action === 'view-action') {
+    const urlToOpen = event.notification.data.url;
+    event.waitUntil(
+      clients.openWindow(urlToOpen)
+    );
+  } else if (event.action === 'dismiss-action') {
+    // Do nothing, just close the notification
+  } else {
+    // Default action when clicking the notification body
+    const urlToOpen = event.notification.data.url;
+    event.waitUntil(
+      clients.openWindow(urlToOpen)
+    );
+  }
+});
+
 // Offline fallback
 setCatchHandler(async ({ event }) => {
-  // Return the precached offline page if a navigation fails
-  if (event.request.destination === 'document') {
-    return caches.match('/offline.html');
+  switch (event.request.destination) {
+    case 'document':
+      return caches.match('/offline.html');
+    case 'image':
+      return caches.match('/offline.png'); // You need to create this file
+    default:
+      return Response.error();
   }
-
-  return Response.error();
 });

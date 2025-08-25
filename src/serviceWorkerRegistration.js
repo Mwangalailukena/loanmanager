@@ -55,6 +55,10 @@ function registerValidSW(swUrl, config) {
         }
         installingWorker.onstatechange = () => {
           if (installingWorker.state === 'installed') {
+            import { showToast } from "./components/toastConfig";
+
+// ... (rest of the file)
+
             if (navigator.serviceWorker.controller) {
               // At this point, the updated precached content has been fetched,
               // but the previous service worker will still serve the older
@@ -62,6 +66,14 @@ function registerValidSW(swUrl, config) {
               console.log(
                 'New content is available and will be used when all ' +
                   'tabs for this page are closed. See https://cra.link/PWA.'
+              );
+
+              showToast(
+                'New content available! Click to refresh.',
+                'info',
+                () => {
+                  window.location.reload();
+                }
               );
 
               // Execute callback
