@@ -10,7 +10,7 @@ const isLocalhost = Boolean(
   )
 );
 
-export function register(config) {
+export function register(config, showSnackbarCallback) {
   if ('serviceWorker' in navigator) {
     // The URL constructor is helpful in more complex scenarios.
     const publicUrl = new URL(process.env.PUBLIC_URL, window.location.href);
@@ -26,7 +26,7 @@ export function register(config) {
 
       if (isLocalhost) {
         // This is running on localhost. Let's check if a service worker already exists.
-        checkValidServiceWorker(swUrl, config);
+        checkValidServiceWorker(swUrl, config, showSnackbarCallback);
 
         // Add some additional logging to localhost, pointing developers to the
         // service worker/PWA documentation.
@@ -38,13 +38,13 @@ export function register(config) {
         });
       } else {
         // Is not localhost. Just register service worker
-        registerValidSW(swUrl, config);
+        registerValidSW(swUrl, config, showSnackbarCallback);
       }
     });
   }
 }
 
-function registerValidSW(swUrl, config) {
+function registerValidSW(swUrl, config, showSnackbarCallback) {
   navigator.serviceWorker
     .register(swUrl)
     .then((registration) => {
@@ -55,7 +55,7 @@ function registerValidSW(swUrl, config) {
         }
         installingWorker.onstatechange = () => {
           if (installingWorker.state === 'installed') {
-            import { showSnackbar } from "./components/toastConfig";
+            
 
 // ... (rest of the file)
 
@@ -68,7 +68,7 @@ function registerValidSW(swUrl, config) {
                   'tabs for this page are closed. See https://cra.link/PWA.'
               );
 
-              showSnackbar(
+              showSnackbarCallback(
                 'New content available! Click to refresh.',
                 'info',
                 () => {
@@ -103,7 +103,7 @@ function registerValidSW(swUrl, config) {
     });
 }
 
-function checkValidServiceWorker(swUrl, config) {
+function checkValidServiceWorker(swUrl, config, showSnackbarCallback) {
   // Check if the service worker can be found. If it can't reload the page.
   fetch(swUrl, {
     headers: { 'Service-Worker': 'script' },
@@ -123,7 +123,7 @@ function checkValidServiceWorker(swUrl, config) {
         });
       } else {
         // Service worker found. Proceed as normal.
-        registerValidSW(swUrl, config);
+        registerValidSW(swUrl, config, showSnackbarCallback);
       }
     })
     .catch(() => {

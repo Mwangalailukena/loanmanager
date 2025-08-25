@@ -48,7 +48,8 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 
 // Other imports
 import { useFirestore } from "../contexts/FirestoreProvider";
-import { toast } from "react-toastify";
+import { useSnackbar } from "../components/SnackbarProvider";
+
 import dayjs from "dayjs";
 import Papa from "papaparse";
 
@@ -153,6 +154,7 @@ const CustomStepConnector = styled(StepConnector)(({ theme }) => ({
 function AutoLoanForm() {
   const theme = useTheme();
   const { addLoan, addActivityLog, settings } = useFirestore();
+  const showSnackbar = useSnackbar();
 
   const [activeStep, setActiveStep] = useState(0);
 
@@ -184,7 +186,7 @@ function AutoLoanForm() {
 
   const handleSelectContact = async () => {
     if (!contactPickerSupported) {
-      toast.warn("Your browser does not support picking contacts directly.");
+      showSnackbar("Your browser does not support picking contacts directly.", "warning");
       return;
     }
     setLoading(true);
@@ -203,18 +205,18 @@ function AutoLoanForm() {
         if (selectedContact.tel && selectedContact.tel.length > 0) {
           setPhone(selectedContact.tel[0].replace(/\D/g, ""));
         }
-        toast.success("Contact details imported!");
+        showSnackbar("Contact details imported!", "success");
       } else {
-        toast.info("No contact was selected.");
+        showSnackbar("No contact was selected.", "info");
       }
     } catch (err) {
       console.error("Error accessing contacts:", err);
       if (err.name === "NotAllowedError" || err.name === "SecurityError") {
-        toast.error("Permission denied to access contacts. Please grant access in your browser settings.");
+        showSnackbar("Permission denied to access contacts. Please grant access in your browser settings.", "error");
       } else if (err.name === "AbortError") {
-        toast.info("Contact selection cancelled.");
+        showSnackbar("Contact selection cancelled.", "info");
       } else {
-        toast.error("Failed to access contacts. " + (err.message || ""));
+        showSnackbar("Failed to access contacts. " + (err.message || ""), "error");
       }
     } finally {
       setLoading(false);
@@ -276,7 +278,7 @@ function AutoLoanForm() {
     if (validateStep(activeStep)) {
       setActiveStep((prevActiveStep) => prevActiveStep + 1);
     } else {
-      toast.error("Please correct the errors before proceeding.");
+      showSnackbar("Please correct the errors before proceeding.", "error");
     }
   };
 
@@ -314,7 +316,7 @@ function AutoLoanForm() {
         timestamp: new Date().toISOString(),
       });
 
-      toast.success(`Loan added successfully! Loan ID: ${loanDocRef.id}`);
+      showSnackbar(`Loan added successfully! Loan ID: ${loanDocRef.id}`, "success");
 
       if (navigator.vibrate) {
         navigator.vibrate([100, 50, 100]);
@@ -430,13 +432,13 @@ function AutoLoanForm() {
         setProcessedCount(0);
 
         if (successCount > 0) {
-          toast.success(`Successfully imported ${successCount} loan(s)!`);
+          showSnackbar(`Successfully imported ${successCount} loan(s)!`, "success");
         }
         if (errors.length > 0) {
           setCsvErrors(errors);
           setError(`CSV Import finished with ${errors.length} error(s). Please review the details below.`);
           errors.forEach((err) =>
-            toast.error(`Import Error: ${err}`, { autoClose: false })
+            showSnackbar(`Import Error: ${err}`, "error", null, { autoClose: false })
           );
         } else {
           setOpenImportDialog(false);
@@ -447,7 +449,7 @@ function AutoLoanForm() {
         setOpenImportDialog(false);
         setProcessedCount(0);
         setError("Failed to parse CSV file: " + err.message);
-        toast.error("CSV parsing error: " + err.message);
+        showSnackbar("CSV parsing error: " + err.message, "error");
         console.error("PapaParse error:", err);
       },
     });
@@ -719,6 +721,7 @@ function AutoLoanForm() {
 function ManualLoanForm() {
   const theme = useTheme();
   const { addLoan, addActivityLog } = useFirestore();
+  const showSnackbar = useSnackbar();
 
   const [activeStep, setActiveStep] = useState(0);
 
@@ -750,7 +753,7 @@ function ManualLoanForm() {
 
   const handleSelectContact = async () => {
     if (!contactPickerSupported) {
-      toast.warn("Your browser does not support picking contacts directly.");
+      showSnackbar("Your browser does not support picking contacts directly.", "warning");
       return;
     }
     setLoading(true);
@@ -768,18 +771,18 @@ function ManualLoanForm() {
         if (selectedContact.tel && selectedContact.tel.length > 0) {
           setPhone(selectedContact.tel[0].replace(/\D/g, ""));
         }
-        toast.success("Contact details imported!");
+        showSnackbar("Contact details imported!", "success");
       } else {
-        toast.info("No contact was selected.");
+        showSnackbar("No contact was selected.", "info");
       }
     } catch (err) {
       console.error("Error accessing contacts:", err);
       if (err.name === "NotAllowedError" || err.name === "SecurityError") {
-        toast.error("Permission denied to access contacts. Please grant access in your browser settings.");
+        showSnackbar("Permission denied to access contacts. Please grant access in your browser settings.", "error");
       } else if (err.name === "AbortError") {
-        toast.info("Contact selection cancelled.");
+        showSnackbar("Contact selection cancelled.", "info");
       } else {
-        toast.error("Failed to access contacts. " + (err.message || ""));
+        showSnackbar("Failed to access contacts. " + (err.message || ""), "error");
       }
     } finally {
       setLoading(false);
@@ -852,7 +855,7 @@ function ManualLoanForm() {
     if (validateStep(activeStep)) {
       setActiveStep((prevActiveStep) => prevActiveStep + 1);
     } else {
-      toast.error("Please correct the errors before proceeding.");
+      showSnackbar("Please correct the errors before proceeding.", "error");
     }
   };
 
@@ -892,7 +895,7 @@ function ManualLoanForm() {
         timestamp: new Date().toISOString(),
       });
 
-      toast.success(`Manual loan added successfully! Loan ID: ${loanDocRef.id}`);
+      showSnackbar(`Manual loan added successfully! Loan ID: ${loanDocRef.id}`, "success");
 
       if (navigator.vibrate) {
         navigator.vibrate([100, 50, 100]);

@@ -1,15 +1,14 @@
 import React, { useEffect, useRef } from "react";
 import useOfflineStatus from "../hooks/useOfflineStatus";
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 import { syncPendingData } from "../utils/offlineQueue";
-import { showSnackbar } from "./toastConfig";
+import { useSnackbar } from "./SnackbarProvider";
 
 export default function NetworkStatus() {
   const isOnline = useOfflineStatus(1000);
   const wasOffline = useRef(false);
   const syncInProgress = useRef(false);
   const syncExecutedOnce = useRef(false);
+  const showSnackbar = useSnackbar();
 
   useEffect(() => {
     if (!isOnline) {
@@ -39,7 +38,7 @@ export default function NetworkStatus() {
         }
       }
     }
-  }, [isOnline]);
+  }, [isOnline, showSnackbar]);
 
   return (
     <>
@@ -57,7 +56,6 @@ export default function NetworkStatus() {
           You are offline. Some features may not be available.
         </div>
       )}
-      <ToastContainer />
     </>
   );
 }

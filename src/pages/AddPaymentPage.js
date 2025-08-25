@@ -27,11 +27,13 @@ import PersonIcon from '@mui/icons-material/Person';
 import PhoneIcon from '@mui/icons-material/Phone';
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import { useFirestore } from "../contexts/FirestoreProvider";
-import { toast } from "react-toastify";
+import { useSnackbar } from "../components/SnackbarProvider";
+
 
 export default function AddPaymentPage() {
   const theme = useTheme();
   const { loans, addPayment, loadingLoans } = useFirestore();
+  const showSnackbar = useSnackbar();
 
   const [selectedLoan, setSelectedLoan] = useState(null);
   const [paymentAmount, setPaymentAmount] = useState("");
@@ -84,7 +86,7 @@ export default function AddPaymentPage() {
     try {
       const numAmount = Number(paymentAmount);
       await addPayment(selectedLoan.id, numAmount);
-      toast.success(`Payment of ZMW ${numAmount.toFixed(2).toLocaleString()} added for ${selectedLoan.borrower}!`);
+      showSnackbar(`Payment of ZMW ${numAmount.toFixed(2).toLocaleString()} added for ${selectedLoan.borrower}!`, "success");
 
       setSelectedLoan(null);
       setPaymentAmount("");
@@ -93,7 +95,7 @@ export default function AddPaymentPage() {
     } catch (err) {
       console.error("Payment submission failed:", err);
       setGeneralError("Failed to add payment. Please try again.");
-      toast.error(`Failed to add payment: ${err.message || "Unknown error"}`);
+      showSnackbar(`Failed to add payment: ${err.message || "Unknown error"}`, "error");
     } finally {
       setLoading(false);
     }

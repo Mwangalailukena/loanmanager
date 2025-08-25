@@ -18,7 +18,8 @@ import { useNavigate } from "react-router-dom";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { useAuth } from "../contexts/AuthProvider.js";
 import dayjs from "dayjs"; // <-- Add this import
-import { toast } from "react-toastify"; // <-- Add this import
+import { useSnackbar } from "../components/SnackbarProvider";
+
 import { DragDropContext } from "@hello-pangea/dnd";
 import { BOTTOM_NAV_HEIGHT } from "../components/BottomNavBar";
 import { useDashboardCalculations } from "../hooks/dashboard/useDashboardCalculations";
@@ -97,6 +98,7 @@ export default function Dashboard() {
     const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
     const { loans, settings, loading } = useFirestore(); 
     const { currentUser } = useAuth();
+    const showSnackbar = useSnackbar();
 
     const [selectedMonth, setSelectedMonth] = useState(dayjs().format("YYYY-MM"));
     const [cardsOrder, setCardsOrder] = useState([]);
@@ -160,7 +162,7 @@ export default function Dashboard() {
         (result) => {
             const { source, destination } = result;
             if (!destination || source.droppableId !== destination.droppableId) {
-                toast.error("Cards can only be reordered within their own section.");
+                showSnackbar("Cards can only be reordered within their own section.", "error");
                 return;
             }
 
@@ -183,9 +185,9 @@ export default function Dashboard() {
 
             setCardsOrder(newCardsOrder);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(newCardsOrder));
-            toast.success("Dashboard layout saved!");
+            showSnackbar("Dashboard layout saved!", "success");
         },
-        [executiveSummaryCards, metricsCards]
+        [executiveSummaryCards, metricsCards, showSnackbar]
     );
 
     const handleCardClick = (filter) => {

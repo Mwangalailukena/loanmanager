@@ -19,13 +19,15 @@ import {
 import { db } from "../firebase";
 import { useAuth } from "./AuthProvider";
 import dayjs from "dayjs";
-import { toast } from "react-toastify";
+import { useSnackbar } from "../components/SnackbarProvider";
+
 
 const FirestoreContext = createContext();
 export const useFirestore = () => useContext(FirestoreContext);
 
 export function FirestoreProvider({ children }) {
   const { currentUser } = useAuth();
+  const showSnackbar = useSnackbar();
 
   const [loans, setLoans] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -87,13 +89,15 @@ export function FirestoreProvider({ children }) {
         const overdueLoansList = loanData.filter((l) => calcStatus(l) === "Overdue");
 
         if (upcomingLoans.length > 0) {
-          toast.info(
-            `You have ${upcomingLoans.length} loan(s) due within ${UPCOMING_LOAN_THRESHOLD_DAYS} days!`
+          showSnackbar(
+            `You have ${upcomingLoans.length} loan(s) due within ${UPCOMING_LOAN_THRESHOLD_DAYS} days!`,
+            "info"
           );
         }
         if (overdueLoansList.length > 0) {
-          toast.error(
-            `You have ${overdueLoansList.length} overdue loan(s)! Please take action.`
+          showSnackbar(
+            `You have ${overdueLoansList.length} overdue loan(s)! Please take action.`,
+            "error"
           );
         }
         toastsShownRef.current = true;
@@ -140,7 +144,7 @@ export function FirestoreProvider({ children }) {
     unsubscribes.push(activityUnsub);
 
     return () => unsubscribes.forEach(unsub => unsub());
-  }, []);
+  }, [showSnackbar]);
 
   const addLoan = async (loan) => {
     const loanWithTimestamps = {
