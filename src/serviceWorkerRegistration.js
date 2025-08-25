@@ -55,7 +55,7 @@ function registerValidSW(swUrl, config) {
         }
         installingWorker.onstatechange = () => {
           if (installingWorker.state === 'installed') {
-            import { showToast } from "./components/toastConfig";
+            import { showSnackbar } from "./components/toastConfig";
 
 // ... (rest of the file)
 
@@ -68,7 +68,7 @@ function registerValidSW(swUrl, config) {
                   'tabs for this page are closed. See https://cra.link/PWA.'
               );
 
-              showToast(
+              showSnackbar(
                 'New content available! Click to refresh.',
                 'info',
                 () => {

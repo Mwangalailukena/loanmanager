@@ -4,11 +4,11 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "../styles/toastStyles.css"; // Ensure this path is correct
 
-export const showToast = (message, type = "default") => {
+export const showSnackbar = (message, type = "default") => {
   toast(message, {
     type,
-    position: "top-center", // Default position
-    autoClose: 3000,        // Default duration
+    position: "top-center",
+    autoClose: 5000,        // Increased duration for snackbar-like behavior
     hideProgressBar: true,
     closeOnClick: false,    // Click does not cancel autoClose
     pauseOnHover: false,    // Hover does not pause

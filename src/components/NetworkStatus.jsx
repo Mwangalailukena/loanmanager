@@ -3,7 +3,7 @@ import useOfflineStatus from "../hooks/useOfflineStatus";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { syncPendingData } from "../utils/offlineQueue";
-import { showToast } from "./toastConfig";
+import { showSnackbar } from "./toastConfig";
 
 export default function NetworkStatus() {
   const isOnline = useOfflineStatus(1000);
@@ -15,7 +15,7 @@ export default function NetworkStatus() {
     if (!isOnline) {
       wasOffline.current = true;
       syncExecutedOnce.current = false;
-      showToast("You're offline. Changes will sync once you're back online.", "warning");
+      showSnackbar("You're offline. Changes will sync once you're back online.", "warning");
     } else if (isOnline && wasOffline.current) {
       if (!syncExecutedOnce.current) {
         syncExecutedOnce.current = true;
@@ -23,15 +23,15 @@ export default function NetworkStatus() {
 
         if (!syncInProgress.current) {
           syncInProgress.current = true;
-          showToast("You're back online. Syncing data...", "info");
+          showSnackbar("You're back online. Syncing data...", "info");
 
           syncPendingData()
             .then(() => {
-              showToast("Offline data synced successfully!", "success");
+              showSnackbar("Offline data synced successfully!", "success");
             })
             .catch((err) => {
               console.error("Failed to sync offline data:", err);
-              showToast("Failed to sync offline data. Please try again.", "error");
+              showSnackbar("Failed to sync offline data. Please try again.", "error");
             })
             .finally(() => {
               syncInProgress.current = false;
