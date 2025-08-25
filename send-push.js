@@ -10,7 +10,7 @@ admin.initializeApp({
 const vapidKeys = require('./vapid-keys.json');
 
 webpush.setVapidDetails(
-  'mailto:your-email@example.com', // Replace with your email
+  'mailto:ilukenamwangala@gmail.com', // Replace with your email
   vapidKeys.publicKey,
   vapidKeys.privateKey
 );

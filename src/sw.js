@@ -1,12 +1,9 @@
-/* eslint-disable no-restricted-globals */
-
 import { clientsClaim } from 'workbox-core';
 import { ExpirationPlugin } from 'workbox-expiration';
 import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching';
 import { registerRoute, setCatchHandler } from 'workbox-routing';
 import { StaleWhileRevalidate, CacheFirst, NetworkFirst, NetworkOnly } from 'workbox-strategies';
 import { BackgroundSyncPlugin } from 'workbox-background-sync';
-import { matchPrecache } from 'workbox-precaching';
 
 clientsClaim();
 
@@ -14,15 +11,13 @@ clientsClaim();
 // Their URLs are injected into the manifest variable below.
 // This variable must be present somewhere in your service worker file,
 // even if you decide not to use precaching. See https://cra.link/PWA
-precacheAndRoute(self.__WB_MANIFEST);
-precacheAndRoute([{ url: '/offline.html', revision: '1' }]);
+precacheAndRoute(self.__WB_MANIFEST.concat([{ url: '/offline.html', revision: '1' }]));
 
 
 // Set up App Shell-style routing, so that all navigation requests
 // are fulfilled with your index.html shell. Learn more at
 // https://developers.google.com/web/fundamentals/architecture/app-shell
-const fileExtensionRegexp = new RegExp('/[^/?]+\.[^/]+
-);
+const fileExtensionRegexp = new RegExp('/[^/?]+\\.[^/]+);
 registerRoute(
   // Return false to exempt requests from being fulfilled by index.html.
   ({ request, url }) => {
@@ -33,7 +28,7 @@ registerRoute(
 
     // If this is a URL that starts with /_,
     // it's likely an internal request made by the server, so skip.
-    if (url.pathname.startsWith('/_/')) {
+    if (url.pathname.startsWith('/_')) {
       return false;
     }
 
@@ -81,28 +76,18 @@ const bgSyncPlugin = new BackgroundSyncPlugin('mutations-queue', {
   maxRetentionTime: 24 * 60, // Retry for max 24 Hours
 });
 
-// Cache Firestore data with background sync for POST requests
 registerRoute(
-    ({ url, request }) =>
-      url.host.includes('firestore.googleapis.com') && request.method === 'POST',
-    new NetworkOnly({
-      plugins: [bgSyncPlugin],
-    })
-  );
-  
-  registerRoute(
-    ({ url, request }) =>
-      url.host.includes('firestore.googleapis.com') && request.method === 'GET',
-    new NetworkFirst({
-      cacheName: 'firestore-data',
-      plugins: [
-        new ExpirationPlugin({
-          maxEntries: 50,
-          maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
-        }),
-      ],
-    })
-  );
+  ({ url }) => url.host.includes('googleapis.com'),
+  new StaleWhileRevalidate({
+    cacheName: 'api-cache',
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 50,
+        maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
+      }),
+    ],
+  })
+);
 
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
@@ -135,7 +120,7 @@ self.addEventListener('push', (event) => {
 setCatchHandler(async ({ event }) => {
   // Return the precached offline page if a navigation fails
   if (event.request.destination === 'document') {
-    return matchPrecache('/offline.html');
+    return caches.match('/offline.html');
   }
 
   return Response.error();
