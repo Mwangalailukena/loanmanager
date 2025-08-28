@@ -49,7 +49,7 @@ import { useFirestore } from "../contexts/FirestoreProvider";
 import { exportToCsv } from "../utils/exportCSV";
 import { motion, AnimatePresence } from "framer-motion";
 import dayjs from "dayjs";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { visuallyHidden } from '@mui/utils';
 
 const PAGE_SIZE = 10;
@@ -279,8 +279,12 @@ export default function LoanList({ globalSearchTerm }) {
   }, [globalSearchTerm, searchTerm]);
 
   const filteredLoans = useMemo(() => {
+    const borrowerId = searchParams.get('borrowerId');
+
     let result = loans
       .filter((loan) => {
+        if (borrowerId && loan.borrowerId !== borrowerId) return false;
+
         const displayInfo = getDisplayBorrowerInfo(loan);
 
         if (monthFilter && dayjs(loan.startDate).format("YYYY-MM") !== monthFilter) return false;
@@ -330,7 +334,7 @@ export default function LoanList({ globalSearchTerm }) {
     }
 
     return result;
-  }, [loans, activeSearchTerm, statusFilter, monthFilter, sortKey, sortDirection, getDisplayBorrowerInfo]);
+  }, [loans, activeSearchTerm, statusFilter, monthFilter, sortKey, sortDirection, getDisplayBorrowerInfo, searchParams]);
   
   const displayedLoans = useMemo(() => {
     if (useInfiniteScroll && isMobile) {
@@ -672,7 +676,9 @@ export default function LoanList({ globalSearchTerm }) {
                       <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
                         <Box flexGrow={1} minWidth={0}>
                           <Typography variant="subtitle2" fontWeight="bold" noWrap>
-                            {displayInfo.name}
+                            <Link to={`/borrowers/${loan.borrowerId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                              {displayInfo.name}
+                            </Link>
                           </Typography>
                           <Typography variant="caption" color="textSecondary" noWrap>
                             {displayInfo.phone}
@@ -905,7 +911,11 @@ export default function LoanList({ globalSearchTerm }) {
                         <TableCell align="center" sx={{ py: 0.5 }}>
                           {(page - 1) * PAGE_SIZE + idx + 1}
                         </TableCell>
-                        <TableCell sx={{ py: 0.5 }}>{displayInfo.name}</TableCell>
+                        <TableCell sx={{ py: 0.5 }}>
+                          <Link to={`/borrowers/${loan.borrowerId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                            {displayInfo.name}
+                          </Link>
+                        </TableCell>
                         <TableCell sx={{ py: 0.5 }}>{displayInfo.phone}</TableCell>
                         <TableCell align="right" sx={{ py: 0.5 }}>
                           {Number(loan.principal).toFixed(2)}

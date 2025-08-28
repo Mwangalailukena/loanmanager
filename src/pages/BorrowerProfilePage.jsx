@@ -31,6 +31,7 @@ import PhoneIcon from '@mui/icons-material/Phone';
 import EmailIcon from '@mui/icons-material/Email';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Fingerprint from '@mui/icons-material/Fingerprint';
 import HomeIcon from '@mui/icons-material/Home';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
@@ -38,6 +39,7 @@ import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import GuarantorDialog from '../components/GuarantorDialog';
 import { useCreditScore } from '../hooks/useCreditScore';
+
 dayjs.extend(relativeTime);
 
 const getStatusChipColor = (status) => {
@@ -151,6 +153,7 @@ export default function BorrowerProfilePage() {
                   <Typography variant="caption" color="text.secondary">Credit Score</Typography>
                 </Box>
                 <Stack direction="row" spacing={1}>
+                  <Button variant="outlined" color="primary" startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)}>Back</Button>
                   <Button variant="outlined" color="secondary" startIcon={<EditIcon />} component={RouterLink} to={`/borrowers/${id}/edit`}>Edit</Button>
                   <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={handleOpenDeleteDialog}>Delete</Button>
                 </Stack>
@@ -170,6 +173,12 @@ export default function BorrowerProfilePage() {
               <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
                 <Typography variant="h6" fontWeight="bold">Associated Loans</Typography>
                 <Stack direction="row" spacing={1}>
+                  <Button
+                    variant="contained"
+                    onClick={() => navigate(`/loans?borrowerId=${id}`)}
+                  >
+                    View All Loans
+                  </Button>
                   <Button
                     variant="contained"
                     onClick={() => navigate('/add-loan', { state: { borrower } })}
