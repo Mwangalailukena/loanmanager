@@ -167,7 +167,24 @@ export default function BorrowerProfilePage() {
 
           <Grid item xs={12} md={8}>
             <Paper elevation={4} sx={{ p: 3, borderRadius: 3, mb: 3 }}>
-              <Typography variant="h6" fontWeight="bold" gutterBottom>Associated Loans</Typography>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                <Typography variant="h6" fontWeight="bold">Associated Loans</Typography>
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    variant="contained"
+                    onClick={() => navigate('/add-loan', { state: { borrower } })}
+                  >
+                    Add Loan
+                  </Button>
+                  <Button
+                    variant="contained"
+                    color="success"
+                    onClick={() => navigate('/add-payment', { state: { borrowerId: borrower.id } })}
+                  >
+                    Add Payment
+                  </Button>
+                </Stack>
+              </Stack>
               {associatedLoans.length > 0 ? (
                 <List disablePadding>
                   {associatedLoans.map((loan) => (

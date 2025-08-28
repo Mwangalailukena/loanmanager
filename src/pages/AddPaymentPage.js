@@ -1,3 +1,4 @@
+import { useLocation, useNavigate } from "react-router-dom";
 import React, { useState, useEffect } from "react";
 import {
   Box,
@@ -34,6 +35,8 @@ export default function AddPaymentPage() {
   const theme = useTheme();
   const { loans, addPayment, loadingLoans } = useFirestore();
   const showSnackbar = useSnackbar();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const [selectedLoan, setSelectedLoan] = useState(null);
   const [paymentAmount, setPaymentAmount] = useState("");
@@ -41,6 +44,23 @@ export default function AddPaymentPage() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
+  const [filteredLoans, setFilteredLoans] = useState([]);
+
+  useEffect(() => {
+    const activeLoans = loans.filter(loan => loan.status === "Active");
+    const borrowerId = location.state?.borrowerId;
+
+    if (borrowerId) {
+      const borrowerLoans = activeLoans.filter(loan => loan.borrowerId === borrowerId);
+      setFilteredLoans(borrowerLoans);
+      // Pre-select the loan if there's only one for this borrower
+      if (borrowerLoans.length === 1) {
+        setSelectedLoan(borrowerLoans[0]);
+      }
+    } else {
+      setFilteredLoans(activeLoans);
+    }
+  }, [loans, location.state]);
 
   const setFieldError = (field, message) => {
     setFieldErrors(prev => ({ ...prev, [field]: message }));
@@ -88,10 +108,14 @@ export default function AddPaymentPage() {
       await addPayment(selectedLoan.id, numAmount);
       showSnackbar(`Payment of ZMW ${numAmount.toFixed(2).toLocaleString()} added for ${selectedLoan.borrower}!`, "success");
 
-      setSelectedLoan(null);
-      setPaymentAmount("");
-      setFieldErrors({});
-      setGeneralError("");
+      if (location.state?.borrowerId) {
+        navigate(-1); // Go back to the previous page
+      } else {
+        setSelectedLoan(null);
+        setPaymentAmount("");
+        setFieldErrors({});
+        setGeneralError("");
+      }
     } catch (err) {
       console.error("Payment submission failed:", err);
       setGeneralError("Failed to add payment. Please try again.");
@@ -145,7 +169,7 @@ export default function AddPaymentPage() {
           <Autocomplete
             sx={textFieldStyles}
             id="loan-borrower-search"
-            options={loans.filter(loan => loan.status === "Active")}
+            options={filteredLoans}
             getOptionLabel={(option) => option.borrower}
             value={selectedLoan}
             onChange={(e, newValue) => setSelectedLoan(newValue)}

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Box,
   TextField,
@@ -50,7 +50,7 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 // Other imports
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { useSnackbar } from "../components/SnackbarProvider";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 import dayjs from "dayjs";
 import Papa from "papaparse";
@@ -158,6 +158,7 @@ function AutoLoanForm() {
   const { addLoan, addActivityLog, settings, borrowers } = useFirestore(); // Get borrowers
   const showSnackbar = useSnackbar();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [activeStep, setActiveStep] = useState(0);
 
@@ -175,6 +176,12 @@ function AutoLoanForm() {
   const [processedCount, setProcessedCount] = useState(0);
 
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (location.state?.borrower) {
+      setSelectedBorrowerId(location.state.borrower.id);
+    }
+  }, [location.state]);
 
   const interestRates = settings?.interestRates || {
     1: 0.15,
@@ -267,12 +274,17 @@ function AutoLoanForm() {
         navigator.vibrate([100, 50, 100]);
       }
 
-      setSelectedBorrowerId("");
-      setAmount("");
-      setInterestDuration(1);
-      setActiveStep(0);
-      setBorrowerError("");
-      setAmountError("");
+      if (location.state?.borrower) {
+        navigate(-1); // Go back to the previous page
+      } else {
+        // Reset form if not coming from a specific borrower profile
+        setSelectedBorrowerId("");
+        setAmount("");
+        setInterestDuration(1);
+        setActiveStep(0);
+        setBorrowerError("");
+        setAmountError("");
+      }
 
     } catch (err) {
       console.error("Loan creation failed:", err);
@@ -652,6 +664,7 @@ function ManualLoanForm() {
   const { addLoan, addActivityLog, borrowers } = useFirestore();
   const showSnackbar = useSnackbar();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [activeStep, setActiveStep] = useState(0);
 
@@ -669,6 +682,12 @@ function ManualLoanForm() {
   const [startDateError, setStartDateError] = useState("");
   const [dueDateError, setDueDateError] = useState("");
   const [manualInterestRateError, setManualInterestRateError] = useState("");
+
+  useEffect(() => {
+    if (location.state?.borrower) {
+      setSelectedBorrowerId(location.state.borrower.id);
+    }
+  }, [location.state]);
 
   const calculateInterest = (principal, rate) => principal * (rate / 100);
   const handleAmountBlur = () => {
@@ -775,17 +794,21 @@ function ManualLoanForm() {
         navigator.vibrate([100, 50, 100]);
       }
       
-      setSelectedBorrowerId("");
-      setAmount("");
-      setStartDate(dayjs());
-      setDueDate(dayjs().add(1, 'week'));
-      setManualInterestRate("");
-      setActiveStep(0);
-      setBorrowerError("");
-      setAmountError("");
-      setStartDateError("");
-      setDueDateError("");
-      setManualInterestRateError("");
+      if (location.state?.borrower) {
+        navigate(-1); // Go back to the previous page
+      } else {
+        setSelectedBorrowerId("");
+        setAmount("");
+        setStartDate(dayjs());
+        setDueDate(dayjs().add(1, 'week'));
+        setManualInterestRate("");
+        setActiveStep(0);
+        setBorrowerError("");
+        setAmountError("");
+        setStartDateError("");
+        setDueDateError("");
+        setManualInterestRateError("");
+      }
 
     } catch (err) {
       console.error("Manual loan creation failed:", err);
