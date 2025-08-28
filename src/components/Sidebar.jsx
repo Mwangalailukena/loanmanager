@@ -8,6 +8,7 @@ import ListAltIcon from "@mui/icons-material/ListAlt";
 import HistoryIcon from "@mui/icons-material/History";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import AssessmentIcon from "@mui/icons-material/Assessment";
+import PeopleIcon from '@mui/icons-material/People';
 
 const drawerWidth = 220;
 
@@ -20,6 +21,7 @@ const Sidebar = () => {
     { text: "Dashboard", icon: <DashboardIcon />, path: "/dashboard" },
     { text: "Add Loan", icon: <AddIcon />, path: "/add-loan" },
     { text: "Add Payment", icon: <AttachMoneyIcon />, path: "/add-payment" },
+    { text: "Borrowers", icon: <PeopleIcon />, path: "/borrowers" },
     { text: "Loan Records", icon: <ListAltIcon />, path: "/loans" },
     { text: "Reports", icon: <AssessmentIcon />, path: "/reports" },
     { text: "Activity", icon: <HistoryIcon />, path: "/activity" },

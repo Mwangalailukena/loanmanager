@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef } from "react";
 import {
   Box,
   TextField,
@@ -29,12 +29,13 @@ import {
   StepConnector,
   stepConnectorClasses,
   styled,
+  Divider,
 } from "@mui/material";
 import WarningIcon from "@mui/icons-material/Warning";
-import ContactPhoneIcon from "@mui/icons-material/ContactPhone";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import CloseIcon from "@mui/icons-material/Close";
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import AddIcon from '@mui/icons-material/Add';
 
 // Custom icons for the stepper
 import AssignmentIcon from '@mui/icons-material/Assignment';
@@ -49,6 +50,7 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 // Other imports
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { useSnackbar } from "../components/SnackbarProvider";
+import { useNavigate } from "react-router-dom";
 
 import dayjs from "dayjs";
 import Papa from "papaparse";
@@ -153,13 +155,13 @@ const CustomStepConnector = styled(StepConnector)(({ theme }) => ({
  */
 function AutoLoanForm() {
   const theme = useTheme();
-  const { addLoan, addActivityLog, settings } = useFirestore();
+  const { addLoan, addActivityLog, settings, borrowers } = useFirestore(); // Get borrowers
   const showSnackbar = useSnackbar();
+  const navigate = useNavigate();
 
   const [activeStep, setActiveStep] = useState(0);
 
-  const [borrower, setBorrower] = useState("");
-  const [phone, setPhone] = useState("");
+  const [selectedBorrowerId, setSelectedBorrowerId] = useState(""); // New state
   const [amount, setAmount] = useState("");
   const [interestDuration, setInterestDuration] = useState(1);
   const [error, setError] = useState("");
@@ -168,60 +170,11 @@ function AutoLoanForm() {
   const [openImportDialog, setOpenImportDialog] = useState(false);
 
   const [borrowerError, setBorrowerError] = useState("");
-  const [phoneError, setPhoneError] = useState("");
   const [amountError, setAmountError] = useState("");
   const [csvErrors, setCsvErrors] = useState([]);
   const [processedCount, setProcessedCount] = useState(0);
 
-  const [contactPickerSupported, setContactPickerSupported] = useState(false);
   const fileInputRef = useRef(null);
-
-  useEffect(() => {
-    if ("contacts" in navigator && "select" in navigator.contacts) {
-      setContactPickerSupported(true);
-    } else {
-      console.warn("Contact Picker API not supported in this browser or context.");
-    }
-  }, []);
-
-  const handleSelectContact = async () => {
-    if (!contactPickerSupported) {
-      showSnackbar("Your browser does not support picking contacts directly.", "warning");
-      return;
-    }
-    setLoading(true);
-    setError("");
-
-    try {
-      const properties = ["name", "tel"];
-      const options = { multiple: false };
-      const contacts = await navigator.contacts.select(properties, options);
-
-      if (contacts && contacts.length > 0) {
-        const selectedContact = contacts[0];
-        if (selectedContact.name && selectedContact.name.length > 0) {
-          setBorrower(selectedContact.name.join(" "));
-        }
-        if (selectedContact.tel && selectedContact.tel.length > 0) {
-          setPhone(selectedContact.tel[0].replace(/\D/g, ""));
-        }
-        showSnackbar("Contact details imported!", "success");
-      } else {
-        showSnackbar("No contact was selected.", "info");
-      }
-    } catch (err) {
-      console.error("Error accessing contacts:", err);
-      if (err.name === "NotAllowedError" || err.name === "SecurityError") {
-        showSnackbar("Permission denied to access contacts. Please grant access in your browser settings.", "error");
-      } else if (err.name === "AbortError") {
-        showSnackbar("Contact selection cancelled.", "info");
-      } else {
-        showSnackbar("Failed to access contacts. " + (err.message || ""), "error");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const interestRates = settings?.interestRates || {
     1: 0.15,
@@ -231,22 +184,6 @@ function AutoLoanForm() {
   };
 
   const calculateInterest = (principal, weeks) => principal * (interestRates[weeks] || 0);
-
-  const handleBorrowerBlur = () => {
-    if (!borrower.trim() || !/^[a-zA-Z\s]{2,50}$/.test(borrower.trim())) {
-      setBorrowerError("Borrower name must be 2-50 characters, containing only letters and spaces.");
-    } else {
-      setBorrowerError("");
-    }
-  };
-
-  const handlePhoneBlur = () => {
-    if (!phone.trim() || !/^\d{10}$/.test(phone.trim())) {
-      setPhoneError("Phone number must be exactly 10 digits.");
-    } else {
-      setPhoneError("");
-    }
-  };
 
   const handleAmountBlur = () => {
     const numAmount = Number(amount);
@@ -260,10 +197,11 @@ function AutoLoanForm() {
   const validateStep = (step) => {
     let isValid = true;
     if (step === 0) {
-      handleBorrowerBlur();
-      handlePhoneBlur();
-      if (borrowerError || phoneError || !borrower.trim() || !phone.trim()) {
+      if (!selectedBorrowerId) {
+        setBorrowerError("Please select a borrower.");
         isValid = false;
+      } else {
+        setBorrowerError("");
       }
     } else if (step === 1) {
       handleAmountBlur();
@@ -286,8 +224,16 @@ function AutoLoanForm() {
     setActiveStep((prevActiveStep) => prevActiveStep - 1);
   };
 
+  const selectedBorrower = borrowers.find(b => b.id === selectedBorrowerId);
+
   const handleSubmit = async () => {
     setError("");
+
+    if (!validateStep(0) || !validateStep(1)) {
+        showSnackbar("Please correct the errors before submitting.", "error");
+        return;
+    }
+
     setLoading(true);
 
     const principal = Number(amount);
@@ -298,8 +244,7 @@ function AutoLoanForm() {
 
     try {
       const loanDocRef = await addLoan({
-        borrower,
-        phone,
+        borrowerId: selectedBorrowerId,
         principal,
         interest,
         totalRepayable,
@@ -312,7 +257,7 @@ function AutoLoanForm() {
 
       await addActivityLog({
         action: "Loan Created",
-        details: `Loan created for ${borrower} (ZMW ${principal.toLocaleString()}) [Loan ID: ${loanDocRef.id}]`,
+        details: `Loan created for ${selectedBorrower?.name || 'Unknown'} (ZMW ${principal.toLocaleString()}) [Loan ID: ${loanDocRef.id}]`,
         timestamp: new Date().toISOString(),
       });
 
@@ -322,20 +267,18 @@ function AutoLoanForm() {
         navigator.vibrate([100, 50, 100]);
       }
 
-      setLoading(false); // Reset loading state on success
-
-      setBorrower("");
-      setPhone("");
+      setSelectedBorrowerId("");
       setAmount("");
       setInterestDuration(1);
       setActiveStep(0);
       setBorrowerError("");
-      setPhoneError("");
       setAmountError("");
+
     } catch (err) {
       console.error("Loan creation failed:", err);
       setError("Failed to add loan. Please try again.");
-      setLoading(false); // Also reset loading on failure
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -482,47 +425,33 @@ function AutoLoanForm() {
       case 0:
         return (
           <Stack spacing={1.5} sx={{ py: 1.5 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <TextField
-                label="Borrower Name"
-                value={borrower}
-                onChange={(e) => setBorrower(e.target.value)}
-                onBlur={handleBorrowerBlur}
-                fullWidth
-                required
-                inputProps={{ maxLength: 50 }}
-                error={!!borrowerError}
-                helperText={borrowerError}
-                sx={textFieldStyles}
-              />
-              {contactPickerSupported ? (
-                <Tooltip title="Import from device contacts">
-                  <IconButton color="secondary" onClick={handleSelectContact} disabled={loading || importLoading} aria-label="import contact" size="small">
-                    <ContactPhoneIcon />
-                  </IconButton>
-                </Tooltip>
-              ) : (
-                <Tooltip title="Your browser does not support the Contact Picker API.">
-                  <span>
-                    <IconButton color="primary" disabled aria-label="import contact not supported" size="small">
-                      <ContactPhoneIcon />
-                    </IconButton>
-                  </span>
-                </Tooltip>
-              )}
-            </Box>
             <TextField
-              label="Phone Number"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              onBlur={handlePhoneBlur}
+              select
+              label="Select Borrower"
+              value={selectedBorrowerId}
+              onChange={(e) => setSelectedBorrowerId(e.target.value)}
               fullWidth
               required
-              inputProps={{ maxLength: 10, inputMode: "numeric", pattern: "[0-9]*" }}
-              error={!!phoneError}
-              helperText={phoneError}
+              error={!!borrowerError}
+              helperText={borrowerError || "Select a borrower or create a new one."}
               sx={textFieldStyles}
-            />
+            >
+              <MenuItem value="" disabled>
+                <em>Select a borrower...</em>
+              </MenuItem>
+              {borrowers.map((borrower) => (
+                <MenuItem key={borrower.id} value={borrower.id}>
+                  {borrower.name} - {borrower.phone}
+                </MenuItem>
+              ))}
+              <Divider />
+              <MenuItem onClick={() => navigate('/add-borrower')}>
+                <ListItemIcon>
+                  <AddIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Create New Borrower</ListItemText>
+              </MenuItem>
+            </TextField>
           </Stack>
         );
       case 1:
@@ -586,8 +515,8 @@ function AutoLoanForm() {
           <Stack spacing={1.5} sx={{ py: 1.5 }}>
             <Paper variant="outlined" sx={{ p: 1.5, width: '100%' }}>
               <Typography variant="subtitle2" gutterBottom>Review Details</Typography>
-              <Typography variant="caption" display="block"><strong>Borrower:</strong> {borrower}</Typography>
-              <Typography variant="caption" display="block"><strong>Phone:</strong> {phone}</Typography>
+              <Typography variant="caption" display="block"><strong>Borrower:</strong> {selectedBorrower?.name}</Typography>
+              <Typography variant="caption" display="block"><strong>Phone:</strong> {selectedBorrower?.phone}</Typography>
               <Typography variant="caption" display="block"><strong>Principal:</strong> ZMW {displayPrincipal.toLocaleString()}</Typography>
               <Typography variant="caption" display="block"><strong>Interest Duration:</strong> {interestDuration} week{interestDuration > 1 ? 's' : ''}</Typography>
               <Typography variant="caption" display="block"><strong>Calculated Interest:</strong> ZMW {displayInterest.toLocaleString()}</Typography>
@@ -720,13 +649,13 @@ function AutoLoanForm() {
  */
 function ManualLoanForm() {
   const theme = useTheme();
-  const { addLoan, addActivityLog } = useFirestore();
+  const { addLoan, addActivityLog, borrowers } = useFirestore();
   const showSnackbar = useSnackbar();
+  const navigate = useNavigate();
 
   const [activeStep, setActiveStep] = useState(0);
 
-  const [borrower, setBorrower] = useState("");
-  const [phone, setPhone] = useState("");
+  const [selectedBorrowerId, setSelectedBorrowerId] = useState("");
   const [amount, setAmount] = useState("");
   const [startDate, setStartDate] = useState(dayjs());
   const [dueDate, setDueDate] = useState(dayjs().add(1, 'week'));
@@ -736,75 +665,12 @@ function ManualLoanForm() {
   const [loading, setLoading] = useState(false);
 
   const [borrowerError, setBorrowerError] = useState("");
-  const [phoneError, setPhoneError] = useState("");
   const [amountError, setAmountError] = useState("");
   const [startDateError, setStartDateError] = useState("");
   const [dueDateError, setDueDateError] = useState("");
   const [manualInterestRateError, setManualInterestRateError] = useState("");
 
-  const [contactPickerSupported, setContactPickerSupported] = useState(false);
-  useEffect(() => {
-    if ("contacts" in navigator && "select" in navigator.contacts) {
-      setContactPickerSupported(true);
-    } else {
-      console.warn("Contact Picker API not supported in this browser or context.");
-    }
-  }, []);
-
-  const handleSelectContact = async () => {
-    if (!contactPickerSupported) {
-      showSnackbar("Your browser does not support picking contacts directly.", "warning");
-      return;
-    }
-    setLoading(true);
-    setError("");
-
-    try {
-      const properties = ["name", "tel"];
-      const options = { multiple: false };
-      const contacts = await navigator.contacts.select(properties, options);
-      if (contacts && contacts.length > 0) {
-        const selectedContact = contacts[0];
-        if (selectedContact.name && selectedContact.name.length > 0) {
-          setBorrower(selectedContact.name.join(" "));
-        }
-        if (selectedContact.tel && selectedContact.tel.length > 0) {
-          setPhone(selectedContact.tel[0].replace(/\D/g, ""));
-        }
-        showSnackbar("Contact details imported!", "success");
-      } else {
-        showSnackbar("No contact was selected.", "info");
-      }
-    } catch (err) {
-      console.error("Error accessing contacts:", err);
-      if (err.name === "NotAllowedError" || err.name === "SecurityError") {
-        showSnackbar("Permission denied to access contacts. Please grant access in your browser settings.", "error");
-      } else if (err.name === "AbortError") {
-        showSnackbar("Contact selection cancelled.", "info");
-      } else {
-        showSnackbar("Failed to access contacts. " + (err.message || ""), "error");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const calculateInterest = (principal, rate) => principal * (rate / 100);
-
-  const handleBorrowerBlur = () => {
-    if (!borrower.trim() || !/^[a-zA-Z\s]{2,50}$/.test(borrower.trim())) {
-      setBorrowerError("Borrower name must be 2-50 characters, containing only letters and spaces.");
-    } else {
-      setBorrowerError("");
-    }
-  };
-  const handlePhoneBlur = () => {
-    if (!phone.trim() || !/^\d{10}$/.test(phone.trim())) {
-      setPhoneError("Phone number must be exactly 10 digits.");
-    } else {
-      setPhoneError("");
-    }
-  };
   const handleAmountBlur = () => {
     const numAmount = Number(amount);
     if (isNaN(numAmount) || numAmount <= 0) {
@@ -825,10 +691,11 @@ function ManualLoanForm() {
   const validateStep = (step) => {
     let isValid = true;
     if (step === 0) {
-      handleBorrowerBlur();
-      handlePhoneBlur();
-      if (borrowerError || phoneError || !borrower.trim() || !phone.trim()) {
+      if (!selectedBorrowerId) {
+        setBorrowerError("Please select a borrower.");
         isValid = false;
+      } else {
+        setBorrowerError("");
       }
     } else if (step === 1) {
       handleAmountBlur();
@@ -863,8 +730,16 @@ function ManualLoanForm() {
     setActiveStep((prevActiveStep) => prevActiveStep - 1);
   };
 
+  const selectedBorrower = borrowers.find(b => b.id === selectedBorrowerId);
+
   const handleSubmit = async () => {
     setError("");
+
+    if (!validateStep(0) || !validateStep(1)) {
+        showSnackbar("Please correct the errors before submitting.", "error");
+        return;
+    }
+
     setLoading(true);
 
     const principal = Number(amount);
@@ -877,8 +752,7 @@ function ManualLoanForm() {
 
     try {
       const loanDocRef = await addLoan({
-        borrower,
-        phone,
+        borrowerId: selectedBorrowerId,
         principal,
         interest,
         totalRepayable,
@@ -891,7 +765,7 @@ function ManualLoanForm() {
 
       await addActivityLog({
         action: "Loan Created (Manual)",
-        details: `Manual loan created for ${borrower} (ZMW ${principal.toLocaleString()}) [Loan ID: ${loanDocRef.id}]`,
+        details: `Manual loan created for ${selectedBorrower?.name || 'Unknown'} (ZMW ${principal.toLocaleString()}) [Loan ID: ${loanDocRef.id}]`,
         timestamp: new Date().toISOString(),
       });
 
@@ -901,25 +775,23 @@ function ManualLoanForm() {
         navigator.vibrate([100, 50, 100]);
       }
       
-      setLoading(false); // Reset loading state on success
-
-      setBorrower("");
-      setPhone("");
+      setSelectedBorrowerId("");
       setAmount("");
       setStartDate(dayjs());
       setDueDate(dayjs().add(1, 'week'));
       setManualInterestRate("");
       setActiveStep(0);
       setBorrowerError("");
-      setPhoneError("");
       setAmountError("");
       setStartDateError("");
       setDueDateError("");
       setManualInterestRateError("");
+
     } catch (err) {
       console.error("Manual loan creation failed:", err);
       setError("Failed to add manual loan. Please try again.");
-      setLoading(false); // Also reset loading on failure
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -934,47 +806,33 @@ function ManualLoanForm() {
       case 0:
         return (
           <Stack spacing={1.5} sx={{ py: 1.5 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <TextField
-                label="Borrower Name"
-                value={borrower}
-                onChange={(e) => setBorrower(e.target.value)}
-                onBlur={handleBorrowerBlur}
-                fullWidth
-                required
-                inputProps={{ maxLength: 50 }}
-                error={!!borrowerError}
-                helperText={borrowerError}
-                sx={textFieldStyles}
-              />
-              {contactPickerSupported ? (
-                <Tooltip title="Import from device contacts">
-                  <IconButton color="secondary" onClick={handleSelectContact} disabled={loading} aria-label="import contact" size="small">
-                    <ContactPhoneIcon />
-                  </IconButton>
-                </Tooltip>
-              ) : (
-                <Tooltip title="Your browser does not support the Contact Picker API.">
-                  <span>
-                    <IconButton color="primary" disabled aria-label="import contact not supported" size="small">
-                      <ContactPhoneIcon />
-                    </IconButton>
-                  </span>
-                </Tooltip>
-              )}
-            </Box>
             <TextField
-              label="Phone Number"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              onBlur={handlePhoneBlur}
+              select
+              label="Select Borrower"
+              value={selectedBorrowerId}
+              onChange={(e) => setSelectedBorrowerId(e.target.value)}
               fullWidth
               required
-              inputProps={{ maxLength: 10, inputMode: "numeric", pattern: "[0-9]*" }}
-              error={!!phoneError}
-              helperText={phoneError}
+              error={!!borrowerError}
+              helperText={borrowerError || "Select a borrower or create a new one."}
               sx={textFieldStyles}
-            />
+            >
+              <MenuItem value="" disabled>
+                <em>Select a borrower...</em>
+              </MenuItem>
+              {borrowers.map((borrower) => (
+                <MenuItem key={borrower.id} value={borrower.id}>
+                  {borrower.name} - {borrower.phone}
+                </MenuItem>
+              ))}
+              <Divider />
+              <MenuItem onClick={() => navigate('/add-borrower')}>
+                <ListItemIcon>
+                  <AddIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Create New Borrower</ListItemText>
+              </MenuItem>
+            </TextField>
           </Stack>
         );
       case 1:
@@ -1070,8 +928,8 @@ function ManualLoanForm() {
           <Stack spacing={1.5} sx={{ py: 1.5 }}>
             <Paper variant="outlined" sx={{ p: 1.5, width: '100%' }}>
               <Typography variant="subtitle2" gutterBottom>Review Details</Typography>
-              <Typography variant="caption" display="block"><strong>Borrower:</strong> {borrower}</Typography>
-              <Typography variant="caption" display="block"><strong>Phone:</strong> {phone}</Typography>
+              <Typography variant="caption" display="block"><strong>Borrower:</strong> {selectedBorrower?.name}</Typography>
+              <Typography variant="caption" display="block"><strong>Phone:</strong> {selectedBorrower?.phone}</Typography>
               <Typography variant="caption" display="block"><strong>Principal:</strong> ZMW {displayPrincipal.toLocaleString()}</Typography>
               <Typography variant="caption" display="block"><strong>Start Date:</strong> {startDate.format("YYYY-MM-DD")}</Typography>
               <Typography variant="caption" display="block"><strong>Due Date:</strong> {dueDate.format("YYYY-MM-DD")}</Typography>

@@ -19,6 +19,10 @@ const LazyLogin = lazy(() => import('./pages/Login'));
 const LazyRegister = lazy(() => import('./pages/Register'));
 const LazyForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 const LazyReportsPage = lazy(() => import('./pages/ReportsPage'));
+const LazyBorrowerListPage = lazy(() => import('./pages/BorrowerListPage'));
+const LazyAddBorrowerPage = lazy(() => import('./pages/AddBorrowerPage'));
+const LazyBorrowerProfilePage = lazy(() => import('./pages/BorrowerProfilePage'));
+const LazyEditBorrowerPage = lazy(() => import('./pages/EditBorrowerPage'));
 
 function AppRoutes({ darkMode, onToggleDarkMode }) {
   const location = useLocation();
@@ -30,14 +34,13 @@ function AppRoutes({ darkMode, onToggleDarkMode }) {
         <div key={location.pathname} className="page-transition">
           <Suspense
             fallback={
-              // The linear progress bar is placed at the top of the viewport
               <Box
                 sx={{
                   position: 'fixed',
                   top: 0,
                   left: 0,
                   width: '100%',
-                  zIndex: theme.zIndex.appBar + 1, // Ensures it's on top of everything
+                  zIndex: theme.zIndex.appBar + 1,
                 }}
               >
                 <LinearProgress color="secondary" />
@@ -48,6 +51,8 @@ function AppRoutes({ darkMode, onToggleDarkMode }) {
               <Route path="/login" element={<LazyLogin />} />
               <Route path="/register" element={<LazyRegister />} />
               <Route path="/forgot-password" element={<LazyForgotPassword />} />
+              
+              {/* Protected Routes */}
               <Route path="/dashboard" element={<ProtectedRoute><LazyDashboard /></ProtectedRoute>} />
               <Route path="/loans" element={<ProtectedRoute><LazyLoanList /></ProtectedRoute>} />
               <Route path="/add-loan" element={<ProtectedRoute><LazyAddLoanForm /></ProtectedRoute>} />
@@ -57,6 +62,13 @@ function AppRoutes({ darkMode, onToggleDarkMode }) {
               <Route path="/profile" element={<ProtectedRoute><LazyProfile /></ProtectedRoute>} />
               <Route path="/change-password" element={<ProtectedRoute><LazyChangePassword /></ProtectedRoute>} />
               <Route path="/reports" element={<ProtectedRoute><LazyReportsPage /></ProtectedRoute>} />
+
+              {/* Borrower Routes */}
+              <Route path="/borrowers" element={<ProtectedRoute><LazyBorrowerListPage /></ProtectedRoute>} />
+              <Route path="/add-borrower" element={<ProtectedRoute><LazyAddBorrowerPage /></ProtectedRoute>} />
+              <Route path="/borrowers/:id" element={<ProtectedRoute><LazyBorrowerProfilePage /></ProtectedRoute>} />
+              <Route path="/borrowers/:id/edit" element={<ProtectedRoute><LazyEditBorrowerPage /></ProtectedRoute>} />
+
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </Suspense>

@@ -3,17 +3,40 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // This rule allows anyone with your Firestore database reference to view, edit,
-    // and delete all data in your Firestore database. It is useful for getting
-    // started, but it is configured to expire after 30 days because it
-    // leaves your app open to attackers. At that time, all client
-    // requests to your Firestore database will be denied.
-    //
-    // Make sure to write security rules for your app before that time, or else
-    // all client requests to your Firestore database will be denied until you Update
-    // your rules
-    match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2025, 8, 22);
+    // Helper function to check ownership
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // Borrowers: Users can create, read, update, delete their own borrowers
+    match /borrowers/{borrowerId} {
+      allow read, update, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
+    }
+
+    // Loans: Users can manage their own loans
+    match /loans/{loanId} {
+      allow read, update, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
+    }
+
+    // Payments: Users can manage payments linked to their loans
+    match /payments/{paymentId} {
+       allow read, update, delete: if isOwner(get(/databases/$(database)/documents/loans/$(resource.data.loanId)).data.userId);
+       allow create: if isOwner(get(/databases/$(database)/documents/loans/$(request.resource.data.loanId)).data.userId);
+    }
+
+    // Settings: Read-only for clients, updatable via backend/console
+    match /settings/{config} {
+      allow read: if request.auth != null;
+      allow write: if false; // Or restrict to an admin role
+    }
+
+    // Activity Logs: Read-only for clients
+    match /activityLogs/{logId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null; // Allow users to create logs
+      allow update, delete: if false;
     }
   }
 }

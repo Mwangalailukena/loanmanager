@@ -1,0 +1,273 @@
+import React, { useState } from 'react';
+import { useParams, Link as RouterLink, useNavigate } from 'react-router-dom';
+import { useFirestore } from '../contexts/FirestoreProvider';
+import { useSnackbar } from '../components/SnackbarProvider';
+import {
+  Box,
+  Typography,
+  Paper,
+  CircularProgress,
+  List,
+  ListItem,
+  ListItemText,
+  IconButton,
+  Divider,
+  Avatar,
+  Stack,
+  Chip,
+  Button,
+  Card,
+  CardContent,
+  Grid,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  TextField,
+} from '@mui/material';
+import PersonIcon from '@mui/icons-material/Person';
+import PhoneIcon from '@mui/icons-material/Phone';
+import EmailIcon from '@mui/icons-material/Email';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import Fingerprint from '@mui/icons-material/Fingerprint';
+import HomeIcon from '@mui/icons-material/Home';
+import GroupAddIcon from '@mui/icons-material/GroupAdd';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+import GuarantorDialog from '../components/GuarantorDialog';
+import { useCreditScore } from '../hooks/useCreditScore';
+dayjs.extend(relativeTime);
+
+const getStatusChipColor = (status) => {
+  switch (status) {
+    case 'Paid':
+      return { backgroundColor: '#4CAF50', color: 'white' };
+    case 'Overdue':
+      return { backgroundColor: '#F44336', color: 'white' };
+    case 'Active':
+    default:
+      return { backgroundColor: '#2196F3', color: 'white' };
+  }
+};
+
+export default function BorrowerProfilePage() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const showSnackbar = useSnackbar();
+  const {
+    borrowers, loans, loading, deleteBorrower,
+    comments, addComment, deleteComment,
+    guarantors, deleteGuarantor
+  } = useFirestore();
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [newComment, setNewComment] = useState("");
+  const [guarantorDialogOpen, setGuarantorDialogOpen] = useState(false);
+  const [selectedGuarantor, setSelectedGuarantor] = useState(null);
+  const [deleteGuarantorConfirmOpen, setDeleteGuarantorConfirmOpen] = useState(false);
+
+  const borrower = borrowers.find((b) => b.id === id);
+  const associatedLoans = loans.filter((loan) => loan.borrowerId === id);
+  const borrowerComments = comments.filter(comment => comment.borrowerId === id);
+  const borrowerGuarantors = guarantors.filter(g => g.borrowerId === id);
+
+  const { score, label, color } = useCreditScore(id, loans);
+
+  // --- Handlers ---
+  const handleOpenDeleteDialog = () => setDeleteDialogOpen(true);
+  const handleCloseDeleteDialog = () => setDeleteDialogOpen(false);
+  const handleDeleteConfirm = async () => {
+    await deleteBorrower(id);
+    showSnackbar('Borrower deleted successfully', 'success');
+    navigate('/borrowers');
+  };
+
+  const handleAddComment = async () => {
+    if (newComment.trim() === '') return;
+    await addComment(id, newComment);
+    setNewComment('');
+    showSnackbar('Comment added', 'success');
+  };
+
+  const handleDeleteComment = (commentId) => {
+    deleteComment(commentId);
+    showSnackbar('Comment deleted', 'success');
+  };
+
+  const handleOpenGuarantorDialog = (guarantor = null) => {
+    setSelectedGuarantor(guarantor);
+    setGuarantorDialogOpen(true);
+  };
+
+  const handleCloseGuarantorDialog = () => {
+    setGuarantorDialogOpen(false);
+    setSelectedGuarantor(null);
+  };
+
+  const handleOpenDeleteGuarantorConfirm = (guarantor) => {
+    setSelectedGuarantor(guarantor);
+    setDeleteGuarantorConfirmOpen(true);
+  };
+
+  const handleCloseDeleteGuarantorConfirm = () => {
+    setDeleteGuarantorConfirmOpen(false);
+    setSelectedGuarantor(null);
+  };
+
+  const handleDeleteGuarantor = async () => {
+    if (!selectedGuarantor) return;
+    await deleteGuarantor(selectedGuarantor.id);
+    showSnackbar('Guarantor deleted', 'success');
+    handleCloseDeleteGuarantorConfirm();
+  };
+
+  if (loading) {
+    return <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}><CircularProgress color="secondary" /></Box>;
+  }
+
+  if (!borrower) {
+    return (
+      <Paper sx={{ textAlign: 'center', p: 4, mt: 4, maxWidth: 600, mx: 'auto' }}>
+        <Typography variant="h6">Borrower not found.</Typography>
+        <Button component={RouterLink} to="/borrowers" sx={{ mt: 2 }}>Back to Borrowers List</Button>
+      </Paper>
+    );
+  }
+
+  return (
+    <>
+      <Box sx={{ maxWidth: 900, mx: 'auto', mt: 4 }}>
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={4}>
+            <Paper elevation={4} sx={{ p: 3, borderRadius: 3 }}>
+              <Stack direction="column" alignItems="center" spacing={2}>
+                <Avatar sx={{ width: 80, height: 80, bgcolor: 'secondary.main' }}><PersonIcon sx={{ fontSize: 50 }} /></Avatar>
+                <Typography variant="h5" fontWeight="bold" textAlign="center">{borrower.name}</Typography>
+                <Box sx={{ my: 2, textAlign: 'center' }}>
+                  <Chip label={label} sx={{ backgroundColor: color, color: 'white', fontWeight: 'bold' }} />
+                  <Typography variant="h3" fontWeight="bold" sx={{ mt: 1 }}>{score}</Typography>
+                  <Typography variant="caption" color="text.secondary">Credit Score</Typography>
+                </Box>
+                <Stack direction="row" spacing={1}>
+                  <Button variant="outlined" color="secondary" startIcon={<EditIcon />} component={RouterLink} to={`/borrowers/${id}/edit`}>Edit</Button>
+                  <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={handleOpenDeleteDialog}>Delete</Button>
+                </Stack>
+              </Stack>
+              <Divider sx={{ my: 2 }} />
+              <Stack spacing={1.5}>
+                <Stack direction="row" alignItems="center" spacing={1.5}><PhoneIcon color="action" /><Typography variant="body1">{borrower.phone}</Typography></Stack>
+                <Stack direction="row" alignItems="center" spacing={1.5}><EmailIcon color="action" /><Typography variant="body1">{borrower.email || 'No email provided'}</Typography></Stack>
+                {borrower.nationalId && <Stack direction="row" alignItems="center" spacing={1.5}><Fingerprint color="action" /><Typography variant="body1">{borrower.nationalId}</Typography></Stack>}
+                {borrower.address && <Stack direction="row" alignItems="center" spacing={1.5}><HomeIcon color="action" /><Typography variant="body1">{borrower.address}</Typography></Stack>}
+              </Stack>
+            </Paper>
+          </Grid>
+
+          <Grid item xs={12} md={8}>
+            <Paper elevation={4} sx={{ p: 3, borderRadius: 3, mb: 3 }}>
+              <Typography variant="h6" fontWeight="bold" gutterBottom>Associated Loans</Typography>
+              {associatedLoans.length > 0 ? (
+                <List disablePadding>
+                  {associatedLoans.map((loan) => (
+                    <Card key={loan.id} variant="outlined" sx={{ mb: 1.5 }}>
+                      <CardContent>
+                        <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                          <Box>
+                            <Typography variant="body2" color="text.secondary">{dayjs(loan.startDate).format('DD MMM YYYY')}</Typography>
+                            <Typography variant="h6" fontWeight="500">ZMW {Number(loan.principal).toLocaleString()}</Typography>
+                          </Box>
+                          <Chip label={loan.status} sx={getStatusChipColor(loan.status)} size="small" />
+                        </Stack>
+                        <Divider sx={{ my: 1 }} />
+                        <Stack direction="row" justifyContent="space-between" sx={{ fontSize: '0.875rem' }}>
+                          <Typography variant="body2">Total Repayable: <strong>ZMW {Number(loan.totalRepayable).toLocaleString()}</strong></Typography>
+                          <Typography variant="body2">Due: <strong>{dayjs(loan.dueDate).format('DD MMM YYYY')}</strong></Typography>
+                        </Stack>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </List>
+              ) : (
+                <Typography sx={{ textAlign: 'center', mt: 3, color: 'text.secondary' }}>This borrower has no associated loans.</Typography>
+              )}
+            </Paper>
+
+            <Paper elevation={4} sx={{ p: 3, borderRadius: 3, mb: 3 }}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                <Typography variant="h6" fontWeight="bold">Guarantors</Typography>
+                <Button variant="contained" startIcon={<GroupAddIcon />} onClick={() => handleOpenGuarantorDialog()}>Add Guarantor</Button>
+              </Stack>
+              <List disablePadding>
+                {borrowerGuarantors.length > 0 ? borrowerGuarantors.map(g => (
+                  <ListItem key={g.id} disablePadding divider>
+                    <ListItemText primary={g.name} secondary={`Phone: ${g.phone}`} />
+                    <Stack direction="row" spacing={1}>
+                      <IconButton onClick={() => handleOpenGuarantorDialog(g)}><EditIcon fontSize="small" /></IconButton>
+                      <IconButton onClick={() => handleOpenDeleteGuarantorConfirm(g)}><DeleteIcon fontSize="small" /></IconButton>
+                    </Stack>
+                  </ListItem>
+                )) : (
+                  <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ py: 2 }}>No guarantors added.</Typography>
+                )}
+              </List>
+            </Paper>
+
+            <Paper elevation={4} sx={{ p: 3, borderRadius: 3 }}>
+              <Typography variant="h6" fontWeight="bold" gutterBottom>Internal Comments</Typography>
+              <Stack spacing={2}>
+                <List disablePadding>
+                  {borrowerComments.length > 0 ? borrowerComments.map(comment => (
+                    <ListItem key={comment.id} disablePadding sx={{ borderBottom: '1px solid', borderColor: 'divider' }}>
+                      <ListItemText 
+                        primary={comment.text} 
+                        secondary={`Added ${dayjs(comment.createdAt?.toDate()).fromNow()}`}
+                      />
+                      <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteComment(comment.id)}>
+                        <DeleteIcon />
+                      </IconButton>
+                    </ListItem>
+                  )) : (
+                    <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ py: 2 }}>No comments yet.</Typography>
+                  )}
+                </List>
+                <Stack direction="row" spacing={1} sx={{ pt: 1 }}>
+                  <TextField 
+                    label="Add a new comment"
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    fullWidth
+                    multiline
+                    size="small"
+                  />
+                  <Button variant="contained" onClick={handleAddComment} sx={{ height: 'fit-content', whiteSpace: 'nowrap' }}>Add Comment</Button>
+                </Stack>
+              </Stack>
+            </Paper>
+          </Grid>
+        </Grid>
+      </Box>
+
+      <GuarantorDialog open={guarantorDialogOpen} onClose={handleCloseGuarantorDialog} borrowerId={id} guarantor={selectedGuarantor} />
+      
+      <Dialog open={deleteDialogOpen} onClose={handleCloseDeleteDialog}>
+        <DialogTitle>Confirm Borrower Deletion</DialogTitle>
+        <DialogContent><DialogContentText>Are you sure you want to delete this borrower? This action cannot be undone.</DialogContentText></DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDeleteDialog}>Cancel</Button>
+          <Button onClick={handleDeleteConfirm} color="error">Delete</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={deleteGuarantorConfirmOpen} onClose={handleCloseDeleteGuarantorConfirm}>
+        <DialogTitle>Confirm Guarantor Deletion</DialogTitle>
+        <DialogContent><DialogContentText>Are you sure you want to delete this guarantor? This action cannot be undone.</DialogContentText></DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDeleteGuarantorConfirm}>Cancel</Button>
+          <Button onClick={handleDeleteGuarantor} color="error">Delete</Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+}

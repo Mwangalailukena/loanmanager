@@ -11,7 +11,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import AddIcon from "@mui/icons-material/Add";
 import ListAltIcon from "@mui/icons-material/ListAlt";
-import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
+import PeopleIcon from '@mui/icons-material/People';
 
 export const BOTTOM_NAV_HEIGHT = 64;
 
@@ -32,7 +32,7 @@ const BottomNavBar = () => {
   const getValue = () => {
     if (location.pathname.startsWith("/dashboard")) return "/dashboard";
     if (location.pathname.startsWith("/add-loan")) return "/add-loan";
-    if (location.pathname.startsWith("/add-payment")) return "/add-payment";
+    if (location.pathname.startsWith("/borrowers")) return "/borrowers";
     if (location.pathname.startsWith("/loans")) return "/loans";
     return null;
   };
@@ -135,9 +135,9 @@ const BottomNavBar = () => {
           icon={<AddIcon />}
         />
         <BottomNavigationAction
-          label="Add Payment"
-          value="/add-payment"
-          icon={<AttachMoneyIcon />}
+          label="Borrowers"
+          value="/borrowers"
+          icon={<PeopleIcon />}
         />
         <BottomNavigationAction
           label="Loans"

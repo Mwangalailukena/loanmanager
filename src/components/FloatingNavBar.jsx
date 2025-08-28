@@ -34,6 +34,7 @@ import {
   History as HistoryIcon,
   LightMode as LightModeIcon,
   DarkMode as DarkModeIcon,
+  People as PeopleIcon,
 } from "@mui/icons-material";
 import { useLocation, useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
@@ -94,6 +95,7 @@ const FloatingNavBar = ({ onOpenLoanDetail, onSearchChange, darkMode, onToggleDa
 
   const navItems = [
     { text: "Dashboard", icon: <DashboardIcon />, path: "/dashboard" },
+    { text: "Borrowers", icon: <PeopleIcon />, path: "/borrowers" },
     { text: "Add Loan", icon: <AddIcon />, path: "/add-loan" },
     { text: "Add Payment", icon: <AttachMoneyIcon />, path: "/add-payment" },
     { text: "Loan Records", icon: <ListAltIcon />, path: "/loans" },

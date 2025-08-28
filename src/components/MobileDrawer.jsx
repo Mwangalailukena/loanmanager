@@ -35,7 +35,8 @@ import {
   Search as SearchIcon,
   Dashboard as DashboardIcon,
   AttachMoney as AttachMoneyIcon,
-  Add as AddIcon
+  Add as AddIcon,
+  People as PeopleIcon
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
@@ -131,6 +132,7 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onOpe
 
   const generalItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
+    { text: 'Borrowers', icon: <PeopleIcon />, path: '/borrowers' },
     { text: 'Loans', icon: <AttachMoneyIcon />, path: '/loans' },
     { text: 'Add Loan', icon: <AddIcon />, path: '/add-loan' },
     { text: 'Activity', icon: <HistoryIcon />, path: '/activity' },

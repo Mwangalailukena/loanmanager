@@ -138,7 +138,7 @@ const LoanListSkeleton = ({ isMobile }) => {
 };
 
 export default function LoanList({ globalSearchTerm }) {
-  const { loans, loadingLoans, deleteLoan, addPayment, updateLoan, getPaymentsByLoanId, settings } = useFirestore();
+  const { loans, loadingLoans, deleteLoan, addPayment, updateLoan, getPaymentsByLoanId, settings, borrowers } = useFirestore();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [searchParams, setSearchParams] = useSearchParams();
@@ -161,8 +161,6 @@ export default function LoanList({ globalSearchTerm }) {
 
   const [editModal, setEditModal] = useState({ open: false, loan: null });
   const [editData, setEditData] = useState({
-    borrower: "",
-    phone: "",
     principal: "",
     interestDuration: 1,
     startDate: "",
@@ -188,6 +186,16 @@ export default function LoanList({ globalSearchTerm }) {
   };
 
   const calculateInterest = (principal, weeks) => principal * (interestRates[weeks] || 0);
+
+  const getDisplayBorrowerInfo = useCallback((loan) => {
+    if (loan.borrowerId) {
+      const borrower = borrowers.find(b => b.id === loan.borrowerId);
+      return { name: borrower?.name, phone: borrower?.phone };
+    } else {
+      // Old loan format
+      return { name: loan.borrower, phone: loan.phone };
+    }
+  }, [borrowers]);
 
   const calcStatus = (loan) => {
     const totalRepayable = Number(loan.totalRepayable || 0);
@@ -273,6 +281,8 @@ export default function LoanList({ globalSearchTerm }) {
   const filteredLoans = useMemo(() => {
     let result = loans
       .filter((loan) => {
+        const displayInfo = getDisplayBorrowerInfo(loan);
+
         if (monthFilter && dayjs(loan.startDate).format("YYYY-MM") !== monthFilter) return false;
         
         if (statusFilter !== "all" && calcStatus(loan).toLowerCase() !== statusFilter.toLowerCase()) return false;
@@ -280,8 +290,8 @@ export default function LoanList({ globalSearchTerm }) {
         if (
           activeSearchTerm && 
           !(
-            loan.borrower.toLowerCase().includes(activeSearchTerm.toLowerCase()) ||
-            loan.phone.toLowerCase().includes(activeSearchTerm.toLowerCase())
+            (displayInfo.name && displayInfo.name.toLowerCase().includes(activeSearchTerm.toLowerCase())) ||
+            (displayInfo.phone && displayInfo.phone.toLowerCase().includes(activeSearchTerm.toLowerCase()))
           )
         )
           return false;
@@ -290,12 +300,18 @@ export default function LoanList({ globalSearchTerm }) {
       
     if (sortKey) {
       result.sort((a, b) => {
+        const displayInfoA = getDisplayBorrowerInfo(a);
+        const displayInfoB = getDisplayBorrowerInfo(b);
+
         let valA = a[sortKey];
         let valB = b[sortKey];
 
-        if (sortKey === "borrower" || sortKey === "phone") {
-          valA = valA.toLowerCase();
-          valB = valB.toLowerCase();
+        if (sortKey === "borrower") {
+          valA = displayInfoA.name?.toLowerCase() || '';
+          valB = displayInfoB.name?.toLowerCase() || '';
+        } else if (sortKey === "phone") {
+          valA = displayInfoA.phone?.toLowerCase() || '';
+          valB = displayInfoB.phone?.toLowerCase() || '';
         } else if (sortKey.includes("Date")) {
           valA = dayjs(valA).unix();
           valB = dayjs(valB).unix();
@@ -314,7 +330,7 @@ export default function LoanList({ globalSearchTerm }) {
     }
 
     return result;
-  }, [loans, activeSearchTerm, statusFilter, monthFilter, sortKey, sortDirection]);
+  }, [loans, activeSearchTerm, statusFilter, monthFilter, sortKey, sortDirection, getDisplayBorrowerInfo]);
   
   const displayedLoans = useMemo(() => {
     if (useInfiniteScroll && isMobile) {
@@ -411,9 +427,10 @@ export default function LoanList({ globalSearchTerm }) {
   };
 
   const openEditModal = (loan) => {
+    const displayInfo = getDisplayBorrowerInfo(loan);
     setEditData({
-      borrower: loan.borrower,
-      phone: loan.phone,
+      borrower: displayInfo.name || "",
+      phone: displayInfo.phone || "",
       principal: loan.principal,
       interestDuration: loan.interestDuration || 1,
       startDate: loan.startDate,
@@ -425,8 +442,11 @@ export default function LoanList({ globalSearchTerm }) {
 
   const handleEditSubmit = async () => {
     const errors = {};
-    if (!editData.borrower) errors.borrower = "Borrower name is required.";
-    if (!editData.phone) errors.phone = "Phone number is required.";
+    // Validate borrower/phone only if it's an old loan format
+    if (!editModal.loan.borrowerId) {
+      if (!editData.borrower) errors.borrower = "Borrower name is required.";
+      if (!editData.phone) errors.phone = "Phone number is required.";
+    }
     if (isNaN(parseFloat(editData.principal)) || parseFloat(editData.principal) < 0) errors.principal = "Valid principal required.";
     if (!editData.startDate) errors.startDate = "Start date is required.";
 
@@ -443,8 +463,6 @@ export default function LoanList({ globalSearchTerm }) {
 
     const updatedLoan = {
       ...editModal.loan,
-      borrower: editData.borrower,
-      phone: editData.phone,
       principal: principalAmount,
       interest: calculatedInterestAmount,
       totalRepayable: calculatedTotalRepayable,
@@ -452,6 +470,13 @@ export default function LoanList({ globalSearchTerm }) {
       dueDate: editData.dueDate,
       interestDuration: selectedDuration,
     };
+
+    // Only update borrower and phone if it's an old loan format
+    if (!editModal.loan.borrowerId) {
+      updatedLoan.borrower = editData.borrower;
+      updatedLoan.phone = editData.phone;
+    }
+
     setIsSavingEdit(true);
     try {
       await updateLoan(editModal.loan.id, updatedLoan);
@@ -626,6 +651,8 @@ export default function LoanList({ globalSearchTerm }) {
                 {displayedLoans.map((loan) => {
                   const outstanding = (loan.totalRepayable || 0) - (loan.repaidAmount || 0);
                   const isPaid = calcStatus(loan).toLowerCase() === "paid";
+                  const displayInfo = getDisplayBorrowerInfo(loan);
+
                   return (
                     <motion.div
                       key={loan.id}
@@ -645,10 +672,10 @@ export default function LoanList({ globalSearchTerm }) {
                       <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
                         <Box flexGrow={1} minWidth={0}>
                           <Typography variant="subtitle2" fontWeight="bold" noWrap>
-                            {loan.borrower}
+                            {displayInfo.name}
                           </Typography>
                           <Typography variant="caption" color="textSecondary" noWrap>
-                            {loan.phone}
+                            {displayInfo.phone}
                           </Typography>
                         </Box>
                         <Stack alignItems="flex-end" spacing={0.5}>
@@ -855,6 +882,8 @@ export default function LoanList({ globalSearchTerm }) {
                     const outstanding = (loan.totalRepayable || 0) - (loan.repaidAmount || 0);
                     const isSelected = selectedLoanIds.includes(loan.id);
                     const isPaid = calcStatus(loan).toLowerCase() === "paid";
+                    const displayInfo = getDisplayBorrowerInfo(loan);
+
                     return (
                       <TableRow
                         key={loan.id}
@@ -868,7 +897,7 @@ export default function LoanList({ globalSearchTerm }) {
                           <Checkbox
                             checked={isSelected}
                             onChange={() => toggleSelectLoan(loan.id)}
-                            inputProps={{ "aria-label": `select loan ${loan.borrower}` }}
+                            inputProps={{ "aria-label": `select loan ${displayInfo.name}` }}
                             size="small"
                             sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }}
                           />
@@ -876,8 +905,8 @@ export default function LoanList({ globalSearchTerm }) {
                         <TableCell align="center" sx={{ py: 0.5 }}>
                           {(page - 1) * PAGE_SIZE + idx + 1}
                         </TableCell>
-                        <TableCell sx={{ py: 0.5 }}>{loan.borrower}</TableCell>
-                        <TableCell sx={{ py: 0.5 }}>{loan.phone}</TableCell>
+                        <TableCell sx={{ py: 0.5 }}>{displayInfo.name}</TableCell>
+                        <TableCell sx={{ py: 0.5 }}>{displayInfo.phone}</TableCell>
                         <TableCell align="right" sx={{ py: 0.5 }}>
                           {Number(loan.principal).toFixed(2)}
                         </TableCell>
@@ -1075,26 +1104,39 @@ export default function LoanList({ globalSearchTerm }) {
         <DialogContent sx={{ pb: 1 }}>
           {editErrors.form && <Alert severity="error" sx={{ mb: 2 }}>{editErrors.form}</Alert>}
           <Stack spacing={2} mt={1}>
-            <TextField
-              label="Borrower Name"
-              size="small"
-              fullWidth
-              value={editData.borrower}
-              onChange={(e) => setEditData({ ...editData, borrower: e.target.value })}
-              error={!!editErrors.borrower}
-              helperText={editErrors.borrower}
-              sx={filterInputStyles}
-            />
-            <TextField
-              label="Phone Number"
-              size="small"
-              fullWidth
-              value={editData.phone}
-              onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
-              error={!!editErrors.phone}
-              helperText={editErrors.phone}
-              sx={filterInputStyles}
-            />
+            {editModal.loan?.borrowerId ? (
+              <TextField
+                label="Borrower Name"
+                size="small"
+                fullWidth
+                value={borrowers.find(b => b.id === editModal.loan.borrowerId)?.name || ''}
+                disabled
+                sx={filterInputStyles}
+              />
+            ) : (
+              <>
+                <TextField
+                  label="Borrower Name"
+                  size="small"
+                  fullWidth
+                  value={editData.borrower}
+                  onChange={(e) => setEditData({ ...editData, borrower: e.target.value })}
+                  error={!!editErrors.borrower}
+                  helperText={editErrors.borrower}
+                  sx={filterInputStyles}
+                />
+                <TextField
+                  label="Phone Number"
+                  size="small"
+                  fullWidth
+                  value={editData.phone}
+                  onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
+                  error={!!editErrors.phone}
+                  helperText={editErrors.phone}
+                  sx={filterInputStyles}
+                />
+              </>
+            )}
             <TextField
               label="Principal Amount"
               size="small"

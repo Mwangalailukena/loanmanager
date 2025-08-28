@@ -36,6 +36,7 @@ import {
   Brightness7 as Brightness7Icon,
   AccountCircle as AccountCircleIcon,
   Assessment as AssessmentIcon,
+  People as PeopleIcon,
 } from "@mui/icons-material";
 import MenuIcon from "@mui/icons-material/Menu";
 import Slide from "@mui/material/Slide";
@@ -414,6 +415,22 @@ const AppBarTop = ({ onToggleDarkMode, darkMode, onOpenLoanDetail, onSearchChang
           </ListItemIcon>
           <Typography variant="body2" color="text.primary">
             Profile
+          </Typography>
+        </MenuItem>
+
+        <MenuItem 
+          onClick={() => navigate("/borrowers")}
+          sx={{
+            "&:hover": {
+              backgroundColor: alpha(theme.palette.primary.main, 0.1),
+            },
+          }}
+        >
+          <ListItemIcon>
+            <PeopleIcon fontSize="small" sx={{ color: theme.palette.text.secondary }} />
+          </ListItemIcon>
+          <Typography variant="body2" color="text.primary">
+            Borrowers
           </Typography>
         </MenuItem>
 
