@@ -27,6 +27,7 @@ import {
   TextField,
   Tabs,
   Tab,
+  CardHeader,
 } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
 import PhoneIcon from '@mui/icons-material/Phone';
@@ -41,6 +42,8 @@ import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import GuarantorDialog from '../components/GuarantorDialog';
 import { useCreditScore } from '../hooks/useCreditScore';
+import { useMemo } from 'react';
+
 
 dayjs.extend(relativeTime);
 
@@ -103,6 +106,30 @@ export default function BorrowerProfilePage() {
   const borrowerGuarantors = guarantors.filter(g => g.borrowerId === id);
 
   const { score, label, color } = useCreditScore(id, loans);
+
+  const financialStats = useMemo(() => {
+    const stats = associatedLoans.reduce((acc, loan) => {
+      acc.totalLoaned += Number(loan.principal || 0);
+      acc.totalRepaid += Number(loan.repaidAmount || 0);
+      acc.outstanding += Number(loan.totalRepayable || 0) - Number(loan.repaidAmount || 0);
+
+      if (loan.status === 'Paid') acc.paidLoans += 1;
+      else if (loan.status === 'Overdue') acc.overdueLoans += 1;
+      else if (loan.status === 'Active') acc.activeLoans += 1;
+
+      return acc;
+    }, {
+      totalLoaned: 0,
+      totalRepaid: 0,
+      outstanding: 0,
+      activeLoans: 0,
+      paidLoans: 0,
+      overdueLoans: 0,
+    });
+
+    stats.totalLoans = associatedLoans.length;
+    return stats;
+  }, [associatedLoans]);
 
   // --- Handlers ---
   const handleOpenDeleteDialog = () => setDeleteDialogOpen(true);
@@ -174,11 +201,6 @@ export default function BorrowerProfilePage() {
               <Stack direction="column" alignItems="center" spacing={2}>
                 <Avatar sx={{ width: 80, height: 80, bgcolor: 'secondary.main' }}><PersonIcon sx={{ fontSize: 50 }} /></Avatar>
                 <Typography variant="h5" fontWeight="bold" textAlign="center">{borrower.name}</Typography>
-                <Box sx={{ my: 2, textAlign: 'center' }}>
-                  <Chip label={label} sx={{ backgroundColor: color, color: 'white', fontWeight: 'bold' }} />
-                  <Typography variant="h3" fontWeight="bold" sx={{ mt: 1 }}>{score}</Typography>
-                  <Typography variant="caption" color="text.secondary">Credit Score</Typography>
-                </Box>
                 <Stack direction="row" spacing={1}>
                   <Button variant="outlined" color="primary" startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)}>Back</Button>
                   <Button variant="outlined" color="secondary" startIcon={<EditIcon />} component={RouterLink} to={`/borrowers/${id}/edit`}>Edit</Button>
@@ -199,114 +221,155 @@ export default function BorrowerProfilePage() {
             <Paper elevation={4} sx={{ borderRadius: 3 }}>
               <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
                 <Tabs value={activeTab} onChange={handleTabChange} aria-label="borrower profile tabs">
+                  <Tab label="Summary" />
                   <Tab label="Associated Loans" />
                   <Tab label="Guarantors" />
                   <Tab label="Internal Comments" />
                 </Tabs>
               </Box>
 
-              <TabPanel value={activeTab} index={0}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                  <Typography variant="h6" fontWeight="bold">Associated Loans</Typography>
-                  <Stack direction="row" spacing={1}>
-                    <Button
-                      variant="contained"
-                      onClick={() => navigate(`/loans?borrowerId=${id}`)}
-                    >
-                      View All Loans
-                    </Button>
-                    <Button
-                      variant="contained"
-                      onClick={() => navigate('/add-loan', { state: { borrower } })}
-                    >
-                      Add Loan
-                    </Button>
-                    <Button
-                      variant="contained"
-                      color="success"
-                      onClick={() => navigate('/add-payment', { state: { borrowerId: borrower.id } })}
-                    >
-                      Add Payment
-                    </Button>
+              <Box sx={{ minHeight: { xs: 'auto', md: 500 } }}>
+                <TabPanel value={activeTab} index={0}>
+                  <Grid container spacing={3}>
+                    <Grid item xs={12} md={6}>
+                      <Paper variant="outlined" sx={{ p: 3, textAlign: 'center', height: '100%' }}>
+                        <Typography variant="h6" fontWeight="bold">Credit Score</Typography>
+                        <Chip label={label} sx={{ backgroundColor: color, color: 'white', fontWeight: 'bold', my: 1 }} />
+                        <Typography variant="h2" fontWeight="bold" sx={{ mt: 1 }}>{score}</Typography>
+                      </Paper>
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
+                        <CardHeader title="Financial Snapshot" sx={{ p: 0, pb: 1 }} titleTypographyProps={{ fontWeight: 'bold', variant: 'h6' }} />
+                        <List dense disablePadding>
+                          <ListItem disableGutters>
+                            <ListItemText primary="Total Loaned" />
+                            <Typography variant="body2">ZMW {financialStats.totalLoaned.toLocaleString()}</Typography>
+                          </ListItem>
+                          <ListItem disableGutters>
+                            <ListItemText primary="Total Repaid" />
+                            <Typography variant="body2" color="success.main">ZMW {financialStats.totalRepaid.toLocaleString()}</Typography>
+                          </ListItem>
+                          <ListItem disableGutters>
+                            <ListItemText primary="Outstanding Balance" />
+                            <Typography variant="body1" fontWeight="bold" color="error.main">ZMW {financialStats.outstanding.toLocaleString()}</Typography>
+                          </ListItem>
+                        </List>
+                        <Divider sx={{ my: 1 }} />
+                        <List dense disablePadding>
+                          <ListItem disableGutters>
+                            <ListItemText primary="Total Loans" secondary={`${financialStats.paidLoans} Paid, ${financialStats.activeLoans} Active, ${financialStats.overdueLoans} Overdue`} />
+                            <Typography variant="h6" fontWeight="bold">{financialStats.totalLoans}</Typography>
+                          </ListItem>
+                        </List>
+                      </Paper>
+                    </Grid>
+                  </Grid>
+                </TabPanel>
+
+                <TabPanel value={activeTab} index={1}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                    <Typography variant="h6" fontWeight="bold">Associated Loans</Typography>
+                    <Stack direction="row" spacing={1}>
+                      <Button
+                        variant="contained"
+                        onClick={() => navigate(`/loans?borrowerId=${id}`)}
+                      >
+                        View All Loans
+                      </Button>
+                      <Button
+                        variant="contained"
+                        onClick={() => navigate('/add-loan', { state: { borrower } })}
+                      >
+                        Add Loan
+                      </Button>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        onClick={() => navigate('/add-payment', { state: { borrowerId: borrower.id } })}
+                      >
+                        Add Payment
+                      </Button>
+                    </Stack>
                   </Stack>
-                </Stack>
-                {associatedLoans.length > 0 ? (
-                  <List disablePadding>
-                    {associatedLoans.map((loan) => (
-                      <Card key={loan.id} variant="outlined" sx={{ mb: 1.5 }}>
-                        <CardContent>
-                          <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                            <Box>
-                              <Typography variant="body2" color="text.secondary">{dayjs(loan.startDate).format('DD MMM YYYY')}</Typography>
-                              <Typography variant="h6" fontWeight="500">ZMW {Number(loan.principal).toLocaleString()}</Typography>
-                            </Box>
-                            <Chip label={loan.status} sx={getStatusChipColor(loan.status)} size="small" />
-                          </Stack>
-                          <Divider sx={{ my: 1 }} />
-                          <Stack direction="row" justifyContent="space-between" sx={{ fontSize: '0.875rem' }}>
-                            <Typography variant="body2">Total Repayable: <strong>ZMW {Number(loan.totalRepayable).toLocaleString()}</strong></Typography>
-                            <Typography variant="body2">Due: <strong>{dayjs(loan.dueDate).format('DD MMM YYYY')}</strong></Typography>
-                          </Stack>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </List>
-                ) : (
-                  <Typography sx={{ textAlign: 'center', mt: 3, color: 'text.secondary' }}>This borrower has no associated loans.</Typography>
-                )}
-              </TabPanel>
-
-              <TabPanel value={activeTab} index={1}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                  <Typography variant="h6" fontWeight="bold">Guarantors</Typography>
-                  <Button variant="contained" startIcon={<GroupAddIcon />} onClick={() => handleOpenGuarantorDialog()}>Add Guarantor</Button>
-                </Stack>
-                <List disablePadding>
-                  {borrowerGuarantors.length > 0 ? borrowerGuarantors.map(g => (
-                    <ListItem key={g.id} disablePadding divider>
-                      <ListItemText primary={g.name} secondary={`Phone: ${g.phone}`} />
-                      <Stack direction="row" spacing={1}>
-                        <IconButton onClick={() => handleOpenGuarantorDialog(g)}><EditIcon fontSize="small" /></IconButton>
-                        <IconButton onClick={() => handleOpenDeleteGuarantorConfirm(g)}><DeleteIcon fontSize="small" /></IconButton>
-                      </Stack>
-                    </ListItem>
-                  )) : (
-                    <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ py: 2 }}>No guarantors added.</Typography>
+                  {associatedLoans.length > 0 ? (
+                    <List disablePadding>
+                      {associatedLoans.map((loan) => (
+                        <Card key={loan.id} variant="outlined" sx={{ mb: 1.5 }}>
+                          <CardContent>
+                            <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                              <Box>
+                                <Typography variant="body2" color="text.secondary">{dayjs(loan.startDate).format('DD MMM YYYY')}</Typography>
+                                <Typography variant="h6" fontWeight="500">ZMW {Number(loan.principal).toLocaleString()}</Typography>
+                              </Box>
+                              <Chip label={loan.status} sx={getStatusChipColor(loan.status)} size="small" />
+                            </Stack>
+                            <Divider sx={{ my: 1 }} />
+                            <Stack direction="row" justifyContent="space-between" sx={{ fontSize: '0.875rem' }}>
+                              <Typography variant="body2">Total Repayable: <strong>ZMW {Number(loan.totalRepayable).toLocaleString()}</strong></Typography>
+                              <Typography variant="body2">Due: <strong>{dayjs(loan.dueDate).format('DD MMM YYYY')}</strong></Typography>
+                            </Stack>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </List>
+                  ) : (
+                    <Typography sx={{ textAlign: 'center', mt: 3, color: 'text.secondary' }}>This borrower has no associated loans.</Typography>
                   )}
-                </List>
-              </TabPanel>
+                </TabPanel>
 
-              <TabPanel value={activeTab} index={2}>
-                <Typography variant="h6" fontWeight="bold" gutterBottom>Internal Comments</Typography>
-                <Stack spacing={2}>
+                <TabPanel value={activeTab} index={2}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                    <Typography variant="h6" fontWeight="bold">Guarantors</Typography>
+                    <Button variant="contained" startIcon={<GroupAddIcon />} onClick={() => handleOpenGuarantorDialog()}>Add Guarantor</Button>
+                  </Stack>
                   <List disablePadding>
-                    {borrowerComments.length > 0 ? borrowerComments.map(comment => (
-                      <ListItem key={comment.id} disablePadding sx={{ borderBottom: '1px solid', borderColor: 'divider' }}>
-                        <ListItemText 
-                          primary={comment.text} 
-                          secondary={`Added ${dayjs(comment.createdAt?.toDate()).fromNow()}`}
-                        />
-                        <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteComment(comment.id)}>
-                          <DeleteIcon />
-                        </IconButton>
+                    {borrowerGuarantors.length > 0 ? borrowerGuarantors.map(g => (
+                      <ListItem key={g.id} disablePadding divider>
+                        <ListItemText primary={g.name} secondary={`Phone: ${g.phone}`} />
+                        <Stack direction="row" spacing={1}>
+                          <IconButton onClick={() => handleOpenGuarantorDialog(g)}><EditIcon fontSize="small" /></IconButton>
+                          <IconButton onClick={() => handleOpenDeleteGuarantorConfirm(g)}><DeleteIcon fontSize="small" /></IconButton>
+                        </Stack>
                       </ListItem>
                     )) : (
-                      <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ py: 2 }}>No comments yet.</Typography>
+                      <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ py: 2 }}>No guarantors added.</Typography>
                     )}
                   </List>
-                  <Stack direction="row" spacing={1} sx={{ pt: 1 }}>
-                    <TextField 
-                      label="Add a new comment"
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      fullWidth
-                      multiline
-                      size="small"
-                    />
-                    <Button variant="contained" onClick={handleAddComment} sx={{ height: 'fit-content', whiteSpace: 'nowrap' }}>Add Comment</Button>
+                </TabPanel>
+
+                <TabPanel value={activeTab} index={3}>
+                  <Typography variant="h6" fontWeight="bold" gutterBottom>Internal Comments</Typography>
+                  <Stack spacing={2}>
+                    <List disablePadding>
+                      {borrowerComments.length > 0 ? borrowerComments.map(comment => (
+                        <ListItem key={comment.id} disablePadding sx={{ borderBottom: '1px solid', borderColor: 'divider' }}>
+                          <ListItemText 
+                            primary={comment.text} 
+                            secondary={`Added ${dayjs(comment.createdAt?.toDate()).fromNow()}`}
+                          />
+                          <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteComment(comment.id)}>
+                            <DeleteIcon />
+                          </IconButton>
+                        </ListItem>
+                      )) : (
+                        <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ py: 2 }}>No comments yet.</Typography>
+                      )}
+                    </List>
+                    <Stack direction="row" spacing={1} sx={{ pt: 1 }}>
+                      <TextField 
+                        label="Add a new comment"
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        fullWidth
+                        multiline
+                        size="small"
+                      />
+                      <Button variant="contained" onClick={handleAddComment} sx={{ height: 'fit-content', whiteSpace: 'nowrap' }}>Add Comment</Button>
+                    </Stack>
                   </Stack>
-                </Stack>
-              </TabPanel>
+                </TabPanel>
+              </Box>
             </Paper>
           </Grid>
         </Grid>
