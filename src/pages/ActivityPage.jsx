@@ -8,17 +8,27 @@ import {
   MenuItem,
   InputLabel,
   FormControl,
-  List,
-  ListItemButton,
-  ListItemAvatar,
-  Avatar,
   ListItemText,
   CircularProgress,
   Tooltip,
   Fade,
   Chip,
-  Badge,
+  Paper,
 } from "@mui/material";
+import {
+  Timeline,
+  TimelineItem,
+  TimelineSeparator,
+  TimelineConnector,
+  TimelineContent,
+  TimelineDot,
+} from "@mui/lab";
+import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
+import EditIcon from "@mui/icons-material/Edit";
+import PaymentIcon from "@mui/icons-material/Payment";
+import LoginIcon from "@mui/icons-material/Login";
+import DeleteIcon from "@mui/icons-material/Delete";
+import SettingsIcon from "@mui/icons-material/Settings";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme, useMediaQuery } from "@mui/material";
@@ -47,6 +57,15 @@ const actionChipColors = {
   login: "info",
   delete: "error",
   settings_update: "secondary",
+};
+
+const actionIcons = {
+  loan_creation: <AddCircleOutlineIcon />,
+  edit: <EditIcon />,
+  payment: <PaymentIcon />,
+  login: <LoginIcon />,
+  delete: <DeleteIcon />,
+  settings_update: <SettingsIcon />,
 };
 
 export default function ActivityPage() {
@@ -97,14 +116,6 @@ export default function ActivityPage() {
         part
       )
     );
-  }
-
-  // Helper to get initials from username/email
-  function getInitials(name) {
-    if (!name) return "?";
-    const parts = name.split(" ");
-    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-    return (parts[0][0] + parts[1][0]).toUpperCase();
   }
 
   const filteredLogs = useMemo(() => {
@@ -193,9 +204,9 @@ export default function ActivityPage() {
         </FormControl>
       </Stack>
 
-      <List>
+      <Timeline sx={{ p: 0 }}>
         <AnimatePresence>
-          {displayedLogs.map((log) => {
+          {displayedLogs.map((log, index) => {
             const userDisplay = log.user || "System";
             const actionDisplay =
               actionLabels[log.type] ??
@@ -219,22 +230,6 @@ export default function ActivityPage() {
               }
             }
 
-            const isNew =
-              dateISO &&
-              (() => {
-                try {
-                  const parsedDate =
-                    typeof dateISO === "string"
-                      ? parseISO(dateISO)
-                      : dateISO.toDate
-                      ? dateISO.toDate()
-                      : dateISO;
-                  return new Date() - parsedDate < 1000 * 60 * 60 * 24; // less than 24h old
-                } catch {
-                  return false;
-                }
-              })();
-
             return (
               <motion.div
                 key={log.id}
@@ -243,82 +238,64 @@ export default function ActivityPage() {
                 exit="exit"
                 variants={itemVariants}
               >
-                <ListItemButton
-                  divider
-                  sx={{
-                    py: 1.5,
-                    "&:hover": { bgcolor: theme.palette.action.hover },
-                    cursor: "default",
-                  }}
-                >
-                  <ListItemAvatar>
-                    <Badge
-                      color="error"
-                      variant="dot"
-                      overlap="circular"
-                      invisible={!isNew}
-                      anchorOrigin={{ vertical: "top", horizontal: "right" }}
-                    >
-                      <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
-                        {getInitials(userDisplay)}
-                      </Avatar>
-                    </Badge>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary={
-                      <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
-                        <Typography
-                          variant="subtitle1"
-                          component="span"
-                          fontWeight="bold"
-                        >
-                          {highlightText(userDisplay, search)}
-                        </Typography>
-
-                        <Tooltip
-                          title={actionDisplay}
-                          placement="top"
-                          TransitionComponent={Fade}
-                          arrow
-                        >
-                          <Chip
-                            label={actionDisplay}
-                            size="small"
-                            color={actionChipColors[log.type] || "default"}
-                            sx={{ textTransform: "capitalize", cursor: "help" }}
-                          />
-                        </Tooltip>
-                      </Box>
-                    }
-                    secondary={
-                      <>
-                        <Tooltip
-                          title={dateStr}
-                          arrow
-                          placement="top"
-                          TransitionComponent={Fade}
-                        >
-                          <Typography
-                            component="span"
-                            variant="caption"
-                            color="text.secondary"
-                            sx={{ display: "block", mb: 0.5, fontStyle: "italic" }}
-                          >
-                            {relativeTime}
-                          </Typography>
-                        </Tooltip>
-                        <Typography component="span" variant="body2">
-                          {highlightText(log.description ?? "", search)}
-                        </Typography>
-                      </>
-                    }
-                  />
-                </ListItemButton>
+                <TimelineItem sx={{ '&::before': { content: 'none' } }}>
+                  <TimelineSeparator>
+                    <TimelineDot color={actionChipColors[log.type] || "grey"} variant="outlined">
+                      {actionIcons[log.type] || null}
+                    </TimelineDot>
+                    {index < displayedLogs.length - 1 && <TimelineConnector />}
+                  </TimelineSeparator>
+                  <TimelineContent sx={{ py: '12px', px: 2 }}>
+                    <Paper elevation={2} sx={{ p: 2, borderRadius: 2 }}>
+                      <ListItemText
+                        primary={
+                          <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
+                            <Typography
+                              variant="subtitle1"
+                              component="span"
+                              fontWeight="bold"
+                            >
+                              {highlightText(userDisplay, search)}
+                            </Typography>
+                            <Chip
+                              label={actionDisplay}
+                              size="small"
+                              color={actionChipColors[log.type] || "default"}
+                              sx={{ textTransform: "capitalize" }}
+                            />
+                          </Box>
+                        }
+                        secondary={
+                          <>
+                            <Tooltip
+                              title={dateStr}
+                              arrow
+                              placement="top"
+                              TransitionComponent={Fade}
+                            >
+                              <Typography
+                                component="span"
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{ display: "block", mb: 0.5, fontStyle: "italic" }}
+                              >
+                                {relativeTime}
+                              </Typography>
+                            </Tooltip>
+                            <Typography component="span" variant="body2">
+                              {highlightText(log.description ?? "", search)}
+                            </Typography>
+                          </>
+                        }
+                      />
+                    </Paper>
+                  </TimelineContent>
+                </TimelineItem>
               </motion.div>
             );
           })}
         </AnimatePresence>
-      </List>
+      </Timeline>
 
       {!isMobile && filteredLogs.length > displayedLogs.length && (
         <Box textAlign="center" mt={2}>
