@@ -11,9 +11,6 @@ import InstallPrompt from './components/InstallPrompt';
 import SplashScreen from './components/SplashScreen';
 import NetworkStatus from './components/NetworkStatus';
 
-
-import { requestNotificationPermission } from './utils/notifications';
-
 function App() {
   const { darkMode, onToggleDarkMode } = useThemeContext();
   const { loading } = useAuth(); // Get the loading state from the AuthProvider
@@ -29,8 +26,6 @@ function App() {
         <NetworkStatus />
         <AppRoutes darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} />
         <InstallPrompt />
-        
-        <button onClick={requestNotificationPermission}>Enable Notifications</button>
       </FirestoreProvider>
     </Router>
   );

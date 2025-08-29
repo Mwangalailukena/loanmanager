@@ -12,6 +12,7 @@ import {
 } from "@mui/material";
 // Removed CloseIcon import as it's not used internally anymore
 import { useFirestore } from "../contexts/FirestoreProvider";
+import { requestNotificationPermission } from "../utils/notifications";
 
 // TabPanel component for managing tab content visibility and accessibility
 function TabPanel({ children, value, index, ...other }) {
@@ -198,6 +199,7 @@ export default function SettingsPage({ onClose }) {
       >
         <Tab label="Capital" {...a11yProps(0)} />
         <Tab label="Interest Rates" {...a11yProps(1)} />
+        <Tab label="Notifications" {...a11yProps(2)} />
       </Tabs>
 
       <form onSubmit={handleSubmit}>
@@ -256,8 +258,24 @@ export default function SettingsPage({ onClose }) {
             />
           </Stack>
         </TabPanel>
+        
+        {/* Notifications Tab Panel */}
+        <TabPanel value={tabIndex} index={2}>
+          <Typography variant="body1" gutterBottom>
+            Enable push notifications to stay updated on loan statuses and payments.
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={requestNotificationPermission}
+            sx={{ mt: 2 }}
+          >
+            Enable Notifications
+          </Button>
+        </TabPanel>
+
 
         {/* Action Buttons */}
+        {tabIndex !== 2 && (
         <Box mt={3} display="flex" gap={2}>
           <Button
             variant="contained"
@@ -279,6 +297,7 @@ export default function SettingsPage({ onClose }) {
             Reset
           </Button>
         </Box>
+        )}
       </form>
     </Box>
   );

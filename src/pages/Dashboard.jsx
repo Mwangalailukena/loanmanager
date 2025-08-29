@@ -7,10 +7,11 @@ import {
     TextField,
     Fab,
     Zoom,
-    Backdrop,
     CircularProgress,
     Tabs,
     Tab,
+    Grid,
+    Skeleton,
 } from "@mui/material";
 import { keyframes } from "@mui/system";
 import AddIcon from "@mui/icons-material/Add";
@@ -24,6 +25,7 @@ import { DragDropContext } from "@hello-pangea/dnd";
 import { BOTTOM_NAV_HEIGHT } from "../components/BottomNavBar";
 import { useDashboardCalculations } from "../hooks/dashboard/useDashboardCalculations";
 import DashboardSection from "../components/dashboard/DashboardSection";
+import DashboardCardSkeleton from "../components/dashboard/DashboardCardSkeleton";
 
 const LazyCharts = lazy(() => import("../components/Charts"));
 
@@ -199,23 +201,18 @@ export default function Dashboard() {
 
     if (loading) {
         return (
-            <Backdrop
-                sx={{
-                    color: "#fff",
-                    zIndex: (theme) => theme.zIndex.drawer + 1,
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    backgroundColor: theme.palette.background.default,
-                }}
-                open={loading}
-            >
-                <CircularProgress color="primary" />
-                <Typography variant="h6" sx={{ mt: 2, color: theme.palette.text.primary }}>
-                    Loading dashboard...
+            <Box sx={{ p: { xs: 2, md: 3 } }}>
+                <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
+                    <Skeleton width="200px" />
                 </Typography>
-            </Backdrop>
+                <Grid container spacing={2}>
+                    {[...Array(8)].map((_, index) => (
+                        <Grid item xs={12} sm={6} md={3} key={index}>
+                            <DashboardCardSkeleton />
+                        </Grid>
+                    ))}
+                </Grid>
+            </Box>
         );
     }
 

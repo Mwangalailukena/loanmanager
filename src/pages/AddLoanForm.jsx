@@ -36,6 +36,13 @@ import UploadFileIcon from "@mui/icons-material/UploadFile";
 import CloseIcon from "@mui/icons-material/Close";
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import AddIcon from '@mui/icons-material/Add';
+import PersonIcon from '@mui/icons-material/Person';
+import PhoneIcon from '@mui/icons-material/Phone';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import ScheduleIcon from '@mui/icons-material/Schedule';
+import EventIcon from '@mui/icons-material/Event';
+import PercentIcon from '@mui/icons-material/Percent';
+
 
 // Custom icons for the stepper
 import AssignmentIcon from '@mui/icons-material/Assignment';
@@ -180,8 +187,11 @@ function AutoLoanForm() {
   useEffect(() => {
     if (location.state?.borrower) {
       setSelectedBorrowerId(location.state.borrower.id);
+    } else if (location.state?.newBorrowerId) {
+      setSelectedBorrowerId(location.state.newBorrowerId);
+      showSnackbar("Newly added borrower has been selected.", "success");
     }
-  }, [location.state]);
+  }, [location.state, showSnackbar]);
 
   const interestRates = settings?.interestRates || {
     1: 0.15,
@@ -457,7 +467,7 @@ function AutoLoanForm() {
                 </MenuItem>
               ))}
               <Divider />
-              <MenuItem onClick={() => navigate('/add-borrower')}>
+              <MenuItem onClick={() => navigate('/add-borrower', { state: { from: location.pathname } })}>
                 <ListItemIcon>
                   <AddIcon fontSize="small" />
                 </ListItemIcon>
@@ -490,12 +500,16 @@ function AutoLoanForm() {
               fullWidth
               required
               sx={textFieldStyles}
+              helperText={`Rate: ${(interestRates[interestDuration] * 100).toFixed(0)}%`}
             >
-              {interestOptions.map(({ label, value }) => (
-                <MenuItem key={value} value={value}>
-                  {label}
-                </MenuItem>
-              ))}
+              {interestOptions.map(({ label, value }) => {
+                const rate = (interestRates[value] || 0) * 100;
+                return (
+                  <MenuItem key={value} value={value}>
+                    {`${label} (${rate.toFixed(0)}%)`}
+                  </MenuItem>
+                );
+              })}
             </TextField>
             <Fade in={displayPrincipal > 0}>
               <Box sx={{
@@ -525,14 +539,39 @@ function AutoLoanForm() {
       case 2:
         return (
           <Stack spacing={1.5} sx={{ py: 1.5 }}>
-            <Paper variant="outlined" sx={{ p: 1.5, width: '100%' }}>
-              <Typography variant="subtitle2" gutterBottom>Review Details</Typography>
-              <Typography variant="caption" display="block"><strong>Borrower:</strong> {selectedBorrower?.name}</Typography>
-              <Typography variant="caption" display="block"><strong>Phone:</strong> {selectedBorrower?.phone}</Typography>
-              <Typography variant="caption" display="block"><strong>Principal:</strong> ZMW {displayPrincipal.toLocaleString()}</Typography>
-              <Typography variant="caption" display="block"><strong>Interest Duration:</strong> {interestDuration} week{interestDuration > 1 ? 's' : ''}</Typography>
-              <Typography variant="caption" display="block"><strong>Calculated Interest:</strong> ZMW {displayInterest.toLocaleString()}</Typography>
-              <Typography variant="body2" fontWeight="bold" display="block"><strong>Total Repayable:</strong> ZMW {displayTotalRepayable.toLocaleString()}</Typography>
+            <Paper variant="outlined" sx={{ p: 2, width: '100%' }}>
+              <Typography variant="h6" gutterBottom>Review & Submit</Typography>
+              <List dense>
+                <ListItem>
+                  <ListItemIcon><PersonIcon color="secondary" /></ListItemIcon>
+                  <ListItemText primary="Borrower" secondary={selectedBorrower?.name || 'N/A'} />
+                </ListItem>
+                <ListItem>
+                  <ListItemIcon><PhoneIcon color="secondary" /></ListItemIcon>
+                  <ListItemText primary="Phone" secondary={selectedBorrower?.phone || 'N/A'} />
+                </ListItem>
+                <Divider sx={{ my: 1 }} />
+                <ListItem>
+                  <ListItemIcon><AttachMoneyIcon color="secondary" /></ListItemIcon>
+                  <ListItemText primary="Principal" secondary={`ZMW ${displayPrincipal.toLocaleString()}`} />
+                </ListItem>
+                <ListItem>
+                  <ListItemIcon><ScheduleIcon color="secondary" /></ListItemIcon>
+                  <ListItemText primary="Interest Duration" secondary={`${interestDuration} week${interestDuration > 1 ? 's' : ''}`} />
+                </ListItem>
+                <ListItem>
+                  <ListItemIcon><PercentIcon color="secondary" /></ListItemIcon>
+                  <ListItemText primary="Calculated Interest" secondary={`ZMW ${displayInterest.toLocaleString()}`} />
+                </ListItem>
+                <Divider sx={{ my: 1 }} />
+                <ListItem>
+                  <ListItemText
+                    primary={<Typography variant="body1" fontWeight="bold">Total Repayable</Typography>}
+                    secondary={<Typography variant="h6" fontWeight="bold" color="secondary.main">{`ZMW ${displayTotalRepayable.toLocaleString()}`}</Typography>}
+                    sx={{ textAlign: 'right' }}
+                  />
+                </ListItem>
+              </List>
             </Paper>
           </Stack>
         );
@@ -686,8 +725,11 @@ function ManualLoanForm() {
   useEffect(() => {
     if (location.state?.borrower) {
       setSelectedBorrowerId(location.state.borrower.id);
+    } else if (location.state?.newBorrowerId) {
+      setSelectedBorrowerId(location.state.newBorrowerId);
+      showSnackbar("Newly added borrower has been selected.", "success");
     }
-  }, [location.state]);
+  }, [location.state, showSnackbar]);
 
   const calculateInterest = (principal, rate) => principal * (rate / 100);
   const handleAmountBlur = () => {
@@ -849,7 +891,7 @@ function ManualLoanForm() {
                 </MenuItem>
               ))}
               <Divider />
-              <MenuItem onClick={() => navigate('/add-borrower')}>
+              <MenuItem onClick={() => navigate('/add-borrower', { state: { from: location.pathname } })}>
                 <ListItemIcon>
                   <AddIcon fontSize="small" />
                 </ListItemIcon>
@@ -949,16 +991,47 @@ function ManualLoanForm() {
       case 2:
         return (
           <Stack spacing={1.5} sx={{ py: 1.5 }}>
-            <Paper variant="outlined" sx={{ p: 1.5, width: '100%' }}>
-              <Typography variant="subtitle2" gutterBottom>Review Details</Typography>
-              <Typography variant="caption" display="block"><strong>Borrower:</strong> {selectedBorrower?.name}</Typography>
-              <Typography variant="caption" display="block"><strong>Phone:</strong> {selectedBorrower?.phone}</Typography>
-              <Typography variant="caption" display="block"><strong>Principal:</strong> ZMW {displayPrincipal.toLocaleString()}</Typography>
-              <Typography variant="caption" display="block"><strong>Start Date:</strong> {startDate.format("YYYY-MM-DD")}</Typography>
-              <Typography variant="caption" display="block"><strong>Due Date:</strong> {dueDate.format("YYYY-MM-DD")}</Typography>
-              <Typography variant="caption" display="block"><strong>Interest Rate:</strong> {manualInterestRate}%</Typography>
-              <Typography variant="caption" display="block"><strong>Calculated Interest:</strong> ZMW {displayInterest.toLocaleString()}</Typography>
-              <Typography variant="body2" fontWeight="bold" display="block"><strong>Total Repayable:</strong> ZMW {displayTotalRepayable.toLocaleString()}</Typography>
+            <Paper variant="outlined" sx={{ p: 2, width: '100%' }}>
+              <Typography variant="h6" gutterBottom>Review & Submit</Typography>
+              <List dense>
+                <ListItem>
+                  <ListItemIcon><PersonIcon color="secondary" /></ListItemIcon>
+                  <ListItemText primary="Borrower" secondary={selectedBorrower?.name || 'N/A'} />
+                </ListItem>
+                <ListItem>
+                  <ListItemIcon><PhoneIcon color="secondary" /></ListItemIcon>
+                  <ListItemText primary="Phone" secondary={selectedBorrower?.phone || 'N/A'} />
+                </ListItem>
+                <Divider sx={{ my: 1 }} />
+                <ListItem>
+                  <ListItemIcon><AttachMoneyIcon color="secondary" /></ListItemIcon>
+                  <ListItemText primary="Principal" secondary={`ZMW ${displayPrincipal.toLocaleString()}`} />
+                </ListItem>
+                <ListItem>
+                  <ListItemIcon><EventIcon color="secondary" /></ListItemIcon>
+                  <ListItemText primary="Start Date" secondary={startDate.format("YYYY-MM-DD")} />
+                </ListItem>
+                <ListItem>
+                  <ListItemIcon><EventIcon color="secondary" /></ListItemIcon>
+                  <ListItemText primary="Due Date" secondary={dueDate.format("YYYY-MM-DD")} />
+                </ListItem>
+                <ListItem>
+                  <ListItemIcon><PercentIcon color="secondary" /></ListItemIcon>
+                  <ListItemText primary="Interest Rate" secondary={`${manualInterestRate}%`} />
+                </ListItem>
+                <ListItem>
+                  <ListItemIcon><PercentIcon color="secondary" /></ListItemIcon>
+                  <ListItemText primary="Calculated Interest" secondary={`ZMW ${displayInterest.toLocaleString()}`} />
+                </ListItem>
+                <Divider sx={{ my: 1 }} />
+                <ListItem>
+                  <ListItemText
+                    primary={<Typography variant="body1" fontWeight="bold">Total Repayable</Typography>}
+                    secondary={<Typography variant="h6" fontWeight="bold" color="secondary.main">{`ZMW ${displayTotalRepayable.toLocaleString()}`}</Typography>}
+                    sx={{ textAlign: 'right' }}
+                  />
+                </ListItem>
+              </List>
             </Paper>
           </Stack>
         );

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Box,
   TextField,
@@ -17,6 +17,7 @@ export default function AddBorrowerPage() {
   const { addBorrower, borrowers } = useFirestore();
   const showSnackbar = useSnackbar();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -60,9 +61,14 @@ export default function AddBorrowerPage() {
 
     setLoading(true);
     try {
-      await addBorrower({ name, email, phone, nationalId, address });
+      const newBorrower = await addBorrower({ name, email, phone, nationalId, address });
       showSnackbar("Borrower added successfully!", "success");
-      navigate("/borrowers"); // Navigate to the borrowers list page
+      const from = location.state?.from;
+      if (from) {
+        navigate(from, { state: { newBorrowerId: newBorrower.id } });
+      } else {
+        navigate("/borrowers"); // Navigate to the borrowers list page
+      }
     } catch (err) {
       console.error("Failed to add borrower:", err);
       setFormError("Failed to add borrower. Please try again.");
