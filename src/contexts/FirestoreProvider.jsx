@@ -12,6 +12,7 @@ import {
   deleteDoc,
   where,
   serverTimestamp,
+  getDoc, // Added getDoc
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "./AuthProvider";
@@ -173,7 +174,39 @@ export function FirestoreProvider({ children }) {
   };
 
   const addPayment = async (loanId, amount) => {
-    // ... (addPayment implementation remains the same)
+    if (!currentUser) return;
+
+    const loanRef = doc(db, "loans", loanId);
+    const loanSnap = await getDoc(loanRef);
+
+    if (!loanSnap.exists()) {
+      console.error("Loan not found for payment:", loanId);
+      throw new Error("Loan not found.");
+    }
+
+    const loanData = loanSnap.data();
+    const newRepaidAmount = (loanData.repaidAmount || 0) + amount;
+
+    // 1. Add new payment record
+    await addDoc(collection(db, "payments"), {
+      loanId,
+      amount,
+      date: serverTimestamp(),
+      userId: currentUser.uid,
+      createdAt: serverTimestamp(),
+    });
+
+    // 2. Update the loan's repaidAmount
+    await updateDoc(loanRef, {
+      repaidAmount: newRepaidAmount,
+      updatedAt: serverTimestamp(),
+    });
+
+    // 3. Add activity log
+    await addActivityLog({
+      type: "payment_add",
+      description: `Payment of ZMW ${amount.toFixed(2)} added to loan ID ${loanId}`,
+    });
   };
 
   const getPaymentsByLoanId = async (loanId) => {
