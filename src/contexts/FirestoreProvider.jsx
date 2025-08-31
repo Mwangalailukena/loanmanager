@@ -13,6 +13,7 @@ import {
   where,
   serverTimestamp,
   getDoc, // Added getDoc
+  getDocs, // Added getDocs
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "./AuthProvider";
@@ -210,7 +211,25 @@ export function FirestoreProvider({ children }) {
   };
 
   const getPaymentsByLoanId = async (loanId) => {
-    // ... (getPaymentsByLoanId implementation remains the same)
+    if (!currentUser) return [];
+
+    const q = query(
+      collection(db, "payments"),
+      where("loanId", "==", loanId),
+      where("userId", "==", currentUser.uid),
+      orderBy("createdAt", "desc") // Assuming 'createdAt' is the timestamp field
+    );
+
+    console.log("Fetching payments for loanId:", loanId, "and userId:", currentUser.uid);
+
+    const querySnapshot = await getDocs(q);
+
+    console.log("Query Snapshot Docs:", querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+    return querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
   };
 
   const updateSettings = async (newSettings) => {

@@ -11,11 +11,14 @@ import InstallPrompt from './components/InstallPrompt';
 import SplashScreen from './components/SplashScreen';
 import NetworkStatus from './components/NetworkStatus';
 
+import { SearchProvider } from './contexts/SearchContext';
+
+// ... (rest of imports)
+
 function App() {
   const { darkMode, onToggleDarkMode } = useThemeContext();
-  const { loading } = useAuth(); // Get the loading state from the AuthProvider
+  const { loading } = useAuth();
 
-  // Conditional rendering based on the loading state
   if (loading) {
     return <SplashScreen />;
   }
@@ -24,7 +27,9 @@ function App() {
     <Router>
       <FirestoreProvider>
         <NetworkStatus />
-        <AppRoutes darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} />
+        <SearchProvider> {/* Add SearchProvider here */}
+          <AppRoutes darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} />
+        </SearchProvider> {/* Close SearchProvider here */}
         <InstallPrompt />
       </FirestoreProvider>
     </Router>

@@ -1,3 +1,5 @@
+import { useSearch } from "../contexts/SearchContext";
+
 // src/components/LoanList.jsx
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
@@ -137,13 +139,16 @@ const LoanListSkeleton = ({ isMobile }) => {
   }
 };
 
-export default function LoanList({ globalSearchTerm }) {
+// ... (rest of imports)
+
+export default function LoanList() {
   const { loans, loadingLoans, deleteLoan, addPayment, updateLoan, getPaymentsByLoanId, settings, borrowers } = useFirestore();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [searchTerm, setSearchTerm] = useState("");
+  const { searchTerm: globalSearchTerm, setSearchTerm: setGlobalSearchTerm } = useSearch(); // Directly use globalSearchTerm and setGlobalSearchTerm
+
   const [statusFilter, setStatusFilter] = useState(searchParams.get('filter') || "all");
   const [monthFilter, setMonthFilter] = useState(searchParams.get('month') || dayjs().format("YYYY-MM"));
   const [page, setPage] = useState(1);
@@ -270,13 +275,14 @@ export default function LoanList({ globalSearchTerm }) {
       setMonthFilter("2024-03");
     }
 
-    setSearchTerm(globalSearchTerm || "");
+    // Use setGlobalSearchTerm to update the global search state
+    // And set the local searchTerm for the TextField to reflect the global one
     setPage(1);
-  }, [searchParams, statusFilter, monthFilter, globalSearchTerm]);
+  }, [searchParams, statusFilter, monthFilter, globalSearchTerm]); // Depend on globalSearchTerm
 
   const activeSearchTerm = useMemo(() => {
-    return globalSearchTerm || searchTerm;
-  }, [globalSearchTerm, searchTerm]);
+    return globalSearchTerm; // activeSearchTerm now directly uses globalSearchTerm
+  }, [globalSearchTerm]);
 
   const filteredLoans = useMemo(() => {
     const borrowerId = searchParams.get('borrowerId');
@@ -577,20 +583,19 @@ export default function LoanList({ globalSearchTerm }) {
       <Stack direction={isMobile ? "column" : "row"} spacing={1} mb={2} alignItems="center">
         <TextField
           label="Search"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          value={globalSearchTerm} // Directly use globalSearchTerm
+          onChange={(e) => setGlobalSearchTerm(e.target.value)} // Directly update globalSearchTerm
           size="small"
           sx={{ ...filterInputStyles, minWidth: 160 }}
           variant="outlined"
           margin="dense"
-          disabled={!!globalSearchTerm}
-          helperText={globalSearchTerm ? "Using global search" : ""}
+          // Removed disabled and helperText related to globalSearchTerm if it's the primary input
           InputProps={{
-              endAdornment: searchTerm && !globalSearchTerm && (
+              endAdornment: globalSearchTerm && ( // Check globalSearchTerm for clear button
                 <InputAdornment position="end">
                   <IconButton
                     size="small"
-                    onClick={() => setSearchTerm("")}
+                    onClick={() => setGlobalSearchTerm("")}
                     aria-label="clear search"
                   >
                     <CloseIcon fontSize="small" />

@@ -35,7 +35,6 @@ const DashboardCard = ({
 
   return (
     <Grid
-      item
       xs={isMobile ? 4 : 6}
       sm={6}
       md={4}

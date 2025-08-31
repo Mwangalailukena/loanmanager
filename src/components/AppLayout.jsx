@@ -20,6 +20,7 @@ import FloatingNavBar from './FloatingNavBar';
 import BottomNavBar from './BottomNavBar';
 import MobileDrawer from './MobileDrawer';
 import LoanDetailDialog from './LoanDetailDialog';
+import { useSearch } from '../contexts/SearchContext'; // Import useSearch
 
 // Dedicated mobile search bar, controlled by the AppLayout state
 const MobileSearchBar = ({ onSearchChange, onClose, open, searchTerm }) => {
@@ -71,45 +72,38 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   const { pathname } = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  
+
+  // Consume search context
+  const {
+    searchTerm,
+    handleSearchChange,
+    isMobileSearchOpen,
+    handleMobileSearchOpen,
+    handleMobileSearchClose,
+  } = useSearch();
+
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [loanDetailOpen, setLoanDetailOpen] = useState(false);
   const [selectedLoanId, setSelectedLoanId] = useState(null);
-  
-  // Search State and Handlers
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
 
   const handleOpenLoanDetail = (loanId) => {
     setSelectedLoanId(loanId);
     setLoanDetailOpen(true);
   };
-  
+
   const handleCloseLoanDetail = () => {
     setLoanDetailOpen(false);
     setSelectedLoanId(null);
   };
-  
+
   const handleDrawerOpen = () => setMobileDrawerOpen(true);
   const handleDrawerClose = () => setMobileDrawerOpen(false);
 
-  // Mobile search specific handlers
-  const handleMobileSearchOpen = () => {
-    setIsMobileSearchOpen(true);
-    handleDrawerClose();
-  };
-  const handleMobileSearchClose = () => {
-    setIsMobileSearchOpen(false);
-    setSearchTerm(''); // Clear the search term when closing
-  };
+  // No need to redefine handleMobileSearchOpen/Close/handleSearchChange here, they come from context
 
-  const handleSearchChange = (value) => {
-    setSearchTerm(value);
-  };
-  
   const hideLayout = ['/login', '/register', '/forgot-password'].includes(pathname);
   const bottomNavHeight = isMobile && !hideLayout ? 64 : 0;
-  
+
   if (hideLayout) {
     return <>{children}</>;
   }
@@ -117,17 +111,17 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <CssBaseline />
-      
+
       {/* Desktop Floating Navbar */}
       {!isMobile && (
         <FloatingNavBar
           darkMode={darkMode}
           onToggleDarkMode={onToggleDarkMode}
           onOpenLoanDetail={handleOpenLoanDetail}
-          onSearchChange={handleSearchChange}
+          onSearchChange={handleSearchChange} // Use handleSearchChange from context
         />
       )}
-      
+
       {/* Mobile Fixed Hamburger Button */}
       {isMobile && (
         <Box
@@ -149,12 +143,12 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
 
       {/* Mobile Search Bar, visible only when search is open */}
       <MobileSearchBar
-        onSearchChange={handleSearchChange}
-        onClose={handleMobileSearchClose}
-        open={isMobileSearchOpen}
-        searchTerm={searchTerm}
+        onSearchChange={handleSearchChange} // Use handleSearchChange from context
+        onClose={handleMobileSearchClose} // Use handleMobileSearchClose from context
+        open={isMobileSearchOpen} // Use isMobileSearchOpen from context
+        searchTerm={searchTerm} // Use searchTerm from context
       />
-      
+
       {/* Main Content Area */}
       <Box
         component="main"
@@ -170,15 +164,14 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
           pt: isMobileSearchOpen ? '76px' : null, // Adjust padding if search bar is open
         }}
       >
-        <Container 
-          maxWidth="lg" 
-          sx={{ 
-            pb: 4, 
+        <Container
+          maxWidth="lg"
+          sx={{
+            pb: 4,
             px: isMobile ? 2 : 4,
           }}
         >
-          {/* Passing search term to child component */}
-          {React.cloneElement(children, { onOpenLoanDetail: handleOpenLoanDetail, searchTerm: searchTerm })}
+          {children} {/* No more React.cloneElement here */}
         </Container>
       </Box>
 
@@ -190,12 +183,12 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
         darkMode={darkMode}
         onToggleDarkMode={onToggleDarkMode}
         onOpenLoanDetail={handleOpenLoanDetail}
-        onSearchOpen={handleMobileSearchOpen}
+        onSearchOpen={handleMobileSearchOpen} // Use handleMobileSearchOpen from context
       />
-      
+
       {/* Mobile Bottom Navbar */}
       {!hideLayout && isMobile && !isMobileSearchOpen && <BottomNavBar />}
-      
+
       {/* Loan Detail Dialog */}
       <LoanDetailDialog
         key={selectedLoanId}

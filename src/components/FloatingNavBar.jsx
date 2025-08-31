@@ -42,6 +42,7 @@ import { signOut } from "firebase/auth";
 import { auth } from "../firebase";
 import { useAuth } from "../contexts/AuthProvider";
 import { useFirestore } from "../contexts/FirestoreProvider";
+import { useSearch } from "../contexts/SearchContext"; // Add useSearch
 
 import SettingsPage from "../pages/SettingsPage";
 import ChangePassword from "../pages/ChangePassword.jsx";
@@ -62,12 +63,21 @@ const pulse = keyframes`
   100% { transform: scale(1); }
 `;
 
-const FloatingNavBar = ({ onOpenLoanDetail, onSearchChange, darkMode, onToggleDarkMode }) => {
+const FloatingNavBar = ({ onOpenLoanDetail, darkMode, onToggleDarkMode }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
   const { currentUser } = useAuth();
   const { loans } = useFirestore();
+
+  // Consume search context
+  const {
+    searchTerm,
+    handleSearchChange,
+    isMobileSearchOpen,
+    handleMobileSearchOpen,
+  } = useSearch();
+
   const [anchorEl, setAnchorEl] = useState(null);
   const [notificationAnchor, setNotificationAnchor] = useState(null);
   const [readNotifications, setReadNotifications] = useState(() => {
@@ -79,7 +89,6 @@ const FloatingNavBar = ({ onOpenLoanDetail, onSearchChange, darkMode, onToggleDa
     }
   });
   const [allNotifications, setAllNotifications] = useState([]);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
@@ -137,8 +146,6 @@ const FloatingNavBar = ({ onOpenLoanDetail, onSearchChange, darkMode, onToggleDa
     setChangePasswordOpen(false);
     setHelpOpen(false);
   };
-  const toggleSearch = () => setSearchOpen((open) => !open);
-  const handleSearchChange = (e) => onSearchChange(e.target.value);
   const handleNotificationItemClick = (notificationId, loanId) => {
     onOpenLoanDetail(loanId);
     setReadNotifications((prev) => [...prev, notificationId]);
@@ -214,20 +221,20 @@ const FloatingNavBar = ({ onOpenLoanDetail, onSearchChange, darkMode, onToggleDa
         {/* Action Buttons */}
         <Box sx={{ display: "flex", alignItems: "center", ml: 2 }}>
           {/* Search Button */}
-          <IconButton onClick={toggleSearch} sx={{ mx: 0.5, borderRadius: "50%", p: 1, bgcolor: theme.palette.action.hover, transition: "all 0.2s ease-in-out", "&:hover": { transform: "scale(1.1)" } }}>
-            {searchOpen ? <CloseIcon sx={{ color: theme.palette.text.secondary }} /> : <SearchIcon sx={{ color: theme.palette.text.secondary }} />}
-          </IconButton>
+          <IconButton onClick={handleMobileSearchOpen} sx={{ mx: 0.5, borderRadius: "50%", p: 1, bgcolor: theme.palette.action.hover, transition: "all 0.2s ease-in-out", "&:hover": { transform: "scale(1.1)" } }}>
+            {isMobileSearchOpen ? <CloseIcon sx={{ color: theme.palette.text.secondary }} /> : <SearchIcon sx={{ color: theme.palette.text.secondary }} />}          </IconButton>
           {/* Search Field (if open) */}
           <TextField
             size="small"
             variant="outlined"
             placeholder="Search loans..."
-            onChange={handleSearchChange}
+            onChange={(e) => handleSearchChange(e.target.value)} // Use handleSearchChange from context
+            value={searchTerm} // Use searchTerm from context
             autoFocus
             sx={{
               ml: 1,
-              width: searchOpen ? 200 : 0,
-              opacity: searchOpen ? 1 : 0,
+              width: isMobileSearchOpen ? 200 : 0, // Use isMobileSearchOpen from context
+              opacity: isMobileSearchOpen ? 1 : 0, // Use isMobileSearchOpen from context
               transition: "width 0.3s ease-in-out, opacity 0.3s ease-in-out",
               overflow: "hidden",
             }}
