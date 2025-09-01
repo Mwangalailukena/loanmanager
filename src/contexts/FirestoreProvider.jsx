@@ -233,7 +233,21 @@ export function FirestoreProvider({ children }) {
   };
 
   const updateSettings = async (newSettings) => {
-    // ... (updateSettings implementation remains the same)
+    if (!currentUser) return;
+    const settingsRef = doc(db, "settings", "config");
+    try {
+      await updateDoc(settingsRef, {
+        ...newSettings,
+        updatedAt: serverTimestamp(),
+        userId: currentUser.uid, // Associate settings with the user
+      });
+      await addActivityLog({ type: "settings_update", description: "Application settings updated" });
+      showSnackbar("Settings updated successfully!", "success");
+    } catch (error) {
+      console.error("Error updating settings:", error);
+      showSnackbar("Failed to update settings.", "error");
+      throw error; // Re-throw to allow calling component to handle
+    }
   };
 
   const value = {
