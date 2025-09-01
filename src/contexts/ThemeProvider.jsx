@@ -10,15 +10,16 @@ const getAppTheme = (mode) =>
     palette: {
       mode,
       primary: {
-        main: '#0d77d4', 
-        light: '#5d99ff',
-        dark: '#004a9d',
+        main: '#1976d2',
+        light: '#63a4ff',
+        dark: '#004ba0',
         contrastText: '#fff',
       },
       secondary: {
-        main: '#93c4c1',
-        light: '#c5f7f3',
-        dark: '#639491',
+        main: '#009688',
+        light: '#52c7b8',
+        dark: '#00675b',
+        contrastText: '#fff',
       },
       error: {
         main: '#f44336',
@@ -27,15 +28,46 @@ const getAppTheme = (mode) =>
         default: mode === 'dark' ? '#121212' : '#f5f5f5',
         paper: mode === 'dark' ? '#1d1d1d' : '#ffffff',
       },
+      text: {
+        primary: mode === 'dark' ? '#ffffff' : '#212121',
+        secondary: mode === 'dark' ? '#bdbdbd' : '#757575',
+      }
     },
     typography: {
       fontFamily: ['Roboto', 'sans-serif'].join(','),
       h1: {
+        fontFamily: ['Montserrat', 'sans-serif'].join(','),
         fontSize: '2.5rem',
-        fontWeight: 500,
+        fontWeight: 700,
+      },
+      h2: {
+        fontFamily: ['Montserrat', 'sans-serif'].join(','),
+        fontSize: '2rem',
+        fontWeight: 700,
+      },
+      h3: {
+        fontFamily: ['Montserrat', 'sans-serif'].join(','),
+        fontSize: '1.75rem',
+        fontWeight: 600,
+      },
+      h4: {
+        fontFamily: ['Montserrat', 'sans-serif'].join(','),
+        fontSize: '1.5rem',
+        fontWeight: 600,
+      },
+      h5: {
+        fontFamily: ['Montserrat', 'sans-serif'].join(','),
+        fontSize: '1.25rem',
+        fontWeight: 600,
+      },
+      h6: {
+        fontFamily: ['Montserrat', 'sans-serif'].join(','),
+        fontSize: '1rem',
+        fontWeight: 600,
       },
       button: {
         textTransform: 'none',
+        fontWeight: 600,
       },
     },
     components: {
@@ -49,7 +81,8 @@ const getAppTheme = (mode) =>
       MuiButton: {
         styleOverrides: {
           root: {
-            borderRadius: 8,
+            borderRadius: 12,
+            boxShadow: '0 3px 5px 2px rgba(0, 0, 0, .1)',
           },
         },
       },

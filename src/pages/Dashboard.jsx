@@ -15,6 +15,9 @@ import {
 } from "@mui/material";
 import { keyframes } from "@mui/system";
 import AddIcon from "@mui/icons-material/Add";
+import SummarizeIcon from '@mui/icons-material/Summarize';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import ShowChartIcon from '@mui/icons-material/ShowChart';
 import { useNavigate } from "react-router-dom";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { useAuth } from "../contexts/AuthProvider.js";
@@ -305,7 +308,14 @@ export default function Dashboard() {
                         allowScrollButtonsMobile
                         sx={{
                             "& .MuiTabs-indicator": {
-                                display: "none",
+                                display: "flex",
+                                justifyContent: "center",
+                                backgroundColor: "transparent",
+                                '& > span': {
+                                    maxWidth: 40,
+                                    width: '100%',
+                                    backgroundColor: theme.palette.secondary.main,
+                                },
                             },
                             "& .MuiTabs-flexContainer": {
                                 gap: { xs: 0, sm: 1 },
@@ -313,62 +323,62 @@ export default function Dashboard() {
                         }}
                     >
                         <Tab
+                            icon={<SummarizeIcon />}
                             label="Summary"
                             {...a11yProps(0)}
                             sx={{
-                                color: activeTab === 0 ? theme.palette.text.primary : theme.palette.text.secondary,
+                                color: activeTab === 0 ? theme.palette.secondary.main : theme.palette.text.secondary,
                                 fontWeight: activeTab === 0 ? 600 : 500,
                                 borderRadius: 999,
-                                backgroundColor: activeTab === 0 ? theme.palette.action.selected : 'transparent',
-                                boxShadow: activeTab === 0 ? theme.shadows[1] : 'none',
+                                backgroundColor: activeTab === 0 ? theme.palette.secondary.light + '33' : 'transparent',
                                 textTransform: 'none',
                                 transition: 'all 0.3s ease',
                                 minHeight: 48,
                                 minWidth: 'auto',
                                 px: { xs: 1.5, sm: 2 },
                                 "&:hover": {
-                                    backgroundColor: activeTab === 0 ? theme.palette.action.selected : theme.palette.action.hover,
-                                    color: theme.palette.text.primary,
+                                    backgroundColor: activeTab === 0 ? theme.palette.secondary.light + '33' : theme.palette.action.hover,
+                                    color: theme.palette.secondary.main,
                                 },
                             }}
                         />
                         <Tab
+                            icon={<BarChartIcon />}
                             label="Metrics"
                             {...a11yProps(1)}
                             sx={{
-                                color: activeTab === 1 ? theme.palette.text.primary : theme.palette.text.secondary,
+                                color: activeTab === 1 ? theme.palette.secondary.main : theme.palette.text.secondary,
                                 fontWeight: activeTab === 1 ? 600 : 500,
                                 borderRadius: 999,
-                                backgroundColor: activeTab === 1 ? theme.palette.action.selected : 'transparent',
-                                boxShadow: activeTab === 1 ? theme.shadows[1] : 'none',
+                                backgroundColor: activeTab === 1 ? theme.palette.secondary.light + '33' : 'transparent',
                                 textTransform: 'none',
                                 transition: 'all 0.3s ease',
                                 minHeight: 48,
                                 minWidth: 'auto',
                                 px: { xs: 1.5, sm: 2 },
                                 "&:hover": {
-                                    backgroundColor: activeTab === 1 ? theme.palette.action.selected : theme.palette.action.hover,
-                                    color: theme.palette.text.primary,
+                                    backgroundColor: activeTab === 1 ? theme.palette.secondary.light + '33' : theme.palette.action.hover,
+                                    color: theme.palette.secondary.main,
                                 },
                             }}
                         />
                         <Tab
+                            icon={<ShowChartIcon />}
                             label="Charts"
                             {...a11yProps(2)}
                             sx={{
-                                color: activeTab === 2 ? theme.palette.text.primary : theme.palette.text.secondary,
+                                color: activeTab === 2 ? theme.palette.secondary.main : theme.palette.text.secondary,
                                 fontWeight: activeTab === 2 ? 600 : 500,
                                 borderRadius: 999,
-                                backgroundColor: activeTab === 2 ? theme.palette.action.selected : 'transparent',
-                                boxShadow: activeTab === 2 ? theme.shadows[1] : 'none',
+                                backgroundColor: activeTab === 2 ? theme.palette.secondary.light + '33' : 'transparent',
                                 textTransform: 'none',
                                 transition: 'all 0.3s ease',
                                 minHeight: 48,
                                 minWidth: 'auto',
                                 px: { xs: 1.5, sm: 2 },
                                 "&:hover": {
-                                    backgroundColor: activeTab === 2 ? theme.palette.action.selected : theme.palette.action.hover,
-                                    color: theme.palette.text.primary,
+                                    backgroundColor: activeTab === 2 ? theme.palette.secondary.light + '33' : theme.palette.action.hover,
+                                    color: theme.palette.secondary.main,
                                 },
                             }}
                         />

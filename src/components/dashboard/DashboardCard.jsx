@@ -68,9 +68,10 @@ const DashboardCard = ({
               alignItems: "center",
               textAlign: "center",
               backgroundColor: theme.palette.background.paper,
-              boxShadow: theme.shadows[1],
+              boxShadow: snapshot.isDragging ? theme.shadows[8] : theme.shadows[1],
               border: `1px solid ${theme.palette.divider}`,
               transition: "box-shadow 0.3s ease-in-out, border-color 0.3s ease-in-out",
+              transform: snapshot.isDragging ? 'rotate(2deg)' : 'rotate(0deg)',
               "&:hover": {
                 boxShadow: theme.shadows[4],
                 cursor: "pointer",
