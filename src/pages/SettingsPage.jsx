@@ -8,9 +8,12 @@ import {
   Alert,
   Tabs,
   Tab,
-  // Removed AppBar, Toolbar, IconButton, useTheme, useMediaQuery as they are no longer needed for a non-fullscreen dialog
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Grid,
 } from "@mui/material";
-// Removed CloseIcon import as it's not used internally anymore
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { requestNotificationPermission } from "../utils/notifications";
 
@@ -44,56 +47,61 @@ export default function SettingsPage({ onClose }) {
   const { settings, updateSettings } = useFirestore();
 
   const [tabIndex, setTabIndex] = useState(0);
+  
+  // New state for month and year selection
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+
+  // State for monthly capital and interest rates
+  const [monthlyCapital, setMonthlyCapital] = useState("0");
   const [interestRates, setInterestRates] = useState({
     oneWeek: "0",
     twoWeeks: "0",
     threeWeeks: "0",
     fourWeeks: "0",
   });
-  const [initialCapital, setInitialCapital] = useState("0");
+
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Effect to load settings when the component mounts or settings data changes
+  // Effect to load settings when the component mounts or settings data changes, or when month/year changes
   useEffect(() => {
-    if (settings) {
-      if (settings.interestRates) {
+    const year = selectedYear.toString();
+    const month = selectedMonth.toString().padStart(2, '0');
+    const monthKey = `${year}-${month}`;
+
+    if (settings && settings.monthlySettings && settings.monthlySettings[monthKey]) {
+      const monthSettings = settings.monthlySettings[monthKey];
+      setMonthlyCapital(monthSettings.capital?.toString() || "0");
+      if (monthSettings.interestRates) {
         setInterestRates({
-          oneWeek: settings.interestRates.oneWeek?.toString() || "0",
-          twoWeeks: settings.interestRates.twoWeeks?.toString() || "0",
-          threeWeeks: settings.interestRates.threeWeeks?.toString() || "0",
-          fourWeeks: settings.interestRates.fourWeeks?.toString() || "0",
+          oneWeek: monthSettings.interestRates.oneWeek?.toString() || "0",
+          twoWeeks: monthSettings.interestRates.twoWeeks?.toString() || "0",
+          threeWeeks: monthSettings.interestRates.threeWeeks?.toString() || "0",
+          fourWeeks: monthSettings.interestRates.fourWeeks?.toString() || "0",
         });
       } else {
-        // Ensure defaults if interestRates is not set
-        setInterestRates({
-          oneWeek: "0",
-          twoWeeks: "0",
-          threeWeeks: "0",
-          fourWeeks: "0",
-        });
+        setInterestRates({ oneWeek: "0", twoWeeks: "0", threeWeeks: "0", fourWeeks: "0" });
       }
-      if (settings.initialCapital !== undefined) {
-        setInitialCapital(settings.initialCapital.toString());
-      } else {
-        setInitialCapital("0"); // Default if not set
-      }
+    } else {
+      setMonthlyCapital("0");
+      setInterestRates({ oneWeek: "0", twoWeeks: "0", threeWeeks: "0", fourWeeks: "0" });
     }
-  }, [settings]);
+  }, [settings, selectedYear, selectedMonth]);
 
   const handleTabChange = (_, newValue) => {
     setTabIndex(newValue);
     setMessage(""); // Clear message when changing tabs
   };
 
-  const handleChange = (field) => (e) => {
+  const handleMonthlyCapitalChange = (e) => {
     setMessage(""); // Clear message on input change
-    setInterestRates({ ...interestRates, [field]: e.target.value });
+    setMonthlyCapital(e.target.value);
   };
 
-  const handleInitialCapitalChange = (e) => {
+  const handleInterestRateChange = (field) => (e) => {
     setMessage(""); // Clear message on input change
-    setInitialCapital(e.target.value);
+    setInterestRates({ ...interestRates, [field]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
@@ -101,7 +109,13 @@ export default function SettingsPage({ onClose }) {
     setLoading(true);
     setMessage(""); // Clear previous messages before new submission
 
-    // Validate interest rates
+    const capitalValue = parseFloat(monthlyCapital);
+    if (isNaN(capitalValue) || capitalValue < 0) {
+      setMessage("Please enter a valid non-negative number for Invested Capital.");
+      setLoading(false);
+      return;
+    }
+
     const numericInterestRates = {};
     for (const key in interestRates) {
       const val = parseFloat(interestRates[key]);
@@ -113,31 +127,30 @@ export default function SettingsPage({ onClose }) {
       numericInterestRates[key] = val;
     }
 
-    // Validate initial capital
-    const capitalValue = parseFloat(initialCapital);
-    if (isNaN(capitalValue) || capitalValue < 0) {
-      setMessage("Please enter a valid non-negative number for Initial Capital.");
+    if (capitalValue > 1_000_000_000) {
+      setMessage("Invested Capital seems excessively high. Please review.");
       setLoading(false);
       return;
     }
 
-    // Example upper limit for capital value; adjust based on your business logic
-    if (capitalValue > 1_000_000_000) {
-      setMessage("Initial Capital seems excessively high. Please review.");
-      setLoading(false);
-      return;
-    }
+    const year = selectedYear.toString();
+    const month = selectedMonth.toString().padStart(2, '0');
+    const monthKey = `${year}-${month}`;
 
     const updatedSettings = {
-      interestRates: numericInterestRates,
-      initialCapital: capitalValue,
+      ...settings,
+      monthlySettings: {
+        ...(settings.monthlySettings || {}),
+        [monthKey]: {
+          capital: capitalValue,
+          interestRates: numericInterestRates,
+        },
+      },
     };
 
     try {
       await updateSettings(updatedSettings);
       setMessage("Settings saved successfully.");
-      // If you want the dialog to close automatically on successful save, uncomment the line below:
-      // if (onClose) onClose();
     } catch (error) {
       console.error("Error updating settings:", error);
       setMessage("Failed to save settings. Please try again.");
@@ -148,25 +161,31 @@ export default function SettingsPage({ onClose }) {
 
   const handleReset = () => {
     setMessage(""); // Clear message on reset
-    if (settings) {
-      setInterestRates({
-        oneWeek: settings.interestRates?.oneWeek?.toString() || "0",
-        twoWeeks: settings.interestRates?.twoWeeks?.toString() || "0",
-        threeWeeks: settings.interestRates?.threeWeeks?.toString() || "0",
-        fourWeeks: settings.interestRates?.fourWeeks?.toString() || "0",
-      });
-      setInitialCapital(settings.initialCapital?.toString() || "0");
+    const year = selectedYear.toString();
+    const month = selectedMonth.toString().padStart(2, '0');
+    const monthKey = `${year}-${month}`;
+
+    if (settings && settings.monthlySettings && settings.monthlySettings[monthKey]) {
+        const monthSettings = settings.monthlySettings[monthKey];
+        setMonthlyCapital(monthSettings.capital?.toString() || "0");
+        if (monthSettings.interestRates) {
+            setInterestRates({
+                oneWeek: monthSettings.interestRates.oneWeek?.toString() || "0",
+                twoWeeks: monthSettings.interestRates.twoWeeks?.toString() || "0",
+                threeWeeks: monthSettings.interestRates.threeWeeks?.toString() || "0",
+                fourWeeks: monthSettings.interestRates.fourWeeks?.toString() || "0",
+            });
+        } else {
+            setInterestRates({ oneWeek: "0", twoWeeks: "0", threeWeeks: "0", fourWeeks: "0" });
+        }
     } else {
-      // Reset to default empty/zero if no settings loaded
-      setInterestRates({
-        oneWeek: "0",
-        twoWeeks: "0",
-        threeWeeks: "0",
-        fourWeeks: "0",
-      });
-      setInitialCapital("0");
+        setMonthlyCapital("0");
+        setInterestRates({ oneWeek: "0", twoWeeks: "0", threeWeeks: "0", fourWeeks: "0" });
     }
   };
+
+  const years = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i);
+  const months = Array.from({ length: 12 }, (_, i) => ({ value: i + 1, label: new Date(0, i).toLocaleString('default', { month: 'long' }) }));
 
   return (
     <Box
@@ -174,12 +193,10 @@ export default function SettingsPage({ onClose }) {
         p: { xs: 3, sm: 4 }, // Add padding directly to the main content box for dialogs
       }}
     >
-      {/* Settings Page Title */}
       <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
         Settings
       </Typography>
 
-      {/* Alert for messages (success/error) */}
       {message && (
         <Alert
           severity={message.includes("successfully") ? "success" : "error"}
@@ -190,41 +207,64 @@ export default function SettingsPage({ onClose }) {
         </Alert>
       )}
 
-      {/* Tabs for navigating between sections */}
       <Tabs
         value={tabIndex}
         onChange={handleTabChange}
         aria-label="settings tabs"
         sx={{ mb: 3 }}
       >
-        <Tab label="Capital" {...a11yProps(0)} />
-        <Tab label="Interest Rates" {...a11yProps(1)} />
-        <Tab label="Notifications" {...a11yProps(2)} />
+        <Tab label="Monthly Settings" {...a11yProps(0)} />
+        <Tab label="Notifications" {...a11yProps(1)} />
       </Tabs>
 
       <form onSubmit={handleSubmit}>
-        {/* Capital Tab Panel */}
         <TabPanel value={tabIndex} index={0}>
-          <TextField
-            label="Initial Capital (ZMW)"
-            type="number"
-            value={initialCapital}
-            onChange={handleInitialCapitalChange}
-            required
-            fullWidth
-            inputProps={{ min: 0, step: "any" }}
-            margin="normal"
-          />
-        </TabPanel>
-
-        {/* Interest Rates Tab Panel */}
-        <TabPanel value={tabIndex} index={1}>
+            <Grid container spacing={2} sx={{ mb: 2 }}>
+                <Grid item xs={6}>
+                    <FormControl fullWidth>
+                        <InputLabel>Year</InputLabel>
+                        <Select
+                            value={selectedYear}
+                            label="Year"
+                            onChange={(e) => setSelectedYear(e.target.value)}
+                        >
+                            {years.map(year => (
+                                <MenuItem key={year} value={year}>{year}</MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                </Grid>
+                <Grid item xs={6}>
+                    <FormControl fullWidth>
+                        <InputLabel>Month</InputLabel>
+                        <Select
+                            value={selectedMonth}
+                            label="Month"
+                            onChange={(e) => setSelectedMonth(e.target.value)}
+                        >
+                            {months.map(month => (
+                                <MenuItem key={month.value} value={month.value}>{month.label}</MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                </Grid>
+            </Grid>
           <Stack spacing={3}>
+            <TextField
+                label="Invested Capital (ZMW)"
+                type="number"
+                value={monthlyCapital}
+                onChange={handleMonthlyCapitalChange}
+                required
+                fullWidth
+                inputProps={{ min: 0, step: "any" }}
+                margin="normal"
+            />
             <TextField
               label="Interest Rate for 1 Week (%)"
               type="number"
               value={interestRates.oneWeek}
-              onChange={handleChange("oneWeek")}
+              onChange={handleInterestRateChange("oneWeek")}
               required
               inputProps={{ min: 0, step: "any" }}
               margin="normal"
@@ -233,7 +273,7 @@ export default function SettingsPage({ onClose }) {
               label="Interest Rate for 2 Weeks (%)"
               type="number"
               value={interestRates.twoWeeks}
-              onChange={handleChange("twoWeeks")}
+              onChange={handleInterestRateChange("twoWeeks")}
               required
               inputProps={{ min: 0, step: "any" }}
               margin="normal"
@@ -242,7 +282,7 @@ export default function SettingsPage({ onClose }) {
               label="Interest Rate for 3 Weeks (%)"
               type="number"
               value={interestRates.threeWeeks}
-              onChange={handleChange("threeWeeks")}
+              onChange={handleInterestRateChange("threeWeeks")}
               required
               inputProps={{ min: 0, step: "any" }}
               margin="normal"
@@ -251,7 +291,7 @@ export default function SettingsPage({ onClose }) {
               label="Interest Rate for 4 Weeks (%)"
               type="number"
               value={interestRates.fourWeeks}
-              onChange={handleChange("fourWeeks")}
+              onChange={handleInterestRateChange("fourWeeks")}
               required
               inputProps={{ min: 0, step: "any" }}
               margin="normal"
@@ -259,8 +299,7 @@ export default function SettingsPage({ onClose }) {
           </Stack>
         </TabPanel>
         
-        {/* Notifications Tab Panel */}
-        <TabPanel value={tabIndex} index={2}>
+        <TabPanel value={tabIndex} index={1}>
           <Typography variant="body1" gutterBottom>
             Enable push notifications to stay updated on loan statuses and payments.
           </Typography>
@@ -273,9 +312,7 @@ export default function SettingsPage({ onClose }) {
           </Button>
         </TabPanel>
 
-
-        {/* Action Buttons */}
-        {tabIndex !== 2 && (
+        {tabIndex !== 1 && (
         <Box mt={3} display="flex" gap={2}>
           <Button
             variant="contained"

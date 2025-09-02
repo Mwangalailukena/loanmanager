@@ -193,11 +193,14 @@ function AutoLoanForm() {
     }
   }, [location.state, showSnackbar]);
 
-  const interestRates = settings?.interestRates || {
-    1: 0.15,
-    2: 0.2,
-    3: 0.3,
-    4: 0.3,
+  const monthKey = dayjs().format("YYYY-MM");
+  const monthlyRates = settings?.monthlySettings?.[monthKey]?.interestRates;
+
+  const interestRates = {
+    1: monthlyRates?.oneWeek ? monthlyRates.oneWeek / 100 : 0.15,
+    2: monthlyRates?.twoWeeks ? monthlyRates.twoWeeks / 100 : 0.2,
+    3: monthlyRates?.threeWeeks ? monthlyRates.threeWeeks / 100 : 0.3,
+    4: monthlyRates?.fourWeeks ? monthlyRates.fourWeeks / 100 : 0.3,
   };
 
   const calculateInterest = (principal, weeks) => principal * (interestRates[weeks] || 0);

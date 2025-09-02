@@ -122,8 +122,9 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
             { name: "Jones Ilukena", amount: totalExpectedProfit / 2 },
         ];
 
-        const initialCapital = Number(settings?.initialCapital) || 60000;
-        const availableCapital = initialCapital - totalDisbursed + totalCollected;
+        const monthKey = dayjs(selectedMonth).format("YYYY-MM");
+        const investedCapital = Number(settings?.monthlySettings?.[monthKey]?.capital) || 0;
+        const availableCapital = investedCapital - totalDisbursed + totalCollected;
         const totalLoansCount = loansThisMonth.length;
         const paidLoansCount = loansThisMonth.filter((l) => calcStatus(l) === "Paid").length;
         const activeLoansCount = loansThisMonth.filter((l) => calcStatus(l) === "Active").length;
@@ -149,10 +150,10 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
           {
             id: "investedCapital",
             label: "Invested Capital",
-            value: `K ${initialCapital.toLocaleString()}`,
+            value: `K ${investedCapital.toLocaleString()}`,
             color: "primary",
             filter: "all",
-            tooltip: "Initial capital invested into loans",
+            tooltip: "Invested capital for the selected month",
             progress: null,
             icon: iconMap.investedCapital,
           },
@@ -162,8 +163,8 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
             value: `K ${availableCapital.toLocaleString()}`,
             color: "success",
             filter: "all",
-            tooltip: "Capital currently available to issue new loans. Progress against initial capital.",
-            progress: initialCapital > 0 ? availableCapital / initialCapital : 0,
+            tooltip: "Capital currently available to issue new loans. Progress against invested capital for the month.",
+            progress: investedCapital > 0 ? availableCapital / investedCapital : 0,
             icon: iconMap.availableCapital,
           },
           {
