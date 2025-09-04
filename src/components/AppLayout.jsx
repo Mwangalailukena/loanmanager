@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   useTheme,
   useMediaQuery,
@@ -9,15 +9,20 @@ import {
   IconButton,
   TextField,
   InputAdornment,
+  SpeedDial,
+  SpeedDialIcon,
+  SpeedDialAction,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
   Search as SearchIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  Add as AddIcon,
+  AttachMoney as AttachMoneyIcon,
 } from '@mui/icons-material';
 
 import FloatingNavBar from './FloatingNavBar';
-import BottomNavBar from './BottomNavBar';
+import BottomNavBar, { BOTTOM_NAV_HEIGHT } from './BottomNavBar';
 import MobileDrawer from './MobileDrawer';
 import LoanDetailDialog from './LoanDetailDialog';
 import { useSearch } from '../contexts/SearchContext'; // Import useSearch
@@ -70,6 +75,7 @@ const MobileSearchBar = ({ onSearchChange, onClose, open, searchTerm }) => {
 
 const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -99,14 +105,17 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   const handleDrawerOpen = () => setMobileDrawerOpen(true);
   const handleDrawerClose = () => setMobileDrawerOpen(false);
 
-  // No need to redefine handleMobileSearchOpen/Close/handleSearchChange here, they come from context
-
   const hideLayout = ['/login', '/register', '/forgot-password'].includes(pathname);
-  const bottomNavHeight = isMobile && !hideLayout ? 64 : 0;
+  const bottomNavHeight = isMobile && !hideLayout ? BOTTOM_NAV_HEIGHT : 0;
 
   if (hideLayout) {
     return <>{children}</>;
   }
+
+  const actions = [
+    { icon: <AddIcon />, name: 'Add Loan', path: '/add-loan' },
+    { icon: <AttachMoneyIcon />, name: 'Add Payment', path: '/add-payment' },
+  ];
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -196,6 +205,26 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
         onClose={handleCloseLoanDetail}
         loanId={selectedLoanId}
       />
+
+      {/* Speed Dial FAB */}
+      <SpeedDial
+        ariaLabel="SpeedDial for adding loans and payments"
+        sx={{
+          position: 'fixed',
+          bottom: isMobile ? `calc(${bottomNavHeight}px + 16px)` : 16,
+          right: 16,
+        }}
+        icon={<SpeedDialIcon />}
+      >
+        {actions.map((action) => (
+          <SpeedDialAction
+            key={action.name}
+            icon={action.icon}
+            tooltipTitle={action.name}
+            onClick={() => navigate(action.path)}
+          />
+        ))}
+      </SpeedDial>
     </Box>
   );
 };

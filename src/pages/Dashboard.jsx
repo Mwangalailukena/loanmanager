@@ -5,8 +5,6 @@ import {
     useTheme,
     useMediaQuery,
     TextField,
-    Fab,
-    Zoom,
     CircularProgress,
     Tabs,
     Tab,
@@ -14,7 +12,7 @@ import {
     Skeleton,
 } from "@mui/material";
 import { keyframes } from "@mui/system";
-import AddIcon from "@mui/icons-material/Add";
+
 import SummarizeIcon from '@mui/icons-material/Summarize';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
@@ -421,24 +419,7 @@ export default function Dashboard() {
                 </TabPanel>
             </Box>
 
-            <Zoom
-                in
-                style={{
-                    position: "fixed",
-                    bottom: isMobile ? `calc(${BOTTOM_NAV_HEIGHT}px + 16px)` : 16,
-                    right: 16,
-                }}
-                timeout={500}
-                unmountOnExit
-            >
-                <Fab
-                    color="secondary"
-                    aria-label="add loan"
-                    onClick={() => navigate("/add-loan")}
-                >
-                    <AddIcon />
-                </Fab>
-            </Zoom>
+            
         </Box>
     );
 }
