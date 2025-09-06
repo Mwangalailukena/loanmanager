@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useFirestore } from '../contexts/FirestoreProvider';
 import { useSnackbar } from '../components/SnackbarProvider';
@@ -42,8 +42,6 @@ import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import GuarantorDialog from '../components/GuarantorDialog';
 import { useCreditScore } from '../hooks/useCreditScore';
-import { useMemo } from 'react';
-
 
 dayjs.extend(relativeTime);
 
@@ -66,6 +64,24 @@ function TabPanel(props) {
     </div>
   );
 }
+
+// Helper function to calculate status dynamically
+const calcStatus = (loan) => {
+  const totalRepayable = Number(loan.totalRepayable || 0);
+  const repaidAmount = Number(loan.repaidAmount || 0);
+
+  if (repaidAmount >= totalRepayable && totalRepayable > 0) {
+    return "Paid";
+  }
+
+  const now = dayjs();
+  const due = dayjs(loan.dueDate);
+  if (due.isBefore(now, "day")) {
+    return "Overdue";
+  }
+
+  return "Active";
+};
 
 const getStatusChipColor = (status) => {
   switch (status) {
@@ -113,9 +129,10 @@ export default function BorrowerProfilePage() {
       acc.totalRepaid += Number(loan.repaidAmount || 0);
       acc.outstanding += Number(loan.totalRepayable || 0) - Number(loan.repaidAmount || 0);
 
-      if (loan.status === 'Paid') acc.paidLoans += 1;
-      else if (loan.status === 'Overdue') acc.overdueLoans += 1;
-      else if (loan.status === 'Active') acc.activeLoans += 1;
+      const status = calcStatus(loan); // Use calculated status
+      if (status === 'Paid') acc.paidLoans += 1;
+      else if (status === 'Overdue') acc.overdueLoans += 1;
+      else if (status === 'Active') acc.activeLoans += 1;
 
       return acc;
     }, {
@@ -302,7 +319,7 @@ export default function BorrowerProfilePage() {
                                 <Typography variant="body2" color="text.secondary">{dayjs(loan.startDate).format('DD MMM YYYY')}</Typography>
                                 <Typography variant="h6" fontWeight="500">ZMW {Number(loan.principal).toLocaleString()}</Typography>
                               </Box>
-                              <Chip label={loan.status} sx={getStatusChipColor(loan.status)} size="small" />
+                              <Chip label={calcStatus(loan)} sx={getStatusChipColor(calcStatus(loan))} size="small" />
                             </Stack>
                             <Divider sx={{ my: 1 }} />
                             <Stack direction="row" justifyContent="space-between" sx={{ fontSize: '0.875rem' }}>
