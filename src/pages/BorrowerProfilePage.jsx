@@ -28,6 +28,7 @@ import {
   Tabs,
   Tab,
   CardHeader,
+  Link,
 } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
 import PhoneIcon from '@mui/icons-material/Phone';
@@ -38,10 +39,14 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Fingerprint from '@mui/icons-material/Fingerprint';
 import HomeIcon from '@mui/icons-material/Home';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
+import AddCommentIcon from '@mui/icons-material/AddComment';
+import PostAddIcon from '@mui/icons-material/PostAdd';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import GuarantorDialog from '../components/GuarantorDialog';
 import { useCreditScore } from '../hooks/useCreditScore';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+
 
 dayjs.extend(relativeTime);
 
@@ -65,7 +70,6 @@ function TabPanel(props) {
   );
 }
 
-// Helper function to calculate status dynamically
 const calcStatus = (loan) => {
   const totalRepayable = Number(loan.totalRepayable || 0);
   const repaidAmount = Number(loan.repaidAmount || 0);
@@ -129,7 +133,7 @@ export default function BorrowerProfilePage() {
       acc.totalRepaid += Number(loan.repaidAmount || 0);
       acc.outstanding += Number(loan.totalRepayable || 0) - Number(loan.repaidAmount || 0);
 
-      const status = calcStatus(loan); // Use calculated status
+      const status = calcStatus(loan);
       if (status === 'Paid') acc.paidLoans += 1;
       else if (status === 'Overdue') acc.overdueLoans += 1;
       else if (status === 'Active') acc.activeLoans += 1;
@@ -147,6 +151,13 @@ export default function BorrowerProfilePage() {
     stats.totalLoans = associatedLoans.length;
     return stats;
   }, [associatedLoans]);
+  
+  const chartData = [
+    { name: 'Repaid', value: financialStats.totalRepaid },
+    { name: 'Outstanding', value: financialStats.outstanding },
+  ].filter(item => item.value > 0); 
+
+  const COLORS = ['#4CAF50', '#F44336'];
 
   // --- Handlers ---
   const handleOpenDeleteDialog = () => setDeleteDialogOpen(true);
@@ -211,9 +222,10 @@ export default function BorrowerProfilePage() {
 
   return (
     <>
-      <Box sx={{ maxWidth: 900, mx: 'auto', mt: 4 }}>
+      <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 4 }}> {/* Increased maxWidth for better use of space */}
         <Grid container spacing={3}>
-          <Grid item xs={12} md={4}>
+          {/* ADJUSTED GRID SIZE FOR THE LEFT PAPER */}
+          <Grid item xs={12} md={3}> 
             <Paper elevation={4} sx={{ p: 3, borderRadius: 3 }}>
               <Stack direction="column" alignItems="center" spacing={2}>
                 <Avatar sx={{ width: 80, height: 80, bgcolor: 'secondary.main' }}><PersonIcon sx={{ fontSize: 50 }} /></Avatar>
@@ -226,15 +238,30 @@ export default function BorrowerProfilePage() {
               </Stack>
               <Divider sx={{ my: 2 }} />
               <Stack spacing={1.5}>
-                <Stack direction="row" alignItems="center" spacing={1.5}><PhoneIcon color="action" /><Typography variant="body1">{borrower.phone}</Typography></Stack>
-                <Stack direction="row" alignItems="center" spacing={1.5}><EmailIcon color="action" /><Typography variant="body1">{borrower.email || 'No email provided'}</Typography></Stack>
+                <Stack direction="row" alignItems="center" spacing={1.5}>
+                  <PhoneIcon color="action" />
+                  <Link href={`tel:+260${borrower.phone.substring(1)}`} underline="hover" color="inherit">
+                    <Typography variant="body1">{borrower.phone}</Typography>
+                  </Link>
+                </Stack>
+                <Stack direction="row" alignItems="center" spacing={1.5}>
+                  <EmailIcon color="action" />
+                  {borrower.email ? (
+                     <Link href={`mailto:${borrower.email}`} underline="hover" color="inherit">
+                        <Typography variant="body1">{borrower.email}</Typography>
+                     </Link>
+                  ) : (
+                    <Typography variant="body1" color="text.secondary">No email provided</Typography>
+                  )}
+                </Stack>
                 {borrower.nationalId && <Stack direction="row" alignItems="center" spacing={1.5}><Fingerprint color="action" /><Typography variant="body1">{borrower.nationalId}</Typography></Stack>}
                 {borrower.address && <Stack direction="row" alignItems="center" spacing={1.5}><HomeIcon color="action" /><Typography variant="body1">{borrower.address}</Typography></Stack>}
               </Stack>
             </Paper>
           </Grid>
 
-          <Grid item xs={12} md={8}>
+          {/* ADJUSTED GRID SIZE FOR THE RIGHT PAPER */}
+          <Grid item xs={12} md={9}> 
             <Paper elevation={4} sx={{ borderRadius: 3 }}>
               <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
                 <Tabs value={activeTab} onChange={handleTabChange} aria-label="borrower profile tabs">
@@ -249,37 +276,60 @@ export default function BorrowerProfilePage() {
                 <TabPanel value={activeTab} index={0}>
                   <Grid container spacing={3}>
                     <Grid item xs={12} md={6}>
-                      <Paper variant="outlined" sx={{ p: 3, textAlign: 'center', height: '100%' }}>
-                        <Typography variant="h6" fontWeight="bold">Credit Score</Typography>
-                        <Chip label={label} sx={{ backgroundColor: color, color: 'white', fontWeight: 'bold', my: 1 }} />
-                        <Typography variant="h2" fontWeight="bold" sx={{ mt: 1 }}>{score}</Typography>
+                      <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
+                        <CardHeader title="Credit Score" sx={{ p: 0, pb: 1 }} titleTypographyProps={{ fontWeight: 'bold', variant: 'h6' }} />
+                        <Box sx={{ textAlign: 'center' }}>
+                            <Chip label={label} sx={{ backgroundColor: color, color: 'white', fontWeight: 'bold', my: 1 }} />
+                            <Typography variant="h2" fontWeight="bold" sx={{ mt: 1 }}>{score}</Typography>
+                        </Box>
                       </Paper>
                     </Grid>
                     <Grid item xs={12} md={6}>
                       <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
                         <CardHeader title="Financial Snapshot" sx={{ p: 0, pb: 1 }} titleTypographyProps={{ fontWeight: 'bold', variant: 'h6' }} />
-                        <List dense disablePadding>
-                          <ListItem disableGutters>
-                            <ListItemText primary="Total Loaned" />
-                            <Typography variant="body2">ZMW {financialStats.totalLoaned.toLocaleString()}</Typography>
-                          </ListItem>
-                          <ListItem disableGutters>
-                            <ListItemText primary="Total Repaid" />
-                            <Typography variant="body2" color="success.main">ZMW {financialStats.totalRepaid.toLocaleString()}</Typography>
-                          </ListItem>
-                          <ListItem disableGutters>
-                            <ListItemText primary="Outstanding Balance" />
-                            <Typography variant="body1" fontWeight="bold" color="error.main">ZMW {financialStats.outstanding.toLocaleString()}</Typography>
-                          </ListItem>
-                        </List>
-                        <Divider sx={{ my: 1 }} />
-                        <List dense disablePadding>
-                          <ListItem disableGutters>
-                            <ListItemText primary="Total Loans" secondary={`${financialStats.paidLoans} Paid, ${financialStats.activeLoans} Active, ${financialStats.overdueLoans} Overdue`} />
-                            <Typography variant="h6" fontWeight="bold">{financialStats.totalLoans}</Typography>
-                          </ListItem>
-                        </List>
+                        <ResponsiveContainer width="100%" height={150}>
+                            <PieChart>
+                                <Pie
+                                    data={chartData}
+                                    cx="50%"
+                                    cy="50%"
+                                    labelLine={false}
+                                    outerRadius={60}
+                                    fill="#8884d8"
+                                    dataKey="value"
+                                >
+                                    {chartData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip formatter={(value) => `ZMW ${value.toLocaleString()}`} />
+                                <Legend iconSize={10} />
+                            </PieChart>
+                        </ResponsiveContainer>
                       </Paper>
+                    </Grid>
+                    <Grid item xs={12}>
+                        <Paper variant="outlined" sx={{ p: 2 }}>
+                            <List dense disablePadding>
+                                <ListItem disableGutters>
+                                    <ListItemText primary="Total Loaned" />
+                                    <Typography variant="body2">ZMW {financialStats.totalLoaned.toLocaleString()}</Typography>
+                                </ListItem>
+                                <ListItem disableGutters>
+                                    <ListItemText primary="Total Repaid" />
+                                    <Typography variant="body2" color="success.main">ZMW {financialStats.totalRepaid.toLocaleString()}</Typography>
+                                </ListItem>
+                                <ListItem disableGutters>
+                                    <ListItemText primary="Outstanding Balance" />
+                                    <Typography variant="body1" fontWeight="bold" color="error.main">ZMW {financialStats.outstanding.toLocaleString()}</Typography>
+                                </ListItem>
+                                <Divider sx={{ my: 1 }} />
+                                <ListItem disableGutters>
+                                    <ListItemText primary="Total Loans" secondary={`${financialStats.paidLoans} Paid, ${financialStats.activeLoans} Active, ${financialStats.overdueLoans} Overdue`} />
+                                    <Typography variant="h6" fontWeight="bold">{financialStats.totalLoans}</Typography>
+                                </ListItem>
+                            </List>
+                        </Paper>
                     </Grid>
                   </Grid>
                 </TabPanel>
@@ -287,27 +337,13 @@ export default function BorrowerProfilePage() {
                 <TabPanel value={activeTab} index={1}>
                   <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
                     <Typography variant="h6" fontWeight="bold">Associated Loans</Typography>
-                    <Stack direction="row" spacing={1}>
-                      <Button
-                        variant="contained"
-                        onClick={() => navigate(`/loans?borrowerId=${id}`)}
-                      >
-                        View All Loans
-                      </Button>
-                      <Button
+                    <Button
                         variant="contained"
                         onClick={() => navigate('/add-loan', { state: { borrower } })}
+                        startIcon={<PostAddIcon />}
                       >
-                        Add Loan
+                        Add New Loan
                       </Button>
-                      <Button
-                        variant="contained"
-                        color="success"
-                        onClick={() => navigate('/add-payment', { state: { borrowerId: borrower.id } })}
-                      >
-                        Add Payment
-                      </Button>
-                    </Stack>
                   </Stack>
                   {associatedLoans.length > 0 ? (
                     <List disablePadding>
@@ -331,7 +367,20 @@ export default function BorrowerProfilePage() {
                       ))}
                     </List>
                   ) : (
-                    <Typography sx={{ textAlign: 'center', mt: 3, color: 'text.secondary' }}>This borrower has no associated loans.</Typography>
+                    <Box textAlign="center" mt={4} p={3} sx={{ border: '1px dashed', borderColor: 'grey.300', borderRadius: 2 }}>
+                        <Typography variant="h6" color="text.secondary">No Loans Yet</Typography>
+                        <Typography variant="body2" color="text.secondary" mb={2}>
+                            Get started by adding the first loan for this borrower.
+                        </Typography>
+                        <Button
+                            variant="contained"
+                            color="secondary"
+                            onClick={() => navigate('/add-loan', { state: { borrower } })}
+                            startIcon={<PostAddIcon />}
+                        >
+                            Add First Loan
+                        </Button>
+                    </Box>
                   )}
                 </TabPanel>
 
@@ -340,26 +389,36 @@ export default function BorrowerProfilePage() {
                     <Typography variant="h6" fontWeight="bold">Guarantors</Typography>
                     <Button variant="contained" startIcon={<GroupAddIcon />} onClick={() => handleOpenGuarantorDialog()}>Add Guarantor</Button>
                   </Stack>
-                  <List disablePadding>
-                    {borrowerGuarantors.length > 0 ? borrowerGuarantors.map(g => (
-                      <ListItem key={g.id} disablePadding divider>
-                        <ListItemText primary={g.name} secondary={`Phone: ${g.phone}`} />
-                        <Stack direction="row" spacing={1}>
-                          <IconButton onClick={() => handleOpenGuarantorDialog(g)}><EditIcon fontSize="small" /></IconButton>
-                          <IconButton onClick={() => handleOpenDeleteGuarantorConfirm(g)}><DeleteIcon fontSize="small" /></IconButton>
-                        </Stack>
-                      </ListItem>
-                    )) : (
-                      <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ py: 2 }}>No guarantors added.</Typography>
-                    )}
-                  </List>
+                  {borrowerGuarantors.length > 0 ? (
+                    <List disablePadding>
+                        {borrowerGuarantors.map(g => (
+                        <ListItem key={g.id} disablePadding divider>
+                            <ListItemText primary={g.name} secondary={`Phone: ${g.phone}`} />
+                            <Stack direction="row" spacing={1}>
+                            <IconButton onClick={() => handleOpenGuarantorDialog(g)}><EditIcon fontSize="small" /></IconButton>
+                            <IconButton onClick={() => handleOpenDeleteGuarantorConfirm(g)}><DeleteIcon fontSize="small" /></IconButton>
+                            </Stack>
+                        </ListItem>
+                        ))}
+                    </List>
+                   ) : (
+                    <Box textAlign="center" mt={4} p={3} sx={{ border: '1px dashed', borderColor: 'grey.300', borderRadius: 2 }}>
+                        <Typography variant="h6" color="text.secondary">No Guarantors</Typography>
+                        <Typography variant="body2" color="text.secondary" mb={2}>
+                            Add a guarantor to provide additional security for loans.
+                        </Typography>
+                        <Button variant="contained" color="secondary" startIcon={<GroupAddIcon />} onClick={() => handleOpenGuarantorDialog()}>
+                            Add Guarantor
+                        </Button>
+                    </Box>
+                  )}
                 </TabPanel>
 
                 <TabPanel value={activeTab} index={3}>
                   <Typography variant="h6" fontWeight="bold" gutterBottom>Internal Comments</Typography>
-                  <Stack spacing={2}>
+                  {borrowerComments.length > 0 ? (
                     <List disablePadding>
-                      {borrowerComments.length > 0 ? borrowerComments.map(comment => (
+                      {borrowerComments.map(comment => (
                         <ListItem key={comment.id} disablePadding sx={{ borderBottom: '1px solid', borderColor: 'divider' }}>
                           <ListItemText 
                             primary={comment.text} 
@@ -369,11 +428,17 @@ export default function BorrowerProfilePage() {
                             <DeleteIcon />
                           </IconButton>
                         </ListItem>
-                      )) : (
-                        <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ py: 2 }}>No comments yet.</Typography>
-                      )}
+                      ))}
                     </List>
-                    <Stack direction="row" spacing={1} sx={{ pt: 1 }}>
+                   ) : (
+                    <Box textAlign="center" mt={4} p={3} sx={{ border: '1px dashed', borderColor: 'grey.300', borderRadius: 2 }}>
+                        <Typography variant="h6" color="text.secondary">No Comments</Typography>
+                        <Typography variant="body2" color="text.secondary" mb={2}>
+                            Leave a comment to keep track of interactions with this borrower.
+                        </Typography>
+                    </Box>
+                  )}
+                  <Stack direction="row" spacing={1} sx={{ pt: 2 }}>
                       <TextField 
                         label="Add a new comment"
                         value={newComment}
@@ -382,9 +447,10 @@ export default function BorrowerProfilePage() {
                         multiline
                         size="small"
                       />
-                      <Button variant="contained" onClick={handleAddComment} sx={{ height: 'fit-content', whiteSpace: 'nowrap' }}>Add Comment</Button>
+                      <Button variant="contained" onClick={handleAddComment} sx={{ height: 'fit-content', whiteSpace: 'nowrap' }} startIcon={<AddCommentIcon />}>
+                          Add
+                      </Button>
                     </Stack>
-                  </Stack>
                 </TabPanel>
               </Box>
             </Paper>
