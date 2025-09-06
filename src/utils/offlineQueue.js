@@ -1,61 +1,39 @@
 // src/utils/offlineQueue.js
-import localforage from "localforage";
-import { db } from "../firebase";
-import { addDoc, collection } from "firebase/firestore";
+import { openDB } from 'idb';
 
-const OFFLINE_LOANS_KEY = "pendingLoans";
-const OFFLINE_PAYMENTS_KEY = "pendingPayments";
+const DB_NAME = 'offline-queue-db';
+const STORE_NAME = 'requests';
 
-/**
- * Queue a loan to be synced later when online.
- * @param {Object} loanData - The loan data object to queue.
- */
-export async function queueLoan(loanData) {
-  const existing = (await localforage.getItem(OFFLINE_LOANS_KEY)) || [];
-  existing.push({ ...loanData, timestamp: Date.now() });
-  await localforage.setItem(OFFLINE_LOANS_KEY, existing);
+async function getDB() {
+  return openDB(DB_NAME, 1, {
+    upgrade(db) {
+      db.createObjectStore(STORE_NAME, {
+        keyPath: 'id',
+        autoIncrement: true,
+      });
+    },
+  });
 }
 
-/**
- * Queue a payment to be synced later when online.
- * @param {Object} paymentData - The payment data object to queue.
- */
-export async function queuePayment(paymentData) {
-  const existing = (await localforage.getItem(OFFLINE_PAYMENTS_KEY)) || [];
-  existing.push({ ...paymentData, timestamp: Date.now() });
-  await localforage.setItem(OFFLINE_PAYMENTS_KEY, existing);
+export async function enqueueRequest(request) {
+  const db = await getDB();
+  await db.add(STORE_NAME, request);
 }
 
-/**
- * Sync all pending loans and payments stored offline to Firestore.
- * Syncs loans first, then payments.
- * If any sync fails, stops further syncing.
- */
-export async function syncPendingData() {
-  // Sync loans first
-  const pendingLoans = (await localforage.getItem(OFFLINE_LOANS_KEY)) || [];
-  for (const loan of pendingLoans) {
-    try {
-      await addDoc(collection(db, "loans"), loan);
-    } catch (error) {
-      console.error("Sync failed for loan", loan, error);
-      return; // Stop syncing on failure to avoid partial syncs
-    }
+export async function dequeueRequest() {
+  const db = await getDB();
+  const tx = db.transaction(STORE_NAME, 'readwrite');
+  const store = tx.objectStore(STORE_NAME);
+  const requests = await store.getAll();
+  if (requests.length > 0) {
+    const request = requests[0];
+    await store.delete(request.id);
+    return request;
   }
-
-  // Sync payments next
-  const pendingPayments = (await localforage.getItem(OFFLINE_PAYMENTS_KEY)) || [];
-  for (const payment of pendingPayments) {
-    try {
-      await addDoc(collection(db, "payments"), payment);
-    } catch (error) {
-      console.error("Sync failed for payment", payment, error);
-      return; // Stop syncing on failure
-    }
-  }
-
-  // Clear the offline queues after successful sync
-  await localforage.removeItem(OFFLINE_LOANS_KEY);
-  await localforage.removeItem(OFFLINE_PAYMENTS_KEY);
+  return null;
 }
 
+export async function getQueuedRequests() {
+  const db = await getDB();
+  return db.getAll(STORE_NAME);
+}

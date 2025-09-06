@@ -12,7 +12,6 @@ import {
 import { motion } from "framer-motion";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
-import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -81,21 +80,6 @@ const DashboardCard = ({
               position: "relative",
             }}
           >
-            {isMobile && (
-              <Box
-                {...provided.dragHandleProps}
-                sx={{
-                  position: "absolute",
-                  top: 4,
-                  right: 4,
-                  cursor: "grab",
-                  color: theme.palette.grey[500],
-                  zIndex: 1,
-                }}
-              >
-                <DragIndicatorIcon fontSize="small" />
-              </Box>
-            )}
             <Box
               display="flex"
               justifyContent="center"

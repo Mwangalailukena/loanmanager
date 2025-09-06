@@ -35,6 +35,8 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { useSnackbar } from "./SnackbarProvider";
 import dayjs from "dayjs";
+import useOfflineStatus from "../hooks/useOfflineStatus";
+import { enqueueRequest } from "../utils/offlineQueue";
 
 const interestOptions = [
   { label: "1 Week", value: 1 },
@@ -109,6 +111,7 @@ function AutoLoanForm({ borrowerId, onClose }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [amountError, setAmountError] = useState("");
+  const isOffline = useOfflineStatus();
 
   const selectedBorrower = borrowers.find(b => b.id === borrowerId);
 
@@ -153,15 +156,36 @@ function AutoLoanForm({ borrowerId, onClose }) {
     const startDate = dayjs().format("YYYY-MM-DD");
     const dueDate = dayjs().add(interestDuration * 7, "day").format("YYYY-MM-DD");
 
+    const loanData = {
+      borrowerId: borrowerId,
+      principal, interest, totalRepayable, startDate, dueDate,
+      status: "Active", repaidAmount: 0, interestDuration,
+      borrower: selectedBorrower.name,
+      phone: selectedBorrower.phone,
+      outstandingBalance: totalRepayable
+    };
+
+    if (isOffline) {
+      try {
+        await enqueueRequest({ type: 'addLoan', data: loanData });
+        await enqueueRequest({ type: 'addActivityLog', data: {
+          action: "Loan Created",
+          details: `Auto loan created for ${selectedBorrower?.name || 'Unknown'} (ZMW ${principal.toLocaleString()})`,
+          timestamp: new Date().toISOString(),
+        }});
+        showSnackbar("You are offline. Loan will be added when you're back online.", "info");
+        onClose();
+      } catch (err) {
+        console.error("Failed to enqueue loan:", err);
+        setError("Failed to save loan for offline use. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     try {
-      await addLoan({
-        borrowerId: borrowerId,
-        principal, interest, totalRepayable, startDate, dueDate,
-        status: "Active", repaidAmount: 0, interestDuration,
-        borrower: selectedBorrower.name,
-        phone: selectedBorrower.phone,
-        outstandingBalance: totalRepayable
-      });
+      await addLoan(loanData);
       await addActivityLog({
         action: "Loan Created",
         details: `Auto loan created for ${selectedBorrower?.name || 'Unknown'} (ZMW ${principal.toLocaleString()})`,
@@ -284,6 +308,7 @@ function ManualLoanForm({ borrowerId, onClose }) {
   const [startDateError, setStartDateError] = useState("");
   const [dueDateError, setDueDateError] = useState("");
   const [manualInterestRateError, setManualInterestRateError] = useState("");
+  const isOffline = useOfflineStatus();
   const selectedBorrower = borrowers.find(b => b.id === borrowerId);
 
   const calculateInterest = (principal, rate) => principal * (rate / 100);
@@ -332,15 +357,36 @@ function ManualLoanForm({ borrowerId, onClose }) {
     const formattedStartDate = startDate.format("YYYY-MM-DD");
     const formattedDueDate = dueDate.format("YYYY-MM-DD");
 
+    const loanData = {
+      borrowerId: borrowerId, principal, interest, totalRepayable,
+      startDate: formattedStartDate, dueDate: formattedDueDate,
+      status: "Active", repaidAmount: 0, manualInterestRate: interestRateDecimal,
+      borrower: selectedBorrower.name,
+      phone: selectedBorrower.phone,
+      outstandingBalance: totalRepayable
+    };
+
+    if (isOffline) {
+      try {
+        await enqueueRequest({ type: 'addLoan', data: loanData });
+        await enqueueRequest({ type: 'addActivityLog', data: {
+          action: "Loan Created (Manual)",
+          details: `Manual loan created for ${selectedBorrower?.name || 'Unknown'} (ZMW ${principal.toLocaleString()})`,
+          timestamp: new Date().toISOString(),
+        }});
+        showSnackbar("You are offline. Loan will be added when you're back online.", "info");
+        onClose();
+      } catch (err) {
+        console.error("Failed to enqueue manual loan:", err);
+        setError("Failed to save manual loan for offline use. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     try {
-      await addLoan({
-        borrowerId: borrowerId, principal, interest, totalRepayable,
-        startDate: formattedStartDate, dueDate: formattedDueDate,
-        status: "Active", repaidAmount: 0, manualInterestRate: interestRateDecimal,
-        borrower: selectedBorrower.name,
-        phone: selectedBorrower.phone,
-        outstandingBalance: totalRepayable
-      });
+      await addLoan(loanData);
       await addActivityLog({
         action: "Loan Created (Manual)",
         details: `Manual loan created for ${selectedBorrower?.name || 'Unknown'} (ZMW ${principal.toLocaleString()})`,

@@ -10,6 +10,7 @@ import AppRoutes from './AppRoutes';
 import InstallPrompt from './components/InstallPrompt';
 import SplashScreen from './components/SplashScreen';
 import NetworkStatus from './components/NetworkStatus';
+import OfflineQueueProcessor from './components/OfflineQueueProcessor';
 
 import { SearchProvider } from './contexts/SearchContext';
 
@@ -27,6 +28,7 @@ function App() {
     <Router>
       <FirestoreProvider>
         <NetworkStatus />
+        <OfflineQueueProcessor />
         <SearchProvider> {/* Add SearchProvider here */}
           <AppRoutes darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} />
         </SearchProvider> {/* Close SearchProvider here */}
