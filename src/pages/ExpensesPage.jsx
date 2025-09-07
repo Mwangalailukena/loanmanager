@@ -1,128 +1,267 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useFirestore } from '../contexts/FirestoreProvider';
+import { useSnackbar } from '../components/SnackbarProvider';
 import {
-  Box,
-  Typography,
-  Button,
-  List,
-  ListItem,
-  ListItemText,
-  Paper,
-  CircularProgress,
-  IconButton,
-  Stack,
+  Box, Typography, Button, List, ListItem, ListItemText, Paper,
+  CircularProgress, IconButton, Stack, Grid, Card, CardContent, CardHeader,
+  TextField, Select, MenuItem, FormControl, InputLabel, ListSubheader,
+  Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle,
+  Avatar, ListItemAvatar, useMediaQuery, useTheme, Menu, ListItemIcon
 } from '@mui/material';
+
+// Import MUI Icons
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import TravelExploreIcon from '@mui/icons-material/TravelExplore';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
+import PeopleIcon from '@mui/icons-material/People';
+import CampaignIcon from '@mui/icons-material/Campaign';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
+import PaidIcon from '@mui/icons-material/Paid';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
+import isBetween from 'dayjs/plugin/isBetween';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import { Pie } from 'react-chartjs-2';
+
 import AddExpenseDialog from '../components/AddExpenseDialog';
+
+dayjs.extend(isBetween);
+ChartJS.register(ArcElement, Tooltip, Legend);
+
+const getCategoryIcon = (category) => {
+  switch (category) {
+    case 'Office Supplies': return <BusinessCenterIcon />;
+    case 'Utilities': return <LightbulbIcon />;
+    case 'Salaries': return <PeopleIcon />;
+    case 'Marketing': return <CampaignIcon />;
+    case 'Travel': return <TravelExploreIcon />;
+    default: return <ReceiptLongIcon />;
+  }
+};
 
 export default function ExpensesPage() {
   const { expenses, loading, deleteExpense } = useFirestore();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [expenseToEdit, setExpenseToEdit] = useState(null); // State to hold the expense being edited
+  const showSnackbar = useSnackbar();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this expense?')) {
-      try {
-        await deleteExpense(id);
-      } catch (error) {
-        console.error("Failed to delete expense:", error);
-      }
+  // --- STATE AND DATA LOGIC (No Changes) ---
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [expenseToEdit, setExpenseToEdit] = useState(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedExpense, setSelectedExpense] = useState(null);
+
+  const uniqueCategories = useMemo(() => {
+    const categories = new Set(expenses.map(e => e.category));
+    return ['All', ...Array.from(categories)];
+  }, [expenses]);
+
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter(expense => {
+      const expenseDate = dayjs(expense.date.toDate());
+      const isAfterStartDate = startDate ? expenseDate.isAfter(startDate.startOf('day')) : true;
+      const isBeforeEndDate = endDate ? expenseDate.isBefore(endDate.endOf('day')) : true;
+      const inDateRange = isAfterStartDate && isBeforeEndDate;
+      const matchesCategory = categoryFilter === 'All' || expense.category === categoryFilter;
+      const matchesSearch = expense.description.toLowerCase().includes(searchQuery.toLowerCase());
+      return inDateRange && matchesCategory && matchesSearch;
+    });
+  }, [expenses, searchQuery, categoryFilter, startDate, endDate]);
+
+  const summaryData = useMemo(() => {
+    const total = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
+    const thisMonthTotal = filteredExpenses
+      .filter(e => dayjs(e.date.toDate()).isSame(dayjs(), 'month'))
+      .reduce((sum, e) => sum + e.amount, 0);
+    return { total, thisMonthTotal, count: filteredExpenses.length };
+  }, [filteredExpenses]);
+
+  const pieChartData = useMemo(() => {
+    const dataByCat = filteredExpenses.reduce((acc, expense) => {
+      acc[expense.category] = (acc[expense.category] || 0) + expense.amount;
+      return acc;
+    }, {});
+    const labels = Object.keys(dataByCat);
+    const data = Object.values(dataByCat);
+    return { labels, datasets: [{
+      data,
+      backgroundColor: ['#1976d2', '#d32f2f', '#f57c00', '#388e3c', '#7b1fa2', '#0288d1'],
+      borderWidth: 0,
+    }]};
+  }, [filteredExpenses]);
+  
+  const groupedExpenses = useMemo(() => {
+    const groups = {};
+    filteredExpenses.forEach(expense => {
+      const date = dayjs(expense.date.toDate());
+      let groupTitle;
+      if (date.isSame(dayjs(), 'day')) groupTitle = 'Today';
+      else if (date.isSame(dayjs().subtract(1, 'day'), 'day')) groupTitle = 'Yesterday';
+      else groupTitle = date.format('MMMM D, YYYY');
+      if (!groups[groupTitle]) groups[groupTitle] = [];
+      groups[groupTitle].push(expense);
+    });
+    return groups;
+  }, [filteredExpenses]);
+
+  // --- HANDLERS (No Changes) ---
+  const handleAddClick = () => { setExpenseToEdit(null); setDialogOpen(true); };
+  const handleCloseDialog = () => { setDialogOpen(false); setExpenseToEdit(null); };
+  const handleMenuClick = (event, expense) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setAnchorEl(event.currentTarget);
+    setSelectedExpense(expense);
+  };
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedExpense(null);
+  };
+  const handleEditClick = () => {
+    setExpenseToEdit(selectedExpense);
+    setDialogOpen(true);
+    handleMenuClose();
+  };
+  const openDeleteConfirm = () => {
+    setDeleteConfirmOpen(true);
+    handleMenuClose();
+  };
+  const closeDeleteConfirm = () => setDeleteConfirmOpen(false);
+  const handleDeleteConfirm = async () => {
+    if (!selectedExpense) return;
+    try {
+      await deleteExpense(selectedExpense.id);
+      showSnackbar('Expense deleted successfully!', 'success');
+    } catch (error) {
+      console.error("Failed to delete expense:", error);
+      showSnackbar('Failed to delete expense.', 'error');
+    } finally {
+      closeDeleteConfirm();
     }
   };
 
-  // Open dialog in "edit" mode
-  const handleEditClick = (expense) => {
-    setExpenseToEdit(expense);
-    setDialogOpen(true);
-  };
-  
-  // Open dialog in "add" mode
-  const handleAddClick = () => {
-    setExpenseToEdit(null); // Ensure no expense is being edited
-    setDialogOpen(true);
-  };
-
-  // Close dialog and reset state
-  const handleCloseDialog = () => {
-    setDialogOpen(false);
-    setExpenseToEdit(null);
-  };
-
+  // --- RESPONSIVE TWO-COLUMN LAYOUT ---
   return (
-    <Paper
-      elevation={4}
-      sx={{
-        maxWidth: 800,
-        mx: 'auto',
-        mt: 4,
-        p: 3,
-        borderRadius: 3,
-        border: (theme) => `1px solid ${theme.palette.divider}`,
-      }}
-    >
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
-        <Typography variant="h5" fontWeight="bold">
-          Expenses
-        </Typography>
-        <Button
-          variant="contained"
-          color="secondary"
-          startIcon={<AddIcon />}
-          onClick={handleAddClick}
-        >
-          Add Expense
-        </Button>
-      </Stack>
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <Box sx={{ bgcolor: (theme) => theme.palette.grey[100], minHeight: '100vh', p: { xs: 1, md: 3 } }}>
+        <Box sx={{ maxWidth: 1400, mx: 'auto' }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
+            <Typography variant={isMobile ? 'h5' : 'h4'} sx={{ fontWeight: 700, color: 'text.primary' }}>Expense Dashboard</Typography>
+            <Button variant="contained" disableElevation color="secondary" startIcon={<AddIcon />} onClick={handleAddClick}>
+              Add Expense
+            </Button>
+          </Stack>
 
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-          <CircularProgress color="secondary" />
+          <Grid container spacing={3}>
+            {/* --- SIDEBAR (RIGHT COLUMN on Desktop, TOP on Mobile) --- */}
+            <Grid item xs={12} md={4} order={{ xs: 1, md: 2 }}>
+              <Stack spacing={3}>
+                {/* --- SUMMARY CARD --- */}
+                <Card sx={{ borderRadius: 3, elevation: 2 }}>
+                  <CardHeader title="Summary" />
+                  <CardContent>
+                    <Stack spacing={2}>
+                       <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, borderRadius: 2 }}>
+                        <Avatar sx={{ bgcolor: 'primary.light', color: 'primary.dark' }}><CalendarMonthIcon /></Avatar>
+                        <Box>
+                          <Typography variant="h6" fontWeight="bold">K {summaryData.thisMonthTotal.toLocaleString()}</Typography>
+                          <Typography variant="body2" color="text.secondary">Total (This Month)</Typography>
+                        </Box>
+                      </Paper>
+                      <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, borderRadius: 2 }}>
+                        <Avatar sx={{ bgcolor: 'success.light', color: 'success.dark' }}><PaidIcon /></Avatar>
+                        <Box>
+                          <Typography variant="h6" fontWeight="bold">K {summaryData.total.toLocaleString()}</Typography>
+                          <Typography variant="body2" color="text.secondary">Total (Filtered)</Typography>
+                        </Box>
+                      </Paper>
+                      <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, borderRadius: 2 }}>
+                        <Avatar sx={{ bgcolor: 'warning.light', color: 'warning.dark' }}><ReceiptLongIcon /></Avatar>
+                        <Box>
+                          <Typography variant="h6" fontWeight="bold">{summaryData.count}</Typography>
+                          <Typography variant="body2" color="text.secondary">Transactions</Typography>
+                        </Box>
+                      </Paper>
+                    </Stack>
+                  </CardContent>
+                </Card>
+                {/* --- CHART CARD --- */}
+                <Card sx={{ borderRadius: 3, elevation: 2 }}>
+                  <CardHeader title="Category Breakdown" />
+                  <Box sx={{ height: 300, display: 'flex', justifyContent: 'center', alignItems: 'center', p: 2 }}>
+                     {filteredExpenses.length > 0 ? <Pie data={pieChartData} options={{ maintainAspectRatio: false, plugins: { legend: { position: 'bottom' }}}} /> : <Typography color="text.secondary">No data for chart</Typography>}
+                  </Box>
+                </Card>
+              </Stack>
+            </Grid>
+
+            {/* --- MAIN CONTENT (LEFT COLUMN on Desktop, BOTTOM on Mobile) --- */}
+            <Grid item xs={12} md={8} order={{ xs: 2, md: 1 }}>
+              <Card sx={{ borderRadius: 3, elevation: 2 }}>
+                <CardHeader title="Transactions" />
+                <CardContent>
+                  <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
+                    <Grid item xs={12} sm={6} md={5}><TextField label="Search..." variant="outlined" size="small" fullWidth value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></Grid>
+                    <Grid item xs={12} sm={6} md={3}><FormControl fullWidth size="small"><InputLabel>Category</InputLabel><Select value={categoryFilter} label="Category" onChange={(e) => setCategoryFilter(e.target.value)}>{uniqueCategories.map(cat => <MenuItem key={cat} value={cat}>{cat}</MenuItem>)}</Select></FormControl></Grid>
+                    <Grid item xs={6} sm={6} md={2}><DatePicker label="Start Date" value={startDate} onChange={setStartDate} slotProps={{ textField: { size: 'small' } }} /></Grid>
+                    <Grid item xs={6} sm={6} md={2}><DatePicker label="End Date" value={endDate} onChange={setEndDate} slotProps={{ textField: { size: 'small' } }} /></Grid>
+                  </Grid>
+                </CardContent>
+                {loading ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', my: 10 }}><CircularProgress color="secondary" /></Box>
+                ) : filteredExpenses.length > 0 ? (
+                  <List sx={{ width: '100%', p: 0 }} dense={isMobile}>
+                    {Object.entries(groupedExpenses).map(([groupTitle, expensesInGroup]) => (
+                      <Box key={groupTitle}>
+                        <ListSubheader sx={{ bgcolor: (theme) => theme.palette.grey[100] }}>{groupTitle}</ListSubheader>
+                        {expensesInGroup.map(expense => (
+                          <ListItem key={expense.id} secondaryAction={
+                            <IconButton size="small" onClick={(e) => handleMenuClick(e, expense)}><MoreVertIcon /></IconButton>
+                          }>
+                            <ListItemAvatar><Avatar sx={{ bgcolor: 'secondary.light' }}>{getCategoryIcon(expense.category)}</Avatar></ListItemAvatar>
+                            <ListItemText primary={expense.description} secondary={dayjs(expense.date.toDate()).format('YYYY-MM-DD')} />
+                            <Typography variant="body1" fontWeight={500}>K {Number(expense.amount).toLocaleString()}</Typography>
+                          </ListItem>
+                        ))}
+                      </Box>
+                    ))}
+                  </List>
+                ) : (
+                  <Typography sx={{ textAlign: 'center', p: 5, color: 'text.secondary' }}>No expenses match your filters.</Typography>
+                )}
+              </Card>
+            </Grid>
+          </Grid>
         </Box>
-      ) : expenses.length > 0 ? (
-        <List sx={{ width: '100%' }}>
-          {expenses.map((expense) => (
-            <ListItem
-              key={expense.id}
-              secondaryAction={
-                <Stack direction="row" spacing={1}>
-                  <IconButton edge="end" aria-label="edit" onClick={() => handleEditClick(expense)}>
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton edge="end" aria-label="delete" onClick={() => handleDelete(expense.id)}>
-                    <DeleteIcon />
-                  </IconButton>
-                </Stack>
-              }
-              sx={{ 
-                mb: 1, 
-                borderRadius: 2, 
-                '&:hover': { bgcolor: 'action.hover' }
-              }}
-            >
-              <ListItemText
-                primary={expense.description}
-                secondary={`Category: ${expense.category} | Date: ${dayjs(expense.date.toDate()).format('YYYY-MM-DD')}`}
-              />
-              <Typography variant="body1" fontWeight="bold">
-                K {Number(expense.amount).toLocaleString()}
-              </Typography>
-            </ListItem>
-          ))}
-        </List>
-      ) : (
-        <Typography sx={{ textAlign: 'center', mt: 4, color: 'text.secondary' }}>
-          No expenses recorded yet. Click "Add Expense" to get started.
-        </Typography>
-      )}
-
-      <AddExpenseDialog 
-          open={dialogOpen} 
-          onClose={handleCloseDialog} 
-          expenseToEdit={expenseToEdit} // Pass the expense to the dialog
-        />
-    </Paper>
+        
+        {/* --- DIALOGS --- */}
+        <AddExpenseDialog open={dialogOpen} onClose={handleCloseDialog} expenseToEdit={expenseToEdit} />
+        <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
+          <MenuItem onClick={handleEditClick}><ListItemIcon><EditIcon fontSize="small" /></ListItemIcon><ListItemText>Edit</ListItemText></MenuItem>
+          <MenuItem onClick={openDeleteConfirm}><ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon><ListItemText sx={{ color: 'error.main' }}>Delete</ListItemText></MenuItem>
+        </Menu>
+        <Dialog open={deleteConfirmOpen} onClose={closeDeleteConfirm}>
+          <DialogTitle>Confirm Deletion</DialogTitle>
+          <DialogContent><DialogContentText>Are you sure you want to permanently delete this expense?</DialogContentText></DialogContent>
+          <DialogActions>
+            <Button onClick={closeDeleteConfirm}>Cancel</Button>
+            <Button onClick={handleDeleteConfirm} color="error" variant="contained">Delete</Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
+    </LocalizationProvider>
   );
 }
