@@ -40,6 +40,7 @@ export function FirestoreProvider({ children }) {
   const [activityLogs, setActivityLogs] = useState([]);
   const [comments, setComments] = useState([]);
   const [guarantors, setGuarantors] = useState([]);
+  const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const addActivityLog = async (logEntry) => {
@@ -101,6 +102,7 @@ export function FirestoreProvider({ children }) {
       activityLogs: { setter: setActivityLogs, cacheKey: null, orderByField: "createdAt" },
       comments: { setter: setComments, cacheKey: null, orderByField: "createdAt" },
       guarantors: { setter: setGuarantors, cacheKey: null, orderByField: "name" },
+      expenses: { setter: setExpenses, cacheKey: "expenses", orderByField: "date" },
     };
 
     Object.entries(collections).forEach(([col, config]) => {
@@ -172,6 +174,29 @@ export function FirestoreProvider({ children }) {
     await deleteDoc(doc(db, "guarantors", id));
     setGuarantors((prev) => prev.filter((g) => g.id !== id));
     await addActivityLog({ type: "guarantor_delete", description: `Guarantor deleted (ID: ${id})` });
+  };
+
+  const addExpense = async (expense) => {
+    const expenseWithOwner = {
+      ...expense,
+      userId: currentUser.uid,
+      createdAt: serverTimestamp(),
+    };
+    const docRef = await addDoc(collection(db, "expenses"), expenseWithOwner);
+    await addActivityLog({ type: "expense_add", description: `Expense added: ${expense.description}` });
+    return docRef;
+  };
+
+  const updateExpense = async (id, updates) => {
+    const docRef = doc(db, "expenses", id);
+    await updateDoc(docRef, { ...updates, updatedAt: serverTimestamp() });
+    await addActivityLog({ type: "expense_update", description: `Expense updated (ID: ${id})` });
+  };
+
+  const deleteExpense = async (id) => {
+    await deleteDoc(doc(db, "expenses", id));
+    setExpenses((prev) => prev.filter((e) => e.id !== id));
+    await addActivityLog({ type: "expense_delete", description: `Expense deleted (ID: ${id})` });
   };
 
   const addPayment = async (loanId, amount) => {
@@ -251,13 +276,14 @@ export function FirestoreProvider({ children }) {
   };
 
   const value = {
-    loans, payments, borrowers, settings, activityLogs, comments, guarantors, loading,
+    loans, payments, borrowers, settings, activityLogs, comments, guarantors, expenses, loading,
     addLoan, updateLoan, deleteLoan,
     addPayment, getPaymentsByLoanId,
     updateSettings, addActivityLog,
     addBorrower, updateBorrower, deleteBorrower,
     addComment, deleteComment,
     addGuarantor, updateGuarantor, deleteGuarantor,
+    addExpense, updateExpense, deleteExpense,
   };
 
   return (

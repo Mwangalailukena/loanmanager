@@ -12,6 +12,7 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import AddIcon from "@mui/icons-material/Add";
 import ListAltIcon from "@mui/icons-material/ListAlt";
 import PeopleIcon from '@mui/icons-material/People';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'; // Import for Expenses
 
 export const BOTTOM_NAV_HEIGHT = 64;
 
@@ -34,6 +35,7 @@ const BottomNavBar = () => {
     if (location.pathname.startsWith("/add-loan")) return "/add-loan";
     if (location.pathname.startsWith("/borrowers")) return "/borrowers";
     if (location.pathname.startsWith("/loans")) return "/loans";
+    if (location.pathname.startsWith("/expenses")) return "/expenses"; // New: Handle Expenses path
     return null;
   };
 
@@ -143,6 +145,11 @@ const BottomNavBar = () => {
           label="Loans"
           value="/loans"
           icon={<ListAltIcon />}
+        />
+        <BottomNavigationAction
+          label="Expenses"
+          value="/expenses"
+          icon={<ReceiptLongIcon />}
         />
       </BottomNavigation>
     </Paper>

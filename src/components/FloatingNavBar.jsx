@@ -35,6 +35,7 @@ import {
   LightMode as LightModeIcon,
   DarkMode as DarkModeIcon,
   People as PeopleIcon,
+  Receipt as ReceiptIcon, // New: Import ReceiptIcon for Expenses
 } from "@mui/icons-material";
 import { useLocation, useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
@@ -108,6 +109,7 @@ const FloatingNavBar = ({ onOpenLoanDetail, darkMode, onToggleDarkMode }) => {
     { text: "Add Loan", icon: <AddIcon />, path: "/add-loan" },
     { text: "Add Payment", icon: <AttachMoneyIcon />, path: "/add-payment" },
     { text: "Loan Records", icon: <ListAltIcon />, path: "/loans" },
+    { text: "Expenses", icon: <ReceiptIcon />, path: "/expenses" }, // New: Expenses link
     { text: "Reports", icon: <AssessmentIcon />, path: "/reports" },
     { text: "Activity", icon: <HistoryIcon />, path: "/activity" },
   ];

@@ -4,7 +4,6 @@ import { useFirestore } from '../contexts/FirestoreProvider';
 import {
   Box,
   Typography,
-  Button,
   List,
   ListItem,
   ListItemText,
@@ -15,14 +14,33 @@ import {
   TextField,
   InputAdornment,
   Stack,
+  IconButton,
+  Menu,
+  MenuItem,
 } from '@mui/material';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import PersonIcon from '@mui/icons-material/Person';
+import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline';
 
 export default function BorrowerListPage() {
   const { borrowers, loading } = useFirestore();
   const [searchTerm, setSearchTerm] = useState('');
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedBorrower, setSelectedBorrower] = useState(null);
+
+  const handleMenuClick = (event, borrower) => {
+    event.stopPropagation();
+    setAnchorEl(event.currentTarget);
+    setSelectedBorrower(borrower);
+  };
+
+  const handleMenuClose = (event) => {
+    if (event) event.stopPropagation();
+    setAnchorEl(null);
+    setSelectedBorrower(null);
+  };
 
   const filteredBorrowers = useMemo(() => {
     if (!searchTerm) {
@@ -49,15 +67,6 @@ export default function BorrowerListPage() {
         <Typography variant="h5" fontWeight="bold">
           Borrowers
         </Typography>
-        <Button
-          variant="contained"
-          color="secondary"
-          component={RouterLink}
-          to="/add-borrower"
-          startIcon={<AddIcon />}
-        >
-          Add Borrower
-        </Button>
       </Stack>
 
       <TextField
@@ -88,6 +97,17 @@ export default function BorrowerListPage() {
               button
               component={RouterLink}
               to={`/borrowers/${borrower.id}`}
+              secondaryAction={
+                <IconButton
+                  edge="end"
+                  aria-label="more"
+                  aria-controls="long-menu"
+                  aria-haspopup="true"
+                  onClick={(e) => handleMenuClick(e, borrower)}
+                >
+                  <MoreVertIcon />
+                </IconButton>
+              }
               sx={{ 
                 mb: 1, 
                 borderRadius: 2, 
@@ -107,10 +127,43 @@ export default function BorrowerListPage() {
           ))}
         </List>
       ) : (
-        <Typography sx={{ textAlign: 'center', mt: 4, color: 'text.secondary' }}>
-          No borrowers found. Click "Add Borrower" to get started.
-        </Typography>
+        <Box sx={{ textAlign: 'center', mt: 4, color: 'text.secondary' }}>
+          <PeopleOutlineIcon sx={{ fontSize: 48, color: 'grey.400' }} />
+          <Typography variant="h6" sx={{ mt: 2 }}>
+            No borrowers found
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            Click the <AddIcon sx={{ verticalAlign: 'middle', fontSize: '1rem' }} /> button in the bottom right to add your first borrower.
+          </Typography>
+        </Box>
       )}
+      <Menu
+        id="long-menu"
+        anchorEl={anchorEl}
+        keepMounted
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+      >
+        <MenuItem
+          component={RouterLink}
+          to={`/add-loan?borrowerId=${selectedBorrower?.id}`}
+          onClick={handleMenuClose}
+        >
+          Add Loan for this Borrower
+        </MenuItem>
+        <MenuItem onClick={(e) => {
+          window.location.href = `tel:${selectedBorrower?.phone}`;
+          handleMenuClose(e);
+        }}>
+          Call
+        </MenuItem>
+        <MenuItem onClick={(e) => {
+          window.location.href = `sms:${selectedBorrower?.phone}`;
+          handleMenuClose(e);
+        }}>
+          Send SMS
+        </MenuItem>
+      </Menu>
     </Paper>
   );
 }

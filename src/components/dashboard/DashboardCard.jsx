@@ -87,7 +87,16 @@ const DashboardCard = ({
               mb={0.5}
               gap={0.5}
             >
-              <Box sx={{ color: theme.palette[card.color]?.main || theme.palette.text.primary }}>
+              <Box sx={{ 
+                color: theme.palette[card.color]?.main || theme.palette.text.primary,
+                backgroundColor: theme.palette[card.color]?.light + '33' || theme.palette.action.hover,
+                borderRadius: '50%',
+                width: 40,
+                height: 40,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
                 {typeof card.icon === "function" ? card.icon(card.value) : card.icon}
               </Box>
               <Typography

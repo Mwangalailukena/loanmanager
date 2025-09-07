@@ -12,6 +12,7 @@ import {
   SpeedDial,
   SpeedDialIcon,
   SpeedDialAction,
+  Fab,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -19,6 +20,8 @@ import {
   Close as CloseIcon,
   Add as AddIcon,
   AttachMoney as AttachMoneyIcon,
+  PersonAdd as PersonAddIcon,
+  Receipt as ReceiptIcon, // For FloatingNavBar and MobileDrawer
 } from '@mui/icons-material';
 
 import FloatingNavBar from './FloatingNavBar';
@@ -112,10 +115,73 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
     return <>{children}</>;
   }
 
-  const actions = [
-    { icon: <AddIcon />, name: 'Add Loan', path: '/add-loan' },
-    { icon: <AttachMoneyIcon />, name: 'Add Payment', path: '/add-payment' },
-  ];
+  const renderFab = () => {
+    const fabStyles = {
+      position: 'fixed',
+      bottom: isMobile ? `calc(${bottomNavHeight}px + 16px)` : 16,
+      right: 16,
+    };
+
+    switch (pathname) {
+      case '/dashboard':
+        const actions = [
+          { icon: <AddIcon />, name: 'Add Loan', path: '/add-loan' },
+          { icon: <PersonAddIcon />, name: 'Add Borrower', path: '/add-borrower' },
+          { icon: <AttachMoneyIcon />, name: 'Add Payment', path: '/add-payment' },
+        ];
+        return (
+          <SpeedDial
+            ariaLabel="SpeedDial for primary actions"
+            sx={fabStyles}
+            icon={<SpeedDialIcon />}
+          >
+            {actions.map((action) => (
+              <SpeedDialAction
+                key={action.name}
+                icon={action.icon}
+                tooltipTitle={action.name}
+                onClick={() => navigate(action.path)}
+              />
+            ))}
+          </SpeedDial>
+        );
+      case '/borrowers':
+        return (
+          <Fab
+            color="secondary"
+            aria-label="add borrower"
+            sx={fabStyles}
+            onClick={() => navigate('/add-borrower')}
+          >
+            <PersonAddIcon />
+          </Fab>
+        );
+      case '/loans':
+        return (
+          <Fab
+            color="secondary"
+            aria-label="add loan"
+            sx={fabStyles}
+            onClick={() => navigate('/add-loan')}
+          >
+            <AddIcon />
+          </Fab>
+        );
+      case '/expenses':
+        return (
+          <Fab
+            color="secondary"
+            aria-label="add expense"
+            sx={fabStyles}
+            onClick={() => navigate('/expenses')}
+          >
+            <ReceiptIcon />
+          </Fab>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -206,25 +272,8 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
         loanId={selectedLoanId}
       />
 
-      {/* Speed Dial FAB */}
-      <SpeedDial
-        ariaLabel="SpeedDial for adding loans and payments"
-        sx={{
-          position: 'fixed',
-          bottom: isMobile ? `calc(${bottomNavHeight}px + 16px)` : 16,
-          right: 16,
-        }}
-        icon={<SpeedDialIcon />}
-      >
-        {actions.map((action) => (
-          <SpeedDialAction
-            key={action.name}
-            icon={action.icon}
-            tooltipTitle={action.name}
-            onClick={() => navigate(action.path)}
-          />
-        ))}
-      </SpeedDial>
+      {/* Context-aware FAB */}
+      {renderFab()}
     </Box>
   );
 };

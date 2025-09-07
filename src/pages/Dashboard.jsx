@@ -16,6 +16,7 @@ import { keyframes } from "@mui/system";
 import SummarizeIcon from '@mui/icons-material/Summarize';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
+import WarningAmber from '@mui/icons-material/WarningAmber';
 import { useNavigate } from "react-router-dom";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { useAuth } from "../contexts/AuthProvider.js";
@@ -114,6 +115,33 @@ export default function Dashboard() {
         settings,
         isMobile
     );
+
+    const actionItems = useMemo(() => {
+        const overdue = loans.filter(loan => {
+            const totalRepayable = Number(loan.totalRepayable || 0);
+            const repaidAmount = Number(loan.repaidAmount || 0);
+            if (repaidAmount >= totalRepayable && totalRepayable > 0) {
+                return false;
+            }
+            return dayjs(loan.dueDate).isBefore(dayjs(), "day");
+        });
+
+        const dueThisWeek = loans.filter(loan => {
+            const totalRepayable = Number(loan.totalRepayable || 0);
+            const repaidAmount = Number(loan.repaidAmount || 0);
+            if (repaidAmount >= totalRepayable && totalRepayable > 0) {
+                return false;
+            }
+            const dueDate = dayjs(loan.dueDate);
+            const now = dayjs();
+            return dueDate.isAfter(now, "day") && dueDate.isBefore(now.add(7, 'day'), "day");
+        });
+
+        return {
+            overdueCount: overdue.length,
+            dueThisWeekCount: dueThisWeek.length,
+        };
+    }, [loans]);
 
     useEffect(() => {
         if (currentUser) {
@@ -249,6 +277,42 @@ export default function Dashboard() {
             <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 0.5, fontSize: { xs: "1.5rem", md: "2rem" } }}>
                 Dashboard
             </Typography>
+
+            { (actionItems.overdueCount > 0 || actionItems.dueThisWeekCount > 0) &&
+                <Box
+                    sx={{
+                        p: 2,
+                        mb: 2,
+                        backgroundColor: theme.palette.warning.light,
+                        borderRadius: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                        '&:hover': {
+                            backgroundColor: theme.palette.warning.main,
+                        }
+                    }}
+                    onClick={() => navigate('/loans?filter=overdue')}
+                >
+                    <WarningAmber sx={{ color: theme.palette.warning.contrastText, mr: 1.5 }} />
+                    <Box>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: theme.palette.warning.contrastText }}>
+                            Action Required
+                        </Typography>
+                        {actionItems.overdueCount > 0 && (
+                            <Typography variant="body2" sx={{ color: theme.palette.warning.contrastText }}>
+                                {actionItems.overdueCount} loan(s) are overdue.
+                            </Typography>
+                        )}
+                        {actionItems.dueThisWeekCount > 0 && (
+                            <Typography variant="body2" sx={{ color: theme.palette.warning.contrastText }}>
+                                {actionItems.dueThisWeekCount} payment(s) due this week.
+                            </Typography>
+                        )}
+                    </Box>
+                </Box>
+            }
+
             <Box mb={isMobile ? 1.5 : 2} maxWidth={isMobile ? "100%" : 200}>
                 <TextField
                     label="Select Month"
