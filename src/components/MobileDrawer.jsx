@@ -18,6 +18,7 @@ import {
   Fade,
   Button,
   ListSubheader,
+  CircularProgress,
 } from '@mui/material';
 import { alpha, keyframes } from '@mui/material/styles';
 import {
@@ -43,7 +44,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useAuth } from '../contexts/AuthProvider';
-import { useFirestore } from '../contexts/FirestoreProvider'; // <-- Corrected path
+import { useFirestore } from '../contexts/FirestoreProvider';
 import dayjs from 'dayjs';
 
 import ChangePassword from "../pages/ChangePassword.jsx";
@@ -70,7 +71,7 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onOpe
   const { pathname } = useLocation();
   const theme = useTheme();
   const { currentUser } = useAuth();
-  const { loans } = useFirestore();
+  const { loans, loadingLoans } = useFirestore(); // Restored loadingLoans
 
   const [profileOpen, setProfileOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -95,13 +96,15 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onOpe
     const notes = [];
     
     loans.forEach(loan => {
-      if (loan.status === "Paid") return;
+      const borrowerName = loan.borrower?.name || 'a borrower';
+      if ((loan.repaidAmount || 0) >= (loan.totalRepayable || 0)) return;
+      
       const dueDate = dayjs(loan.dueDate);
       const diffInDays = dueDate.diff(now, "day");
       if (diffInDays < 3 && diffInDays >= 0) {
-        notes.push({ id: `${loan.id}-upcoming`, message: `Loan for ${loan.borrower} is due on ${dueDate.format("MMM D")}.`, loanId: loan.id, isOverdue: false, });
+        notes.push({ id: `${loan.id}-upcoming`, message: `Loan for ${borrowerName} is due on ${dueDate.format("MMM D")}.`, loanId: loan.id });
       } else if (dueDate.isBefore(now, "day")) {
-        notes.push({ id: `${loan.id}-overdue`, message: `Loan for ${loan.borrower} is overdue!`, loanId: loan.id, isOverdue: true, });
+        notes.push({ id: `${loan.id}-overdue`, message: `Loan for ${borrowerName} is overdue!`, loanId: loan.id });
       }
     });
     setAllNotifications(notes);
@@ -127,8 +130,9 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onOpe
   };
   
   const handleMarkAllAsRead = () => {
-    setReadNotifications(allNotifications.map(n => n.id));
-    localStorage.setItem("readNotifications", JSON.stringify(allNotifications.map(n => n.id)));
+    const allIds = allNotifications.map(n => n.id);
+    setReadNotifications(allIds);
+    localStorage.setItem("readNotifications", JSON.stringify(allIds));
   };
 
   const generalItems = [
@@ -136,7 +140,7 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onOpe
     { text: 'Borrowers', icon: <PeopleIcon />, path: '/borrowers' },
     { text: 'Loans', icon: <AttachMoneyIcon />, path: '/loans' },
     { text: 'Add Loan', icon: <AddIcon />, path: '/add-loan' },
-    { text: 'Expenses', icon: <ReceiptIcon />, path: '/expenses' }, // New: Expenses link
+    { text: 'Expenses', icon: <ReceiptIcon />, path: '/expenses' },
     { text: 'Activity', icon: <HistoryIcon />, path: '/activity' },
     { text: 'Reports', icon: <AssessmentIcon />, path: '/reports' },
     { text: 'Notifications', icon: <NotificationsIcon />, onClick: (e) => setNotificationAnchor(e.currentTarget) },
@@ -159,7 +163,7 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onOpe
     borderRadius: theme.shape.borderRadius,
     mx: 1, 
     my: 0.5,
-    transition: theme.transitions.create(['background-color', 'color']),
+    transition: theme.transitions.create(['background-color', 'color', 'padding-left']),
     '& .MuiListItemIcon-root': {
       transition: theme.transitions.create(['transform']),
     },
@@ -168,9 +172,12 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onOpe
         transform: 'scale(1.1)',
       },
     },
+    // --- IMPROVEMENT: Added left border for selected items ---
     '&.Mui-selected': {
       backgroundColor: alpha(theme.palette.primary.main, theme.palette.action.selectedOpacity),
       color: theme.palette.primary.main,
+      paddingLeft: '13px', 
+      borderLeft: `3px solid ${theme.palette.primary.main}`,
       '& .MuiListItemIcon-root': {
         color: theme.palette.primary.main,
       },
@@ -198,14 +205,14 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onOpe
         }}
       >
         <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
             <Avatar
-              sx={{ width: 40, height: 40, mr: 2 }}
+              sx={{ width: 40, height: 40, mr: 2, flexShrink: 0 }}
               src={currentUser?.photoURL || ''}
             >
               {stringToInitials(currentUser?.displayName || "U")}
             </Avatar>
-            <Box>
+            <Box sx={{ minWidth: 0 }}>
                 <Typography variant="h6" noWrap>
                   {currentUser?.displayName || "User"}
                 </Typography>
@@ -224,13 +231,13 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onOpe
             <ListItem 
               key={item.text} 
               disablePadding 
-              onClick={() => {
-                onClose();
+              onClick={(e) => {
                 if (item.path) {
                   navigate(item.path);
                 } else if (item.onClick) {
-                  item.onClick();
+                  item.onClick(e);
                 }
+                onClose();
               }}
             >
               <ListItemButton selected={item.path === pathname} sx={listItemSx}>
@@ -255,7 +262,7 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onOpe
         <Divider />
         <List subheader={<ListSubheader sx={{ bgcolor: 'transparent' }}>Account</ListSubheader>}>
           {accountItems.map((item) => (
-            <ListItem key={item.text} disablePadding onClick={item.onClick}>
+            <ListItem key={item.text} disablePadding onClick={() => { item.onClick(); onClose(); }}>
               <ListItemButton sx={listItemSx}>
                 <ListItemIcon>{item.icon}</ListItemIcon>
                 <ListItemText primary={item.text} />
@@ -272,7 +279,6 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onOpe
         </ListItem>
       </SwipeableDrawer>
       
-      {/* Notifications Popover */}
       <Popover
         open={openNotifications}
         anchorEl={notificationAnchor}
@@ -286,57 +292,41 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onOpe
             p: 2,
             borderRadius: 2,
             boxShadow: theme.shadows[4],
-            backdropFilter: 'blur(12px) saturate(180%)',
-            backgroundColor: alpha(theme.palette.background.paper, 0.1),
-            border: '1px solid ' + alpha(theme.palette.divider, 0.2),
           },
         }}
       >
-        <Typography variant="h6">Notifications</Typography>
-        {unreadNotifications.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">No new notifications.</Typography>
+        <Typography variant="h6" sx={{ pb: 1 }}>Notifications</Typography>
+        {/* --- IMPROVEMENT: Handle loading state for notifications --- */}
+        {loadingLoans ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+            <CircularProgress size={24} />
+          </Box>
+        ) : unreadNotifications.length === 0 ? (
+          <Typography variant="body2" color="text.secondary" sx={{ p: 1 }}>No new notifications.</Typography>
         ) : (
           unreadNotifications.map(({ id, message, loanId }) => (
             <MenuItem key={id} onClick={() => handleNotificationItemClick(id, loanId)}>
-              <Typography variant="body2">{message}</Typography>
+              <Typography variant="body2" component="span">{message}</Typography>
             </MenuItem>
           ))
         )}
-        <Button onClick={handleMarkAllAsRead} color="primary" sx={{ textTransform: 'none', mt: 2, width: '100%' }}>
-            Mark all as read
-        </Button>
+        {unreadNotifications.length > 0 &&
+            <Button onClick={handleMarkAllAsRead} color="primary" sx={{ textTransform: 'none', mt: 1, width: '100%' }}>
+                Mark all as read
+            </Button>
+        }
       </Popover>
       
-      <Dialog
-        open={profileOpen}
-        onClose={closeAllDialogs}
-        maxWidth="sm"
-        fullWidth
-      >
+      <Dialog open={profileOpen} onClose={closeAllDialogs} maxWidth="sm" fullWidth>
         <Profile onClose={closeAllDialogs} />
       </Dialog>
-      <Dialog
-        open={settingsOpen}
-        onClose={closeAllDialogs}
-        maxWidth="sm"
-        fullWidth
-      >
+      <Dialog open={settingsOpen} onClose={closeAllDialogs} maxWidth="sm" fullWidth>
         <SettingsPage onClose={closeAllDialogs} />
       </Dialog>
-      <Dialog
-        open={changePasswordOpen}
-        onClose={closeAllDialogs}
-        maxWidth="sm"
-        fullWidth
-      >
+      <Dialog open={changePasswordOpen} onClose={closeAllDialogs} maxWidth="sm" fullWidth>
         <ChangePassword onClose={closeAllDialogs} />
       </Dialog>
-      <Dialog
-        open={helpOpen}
-        onClose={closeAllDialogs}
-        maxWidth="sm"
-        fullWidth
-      >
+      <Dialog open={helpOpen} onClose={closeAllDialogs} maxWidth="sm" fullWidth>
         <HelpDialog open={helpOpen} onClose={closeAllDialogs} />
       </Dialog>
     </>

@@ -21,57 +21,68 @@ import {
   Add as AddIcon,
   AttachMoney as AttachMoneyIcon,
   PersonAdd as PersonAddIcon,
-  Receipt as ReceiptIcon, // For FloatingNavBar and MobileDrawer
+  Receipt as ReceiptIcon,
 } from '@mui/icons-material';
+import { motion, AnimatePresence } from 'framer-motion';
 
 import FloatingNavBar from './FloatingNavBar';
 import BottomNavBar, { BOTTOM_NAV_HEIGHT } from './BottomNavBar';
 import MobileDrawer from './MobileDrawer';
 import LoanDetailDialog from './LoanDetailDialog';
-import { useSearch } from '../contexts/SearchContext'; // Import useSearch
+import { useSearch } from '../contexts/SearchContext';
 
-// Dedicated mobile search bar, controlled by the AppLayout state
 const MobileSearchBar = ({ onSearchChange, onClose, open, searchTerm }) => {
-  if (!open) return null;
-
   return (
-    <Box
-      sx={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: (theme) => theme.zIndex.appBar + 2,
-        bgcolor: 'background.paper',
-        p: 1,
-        boxShadow: (theme) => theme.shadows[4],
-        display: 'flex',
-        alignItems: 'center',
-      }}
-    >
-      <TextField
-        fullWidth
-        autoFocus
-        variant="outlined"
-        placeholder="Search loans..."
-        onChange={(e) => onSearchChange(e.target.value)}
-        value={searchTerm}
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <SearchIcon color="action" />
-            </InputAdornment>
-          ),
-          endAdornment: (
-            <InputAdornment position="end">
-              <IconButton onClick={onClose}>
-                <CloseIcon color="action" />
-              </IconButton>
-            </InputAdornment>
-          ),
-        }}
-      />
-    </Box>
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0, y: -70 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -70 }}
+          transition={{ duration: 0.3, ease: 'easeInOut' }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: (theme) => theme.zIndex.appBar + 2,
+          }}
+        >
+          <Box
+            sx={{
+              bgcolor: 'background.paper',
+              p: 1,
+              boxShadow: (theme) => theme.shadows[4],
+              display: 'flex',
+              alignItems: 'center',
+            }}
+          >
+            <TextField
+              fullWidth
+              autoFocus
+              variant="outlined"
+              placeholder="Search loans, borrowers..."
+              onChange={(e) => onSearchChange(e.target.value)}
+              value={searchTerm}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon color="action" />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton onClick={onClose} aria-label="close search">
+                      <CloseIcon color="action" />
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Box>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 
@@ -82,7 +93,6 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  // Consume search context
   const {
     searchTerm,
     handleSearchChange,
@@ -122,6 +132,8 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
       right: 16,
     };
 
+    let fabContent = null;
+
     switch (pathname) {
       case '/dashboard':
         const actions = [
@@ -129,7 +141,7 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
           { icon: <PersonAddIcon />, name: 'Add Borrower', path: '/add-borrower' },
           { icon: <AttachMoneyIcon />, name: 'Add Payment', path: '/add-payment' },
         ];
-        return (
+        fabContent = (
           <SpeedDial
             ariaLabel="SpeedDial for primary actions"
             sx={fabStyles}
@@ -145,59 +157,60 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
             ))}
           </SpeedDial>
         );
+        break;
       case '/borrowers':
-        return (
-          <Fab
-            color="secondary"
-            aria-label="add borrower"
-            sx={fabStyles}
-            onClick={() => navigate('/add-borrower')}
-          >
+        fabContent = (
+          <Fab color="secondary" aria-label="add borrower" sx={fabStyles} onClick={() => navigate('/add-borrower')}>
             <PersonAddIcon />
           </Fab>
         );
+        break;
       case '/loans':
-        return (
-          <Fab
-            color="secondary"
-            aria-label="add loan"
-            sx={fabStyles}
-            onClick={() => navigate('/add-loan')}
-          >
+        fabContent = (
+          <Fab color="secondary" aria-label="add loan" sx={fabStyles} onClick={() => navigate('/add-loan')}>
             <AddIcon />
           </Fab>
         );
+        break;
       case '/expenses':
-        return (
-          <Fab
-            color="secondary"
-            aria-label="add expense"
-            sx={fabStyles}
-            onClick={() => navigate('/expenses')}
-          >
+        fabContent = (
+          <Fab color="secondary" aria-label="add expense" sx={fabStyles} onClick={() => navigate('/add-expense')}>
             <ReceiptIcon />
           </Fab>
         );
+        break;
       default:
-        return null;
+        fabContent = null;
     }
+
+    return (
+        <AnimatePresence>
+            {fabContent && (
+                <motion.div
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0, opacity: 0 }}
+                    transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+                >
+                    {fabContent}
+                </motion.div>
+            )}
+        </AnimatePresence>
+    );
   };
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <CssBaseline />
 
-      {/* Desktop Floating Navbar */}
       {!isMobile && (
         <FloatingNavBar
           darkMode={darkMode}
           onToggleDarkMode={onToggleDarkMode}
           onOpenLoanDetail={handleOpenLoanDetail}
-          onSearchChange={handleSearchChange} // Use handleSearchChange from context
         />
       )}
 
-      {/* Mobile Fixed Hamburger Button */}
       {isMobile && (
         <Box
           sx={{
@@ -216,15 +229,13 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
         </Box>
       )}
 
-      {/* Mobile Search Bar, visible only when search is open */}
       <MobileSearchBar
-        onSearchChange={handleSearchChange} // Use handleSearchChange from context
-        onClose={handleMobileSearchClose} // Use handleMobileSearchClose from context
-        open={isMobileSearchOpen} // Use isMobileSearchOpen from context
-        searchTerm={searchTerm} // Use searchTerm from context
+        onSearchChange={handleSearchChange}
+        onClose={handleMobileSearchClose}
+        open={isMobileSearchOpen}
+        searchTerm={searchTerm}
       />
 
-      {/* Main Content Area */}
       <Box
         component="main"
         sx={{
@@ -236,21 +247,16 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
           height: '100%',
           pb: `${bottomNavHeight}px`,
           paddingTop: !isMobile ? '100px' : '64px',
-          pt: isMobileSearchOpen ? '76px' : null, // Adjust padding if search bar is open
         }}
       >
         <Container
           maxWidth="lg"
-          sx={{
-            pb: 4,
-            px: isMobile ? 2 : 4,
-          }}
+          sx={{ pb: 4, px: isMobile ? 2 : 4, }}
         >
-          {children} {/* No more React.cloneElement here */}
+          {children}
         </Container>
       </Box>
 
-      {/* Mobile Drawer */}
       <MobileDrawer
         open={mobileDrawerOpen}
         onClose={handleDrawerClose}
@@ -258,13 +264,11 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
         darkMode={darkMode}
         onToggleDarkMode={onToggleDarkMode}
         onOpenLoanDetail={handleOpenLoanDetail}
-        onSearchOpen={handleMobileSearchOpen} // Use handleMobileSearchOpen from context
+        onSearchOpen={handleMobileSearchOpen}
       />
+      
+      {!hideLayout && isMobile && <BottomNavBar />}
 
-      {/* Mobile Bottom Navbar */}
-      {!hideLayout && isMobile && !isMobileSearchOpen && <BottomNavBar />}
-
-      {/* Loan Detail Dialog */}
       <LoanDetailDialog
         key={selectedLoanId}
         open={loanDetailOpen}
@@ -272,7 +276,6 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
         loanId={selectedLoanId}
       />
 
-      {/* Context-aware FAB */}
       {renderFab()}
     </Box>
   );
