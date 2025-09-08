@@ -29,6 +29,7 @@ import {
   Tab,
   CardHeader,
   Link,
+  Tooltip as MuiTooltip,
 } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
 import PhoneIcon from '@mui/icons-material/Phone';
@@ -41,12 +42,12 @@ import HomeIcon from '@mui/icons-material/Home';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import AddCommentIcon from '@mui/icons-material/AddComment';
 import PostAddIcon from '@mui/icons-material/PostAdd';
+import InfoIcon from '@mui/icons-material/Info';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import GuarantorDialog from '../components/GuarantorDialog';
 import { useCreditScore } from '../hooks/useCreditScore';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-
 
 dayjs.extend(relativeTime);
 
@@ -99,12 +100,55 @@ const getStatusChipColor = (status) => {
   }
 };
 
+const CreditScoreGauge = ({ score, color }) => {
+    const scoreMin = 300;
+    const scoreMax = 850;
+    const normalizedScore = ((score - scoreMin) * 100) / (scoreMax - scoreMin);
+
+    return (
+        <Box sx={{ position: 'relative', display: 'inline-flex', justifyContent: 'center' }}>
+            <CircularProgress
+                variant="determinate"
+                value={100}
+                size={150}
+                thickness={4}
+                sx={{ color: 'grey.300' }}
+            />
+            <CircularProgress
+                variant="determinate"
+                value={normalizedScore}
+                size={150}
+                thickness={4}
+                sx={{ color: color, position: 'absolute', left: 0, '& .MuiCircularProgress-circle': { strokeLinecap: 'round' } }}
+            />
+            <Box
+                sx={{
+                    top: 0,
+                    left: 0,
+                    bottom: 0,
+                    right: 0,
+                    position: 'absolute',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexDirection: 'column'
+                }}
+            >
+                <Typography variant="h3" component="div" color="text.primary" fontWeight="bold">
+                    {score}
+                </Typography>
+                <Typography variant="caption">Credit Score</Typography>
+            </Box>
+        </Box>
+    );
+};
+
 export default function BorrowerProfilePage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const showSnackbar = useSnackbar();
   const {
-    borrowers, loans, loading, deleteBorrower,
+    borrowers, loans, payments, loading, deleteBorrower,
     comments, addComment, deleteComment,
     guarantors, deleteGuarantor
   } = useFirestore();
@@ -125,7 +169,7 @@ export default function BorrowerProfilePage() {
   const borrowerComments = comments.filter(comment => comment.borrowerId === id);
   const borrowerGuarantors = guarantors.filter(g => g.borrowerId === id);
 
-  const { score, label, color } = useCreditScore(id, loans);
+  const { score, label, color, history } = useCreditScore(id, loans, payments);
 
   const financialStats = useMemo(() => {
     const stats = associatedLoans.reduce((acc, loan) => {
@@ -222,10 +266,9 @@ export default function BorrowerProfilePage() {
 
   return (
     <>
-      <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 4 }}> {/* Increased maxWidth for better use of space */}
+      <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 4 }}>
         <Grid container spacing={3}>
-          {/* ADJUSTED GRID SIZE FOR THE LEFT PAPER */}
-          <Grid item xs={12} md={3}> 
+          <Grid item xs={12} md={3}>
             <Paper elevation={4} sx={{ p: 3, borderRadius: 3 }}>
               <Stack direction="column" alignItems="center" spacing={2}>
                 <Avatar sx={{ width: 80, height: 80, bgcolor: 'secondary.main' }}><PersonIcon sx={{ fontSize: 50 }} /></Avatar>
@@ -260,8 +303,7 @@ export default function BorrowerProfilePage() {
             </Paper>
           </Grid>
 
-          {/* ADJUSTED GRID SIZE FOR THE RIGHT PAPER */}
-          <Grid item xs={12} md={9}> 
+          <Grid item xs={12} md={9}>
             <Paper elevation={4} sx={{ borderRadius: 3 }}>
               <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
                 <Tabs value={activeTab} onChange={handleTabChange} aria-label="borrower profile tabs">
@@ -277,11 +319,24 @@ export default function BorrowerProfilePage() {
                   <Grid container spacing={3}>
                     <Grid item xs={12} md={6}>
                       <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
-                        <CardHeader title="Credit Score" sx={{ p: 0, pb: 1 }} titleTypographyProps={{ fontWeight: 'bold', variant: 'h6' }} />
-                        <Box sx={{ textAlign: 'center' }}>
-                            <Chip label={label} sx={{ backgroundColor: color, color: 'white', fontWeight: 'bold', my: 1 }} />
-                            <Typography variant="h2" fontWeight="bold" sx={{ mt: 1 }}>{score}</Typography>
+                        <CardHeader 
+                            title="Credit Score"
+                            action={
+                                <MuiTooltip title="This score reflects the borrower's repayment history, loan terms, and overall reliability. A higher score indicates lower risk.">
+                                    <InfoIcon color="action" />
+                                </MuiTooltip>
+                            }
+                            sx={{ p: 0, pb: 1 }} 
+                            titleTypographyProps={{ fontWeight: 'bold', variant: 'h6' }} 
+                        />
+                        <Box sx={{ textAlign: 'center', my: 2 }}>
+                            <CreditScoreGauge score={score} color={color} />
+                            <Chip label={label} sx={{ backgroundColor: color, color: 'white', fontWeight: 'bold', mt: 2 }} />
                         </Box>
+                        <Typography variant="subtitle2" gutterBottom>Scoring History</Typography>
+                        <Paper variant="outlined" sx={{ p: 1, maxHeight: 100, overflowY: 'auto', fontSize: '0.75rem', backgroundColor: 'grey.100' }}>
+                            {history.map((item, index) => <div key={index}>{item}</div>)}
+                        </Paper>
                       </Paper>
                     </Grid>
                     <Grid item xs={12} md={6}>
@@ -296,8 +351,7 @@ export default function BorrowerProfilePage() {
                                     labelLine={false}
                                     outerRadius={60}
                                     fill="#8884d8"
-                                    dataKey="value"
-                                >
+                                    dataKey="value">
                                     {chartData.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
@@ -306,24 +360,27 @@ export default function BorrowerProfilePage() {
                                 <Legend iconSize={10} />
                             </PieChart>
                         </ResponsiveContainer>
+                         <List dense disablePadding sx={{mt: 2}}>
+                            <ListItem disableGutters>
+                                <ListItemText primary="Total Loaned" />
+                                <Typography variant="body2">ZMW {financialStats.totalLoaned.toLocaleString()}</Typography>
+                            </ListItem>
+                            <ListItem disableGutters>
+                                <ListItemText primary="Total Repaid" />
+                                <Typography variant="body2" color="success.main">ZMW {financialStats.totalRepaid.toLocaleString()}</Typography>
+                            </ListItem>
+                            <ListItem disableGutters>
+                                <ListItemText primary="Outstanding Balance" />
+                                <Typography variant="body1" fontWeight="bold" color="error.main">ZMW {financialStats.outstanding.toLocaleString()}</Typography>
+                            </ListItem>
+                        </List>
                       </Paper>
                     </Grid>
                     <Grid item xs={12}>
                         <Paper variant="outlined" sx={{ p: 2 }}>
+                             <Typography variant="h6" fontWeight="bold">Loan Summary</Typography>
+                             <Divider sx={{ my: 1 }} />
                             <List dense disablePadding>
-                                <ListItem disableGutters>
-                                    <ListItemText primary="Total Loaned" />
-                                    <Typography variant="body2">ZMW {financialStats.totalLoaned.toLocaleString()}</Typography>
-                                </ListItem>
-                                <ListItem disableGutters>
-                                    <ListItemText primary="Total Repaid" />
-                                    <Typography variant="body2" color="success.main">ZMW {financialStats.totalRepaid.toLocaleString()}</Typography>
-                                </ListItem>
-                                <ListItem disableGutters>
-                                    <ListItemText primary="Outstanding Balance" />
-                                    <Typography variant="body1" fontWeight="bold" color="error.main">ZMW {financialStats.outstanding.toLocaleString()}</Typography>
-                                </ListItem>
-                                <Divider sx={{ my: 1 }} />
                                 <ListItem disableGutters>
                                     <ListItemText primary="Total Loans" secondary={`${financialStats.paidLoans} Paid, ${financialStats.activeLoans} Active, ${financialStats.overdueLoans} Overdue`} />
                                     <Typography variant="h6" fontWeight="bold">{financialStats.totalLoans}</Typography>

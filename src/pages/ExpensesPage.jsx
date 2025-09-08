@@ -6,7 +6,7 @@ import {
   CircularProgress, IconButton, Stack, Grid, Card, CardContent, CardHeader,
   TextField, Select, MenuItem, FormControl, InputLabel, ListSubheader,
   Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle,
-  Avatar, ListItemAvatar, useMediaQuery, useTheme, Menu, ListItemIcon
+  Avatar, ListItemAvatar, useMediaQuery, useTheme, Menu, ListItemIcon, ToggleButtonGroup, ToggleButton
 } from '@mui/material';
 
 // Import MUI Icons
@@ -28,12 +28,18 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
+import localizedFormat from 'dayjs/plugin/localizedFormat';
+import localeData from 'dayjs/plugin/localeData';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend as RechartsLegend, ResponsiveContainer } from 'recharts';
+
 
 import AddExpenseDialog from '../components/AddExpenseDialog';
 
 dayjs.extend(isBetween);
+dayjs.extend(localizedFormat);
+dayjs.extend(localeData);
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 const getCategoryIcon = (category) => {
@@ -53,7 +59,7 @@ export default function ExpensesPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  // --- STATE AND DATA LOGIC (No Changes) ---
+  // --- STATE AND DATA LOGIC ---
   const [dialogOpen, setDialogOpen] = useState(false);
   const [expenseToEdit, setExpenseToEdit] = useState(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -63,6 +69,7 @@ export default function ExpensesPage() {
   const [endDate, setEndDate] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedExpense, setSelectedExpense] = useState(null);
+  const [viewBy, setViewBy] = useState('month'); // 'month' or 'year'
 
   const uniqueCategories = useMemo(() => {
     const categories = new Set(expenses.map(e => e.category));
@@ -86,7 +93,10 @@ export default function ExpensesPage() {
     const thisMonthTotal = filteredExpenses
       .filter(e => dayjs(e.date.toDate()).isSame(dayjs(), 'month'))
       .reduce((sum, e) => sum + e.amount, 0);
-    return { total, thisMonthTotal, count: filteredExpenses.length };
+    const thisYearTotal = filteredExpenses
+      .filter(e => dayjs(e.date.toDate()).isSame(dayjs(), 'year'))
+      .reduce((sum, e) => sum + e.amount, 0);
+    return { total, thisMonthTotal, thisYearTotal, count: filteredExpenses.length };
   }, [filteredExpenses]);
 
   const pieChartData = useMemo(() => {
@@ -101,6 +111,18 @@ export default function ExpensesPage() {
       backgroundColor: ['#1976d2', '#d32f2f', '#f57c00', '#388e3c', '#7b1fa2', '#0288d1'],
       borderWidth: 0,
     }]};
+  }, [filteredExpenses]);
+
+  const barChartData = useMemo(() => {
+    const monthlyTotals = Array(12).fill(0);
+    filteredExpenses.forEach(expense => {
+      const month = dayjs(expense.date.toDate()).month();
+      monthlyTotals[month] += expense.amount;
+    });
+    return dayjs.monthsShort().map((month, index) => ({
+      name: month,
+      Expenses: monthlyTotals[index]
+    }));
   }, [filteredExpenses]);
   
   const groupedExpenses = useMemo(() => {
@@ -117,7 +139,7 @@ export default function ExpensesPage() {
     return groups;
   }, [filteredExpenses]);
 
-  // --- HANDLERS (No Changes) ---
+  // --- HANDLERS ---
   const handleAddClick = () => { setExpenseToEdit(null); setDialogOpen(true); };
   const handleCloseDialog = () => { setDialogOpen(false); setExpenseToEdit(null); };
   const handleMenuClick = (event, expense) => {
@@ -152,6 +174,11 @@ export default function ExpensesPage() {
       closeDeleteConfirm();
     }
   };
+  const handleViewByChange = (event, newViewBy) => {
+    if (newViewBy !== null) {
+      setViewBy(newViewBy);
+    }
+  };
 
   // --- RESPONSIVE TWO-COLUMN LAYOUT ---
   return (
@@ -177,8 +204,8 @@ export default function ExpensesPage() {
                        <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, borderRadius: 2 }}>
                         <Avatar sx={{ bgcolor: 'primary.light', color: 'primary.dark' }}><CalendarMonthIcon /></Avatar>
                         <Box>
-                          <Typography variant="h6" fontWeight="bold">K {summaryData.thisMonthTotal.toLocaleString()}</Typography>
-                          <Typography variant="body2" color="text.secondary">Total (This Month)</Typography>
+                          <Typography variant="h6" fontWeight="bold">K {viewBy === 'month' ? summaryData.thisMonthTotal.toLocaleString() : summaryData.thisYearTotal.toLocaleString()}</Typography>
+                          <Typography variant="body2" color="text.secondary">Total (This {viewBy === 'month' ? 'Month' : 'Year'})</Typography>
                         </Box>
                       </Paper>
                       <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, borderRadius: 2 }}>
@@ -200,9 +227,24 @@ export default function ExpensesPage() {
                 </Card>
                 {/* --- CHART CARD --- */}
                 <Card sx={{ borderRadius: 3, elevation: 2 }}>
-                  <CardHeader title="Category Breakdown" />
+                  <CardHeader title={viewBy === 'month' ? "Category Breakdown" : "Monthly Trends"} />
                   <Box sx={{ height: 300, display: 'flex', justifyContent: 'center', alignItems: 'center', p: 2 }}>
-                     {filteredExpenses.length > 0 ? <Pie data={pieChartData} options={{ maintainAspectRatio: false, plugins: { legend: { position: 'bottom' }}}} /> : <Typography color="text.secondary">No data for chart</Typography>}
+                     {filteredExpenses.length > 0 ? (
+                       viewBy === 'month' ? (
+                        <Pie data={pieChartData} options={{ maintainAspectRatio: false, plugins: { legend: { position: 'bottom' }}}} />
+                       ) : (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={barChartData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" />
+                            <YAxis />
+                            <RechartsTooltip />
+                            <RechartsLegend />
+                            <Bar dataKey="Expenses" fill={theme.palette.secondary.main} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                       )
+                     ) : <Typography color="text.secondary">No data for chart</Typography>}
                   </Box>
                 </Card>
               </Stack>
@@ -211,7 +253,19 @@ export default function ExpensesPage() {
             {/* --- MAIN CONTENT (LEFT COLUMN on Desktop, BOTTOM on Mobile) --- */}
             <Grid item xs={12} md={8} order={{ xs: 2, md: 1 }}>
               <Card sx={{ borderRadius: 3, elevation: 2 }}>
-                <CardHeader title="Transactions" />
+                <CardHeader title="Transactions" action={
+                  <ToggleButtonGroup
+                    color="secondary"
+                    value={viewBy}
+                    exclusive
+                    onChange={handleViewByChange}
+                    aria-label="View by"
+                    size="small"
+                  >
+                    <ToggleButton value="month">Month</ToggleButton>
+                    <ToggleButton value="year">Year</ToggleButton>
+                  </ToggleButtonGroup>
+                } />
                 <CardContent>
                   <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
                     <Grid item xs={12} sm={6} md={5}><TextField label="Search..." variant="outlined" size="small" fullWidth value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></Grid>

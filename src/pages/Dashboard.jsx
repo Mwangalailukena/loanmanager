@@ -20,7 +20,7 @@ import WarningAmber from '@mui/icons-material/WarningAmber';
 import { useNavigate } from "react-router-dom";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { useAuth } from "../contexts/AuthProvider.js";
-import dayjs from "dayjs"; // <-- Add this import
+import dayjs from "dayjs"; 
 import { useSnackbar } from "../components/SnackbarProvider";
 
 import { DragDropContext } from "@hello-pangea/dnd";
@@ -86,10 +86,6 @@ const popInAnimation = keyframes`
     opacity: 0;
     transform: scale(0.9) translateY(10px);
   }
-  75% {
-    opacity: 1;
-    transform: scale(1.05) translateY(-5px);
-  }
   100% {
     opacity: 1;
     transform: scale(1) translateY(0);
@@ -107,7 +103,20 @@ export default function Dashboard() {
     const [selectedMonth, setSelectedMonth] = useState(dayjs().format("YYYY-MM"));
     const [cardsOrder, setCardsOrder] = useState([]);
     const [activeTab, setActiveTab] = useState(0);
-    const [showWelcome, setShowWelcome] = useState(true);
+    const [showWelcome, setShowWelcome] = useState(false);
+
+    useEffect(() => {
+        const welcomeMessageShown = sessionStorage.getItem('welcomeMessageShown');
+        if (!welcomeMessageShown) {
+            setShowWelcome(true);
+            const timer = setTimeout(() => {
+                setShowWelcome(false);
+                sessionStorage.setItem('welcomeMessageShown', 'true');
+            }, 5000);
+
+            return () => clearTimeout(timer);
+        }
+    }, []);
 
     const { loansForCalculations, defaultCards } = useDashboardCalculations(
         loans,
@@ -142,16 +151,6 @@ export default function Dashboard() {
             dueThisWeekCount: dueThisWeek.length,
         };
     }, [loans]);
-
-    useEffect(() => {
-        if (currentUser) {
-            const timer = setTimeout(() => {
-                setShowWelcome(false);
-            }, 10000);
-
-            return () => clearTimeout(timer);
-        }
-    }, [currentUser]);
 
     useEffect(() => {
         if (loans) {
@@ -245,7 +244,7 @@ export default function Dashboard() {
         );
     }
 
-    const userName = currentUser?.displayName || currentUser?.email;
+    const userName = currentUser?.displayName?.split(' ')[0] || currentUser?.email;
 
     return (
         <Box
@@ -257,20 +256,12 @@ export default function Dashboard() {
             }}
         >
             {userName && showWelcome && (
-                <Box
-                    sx={{
-                        animation: `${popInAnimation} 0.5s ease-out forwards`,
-                        mb: 1,
-                    }}
-                >
-                    <Typography
-                        variant="h5"
-                        sx={{
-                            color: theme.palette.text.secondary,
-                            fontWeight: 600,
-                        }}
-                    >
+                <Box sx={{ animation: `${popInAnimation} 0.5s ease-out forwards`, mb: 2 }}>
+                    <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.text.primary }}>
                         Welcome back, {userName}!
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary">
+                        Here's your financial overview for {dayjs(selectedMonth).format("MMMM YYYY")}.
                     </Typography>
                 </Box>
             )}
