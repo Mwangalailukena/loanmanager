@@ -483,6 +483,35 @@ export default function ReportsPage() {
                         </Card>
                     </Grid>
                     <Grid item xs={12}>
+                        <Typography variant="h6" gutterBottom>Overdue Loans</Typography>
+                        <TableContainer component={Paper} elevation={1}>
+                            <Table size="small">
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>Borrower</TableCell>
+                                        <TableCell>Phone</TableCell>
+                                        <TableCell align="right">Principal</TableCell>
+                                        <TableCell align="right">Outstanding</TableCell>
+                                        <TableCell>Due Date</TableCell>
+                                        <TableCell align="right">Days Overdue</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {arrearsAgingReport.list.map((loan) => (
+                                        <TableRow key={loan.id}>
+                                            <TableCell>{loan.borrower}</TableCell>
+                                            <TableCell>{loan.phone}</TableCell>
+                                            <TableCell align="right">{loan.principal.toFixed(2)}</TableCell>
+                                            <TableCell align="right">{loan.outstanding.toFixed(2)}</TableCell>
+                                            <TableCell>{loan.dueDate}</TableCell>
+                                            <TableCell align="right">{loan.daysOverdue}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    </Grid>
+                    <Grid item xs={12}>
                         <Button variant="outlined" color="secondary" onClick={exportArrearsAging}>Export Arrears CSV</Button>
                     </Grid>
                 </Grid>
@@ -491,6 +520,18 @@ export default function ReportsPage() {
             {activeTab === 2 && (
                 <Box>
                     <Typography variant="h6" gutterBottom>Cash Flow Report</Typography>
+                    <Paper elevation={1} sx={{ p: 2, mb: 3 }}>
+                        <ResponsiveContainer width="100%" height={300}>
+                            <BarChart data={cashFlowReport.data}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="date" />
+                                <YAxis />
+                                <RechartsTooltip />
+                                <RechartsLegend />
+                                <Bar dataKey="amount" fill="#8884d8" />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </Paper>
                     <Paper elevation={1} sx={{ p: 2, mb: 3 }}>
                         <Stack direction="row" spacing={4}>
                             <Box>
