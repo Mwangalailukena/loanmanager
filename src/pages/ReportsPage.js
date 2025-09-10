@@ -97,6 +97,9 @@ export default function ReportsPage() {
       totalInterestAccrued: 0,
       totalOutstanding: 0,
       totalRepaid: 0,
+      portfolioYield: 0,
+      repaymentRate: 0,
+      defaultRate: 0,
     };
 
     let activeLoans = 0;
@@ -119,6 +122,11 @@ export default function ReportsPage() {
       totalOutstanding += (Number(loan.totalRepayable || 0) - Number(loan.repaidAmount || 0));
     });
 
+    const portfolioYield = totalPrincipalDisbursed > 0 ? (totalRepaid / totalPrincipalDisbursed) - 1 : 0;
+    const totalRepayable = totalPrincipalDisbursed + totalInterestAccrued;
+    const repaymentRate = totalRepayable > 0 ? totalRepaid / totalRepayable : 0;
+    const defaultRate = filteredLoansForReports.length > 0 ? overdueLoans / filteredLoansForReports.length : 0;
+
     return {
       totalLoans: filteredLoansForReports.length,
       activeLoans,
@@ -128,6 +136,9 @@ export default function ReportsPage() {
       totalInterestAccrued,
       totalOutstanding,
       totalRepaid,
+      portfolioYield,
+      repaymentRate,
+      defaultRate,
     };
   }, [filteredLoansForReports, loans, loadingLoans]);
 
@@ -382,6 +393,35 @@ export default function ReportsPage() {
                     <Grid item xs={12} md={4}>
                         <Card elevation={2} sx={{ height: '100%' }}>
                             <CardContent>
+                                <Typography variant="h6">Risks</Typography>
+                                <Stack spacing={1}>
+                                    <Typography>Number of Overdue Loans: <Typography component="span" fontWeight="bold" color="error.main">{portfolioSummary.overdueLoans}</Typography></Typography>
+                                    <Typography>Value of Overdue Loans: <Typography component="span" fontWeight="bold" color="error.main">ZMW {arrearsAgingReport.buckets['1-7 Days'].total + arrearsAgingReport.buckets['8-14 Days'].total + arrearsAgingReport.buckets['15-30 Days'].total + arrearsAgingReport.buckets['30+ Days'].total}</Typography></Typography>
+                                    <Divider sx={{ my: 1 }} />
+                                    <Typography>Overdue Breakdown:</Typography>
+                                    <Typography>1-7 Days: {arrearsAgingReport.buckets['1-7 Days'].loans.length}</Typography>
+                                    <Typography>8-14 Days: {arrearsAgingReport.buckets['8-14 Days'].loans.length}</Typography>
+                                    <Typography>15-30 Days: {arrearsAgingReport.buckets['15-30 Days'].loans.length}</Typography>
+                                    <Typography>30+ Days: {arrearsAgingReport.buckets['30+ Days'].loans.length}</Typography>
+                                </Stack>
+                            </CardContent>
+                        </Card>
+                    </Grid>
+                    <Grid item xs={12} md={4}>
+                        <Card elevation={2} sx={{ height: '100%' }}>
+                            <CardContent>
+                                <Typography variant="h6">Portfolio Health</Typography>
+                                <Stack spacing={1}>
+                                    <Typography>Portfolio Yield: <Typography component="span" fontWeight="bold" color="secondary.main">{(portfolioSummary.portfolioYield * 100).toFixed(2)}%</Typography></Typography>
+                                    <Typography>Repayment Rate: <Typography component="span" fontWeight="bold" color="secondary.main">{(portfolioSummary.repaymentRate * 100).toFixed(2)}%</Typography></Typography>
+                                    <Typography>Default Rate: <Typography component="span" fontWeight="bold" color="secondary.main">{(portfolioSummary.defaultRate * 100).toFixed(2)}%</Typography></Typography>
+                                </Stack>
+                            </CardContent>
+                        </Card>
+                    </Grid>
+                    <Grid item xs={12} md={4}>
+                        <Card elevation={2} sx={{ height: '100%' }}>
+                            <CardContent>
                                 <Typography variant="h6">Financial Overview</Typography>
                                 <ResponsiveContainer width="100%" height={300}>
                                     <BarChart data={summaryChartData} margin={{ top: 20, right: 20, bottom: 5, left: 20 }}>
@@ -429,7 +469,7 @@ export default function ReportsPage() {
                     <Grid item xs={12} md={5}>
                         <Card elevation={2}>
                             <CardContent>
-                                <Typography variant="h6">Overdue Distribution</Typography>
+                                <Typography variant="h6">Overdue Distribution by Amount</Typography>
                                 <ResponsiveContainer width="100%" height={300}>
                                     <PieChart>
                                         <Pie data={arrearsAgingReport.chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>

@@ -16,6 +16,7 @@ import { keyframes } from "@mui/system";
 import SummarizeIcon from '@mui/icons-material/Summarize';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
+
 import WarningAmber from '@mui/icons-material/WarningAmber';
 import { useNavigate } from "react-router-dom";
 import { useFirestore } from "../contexts/FirestoreProvider";
@@ -28,6 +29,7 @@ import { BOTTOM_NAV_HEIGHT } from "../components/BottomNavBar";
 import { useDashboardCalculations } from "../hooks/dashboard/useDashboardCalculations";
 import DashboardSection from "../components/dashboard/DashboardSection";
 import DashboardCardSkeleton from "../components/dashboard/DashboardCardSkeleton";
+
 
 const LazyCharts = lazy(() => import("../components/Charts"));
 
@@ -435,6 +437,7 @@ export default function Dashboard() {
                                 },
                             }}
                         />
+                        
                     </Tabs>
                 </Box>
                 <DragDropContext onDragEnd={onDragEnd}>
@@ -472,6 +475,7 @@ export default function Dashboard() {
                         )}
                     </Suspense>
                 </TabPanel>
+                
             </Box>
 
             
