@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // Added useEffect
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   useTheme,
@@ -13,6 +13,7 @@ import {
   SpeedDialIcon,
   SpeedDialAction,
   Fab,
+  Zoom, // --- New Import ---
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -22,6 +23,7 @@ import {
   AttachMoney as AttachMoneyIcon,
   PersonAdd as PersonAddIcon,
   Receipt as ReceiptIcon,
+  KeyboardArrowUp as KeyboardArrowUpIcon, // --- New Import ---
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -33,6 +35,7 @@ import SearchResults from './SearchResults';
 import { useSearch } from '../contexts/SearchContext';
 
 const MobileSearchBar = ({ onSearchChange, onClose, open, searchTerm }) => {
+  // ... (This component remains unchanged)
   return (
     <AnimatePresence>
       {open && (
@@ -41,23 +44,9 @@ const MobileSearchBar = ({ onSearchChange, onClose, open, searchTerm }) => {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -70 }}
           transition={{ duration: 0.3, ease: 'easeInOut' }}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            zIndex: (theme) => theme.zIndex.appBar + 2,
-          }}
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: (theme) => theme.zIndex.appBar + 2, }}
         >
-          <Box
-            sx={{
-              bgcolor: 'background.paper',
-              p: 1,
-              boxShadow: (theme) => theme.shadows[4],
-              display: 'flex',
-              alignItems: 'center',
-            }}
-          >
+          <Box sx={{ bgcolor: 'background.paper', p: 1, boxShadow: (theme) => theme.shadows[4], display: 'flex', alignItems: 'center', }} >
             <TextField
               fullWidth
               autoFocus
@@ -66,18 +55,8 @@ const MobileSearchBar = ({ onSearchChange, onClose, open, searchTerm }) => {
               onChange={(e) => onSearchChange(e.target.value)}
               value={searchTerm}
               InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon color="action" />
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton onClick={onClose} aria-label="close search">
-                      <CloseIcon color="action" />
-                    </IconButton>
-                  </InputAdornment>
-                ),
+                startAdornment: ( <InputAdornment position="start"><SearchIcon color="action" /></InputAdornment> ),
+                endAdornment: ( <InputAdornment position="end"><IconButton onClick={onClose} aria-label="close search"><CloseIcon color="action" /></IconButton></InputAdornment> ),
               }}
             />
           </Box>
@@ -86,7 +65,6 @@ const MobileSearchBar = ({ onSearchChange, onClose, open, searchTerm }) => {
     </AnimatePresence>
   );
 };
-
 
 const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   const { pathname } = useLocation();
@@ -106,16 +84,40 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   const [loanDetailOpen, setLoanDetailOpen] = useState(false);
   const [selectedLoanId, setSelectedLoanId] = useState(null);
 
+  // --- Back to Top: State ---
+  const [showBackToTop, setShowBackToTop] = useState(false);
+
+  // --- Back to Top: Scroll Listener Effect ---
+  useEffect(() => {
+    const handleScroll = () => {
+      // Show button if scrolled down more than 400px
+      if (window.scrollY > 400) {
+        setShowBackToTop(true);
+      } else {
+        setShowBackToTop(false);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    // Cleanup function to remove the listener
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // --- Back to Top: Click Handler ---
+  const handleScrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
+  };
+
   const handleOpenLoanDetail = (loanId) => {
     setSelectedLoanId(loanId);
     setLoanDetailOpen(true);
   };
-
   const handleCloseLoanDetail = () => {
     setLoanDetailOpen(false);
     setSelectedLoanId(null);
   };
-
   const handleDrawerOpen = () => setMobileDrawerOpen(true);
   const handleDrawerClose = () => setMobileDrawerOpen(false);
 
@@ -127,164 +129,67 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   }
 
   const renderFab = () => {
-    const fabStyles = {
-      position: 'fixed',
-      bottom: isMobile ? `calc(${bottomNavHeight}px + 16px)` : 16,
-      right: 16,
-    };
-
+    // ... (This function remains unchanged)
+    const fabStyles = { position: 'fixed', bottom: isMobile ? `calc(${bottomNavHeight}px + 16px)` : 16, right: 16, };
     let fabContent = null;
-
     switch (pathname) {
       case '/dashboard':
-        const actions = [
-          { icon: <AddIcon />, name: 'Add Loan', path: '/add-loan' },
-          { icon: <PersonAddIcon />, name: 'Add Borrower', path: '/add-borrower' },
-          { icon: <AttachMoneyIcon />, name: 'Add Payment', path: '/add-payment' },
-        ];
-        fabContent = (
-          <SpeedDial
-            ariaLabel="SpeedDial for primary actions"
-            sx={fabStyles}
-            icon={<SpeedDialIcon />}
-          >
-            {actions.map((action) => (
-              <SpeedDialAction
-                key={action.name}
-                icon={action.icon}
-                tooltipTitle={action.name}
-                onClick={() => navigate(action.path)}
-              />
-            ))}
-          </SpeedDial>
-        );
+        const actions = [ { icon: <AddIcon />, name: 'Add Loan', path: '/add-loan' }, { icon: <PersonAddIcon />, name: 'Add Borrower', path: '/add-borrower' }, { icon: <AttachMoneyIcon />, name: 'Add Payment', path: '/add-payment' }, ];
+        fabContent = ( <SpeedDial ariaLabel="SpeedDial for primary actions" sx={fabStyles} icon={<SpeedDialIcon />} > {actions.map((action) => ( <SpeedDialAction key={action.name} icon={action.icon} tooltipTitle={action.name} onClick={() => navigate(action.path)} /> ))} </SpeedDial> );
         break;
       case '/borrowers':
-        fabContent = (
-          <Fab color="secondary" aria-label="add borrower" sx={fabStyles} onClick={() => navigate('/add-borrower')}>
-            <PersonAddIcon />
-          </Fab>
-        );
+        fabContent = ( <Fab color="secondary" aria-label="add borrower" sx={fabStyles} onClick={() => navigate('/add-borrower')}><PersonAddIcon /></Fab> );
         break;
       case '/loans':
-        fabContent = (
-          <Fab color="secondary" aria-label="add loan" sx={fabStyles} onClick={() => navigate('/add-loan')}>
-            <AddIcon />
-          </Fab>
-        );
+        fabContent = ( <Fab color="secondary" aria-label="add loan" sx={fabStyles} onClick={() => navigate('/add-loan')}><AddIcon /></Fab> );
         break;
       case '/expenses':
-        fabContent = (
-          <Fab color="secondary" aria-label="add expense" sx={fabStyles} onClick={() => navigate('/add-expense')}>
-            <ReceiptIcon />
-          </Fab>
-        );
+        fabContent = ( <Fab color="secondary" aria-label="add expense" sx={fabStyles} onClick={() => navigate('/add-expense')}><ReceiptIcon /></Fab> );
         break;
-      default:
-        fabContent = null;
+      default: fabContent = null;
     }
-
-    return (
-        <AnimatePresence>
-            {fabContent && (
-                <motion.div
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0, opacity: 0 }}
-                    transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-                >
-                    {fabContent}
-                </motion.div>
-            )}
-        </AnimatePresence>
-    );
+    return ( <AnimatePresence>{fabContent && (<motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 20 }} >{fabContent}</motion.div>)}</AnimatePresence> );
   };
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <CssBaseline />
+      
+      {/* ... (Rest of the NavBar, Drawer, Search, and Main Content components remain the same) ... */}
 
-      {!isMobile && (
-        <FloatingNavBar
-          darkMode={darkMode}
-          onToggleDarkMode={onToggleDarkMode}
-          onOpenLoanDetail={handleOpenLoanDetail}
-        />
-      )}
-
-      {isMobile && (
-        <Box
-          sx={{
-            position: 'fixed',
-            top: 8,
-            left: 8,
-            zIndex: theme.zIndex.appBar + 1,
-            bgcolor: 'background.paper',
-            borderRadius: '50%',
-            boxShadow: theme.shadows[2],
-          }}
-        >
-          <IconButton onClick={handleDrawerOpen} sx={{ color: theme.palette.secondary.main }}>
-            <MenuIcon />
-          </IconButton>
-        </Box>
-      )}
-
-      <MobileSearchBar
-        onSearchChange={handleSearchChange}
-        onClose={handleMobileSearchClose}
-        open={isMobileSearchOpen}
-        searchTerm={searchTerm}
-      />
-      {isMobileSearchOpen && (
-        <SearchResults
-          variant="paper"
-          onOpenLoanDetail={handleOpenLoanDetail}
-          onClose={handleMobileSearchClose}
-        />
-      )}
-
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          overflowY: 'auto',
-          boxSizing: 'border-box',
-          background: theme.palette.background.default,
-          minHeight: 0,
-          height: '100%',
-          pb: `${bottomNavHeight}px`,
-          paddingTop: !isMobile ? '100px' : '64px',
-        }}
-      >
-        <Container
-          maxWidth="lg"
-          sx={{ pb: 4, px: isMobile ? 2 : 4, }}
-        >
+      {!isMobile && ( <FloatingNavBar darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} onOpenLoanDetail={handleOpenLoanDetail} /> )}
+      {isMobile && ( <Box sx={{ position: 'fixed', top: 8, left: 8, zIndex: theme.zIndex.appBar + 1, bgcolor: 'background.paper', borderRadius: '50%', boxShadow: theme.shadows[2], }} > <IconButton onClick={handleDrawerOpen} sx={{ color: theme.palette.secondary.main }}><MenuIcon /></IconButton> </Box> )}
+      <MobileSearchBar onSearchChange={handleSearchChange} onClose={handleMobileSearchClose} open={isMobileSearchOpen} searchTerm={searchTerm} />
+      {isMobileSearchOpen && ( <SearchResults variant="paper" onOpenLoanDetail={handleOpenLoanDetail} onClose={handleMobileSearchClose} /> )}
+      <Box component="main" sx={{ flexGrow: 1, overflowY: 'auto', boxSizing: 'border-box', background: theme.palette.background.default, minHeight: 0, height: '100%', pb: `${bottomNavHeight}px`, paddingTop: !isMobile ? '100px' : '64px', }} >
+        <Container maxWidth="lg" sx={{ pb: 4, px: isMobile ? 2 : 4, }} >
           {children}
         </Container>
       </Box>
-
-      <MobileDrawer
-        open={mobileDrawerOpen}
-        onClose={handleDrawerClose}
-        onOpen={handleDrawerOpen}
-        darkMode={darkMode}
-        onToggleDarkMode={onToggleDarkMode}
-        onOpenLoanDetail={handleOpenLoanDetail}
-        onSearchOpen={handleMobileSearchOpen}
-      />
-      
+      <MobileDrawer open={mobileDrawerOpen} onClose={handleDrawerClose} onOpen={handleDrawerOpen} darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} onOpenLoanDetail={handleOpenLoanDetail} onSearchOpen={handleMobileSearchOpen} />
       {!hideLayout && isMobile && <BottomNavBar />}
+      <LoanDetailDialog key={selectedLoanId} open={loanDetailOpen} onClose={handleCloseLoanDetail} loanId={selectedLoanId} />
 
-      <LoanDetailDialog
-        key={selectedLoanId}
-        open={loanDetailOpen}
-        onClose={handleCloseLoanDetail}
-        loanId={selectedLoanId}
-      />
-
+      {/* --- Main FAB Renderer --- */}
       {renderFab()}
+
+      {/* --- Back to Top FAB --- */}
+      <Zoom in={showBackToTop}>
+        <Fab
+          color="primary"
+          size="small"
+          aria-label="scroll back to top"
+          onClick={handleScrollToTop}
+          sx={{
+            position: 'fixed',
+            // Position it above the main FAB and Bottom Nav Bar
+            bottom: isMobile ? `calc(${bottomNavHeight}px + 88px)` : 88,
+            right: 16,
+          }}
+        >
+          <KeyboardArrowUpIcon />
+        </Fab>
+      </Zoom>
     </Box>
   );
 };
