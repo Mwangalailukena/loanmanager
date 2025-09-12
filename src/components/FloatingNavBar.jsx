@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Box,
   Button,
@@ -49,6 +49,7 @@ import SettingsPage from "../pages/SettingsPage";
 import ChangePassword from "../pages/ChangePassword.jsx";
 import HelpDialog from "./HelpDialog";
 import Profile from "../pages/Profile";
+import SearchResults from "./SearchResults";
 
 function stringToInitials(name = "") {
   return name
@@ -75,8 +76,6 @@ const FloatingNavBar = ({ onOpenLoanDetail, darkMode, onToggleDarkMode }) => {
   const {
     searchTerm,
     handleSearchChange,
-    isMobileSearchOpen,
-    handleMobileSearchOpen,
   } = useSearch();
 
   const [anchorEl, setAnchorEl] = useState(null);
@@ -95,6 +94,8 @@ const FloatingNavBar = ({ onOpenLoanDetail, darkMode, onToggleDarkMode }) => {
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [barVisible, setBarVisible] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchInputRef = useRef();
 
   const openMenu = Boolean(anchorEl);
   const openNotifications = Boolean(notificationAnchor);
@@ -102,6 +103,20 @@ const FloatingNavBar = ({ onOpenLoanDetail, darkMode, onToggleDarkMode }) => {
   useEffect(() => {
     setBarVisible(true);
   }, []);
+
+  useEffect(() => {
+    if (isSearchOpen) {
+      setTimeout(() => {
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
+        }
+      }, 100); // A small delay to ensure the element is in the DOM
+    }
+  }, [isSearchOpen]);
+
+  const toggleSearch = () => {
+    setIsSearchOpen((prev) => !prev);
+  };
 
   const navItems = [
     { text: "Dashboard", icon: <DashboardIcon />, path: "/dashboard" },
@@ -223,10 +238,11 @@ const FloatingNavBar = ({ onOpenLoanDetail, darkMode, onToggleDarkMode }) => {
         {/* Action Buttons */}
         <Box sx={{ display: "flex", alignItems: "center", ml: 2 }}>
           {/* Search Button */}
-          <IconButton onClick={handleMobileSearchOpen} sx={{ mx: 0.5, borderRadius: "50%", p: 1, bgcolor: theme.palette.action.hover, transition: "all 0.2s ease-in-out", "&:hover": { transform: "scale(1.1)" } }}>
-            {isMobileSearchOpen ? <CloseIcon sx={{ color: theme.palette.text.secondary }} /> : <SearchIcon sx={{ color: theme.palette.text.secondary }} />}          </IconButton>
+          <IconButton onClick={toggleSearch} sx={{ mx: 0.5, borderRadius: "50%", p: 1, bgcolor: theme.palette.action.hover, transition: "all 0.2s ease-in-out", "&:hover": { transform: "scale(1.1)" } }}>
+            {isSearchOpen ? <CloseIcon sx={{ color: theme.palette.text.secondary }} /> : <SearchIcon sx={{ color: theme.palette.text.secondary }} />}          </IconButton>
           {/* Search Field (if open) */}
           <TextField
+            inputRef={searchInputRef}
             size="small"
             variant="outlined"
             placeholder="Search loans..."
@@ -235,8 +251,8 @@ const FloatingNavBar = ({ onOpenLoanDetail, darkMode, onToggleDarkMode }) => {
             autoFocus
             sx={{
               ml: 1,
-              width: isMobileSearchOpen ? 200 : 0, // Use isMobileSearchOpen from context
-              opacity: isMobileSearchOpen ? 1 : 0, // Use isMobileSearchOpen from context
+              width: isSearchOpen ? 200 : 0, // Use isSearchOpen from context
+              opacity: isSearchOpen ? 1 : 0, // Use isSearchOpen from context
               transition: "width 0.3s ease-in-out, opacity 0.3s ease-in-out",
               overflow: "hidden",
             }}
@@ -277,6 +293,13 @@ const FloatingNavBar = ({ onOpenLoanDetail, darkMode, onToggleDarkMode }) => {
           </Tooltip>
         </Box>
       </Box>
+
+      <SearchResults
+        variant="popover"
+        anchorEl={isSearchOpen ? searchInputRef.current : null}
+        onOpenLoanDetail={onOpenLoanDetail}
+        onClose={() => setIsSearchOpen(false)}
+      />
 
       {/* Account Menu */}
       <Menu

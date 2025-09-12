@@ -29,6 +29,7 @@ import FloatingNavBar from './FloatingNavBar';
 import BottomNavBar, { BOTTOM_NAV_HEIGHT } from './BottomNavBar';
 import MobileDrawer from './MobileDrawer';
 import LoanDetailDialog from './LoanDetailDialog';
+import SearchResults from './SearchResults';
 import { useSearch } from '../contexts/SearchContext';
 
 const MobileSearchBar = ({ onSearchChange, onClose, open, searchTerm }) => {
@@ -235,6 +236,13 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
         open={isMobileSearchOpen}
         searchTerm={searchTerm}
       />
+      {isMobileSearchOpen && (
+        <SearchResults
+          variant="paper"
+          onOpenLoanDetail={handleOpenLoanDetail}
+          onClose={handleMobileSearchClose}
+        />
+      )}
 
       <Box
         component="main"
