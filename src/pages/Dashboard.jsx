@@ -101,7 +101,9 @@ export default function Dashboard() {
 
     const actionItems = useMemo(() => {
         if (!loans) return { overdueCount: 0, dueThisWeekCount: 0 };
+
         const overdue = loans.filter(loan => {
+            if (loan.status === 'Defaulted') return false;
             const totalRepayable = Number(loan.totalRepayable || 0);
             const repaidAmount = Number(loan.repaidAmount || 0);
             if (repaidAmount >= totalRepayable && totalRepayable > 0) return false;
@@ -109,6 +111,7 @@ export default function Dashboard() {
         });
 
         const dueThisWeek = loans.filter(loan => {
+            if (loan.status === 'Defaulted') return false;
             const totalRepayable = Number(loan.totalRepayable || 0);
             const repaidAmount = Number(loan.repaidAmount || 0);
             if (repaidAmount >= totalRepayable && totalRepayable > 0) return false;
