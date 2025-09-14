@@ -44,6 +44,7 @@ import {
   Delete,
   Payment,
   History,
+  Info as InfoIcon,
   Close as CloseIcon,
   AddCircleOutline as AddCircleOutlineIcon,
 } from "@mui/icons-material";
@@ -143,6 +144,7 @@ const LoanListSkeleton = ({ isMobile }) => {
 
 export default function LoanList() {
   const { loans, loadingLoans, deleteLoan, addPayment, updateLoan, getPaymentsByLoanId, settings, borrowers } = useFirestore();
+  const { openLoanDetail } = useSearch();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [searchParams, setSearchParams] = useSearchParams();
@@ -203,6 +205,8 @@ export default function LoanList() {
   }, [borrowers]);
 
   const calcStatus = (loan) => {
+    if (loan.status === "Defaulted") return "Defaulted";
+
     const totalRepayable = Number(loan.totalRepayable || 0);
     const repaidAmount = Number(loan.repaidAmount || 0);
 
@@ -226,6 +230,8 @@ export default function LoanList() {
         return { label: "Paid", color: "success" };
       case "overdue":
         return { label: "Overdue", color: "error" };
+      case "defaulted":
+        return { label: "Defaulted", color: "warning" };
       case "active":
       default:
         return { label: "Active", color: "primary" };
@@ -616,6 +622,7 @@ export default function LoanList() {
             <MenuItem value="active">Active</MenuItem>
             <MenuItem value="paid">Paid</MenuItem>
             <MenuItem value="overdue">Overdue</MenuItem>
+            <MenuItem value="defaulted">Defaulted</MenuItem>
           </Select>
         </FormControl>
         <TextField
@@ -732,6 +739,11 @@ export default function LoanList() {
                             <Tooltip title="View History">
                               <IconButton size="small" onClick={() => openHistoryModal(loan.id)} aria-label="history" color="secondary">
                                 <History fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Details">
+                              <IconButton size="small" onClick={() => openLoanDetail(loan.id)} aria-label="details" color="secondary">
+                                <InfoIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
                           </Stack>
@@ -987,6 +999,16 @@ export default function LoanList() {
                               color="secondary"
                             >
                               <History fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Details">
+                            <IconButton
+                              size="small"
+                              onClick={() => openLoanDetail(loan.id)}
+                              aria-label="view details"
+                              color="secondary"
+                            >
+                              <InfoIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
                         </TableCell>

@@ -65,7 +65,7 @@ const pulse = keyframes`
   100% { transform: scale(1); }
 `;
 
-const FloatingNavBar = ({ onOpenLoanDetail, darkMode, onToggleDarkMode }) => {
+const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -76,6 +76,7 @@ const FloatingNavBar = ({ onOpenLoanDetail, darkMode, onToggleDarkMode }) => {
   const {
     searchTerm,
     handleSearchChange,
+    openLoanDetail,
   } = useSearch();
 
   const [anchorEl, setAnchorEl] = useState(null);
@@ -164,7 +165,7 @@ const FloatingNavBar = ({ onOpenLoanDetail, darkMode, onToggleDarkMode }) => {
     setHelpOpen(false);
   };
   const handleNotificationItemClick = (notificationId, loanId) => {
-    onOpenLoanDetail(loanId);
+    openLoanDetail(loanId);
     setReadNotifications((prev) => [...prev, notificationId]);
   };
   const handleMarkAllAsRead = () => {
@@ -297,7 +298,6 @@ const FloatingNavBar = ({ onOpenLoanDetail, darkMode, onToggleDarkMode }) => {
       <SearchResults
         variant="popover"
         anchorEl={isSearchOpen ? searchInputRef.current : null}
-        onOpenLoanDetail={onOpenLoanDetail}
         onClose={() => setIsSearchOpen(false)}
       />
 

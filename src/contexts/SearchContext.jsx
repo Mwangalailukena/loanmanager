@@ -7,6 +7,19 @@ export const useSearch = () => useContext(SearchContext);
 export const SearchProvider = ({ children }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const [loanDetailOpen, setLoanDetailOpen] = useState(false);
+  const [selectedLoanId, setSelectedLoanId] = useState(null);
+
+  const openLoanDetail = (loanId) => {
+    setSelectedLoanId(loanId);
+    setLoanDetailOpen(true);
+  };
+
+  const closeLoanDetail = () => {
+    setLoanDetailOpen(false);
+    setSelectedLoanId(null);
+  };
+
 
   const handleSearchChange = useCallback((value) => {
     setSearchTerm(value);
@@ -28,6 +41,10 @@ export const SearchProvider = ({ children }) => {
     isMobileSearchOpen,
     handleMobileSearchOpen,
     handleMobileSearchClose,
+    loanDetailOpen,
+    selectedLoanId,
+    openLoanDetail,
+    closeLoanDetail,
   };
 
   return (

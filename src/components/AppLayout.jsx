@@ -78,11 +78,13 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
     isMobileSearchOpen,
     handleMobileSearchOpen,
     handleMobileSearchClose,
+    loanDetailOpen,
+    selectedLoanId,
+    openLoanDetail,
+    closeLoanDetail,
   } = useSearch();
 
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
-  const [loanDetailOpen, setLoanDetailOpen] = useState(false);
-  const [selectedLoanId, setSelectedLoanId] = useState(null);
 
   // --- Back to Top: State ---
   const [showBackToTop, setShowBackToTop] = useState(false);
@@ -110,14 +112,6 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
     });
   };
 
-  const handleOpenLoanDetail = (loanId) => {
-    setSelectedLoanId(loanId);
-    setLoanDetailOpen(true);
-  };
-  const handleCloseLoanDetail = () => {
-    setLoanDetailOpen(false);
-    setSelectedLoanId(null);
-  };
   const handleDrawerOpen = () => setMobileDrawerOpen(true);
   const handleDrawerClose = () => setMobileDrawerOpen(false);
 
@@ -157,18 +151,18 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
       
       {/* ... (Rest of the NavBar, Drawer, Search, and Main Content components remain the same) ... */}
 
-      {!isMobile && ( <FloatingNavBar darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} onOpenLoanDetail={handleOpenLoanDetail} /> )}
+      {!isMobile && ( <FloatingNavBar darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} onOpenLoanDetail={openLoanDetail} /> )}
       {isMobile && ( <Box sx={{ position: 'fixed', top: 8, left: 8, zIndex: theme.zIndex.appBar + 1, bgcolor: 'background.paper', borderRadius: '50%', boxShadow: theme.shadows[2], }} > <IconButton onClick={handleDrawerOpen} sx={{ color: theme.palette.secondary.main }}><MenuIcon /></IconButton> </Box> )}
       <MobileSearchBar onSearchChange={handleSearchChange} onClose={handleMobileSearchClose} open={isMobileSearchOpen} searchTerm={searchTerm} />
-      {isMobileSearchOpen && ( <SearchResults variant="paper" onOpenLoanDetail={handleOpenLoanDetail} onClose={handleMobileSearchClose} /> )}
+      {isMobileSearchOpen && ( <SearchResults variant="paper" onOpenLoanDetail={openLoanDetail} onClose={handleMobileSearchClose} /> )}
       <Box component="main" sx={{ flexGrow: 1, overflowY: 'auto', boxSizing: 'border-box', background: theme.palette.background.default, minHeight: 0, height: '100%', pb: `${bottomNavHeight}px`, paddingTop: !isMobile ? '100px' : '64px', }} >
         <Container maxWidth="lg" sx={{ pb: 4, px: isMobile ? 2 : 4, }} >
           {children}
         </Container>
       </Box>
-      <MobileDrawer open={mobileDrawerOpen} onClose={handleDrawerClose} onOpen={handleDrawerOpen} darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} onOpenLoanDetail={handleOpenLoanDetail} onSearchOpen={handleMobileSearchOpen} />
+      <MobileDrawer open={mobileDrawerOpen} onClose={handleDrawerClose} onOpen={handleDrawerOpen} darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} onOpenLoanDetail={openLoanDetail} onSearchOpen={handleMobileSearchOpen} />
       {!hideLayout && isMobile && <BottomNavBar />}
-      <LoanDetailDialog key={selectedLoanId} open={loanDetailOpen} onClose={handleCloseLoanDetail} loanId={selectedLoanId} />
+      <LoanDetailDialog key={selectedLoanId} open={loanDetailOpen} onClose={closeLoanDetail} loanId={selectedLoanId} />
 
       {/* --- Main FAB Renderer --- */}
       {renderFab()}

@@ -13,6 +13,7 @@ const ON_TIME_PAYMENT_BONUS = 5; // Bonus for each on-time payment
 
 // --- Negative Factors ---
 const DEDUCTION_FOR_OVERDUE_LOAN = -50;
+const DEDUCTION_FOR_DEFAULTED_LOAN = -100;
 const DEDUCTION_PER_DAY_OVERDUE = -2; // Penalty increases with time
 const DEDUCTION_PER_1000_PRINCIPAL_OVERDUE = -5; // Higher penalty for large overdue loans
 
@@ -67,6 +68,11 @@ export function useCreditScore(borrowerId, allLoans, allPayments) {
           const overduePrincipalPenalty = principalInThousands * DEDUCTION_PER_1000_PRINCIPAL_OVERDUE;
           score += overduePrincipalPenalty;
           history.push(`${overduePrincipalPenalty.toFixed(1)} pts for overdue principal amount.`);
+          break;
+
+        case 'Defaulted':
+          score += DEDUCTION_FOR_DEFAULTED_LOAN;
+          history.push(`${DEDUCTION_FOR_DEFAULTED_LOAN} pts for defaulted loan.`);
           break;
 
         default: // Active loans, etc.

@@ -15,6 +15,7 @@ import {
   import PaidIcon from "@mui/icons-material/Payments";
 
 const calcStatus = (loan) => {
+    if (loan.status === "Defaulted") return "Defaulted";
     const totalRepayable = Number(loan.totalRepayable || 0);
     const repaidAmount = Number(loan.repaidAmount || 0);
   
@@ -42,6 +43,7 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
           totalLoans: <MonetizationOnIcon sx={iconSize} />,
           paidLoans: <CheckCircleIcon sx={iconSize} />,
           activeLoans: <PendingIcon sx={iconSize} />,
+          defaultedLoans: <WarningIcon sx={iconSize} />,
           overdueLoans: (overdueCount) => (
             <Badge
               badgeContent={overdueCount > 0 ? overdueCount : null}
@@ -129,9 +131,10 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
         const paidLoansCount = loansThisMonth.filter((l) => calcStatus(l) === "Paid").length;
         const activeLoansCount = loansThisMonth.filter((l) => calcStatus(l) === "Active").length;
         const overdueLoansCount = loansThisMonth.filter((l) => calcStatus(l) === "Overdue").length;
+        const defaultedLoansCount = loansThisMonth.filter((l) => calcStatus(l) === "Defaulted").length;
 
         const totalOutstanding = loansThisMonth
-          .filter((loan) => calcStatus(loan) === "Active" || calcStatus(loan) === "Overdue")
+          .filter((loan) => calcStatus(loan) === "Active" || calcStatus(loan) === "Overdue" || calcStatus(loan) === "Defaulted")
           .reduce(
             (sum, loan) =>
               sum +
@@ -255,6 +258,17 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
             progress: totalLoansCount ? overdueLoansCount / totalLoansCount : 0,
             icon: iconMap.overdueLoans(overdueLoansCount),
             pulse: overdueLoansCount > 0,
+          },
+          {
+            id: "defaultedLoans",
+            label: "Defaulted Loans",
+            value: defaultedLoansCount,
+            color: "warning",
+            filter: "defaulted",
+            tooltip: "Loans marked as defaulted",
+            progress: totalLoansCount ? defaultedLoansCount / totalLoansCount : 0,
+            icon: iconMap.defaultedLoans,
+            pulse: defaultedLoansCount > 0,
           },
           {
             id: "totalOutstanding",

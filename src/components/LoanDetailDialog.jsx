@@ -21,7 +21,7 @@ import dayjs from "dayjs";
 export default function LoanDetailDialog({ open, onClose, loanId }) {
   // --- This is the only line that needs to change ---
   // We're removing `loadingLoans` because it's not used.
-  const { loans } = useFirestore(); 
+  const { loans, markLoanAsDefaulted } = useFirestore(); 
   // ----------------------------------------------------
 
   const [loan, setLoan] = useState(null);
@@ -49,6 +49,7 @@ export default function LoanDetailDialog({ open, onClose, loanId }) {
 
   const calcStatus = (loan) => {
     if (!loan) return "Unknown";
+    if (loan.status === "Defaulted") return "Defaulted";
     const totalRepayable = Number(loan.totalRepayable || 0);
     const repaidAmount = Number(loan.repaidAmount || 0);
 
@@ -70,6 +71,8 @@ export default function LoanDetailDialog({ open, onClose, loanId }) {
         return { label: "Paid", color: "success" };
       case "overdue":
         return { label: "Overdue", color: "error" };
+      case "defaulted":
+        return { label: "Defaulted", color: "warning" };
       case "active":
       default:
         return { label: "Active", color: "primary" };
@@ -134,6 +137,16 @@ export default function LoanDetailDialog({ open, onClose, loanId }) {
         )}
       </DialogContent>
       <DialogActions>
+        <Button 
+          onClick={async () => {
+            await markLoanAsDefaulted(loanId);
+            onClose();
+          }}
+          color="warning"
+          disabled={calcStatus(loan) === "Paid"}
+        >
+          Mark as Defaulted
+        </Button>
         <Button onClick={onClose} color="secondary">
           Close
         </Button>

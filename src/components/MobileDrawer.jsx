@@ -47,6 +47,7 @@ import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useAuth } from '../contexts/AuthProvider';
 import { useFirestore } from '../contexts/FirestoreProvider';
+import { useSearch } from '../contexts/SearchContext';
 import dayjs from 'dayjs';
 
 import ChangePassword from "../pages/ChangePassword.jsx";
@@ -87,12 +88,13 @@ function stringToInitials(name = "") {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase();
 }
 
-const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onOpenLoanDetail, onSearchOpen }) => {
+const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onSearchOpen }) => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const theme = useTheme();
   const { currentUser } = useAuth();
   const { loans, loadingLoans } = useFirestore();
+  const { openLoanDetail } = useSearch();
 
   const [profileOpen, setProfileOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -144,7 +146,7 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onOpe
   };
 
   const handleNotificationItemClick = (notificationId, loanId) => {
-    onOpenLoanDetail(loanId);
+    openLoanDetail(loanId);
     setReadNotifications((prev) => [...prev, notificationId]);
   };
 

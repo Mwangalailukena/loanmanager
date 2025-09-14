@@ -5,8 +5,8 @@ import { useFirestore } from '../contexts/FirestoreProvider';
 import { useNavigate } from 'react-router-dom';
 import SearchResultsList from './SearchResultsList';
 
-const SearchResults = ({ onOpenLoanDetail, anchorEl, onClose, variant = 'popover' }) => {
-  const { searchTerm, setSearchTerm } = useSearch();
+const SearchResults = ({ anchorEl, onClose, variant = 'popover' }) => {
+  const { searchTerm, setSearchTerm, openLoanDetail } = useSearch();
   const { borrowers, loans } = useFirestore();
   const navigate = useNavigate();
 
@@ -19,7 +19,7 @@ const SearchResults = ({ onOpenLoanDetail, anchorEl, onClose, variant = 'popover
   };
 
   const handleLoanClick = (loanId) => {
-    onOpenLoanDetail(loanId);
+    openLoanDetail(loanId);
     setSearchTerm('');
     if (onClose) onClose();
   };

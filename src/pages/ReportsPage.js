@@ -34,6 +34,7 @@ dayjs.extend(isBetween);
 
 // --- Constants ---
 const calcStatus = (loan) => {
+  if (loan.status === "Defaulted") return "Defaulted";
   const now = dayjs();
   const due = dayjs(loan.dueDate);
   if (loan.isPaid || (loan.repaidAmount >= loan.totalRepayable && loan.totalRepayable > 0 && !loan.status)) return "Paid";
@@ -56,6 +57,7 @@ export default function ReportsPage() {
   const [includePaid, setIncludePaid] = useState(true);
   const [includeActive, setIncludeActive] = useState(true);
   const [includeOverdue, setIncludeOverdue] = useState(true);
+  const [includeDefaulted, setIncludeDefaulted] = useState(true);
 
   useEffect(() => {
     if (!payments && !loadingPayments) {
@@ -80,10 +82,11 @@ export default function ReportsPage() {
       if (status === "Paid" && includePaid) statusMatches = true;
       if (status === "Active" && includeActive) statusMatches = true;
       if (status === "Overdue" && includeOverdue) statusMatches = true;
+      if (status === "Defaulted" && includeDefaulted) statusMatches = true;
 
       return inDateRange && statusMatches;
     });
-  }, [loans, startDate, endDate, includePaid, includeActive, includeOverdue, loadingLoans]);
+  }, [loans, startDate, endDate, includePaid, includeActive, includeOverdue, includeDefaulted, loadingLoans]);
 
 
   // --- REPORT 1: Loan Portfolio Summary ---
@@ -93,6 +96,7 @@ export default function ReportsPage() {
       activeLoans: 0,
       paidLoans: 0,
       overdueLoans: 0,
+      defaultedLoans: 0,
       totalPrincipalDisbursed: 0,
       totalInterestAccrued: 0,
       totalOutstanding: 0,
@@ -105,6 +109,7 @@ export default function ReportsPage() {
     let activeLoans = 0;
     let paidLoans = 0;
     let overdueLoans = 0;
+    let defaultedLoans = 0;
     let totalPrincipalDisbursed = 0;
     let totalInterestAccrued = 0;
     let totalOutstanding = 0;
@@ -115,6 +120,7 @@ export default function ReportsPage() {
       if (status === "Active") activeLoans++;
       else if (status === "Paid") paidLoans++;
       else if (status === "Overdue") overdueLoans++;
+      else if (status === "Defaulted") defaultedLoans++;
 
       totalPrincipalDisbursed += Number(loan.principal || 0);
       totalInterestAccrued += Number(loan.interest || 0);
@@ -132,6 +138,7 @@ export default function ReportsPage() {
       activeLoans,
       paidLoans,
       overdueLoans,
+      defaultedLoans,
       totalPrincipalDisbursed,
       totalInterestAccrued,
       totalOutstanding,
@@ -158,7 +165,7 @@ export default function ReportsPage() {
 
     filteredLoansForReports.forEach(loan => {
       const status = calcStatus(loan);
-      if (status === "Overdue") {
+      if (status === "Overdue" || status === "Defaulted") {
         const dueDate = dayjs(loan.dueDate);
         const daysOverdue = now.diff(dueDate, 'day');
         const outstanding = (Number(loan.totalRepayable || 0) - Number(loan.repaidAmount || 0));
@@ -381,6 +388,7 @@ export default function ReportsPage() {
                                     <Typography>Active Loans: <Typography component="span" fontWeight="bold" color="secondary.main">{portfolioSummary.activeLoans}</Typography></Typography>
                                     <Typography>Paid Loans: <Typography component="span" fontWeight="bold" color="secondary.main">{portfolioSummary.paidLoans}</Typography></Typography>
                                     <Typography>Overdue Loans: <Typography component="span" fontWeight="bold" color="secondary.main">{portfolioSummary.overdueLoans}</Typography></Typography>
+                                    <Typography>Defaulted Loans: <Typography component="span" fontWeight="bold" color="secondary.main">{portfolioSummary.defaultedLoans}</Typography></Typography>
                                     <Divider sx={{ my: 1 }} />
                                     <Typography>Total Principal Disbursed: <Typography component="span" fontWeight="bold" color="secondary.main">ZMW {portfolioSummary.totalPrincipalDisbursed.toFixed(2)}</Typography></Typography>
                                     <Typography>Total Interest Accrued: <Typography component="span" fontWeight="bold" color="secondary.main">ZMW {portfolioSummary.totalInterestAccrued.toFixed(2)}</Typography></Typography>
@@ -691,6 +699,17 @@ export default function ReportsPage() {
                 />
               }
               label="Overdue"
+          />
+          <FormControlLabel
+              control={
+                <Checkbox
+                  checked={includeDefaulted}
+                  onChange={(e) => setIncludeDefaulted(e.target.checked)}
+                  size="small"
+                  sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }}
+                />
+              }
+              label="Defaulted"
           />
         </Stack>
       </Paper>

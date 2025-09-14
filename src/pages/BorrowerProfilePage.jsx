@@ -72,6 +72,7 @@ function TabPanel(props) {
 }
 
 const calcStatus = (loan) => {
+  if (loan.status === "Defaulted") return "Defaulted";
   const totalRepayable = Number(loan.totalRepayable || 0);
   const repaidAmount = Number(loan.repaidAmount || 0);
 
@@ -94,6 +95,8 @@ const getStatusChipColor = (status) => {
       return { backgroundColor: '#4CAF50', color: 'white' };
     case 'Overdue':
       return { backgroundColor: '#F44336', color: 'white' };
+    case 'Defaulted':
+      return { backgroundColor: '#FFC107', color: 'white' };
     case 'Active':
     default:
       return { backgroundColor: '#2196F3', color: 'white' };
@@ -181,6 +184,7 @@ export default function BorrowerProfilePage() {
       if (status === 'Paid') acc.paidLoans += 1;
       else if (status === 'Overdue') acc.overdueLoans += 1;
       else if (status === 'Active') acc.activeLoans += 1;
+      else if (status === 'Defaulted') acc.defaultedLoans += 1;
 
       return acc;
     }, {
@@ -190,6 +194,7 @@ export default function BorrowerProfilePage() {
       activeLoans: 0,
       paidLoans: 0,
       overdueLoans: 0,
+      defaultedLoans: 0,
     });
 
     stats.totalLoans = associatedLoans.length;
@@ -382,7 +387,7 @@ export default function BorrowerProfilePage() {
                              <Divider sx={{ my: 1 }} />
                             <List dense disablePadding>
                                 <ListItem disableGutters>
-                                    <ListItemText primary="Total Loans" secondary={`${financialStats.paidLoans} Paid, ${financialStats.activeLoans} Active, ${financialStats.overdueLoans} Overdue`} />
+                                    <ListItemText primary="Total Loans" secondary={`${financialStats.paidLoans} Paid, ${financialStats.activeLoans} Active, ${financialStats.overdueLoans} Overdue, ${financialStats.defaultedLoans} Defaulted`} />
                                     <Typography variant="h6" fontWeight="bold">{financialStats.totalLoans}</Typography>
                                 </ListItem>
                             </List>

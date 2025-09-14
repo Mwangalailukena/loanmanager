@@ -145,6 +145,12 @@ export function FirestoreProvider({ children }) {
     await addActivityLog({ type: "delete", description: `Loan deleted (ID: ${id})` });
   };
 
+  const markLoanAsDefaulted = async (id) => {
+    const docRef = doc(db, "loans", id);
+    await updateDoc(docRef, { status: "Defaulted", updatedAt: serverTimestamp() });
+    await addActivityLog({ type: "loan_defaulted", description: `Loan marked as defaulted (ID: ${id})` });
+  };
+
   const addComment = async (borrowerId, text) => {
     if (!currentUser) return;
     await addDoc(collection(db, "comments"), { borrowerId, text, userId: currentUser.uid, createdAt: serverTimestamp() });
@@ -277,7 +283,7 @@ export function FirestoreProvider({ children }) {
 
   const value = {
     loans, payments, borrowers, settings, activityLogs, comments, guarantors, expenses, loading,
-    addLoan, updateLoan, deleteLoan,
+    addLoan, updateLoan, deleteLoan, markLoanAsDefaulted,
     addPayment, getPaymentsByLoanId,
     updateSettings, addActivityLog,
     addBorrower, updateBorrower, deleteBorrower,

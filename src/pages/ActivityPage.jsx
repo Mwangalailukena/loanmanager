@@ -28,6 +28,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import PaymentIcon from "@mui/icons-material/Payment";
 import LoginIcon from "@mui/icons-material/Login";
 import DeleteIcon from "@mui/icons-material/Delete";
+import WarningIcon from "@mui/icons-material/Warning";
 import SettingsIcon from "@mui/icons-material/Settings";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { motion, AnimatePresence } from "framer-motion";
@@ -47,6 +48,7 @@ const actionLabels = {
   login: "Login",
   delete: "Loan Deleted",
   settings_update: "Settings Updated",
+  loan_defaulted: "Loan Defaulted",
 };
 
 // Colors for Chips based on action type
@@ -57,6 +59,12 @@ const actionChipColors = {
   login: "info",
   delete: "error",
   settings_update: "secondary",
+  loan_defaulted: "warning",
+};
+
+const timelineDotColors = {
+  ...actionChipColors,
+  edit: "grey",
 };
 
 const actionIcons = {
@@ -66,6 +74,7 @@ const actionIcons = {
   login: <LoginIcon />,
   delete: <DeleteIcon />,
   settings_update: <SettingsIcon />,
+  loan_defaulted: <WarningIcon />,
 };
 
 export default function ActivityPage() {
@@ -200,6 +209,7 @@ export default function ActivityPage() {
             <MenuItem value="login">Login</MenuItem>
             <MenuItem value="delete">Delete</MenuItem>
             <MenuItem value="settings_update">Settings Update</MenuItem>
+            <MenuItem value="loan_defaulted">Loan Defaulted</MenuItem>
           </Select>
         </FormControl>
       </Stack>
@@ -240,7 +250,7 @@ export default function ActivityPage() {
               >
                 <TimelineItem sx={{ '&::before': { content: 'none' } }}>
                   <TimelineSeparator>
-                    <TimelineDot color={actionChipColors[log.type] || "grey"} variant="outlined">
+                    <TimelineDot color={timelineDotColors[log.type] || "grey"} variant="outlined">
                       {actionIcons[log.type] || null}
                     </TimelineDot>
                     {index < displayedLogs.length - 1 && <TimelineConnector />}
