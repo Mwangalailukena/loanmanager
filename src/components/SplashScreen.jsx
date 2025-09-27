@@ -19,15 +19,23 @@ const pulse = keyframes`
   100% { transform: scale(1); }
 `;
 
-const slideInUp = keyframes`
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+// NEW: A more modern reveal animation
+const reveal = keyframes`
+  from { 
+    opacity: 0; 
+    transform: translateY(20px); 
+    filter: blur(5px);
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+    filter: blur(0px);
+  }
 `;
 
 const SplashScreen = ({ isLoaded }) => {
   const [dots, setDots] = React.useState('');
 
-  // Loading dots animation remains
   React.useEffect(() => {
     const dotTimer = setInterval(() => {
       setDots((prev) => (prev.length < 3 ? prev + '.' : ''));
@@ -43,17 +51,17 @@ const SplashScreen = ({ isLoaded }) => {
         left: 0,
         width: '100vw',
         height: '100vh',
-        backgroundColor: '#fff',
+        // UPDATED: Subtle gradient background
+        background: 'linear-gradient(180deg, #e3f2fd 0%, #ffffff 100%)',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 9999,
         animation: isLoaded ? `${fadeOut} 0.5s ease-out forwards` : 'none',
-        animationDelay: '0.2s', // Small delay for a smoother fade-out
+        animationDelay: '0.2s',
       }}
     >
-      {/* Updated Logo Animation: fadeIn and pulse */}
       <Box
         component="img"
         src="/android/android-launchericon-512-512.png"
@@ -66,13 +74,13 @@ const SplashScreen = ({ isLoaded }) => {
         }}
       />
 
-      {/* Animated loading text */}
       <Typography
         variant="h6"
         color="text.secondary"
         sx={{
           mb: 3,
-          animation: `${slideInUp} 0.5s ease-out forwards`,
+          // UPDATED: Using the new 'reveal' animation
+          animation: `${reveal} 0.6s ease-out forwards`,
           animationDelay: '0.2s',
           opacity: 0,
         }}
@@ -80,26 +88,25 @@ const SplashScreen = ({ isLoaded }) => {
         Loading your application{dots}
       </Typography>
 
-      {/* Non-deterministic progress bar */}
       <LinearProgress
         variant="indeterminate"
         sx={{
           width: '70%',
           maxWidth: '400px',
-          height: 10,
+          // UPDATED: Sleeker progress bar design
+          height: 6,
           borderRadius: 5,
-          backgroundColor: '#eee',
-          animation: `${slideInUp} 0.5s ease-out forwards`,
+          backgroundColor: 'rgba(0, 0, 0, 0.08)',
+          animation: `${reveal} 0.6s ease-out forwards`,
           animationDelay: '0.4s',
           opacity: 0,
           '& .MuiLinearProgress-bar': {
             borderRadius: 5,
-            backgroundColor: '#1976d2',
+            background: 'linear-gradient(90deg, #1976d2 0%, #64b5f6 100%)',
           },
         }}
       />
 
-      {/* Credit text */}
       <Typography
         variant="caption"
         color="text.disabled"
