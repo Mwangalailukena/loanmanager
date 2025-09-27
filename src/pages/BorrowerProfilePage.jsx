@@ -30,6 +30,7 @@ import {
   CardHeader,
   Link,
   Tooltip as MuiTooltip,
+  InputAdornment,
 } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
 import PhoneIcon from '@mui/icons-material/Phone';
@@ -73,6 +74,7 @@ function TabPanel(props) {
 
 const calcStatus = (loan) => {
   if (loan.status === "Defaulted") return "Defaulted";
+  if (loan.status === "Refinanced") return "Refinanced";
   const totalRepayable = Number(loan.totalRepayable || 0);
   const repaidAmount = Number(loan.repaidAmount || 0);
 
@@ -97,6 +99,8 @@ const getStatusChipColor = (status) => {
       return { backgroundColor: '#F44336', color: 'white' };
     case 'Defaulted':
       return { backgroundColor: '#FFC107', color: 'white' };
+    case 'Refinanced':
+      return { backgroundColor: '#9c27b0', color: 'white' };
     case 'Active':
     default:
       return { backgroundColor: '#2196F3', color: 'white' };
@@ -153,7 +157,8 @@ export default function BorrowerProfilePage() {
   const {
     borrowers, loans, payments, loading, deleteBorrower,
     comments, addComment, deleteComment,
-    guarantors, deleteGuarantor
+    guarantors, deleteGuarantor,
+    refinanceLoan,
   } = useFirestore();
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -162,6 +167,10 @@ export default function BorrowerProfilePage() {
   const [selectedGuarantor, setSelectedGuarantor] = useState(null);
   const [deleteGuarantorConfirmOpen, setDeleteGuarantorConfirmOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
+  const [refinanceModal, setRefinanceModal] = useState({ open: false, loan: null });
+  const [refinanceAmount, setRefinanceAmount] = useState("");
+  const [refinanceError, setRefinanceError] = useState("");
+  const [isRefinancing, setIsRefinancing] = useState(false);
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
@@ -254,6 +263,39 @@ export default function BorrowerProfilePage() {
     await deleteGuarantor(selectedGuarantor.id);
     showSnackbar('Guarantor deleted', 'success');
     handleCloseDeleteGuarantorConfirm();
+  };
+
+  const openRefinanceModal = (loan) => {
+    setRefinanceAmount("");
+    setRefinanceError("");
+    setRefinanceModal({ open: true, loan });
+  };
+
+  const handleRefinanceSubmit = async () => {
+    const amountNum = parseFloat(refinanceAmount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      setRefinanceError("Amount paid must be a positive number.");
+      return;
+    }
+
+    const outstanding = (refinanceModal.loan?.totalRepayable || 0) - (refinanceModal.loan?.repaidAmount || 0);
+
+    if (amountNum >= outstanding) {
+      setRefinanceError(`Amount paid must be less than the outstanding amount (ZMW ${outstanding.toFixed(2)}).`);
+      return;
+    }
+
+    setIsRefinancing(true);
+    try {
+      await refinanceLoan(refinanceModal.loan.id, amountNum);
+      setRefinanceModal({ open: false, loan: null });
+      showSnackbar('Loan refinanced successfully', 'success');
+    } catch (error) {
+      console.error("Error refinancing loan:", error);
+      setRefinanceError("Failed to refinance loan. Please try again.");
+    } finally {
+      setIsRefinancing(false);
+    }
   };
 
   if (loading) {
@@ -424,6 +466,9 @@ export default function BorrowerProfilePage() {
                               <Typography variant="body2">Total Repayable: <strong>ZMW {Number(loan.totalRepayable).toLocaleString()}</strong></Typography>
                               <Typography variant="body2">Due: <strong>{dayjs(loan.dueDate).format('DD MMM YYYY')}</strong></Typography>
                             </Stack>
+                            <Stack direction="row" spacing={1} mt={1}>
+                              <Button size="small" variant="outlined" onClick={() => openRefinanceModal(loan)}>Refinance</Button>
+                            </Stack>
                           </CardContent>
                         </Card>
                       ))}
@@ -537,6 +582,38 @@ export default function BorrowerProfilePage() {
         <DialogActions>
           <Button onClick={handleCloseDeleteGuarantorConfirm}>Cancel</Button>
           <Button onClick={handleDeleteGuarantor} color="error">Delete</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Refinance Modal */}
+      <Dialog open={refinanceModal.open} onClose={() => setRefinanceModal({ open: false, loan: null })} maxWidth="xs" fullWidth>
+        <DialogTitle fontSize="1.1rem">Refinance Loan</DialogTitle>
+        <DialogContent sx={{ pb: 1 }}>
+          <TextField
+            label="Amount Paid Now"
+            type="number"
+            value={refinanceAmount}
+            onChange={(e) => {
+              setRefinanceAmount(e.target.value);
+              setRefinanceError("");
+            }}
+            size="small"
+            autoFocus
+            fullWidth
+            error={!!refinanceError}
+            helperText={refinanceError}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">ZMW</InputAdornment>
+              ),
+            }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ pb: 1 }}>
+          <Button size="small" onClick={() => setRefinanceModal({ open: false, loan: null })} disabled={isRefinancing}> Cancel </Button>
+          <Button size="small" variant="contained" onClick={handleRefinanceSubmit} disabled={isRefinancing} color="secondary">
+            {isRefinancing ? <CircularProgress size={20} color="inherit" /> : 'Refinance'}
+          </Button>
         </DialogActions>
       </Dialog>
     </>

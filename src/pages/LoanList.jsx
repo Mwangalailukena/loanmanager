@@ -47,6 +47,7 @@ import {
   Info as InfoIcon,
   Close as CloseIcon,
   AddCircleOutline as AddCircleOutlineIcon,
+  Autorenew as AutorenewIcon,
 } from "@mui/icons-material";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { exportToCsv } from "../utils/exportCSV";
@@ -143,7 +144,7 @@ const LoanListSkeleton = ({ isMobile }) => {
 // ... (rest of imports)
 
 export default function LoanList() {
-  const { loans, loadingLoans, deleteLoan, addPayment, updateLoan, getPaymentsByLoanId, settings, borrowers } = useFirestore();
+  const { loans, loadingLoans, deleteLoan, addPayment, updateLoan, getPaymentsByLoanId, settings, borrowers, refinanceLoan } = useFirestore();
   const { openLoanDetail } = useSearch();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -181,6 +182,10 @@ export default function LoanList() {
   const [selectedLoanIds, setSelectedLoanIds] = useState([]);
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [refinanceModal, setRefinanceModal] = useState({ open: false, loan: null });
+  const [refinanceAmount, setRefinanceAmount] = useState("");
+  const [refinanceError, setRefinanceError] = useState("");
+  const [isRefinancing, setIsRefinancing] = useState(false);
   
   const [sortKey, setSortKey] = useState("startDate");
   const [sortDirection, setSortDirection] = useState("desc");
@@ -206,6 +211,7 @@ export default function LoanList() {
 
   const calcStatus = (loan) => {
     if (loan.status === "Defaulted") return "Defaulted";
+    if (loan.status === "Refinanced") return "Refinanced";
 
     const totalRepayable = Number(loan.totalRepayable || 0);
     const repaidAmount = Number(loan.repaidAmount || 0);
@@ -232,6 +238,8 @@ export default function LoanList() {
         return { label: "Overdue", color: "error" };
       case "defaulted":
         return { label: "Defaulted", color: "warning" };
+      case "refinanced":
+        return { label: "Refinanced", color: "secondary" };
       case "active":
       default:
         return { label: "Active", color: "primary" };
@@ -580,6 +588,38 @@ export default function LoanList() {
     [searchParams, setSearchParams]
   );
 
+  const openRefinanceModal = (loan) => {
+    setRefinanceAmount("");
+    setRefinanceError("");
+    setRefinanceModal({ open: true, loan });
+  };
+
+  const handleRefinanceSubmit = async () => {
+    const amountNum = parseFloat(refinanceAmount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      setRefinanceError("Amount paid must be a positive number.");
+      return;
+    }
+
+    const outstanding = (refinanceModal.loan?.totalRepayable || 0) - (refinanceModal.loan?.repaidAmount || 0);
+
+    if (amountNum >= outstanding) {
+      setRefinanceError(`Amount paid must be less than the outstanding amount (ZMW ${outstanding.toFixed(2)}).`);
+      return;
+    }
+
+    setIsRefinancing(true);
+    try {
+      await refinanceLoan(refinanceModal.loan.id, amountNum);
+      setRefinanceModal({ open: false, loan: null });
+    } catch (error) {
+      console.error("Error refinancing loan:", error);
+      setRefinanceError("Failed to refinance loan. Please try again.");
+    } finally {
+      setIsRefinancing(false);
+    }
+  };
+
   return (
     <Box sx={{ p: isMobile ? 1 : 2 }}>
       <Typography variant="h6" component="h1" gutterBottom fontWeight="bold" sx={{ mb: 1 }}>
@@ -623,6 +663,7 @@ export default function LoanList() {
             <MenuItem value="paid">Paid</MenuItem>
             <MenuItem value="overdue">Overdue</MenuItem>
             <MenuItem value="defaulted">Defaulted</MenuItem>
+            <MenuItem value="refinanced">Refinanced</MenuItem>
           </Select>
         </FormControl>
         <TextField
@@ -745,6 +786,13 @@ export default function LoanList() {
                               <IconButton size="small" onClick={() => openLoanDetail(loan.id)} aria-label="details" color="secondary">
                                 <InfoIcon fontSize="small" />
                               </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Refinance">
+                              <span>
+                                <IconButton size="small" onClick={() => openRefinanceModal(loan)} aria-label="refinance" disabled={isPaid} color="secondary">
+                                  <AutorenewIcon fontSize="small" />
+                                </IconButton>
+                              </span>
                             </Tooltip>
                           </Stack>
                         </Box>
@@ -1010,6 +1058,19 @@ export default function LoanList() {
                             >
                               <InfoIcon fontSize="small" />
                             </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Refinance">
+                            <span>
+                              <IconButton
+                                size="small"
+                                onClick={() => openRefinanceModal(loan)}
+                                aria-label="refinance"
+                                disabled={isPaid}
+                                color="secondary"
+                              >
+                                <AutorenewIcon fontSize="small" />
+                              </IconButton>
+                            </span>
                           </Tooltip>
                         </TableCell>
                       </TableRow>
@@ -1304,6 +1365,39 @@ export default function LoanList() {
           Payment added successfully!
         </Alert>
       </Snackbar>
+
+      {/* Refinance Modal */}
+      <Dialog open={refinanceModal.open} onClose={() => setRefinanceModal({ open: false, loan: null })} maxWidth="xs" fullWidth>
+        <DialogTitle fontSize="1.1rem">Refinance Loan</DialogTitle>
+        <DialogContent sx={{ pb: 1 }}>
+          <TextField
+            label="Amount Paid Now"
+            type="number"
+            value={refinanceAmount}
+            onChange={(e) => {
+              setRefinanceAmount(e.target.value);
+              setRefinanceError("");
+            }}
+            size="small"
+            autoFocus
+            fullWidth
+            error={!!refinanceError}
+            helperText={refinanceError}
+            sx={filterInputStyles}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">ZMW</InputAdornment>
+              ),
+            }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ pb: 1 }}>
+          <Button size="small" onClick={() => setRefinanceModal({ open: false, loan: null })} disabled={isRefinancing}> Cancel </Button>
+          <Button size="small" variant="contained" onClick={handleRefinanceSubmit} disabled={isRefinancing} color="secondary">
+            {isRefinancing ? <CircularProgress size={20} color="inherit" /> : 'Refinance'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

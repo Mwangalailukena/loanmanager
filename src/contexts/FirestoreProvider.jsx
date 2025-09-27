@@ -20,6 +20,7 @@ import { useAuth } from "./AuthProvider";
 import { useSnackbar } from "../components/SnackbarProvider";
 import localforage from "localforage";
 import useOfflineStatus from "../hooks/useOfflineStatus";
+import dayjs from "dayjs";
 
 
 const FirestoreContext = createContext();
@@ -130,7 +131,12 @@ export function FirestoreProvider({ children }) {
   const addLoan = async (loan) => {
     const loanWithMeta = { ...loan, userId: currentUser.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
     const docRef = await addDoc(collection(db, "loans"), loanWithMeta);
-    await addActivityLog({ type: "loan_creation", description: `Loan added for borrower ID ${loan.borrowerId}` });
+    await addActivityLog({
+      type: "loan_creation",
+      description: `Loan added for borrower ID ${loan.borrowerId}`,
+      relatedId: docRef.id,
+      undoable: true 
+    });
     return docRef;
   };
 
@@ -219,8 +225,7 @@ export function FirestoreProvider({ children }) {
     const loanData = loanSnap.data();
     const newRepaidAmount = (loanData.repaidAmount || 0) + amount;
 
-    // 1. Add new payment record
-    await addDoc(collection(db, "payments"), {
+    const paymentDocRef = await addDoc(collection(db, "payments"), {
       loanId,
       amount,
       date: serverTimestamp(),
@@ -238,6 +243,10 @@ export function FirestoreProvider({ children }) {
     await addActivityLog({
       type: "payment_add",
       description: `Payment of ZMW ${amount.toFixed(2)} added to loan ID ${loanId}`,
+      relatedId: paymentDocRef.id,
+      loanId: loanId,
+      amount: amount,
+      undoable: true
     });
   };
 
@@ -281,6 +290,136 @@ export function FirestoreProvider({ children }) {
     }
   };
 
+  const updateActivityLog = async (id, updates) => {
+    const docRef = doc(db, "activityLogs", id);
+    await updateDoc(docRef, { ...updates, updatedAt: serverTimestamp() });
+  };
+
+  const undoLoanCreation = async (loanId) => {
+    await deleteLoan(loanId);
+    await addActivityLog({
+      type: "undo_loan_creation",
+      description: `Undo: Loan Created (ID: ${loanId})`,
+    });
+  };
+
+  const undoPayment = async (paymentId, loanId, amount) => {
+    const loanRef = doc(db, "loans", loanId);
+    const loanSnap = await getDoc(loanRef);
+
+    if (!loanSnap.exists()) {
+      console.error("Loan not found for payment undo:", loanId);
+      throw new Error("Loan not found.");
+    }
+
+    const loanData = loanSnap.data();
+    const newRepaidAmount = (loanData.repaidAmount || 0) - amount;
+
+    await deleteDoc(doc(db, "payments", paymentId));
+    await updateDoc(loanRef, {
+      repaidAmount: newRepaidAmount,
+      updatedAt: serverTimestamp(),
+    });
+
+    await addActivityLog({
+      type: "undo_payment",
+      description: `Undo: Payment of ZMW ${amount.toFixed(2)} for loan ID ${loanId}`,
+    });
+  };
+
+  const undoRefinanceLoan = async (oldLoanId, newLoanId, paymentId, amount) => {
+    // 1. Delete the new loan
+    await deleteDoc(doc(db, "loans", newLoanId));
+
+    // 2. Delete the payment
+    await deleteDoc(doc(db, "payments", paymentId));
+
+    // 3. Revert the old loan
+    const oldLoanRef = doc(db, "loans", oldLoanId);
+    const oldLoanSnap = await getDoc(oldLoanRef);
+    if (oldLoanSnap.exists()) {
+      const oldLoanData = oldLoanSnap.data();
+      const previousRepaidAmount = (oldLoanData.repaidAmount || 0) - amount;
+      await updateDoc(oldLoanRef, {
+        status: "Active", // Or determine previous status
+        repaidAmount: previousRepaidAmount,
+        updatedAt: serverTimestamp(),
+      });
+    }
+
+    // 4. Log the undo action
+    await addActivityLog({
+      type: "undo_refinance",
+      description: `Undo: Refinance of loan ${oldLoanId}`,
+    });
+  };
+
+  const refinanceLoan = async (oldLoanId, amountPaidNow) => {
+    const oldLoanRef = doc(db, "loans", oldLoanId);
+    const oldLoanSnap = await getDoc(oldLoanRef);
+
+    if (!oldLoanSnap.exists()) {
+      throw new Error("Loan to refinance not found.");
+    }
+
+    const oldLoanData = oldLoanSnap.data();
+
+    // 1. Calculate new principal
+    const outstandingBalance = (oldLoanData.totalRepayable || 0) - (oldLoanData.repaidAmount || 0);
+    const newPrincipal = outstandingBalance - amountPaidNow;
+
+    if (newPrincipal < 0) {
+      throw new Error("Amount paid cannot be greater than the outstanding balance.");
+    }
+
+    // 2. Create new loan
+    const interestDuration = oldLoanData.interestDuration || 1;
+    const interestRate = settings.interestRates[interestDuration] || 0;
+    const newInterest = newPrincipal * interestRate;
+    const newTotalRepayable = newPrincipal + newInterest;
+
+    const newLoan = {
+      borrowerId: oldLoanData.borrowerId,
+      principal: newPrincipal,
+      interest: newInterest,
+      totalRepayable: newTotalRepayable,
+      startDate: dayjs().format("YYYY-MM-DD"),
+      dueDate: dayjs().add(interestDuration * 7, "day").format("YYYY-MM-DD"),
+      status: "Active",
+      repaidAmount: 0,
+      interestDuration: interestDuration,
+      originalLoanId: oldLoanId, // Link to the original loan
+    };
+    const newLoanRef = await addLoan(newLoan);
+
+    // 3. Update old loan
+    await updateDoc(oldLoanRef, {
+      status: "Refinanced",
+      repaidAmount: (oldLoanData.repaidAmount || 0) + amountPaidNow,
+      updatedAt: serverTimestamp(),
+    });
+
+    // 4. Add payment for the amount paid now
+    const paymentDocRef = await addDoc(collection(db, "payments"), {
+      loanId: oldLoanId,
+      amount: amountPaidNow,
+      date: serverTimestamp(),
+      userId: currentUser.uid,
+      createdAt: serverTimestamp(),
+    });
+
+    // 5. Log activity
+    await addActivityLog({
+      type: "loan_refinanced",
+      description: `Loan ${oldLoanId} refinanced into new loan ${newLoanRef.id}`,
+      relatedId: oldLoanId, // The old loan is the primary subject
+      newLoanId: newLoanRef.id,
+      paymentId: paymentDocRef.id,
+      amount: amountPaidNow,
+      undoable: true,
+    });
+  };
+
   const value = {
     loans, payments, borrowers, settings, activityLogs, comments, guarantors, expenses, loading,
     addLoan, updateLoan, deleteLoan, markLoanAsDefaulted,
@@ -290,6 +429,8 @@ export function FirestoreProvider({ children }) {
     addComment, deleteComment,
     addGuarantor, updateGuarantor, deleteGuarantor,
     addExpense, updateExpense, deleteExpense,
+    undoLoanCreation, undoPayment, updateActivityLog,
+    refinanceLoan, undoRefinanceLoan,
   };
 
   return (

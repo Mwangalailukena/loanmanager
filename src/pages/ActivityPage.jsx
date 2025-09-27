@@ -30,10 +30,21 @@ import LoginIcon from "@mui/icons-material/Login";
 import DeleteIcon from "@mui/icons-material/Delete";
 import WarningIcon from "@mui/icons-material/Warning";
 import SettingsIcon from "@mui/icons-material/Settings";
+import UndoIcon from "@mui/icons-material/Undo";
+import AutorenewIcon from "@mui/icons-material/Autorenew";
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+} from "@mui/material";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme, useMediaQuery } from "@mui/material";
 import { formatDistanceToNow, parseISO } from "date-fns";
+import { useSnackbar } from "../components/SnackbarProvider";
 
 const itemVariants = {
   hidden: { opacity: 0, y: 10 },
@@ -49,6 +60,10 @@ const actionLabels = {
   delete: "Loan Deleted",
   settings_update: "Settings Updated",
   loan_defaulted: "Loan Defaulted",
+  loan_refinanced: "Loan Refinanced",
+  undo_loan_creation: "Undo: Loan Creation",
+  undo_payment: "Undo: Payment",
+  undo_refinance: "Undo: Refinance",
 };
 
 // Colors for Chips based on action type
@@ -60,11 +75,18 @@ const actionChipColors = {
   delete: "error",
   settings_update: "secondary",
   loan_defaulted: "warning",
+  loan_refinanced: "secondary",
+  undo_loan_creation: "default",
+  undo_payment: "default",
+  undo_refinance: "default",
 };
 
 const timelineDotColors = {
   ...actionChipColors,
   edit: "grey",
+  undo_loan_creation: "grey",
+  undo_payment: "grey",
+  undo_refinance: "grey",
 };
 
 const actionIcons = {
@@ -75,12 +97,19 @@ const actionIcons = {
   delete: <DeleteIcon />,
   settings_update: <SettingsIcon />,
   loan_defaulted: <WarningIcon />,
+  loan_refinanced: <AutorenewIcon />,
+  undo_loan_creation: <UndoIcon />,
+  undo_payment: <UndoIcon />,
+  undo_refinance: <UndoIcon />,
 };
 
 export default function ActivityPage() {
-  const { activityLogs } = useFirestore();
+  const { activityLogs, undoLoanCreation, undoPayment, updateActivityLog, undoRefinanceLoan } = useFirestore();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const showSnackbar = useSnackbar();
+
+  const [confirmUndo, setConfirmUndo] = useState({ open: false, log: null });
 
   const ITEMS_PER_PAGE = 20;
   const [page, setPage] = useState(1);
@@ -172,6 +201,30 @@ export default function ActivityPage() {
     setPage(1);
   }, [filterType, search]);
 
+  const handleUndo = async () => {
+    if (!confirmUndo.log) return;
+
+    const { id, type, relatedId, newLoanId, paymentId, amount } = confirmUndo.log;
+
+    try {
+      if (type === "loan_creation") {
+        await undoLoanCreation(relatedId);
+      } else if (type === "payment_add") {
+        await undoPayment(relatedId, confirmUndo.log.loanId, amount);
+      } else if (type === "loan_refinanced") {
+        await undoRefinanceLoan(relatedId, newLoanId, paymentId, amount);
+      }
+
+      await updateActivityLog(id, { undone: true });
+      showSnackbar("Action undone successfully!", "success");
+    } catch (error) {
+      console.error("Error undoing action:", error);
+      showSnackbar("Failed to undo action.", "error");
+    }
+
+    setConfirmUndo({ open: false, log: null });
+  };
+
   return (
     <Box
       p={3}
@@ -210,6 +263,7 @@ export default function ActivityPage() {
             <MenuItem value="delete">Delete</MenuItem>
             <MenuItem value="settings_update">Settings Update</MenuItem>
             <MenuItem value="loan_defaulted">Loan Defaulted</MenuItem>
+            <MenuItem value="loan_refinanced">Loan Refinanced</MenuItem>
           </Select>
         </FormControl>
       </Stack>
@@ -295,6 +349,16 @@ export default function ActivityPage() {
                             <Typography component="span" variant="body2">
                               {highlightText(log.description ?? "", search)}
                             </Typography>
+                            {log.undoable && !log.undone && (
+                              <Button
+                                size="small"
+                                onClick={() => setConfirmUndo({ open: true, log })}
+                                startIcon={<UndoIcon />}
+                                sx={{ mt: 1 }}
+                              >
+                                Undo
+                              </Button>
+                            )}
                           </>
                         }
                       />
@@ -342,6 +406,24 @@ export default function ActivityPage() {
           <Typography variant="body2">Try adjusting your search or filters.</Typography>
         </Box>
       )}
+
+      <Dialog
+        open={confirmUndo.open}
+        onClose={() => setConfirmUndo({ open: false, log: null })}
+      >
+        <DialogTitle>Confirm Undo</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to undo this action? This cannot be reversed.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmUndo({ open: false, log: null })}>Cancel</Button>
+          <Button onClick={handleUndo} color="error">
+            Undo
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
