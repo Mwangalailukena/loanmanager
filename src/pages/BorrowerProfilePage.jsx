@@ -30,7 +30,6 @@ import {
   CardHeader,
   Link,
   Tooltip as MuiTooltip,
-  InputAdornment,
 } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
 import PhoneIcon from '@mui/icons-material/Phone';
@@ -74,7 +73,6 @@ function TabPanel(props) {
 
 const calcStatus = (loan) => {
   if (loan.status === "Defaulted") return "Defaulted";
-  if (loan.status === "Refinanced") return "Refinanced";
   const totalRepayable = Number(loan.totalRepayable || 0);
   const repaidAmount = Number(loan.repaidAmount || 0);
 
@@ -99,8 +97,6 @@ const getStatusChipColor = (status) => {
       return { backgroundColor: '#F44336', color: 'white' };
     case 'Defaulted':
       return { backgroundColor: '#FFC107', color: 'white' };
-    case 'Refinanced':
-      return { backgroundColor: '#9c27b0', color: 'white' };
     case 'Active':
     default:
       return { backgroundColor: '#2196F3', color: 'white' };
@@ -168,7 +164,8 @@ export default function BorrowerProfilePage() {
   const [deleteGuarantorConfirmOpen, setDeleteGuarantorConfirmOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
   const [refinanceModal, setRefinanceModal] = useState({ open: false, loan: null });
-  const [refinanceAmount, setRefinanceAmount] = useState("");
+  const [refinanceStartDate, setRefinanceStartDate] = useState(dayjs().format("YYYY-MM-DD"));
+  const [refinanceDueDate, setRefinanceDueDate] = useState(dayjs().add(1, "week").format("YYYY-MM-DD"));
   const [refinanceError, setRefinanceError] = useState("");
   const [isRefinancing, setIsRefinancing] = useState(false);
 
@@ -266,28 +263,25 @@ export default function BorrowerProfilePage() {
   };
 
   const openRefinanceModal = (loan) => {
-    setRefinanceAmount("");
+    setRefinanceStartDate(dayjs().format("YYYY-MM-DD"));
+    setRefinanceDueDate(dayjs().add(1, "week").format("YYYY-MM-DD"));
     setRefinanceError("");
     setRefinanceModal({ open: true, loan });
   };
 
   const handleRefinanceSubmit = async () => {
-    const amountNum = parseFloat(refinanceAmount);
-    if (isNaN(amountNum) || amountNum <= 0) {
-      setRefinanceError("Amount paid must be a positive number.");
+    if (!refinanceStartDate || !refinanceDueDate) {
+      setRefinanceError("Both start and due dates are required.");
       return;
     }
-
-    const outstanding = (refinanceModal.loan?.totalRepayable || 0) - (refinanceModal.loan?.repaidAmount || 0);
-
-    if (amountNum >= outstanding) {
-      setRefinanceError(`Amount paid must be less than the outstanding amount (ZMW ${outstanding.toFixed(2)}).`);
+    if (dayjs(refinanceDueDate).isBefore(dayjs(refinanceStartDate))) {
+      setRefinanceError("Due date must be after the start date.");
       return;
     }
 
     setIsRefinancing(true);
     try {
-      await refinanceLoan(refinanceModal.loan.id, amountNum);
+      await refinanceLoan(refinanceModal.loan.id, refinanceStartDate, refinanceDueDate);
       setRefinanceModal({ open: false, loan: null });
       showSnackbar('Loan refinanced successfully', 'success');
     } catch (error) {
@@ -589,25 +583,26 @@ export default function BorrowerProfilePage() {
       <Dialog open={refinanceModal.open} onClose={() => setRefinanceModal({ open: false, loan: null })} maxWidth="xs" fullWidth>
         <DialogTitle fontSize="1.1rem">Refinance Loan</DialogTitle>
         <DialogContent sx={{ pb: 1 }}>
-          <TextField
-            label="Amount Paid Now"
-            type="number"
-            value={refinanceAmount}
-            onChange={(e) => {
-              setRefinanceAmount(e.target.value);
-              setRefinanceError("");
-            }}
-            size="small"
-            autoFocus
-            fullWidth
-            error={!!refinanceError}
-            helperText={refinanceError}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">ZMW</InputAdornment>
-              ),
-            }}
-          />
+          <Stack spacing={2} mt={1}>
+            <TextField
+              label="New Start Date"
+              type="date"
+              value={refinanceStartDate}
+              onChange={(e) => setRefinanceStartDate(e.target.value)}
+              size="small"
+              fullWidth
+              error={!!refinanceError}
+              helperText={refinanceError}
+            />
+            <TextField
+              label="New Due Date"
+              type="date"
+              value={refinanceDueDate}
+              onChange={(e) => setRefinanceDueDate(e.target.value)}
+              size="small"
+              fullWidth
+            />
+          </Stack>
         </DialogContent>
         <DialogActions sx={{ pb: 1 }}>
           <Button size="small" onClick={() => setRefinanceModal({ open: false, loan: null })} disabled={isRefinancing}> Cancel </Button>

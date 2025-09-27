@@ -16,7 +16,6 @@ import {
 
 const calcStatus = (loan) => {
     if (loan.status === "Defaulted") return "Defaulted";
-    if (loan.status === "Refinanced") return "Refinanced";
     const totalRepayable = Number(loan.totalRepayable || 0);
     const repaidAmount = Number(loan.repaidAmount || 0);
   

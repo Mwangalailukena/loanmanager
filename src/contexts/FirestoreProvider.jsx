@@ -20,7 +20,6 @@ import { useAuth } from "./AuthProvider";
 import { useSnackbar } from "../components/SnackbarProvider";
 import localforage from "localforage";
 import useOfflineStatus from "../hooks/useOfflineStatus";
-import dayjs from "dayjs";
 
 
 const FirestoreContext = createContext();
@@ -327,34 +326,26 @@ export function FirestoreProvider({ children }) {
     });
   };
 
-  const undoRefinanceLoan = async (oldLoanId, newLoanId, paymentId, amount) => {
+  const undoRefinanceLoan = async (oldLoanId, newLoanId, previousRepaidAmount) => {
     // 1. Delete the new loan
     await deleteDoc(doc(db, "loans", newLoanId));
 
-    // 2. Delete the payment
-    await deleteDoc(doc(db, "payments", paymentId));
-
-    // 3. Revert the old loan
+    // 2. Revert the old loan's status and repaidAmount
     const oldLoanRef = doc(db, "loans", oldLoanId);
-    const oldLoanSnap = await getDoc(oldLoanRef);
-    if (oldLoanSnap.exists()) {
-      const oldLoanData = oldLoanSnap.data();
-      const previousRepaidAmount = (oldLoanData.repaidAmount || 0) - amount;
-      await updateDoc(oldLoanRef, {
-        status: "Active", // Or determine previous status
-        repaidAmount: previousRepaidAmount,
-        updatedAt: serverTimestamp(),
-      });
-    }
+    await updateDoc(oldLoanRef, {
+      status: "Active", // Assuming it was active before. This is a safe default.
+      repaidAmount: previousRepaidAmount,
+      updatedAt: serverTimestamp(),
+    });
 
-    // 4. Log the undo action
+    // 3. Log the undo action
     await addActivityLog({
       type: "undo_refinance",
       description: `Undo: Refinance of loan ${oldLoanId}`,
     });
   };
 
-  const refinanceLoan = async (oldLoanId, amountPaidNow) => {
+  const refinanceLoan = async (oldLoanId, newStartDate, newDueDate) => {
     const oldLoanRef = doc(db, "loans", oldLoanId);
     const oldLoanSnap = await getDoc(oldLoanRef);
 
@@ -362,60 +353,60 @@ export function FirestoreProvider({ children }) {
       throw new Error("Loan to refinance not found.");
     }
 
+    // Fetch the latest settings directly to ensure accuracy
+    const settingsRef = doc(db, "settings", "config");
+    const settingsSnap = await getDoc(settingsRef);
+    const currentSettings = settingsSnap.exists() ? settingsSnap.data() : { interestRates: { 1: 0.15, 2: 0.2, 3: 0.3, 4: 0.3 } };
+
     const oldLoanData = oldLoanSnap.data();
+    const previousRepaidAmount = oldLoanData.repaidAmount || 0;
 
-    // 1. Calculate new principal
-    const outstandingBalance = (oldLoanData.totalRepayable || 0) - (oldLoanData.repaidAmount || 0);
-    const newPrincipal = outstandingBalance - amountPaidNow;
+    // 1. Calculate new principal from outstanding balance
+    const outstandingBalance = (oldLoanData.totalRepayable || 0) - previousRepaidAmount;
+    const newPrincipal = outstandingBalance;
 
-    if (newPrincipal < 0) {
-      throw new Error("Amount paid cannot be greater than the outstanding balance.");
+    if (newPrincipal <= 0) {
+      throw new Error("Loan has no outstanding balance to refinance.");
     }
 
-    // 2. Create new loan
+    // 2. Recalculate interest for the new loan using the old loan's duration
     const interestDuration = oldLoanData.interestDuration || 1;
-    const interestRate = settings.interestRates[interestDuration] || 0;
+    const interestRate = currentSettings.interestRates[interestDuration] || 0;
     const newInterest = newPrincipal * interestRate;
     const newTotalRepayable = newPrincipal + newInterest;
 
+    // 3. Create a new loan
     const newLoan = {
       borrowerId: oldLoanData.borrowerId,
       principal: newPrincipal,
       interest: newInterest,
       totalRepayable: newTotalRepayable,
-      startDate: dayjs().format("YYYY-MM-DD"),
-      dueDate: dayjs().add(interestDuration * 7, "day").format("YYYY-MM-DD"),
+      interestDuration: interestDuration,
+      startDate: newStartDate,
+      dueDate: newDueDate,
       status: "Active",
       repaidAmount: 0,
-      interestDuration: interestDuration,
-      originalLoanId: oldLoanId, // Link to the original loan
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      originalLoanId: oldLoanId,
+      userId: currentUser.uid,
     };
-    const newLoanRef = await addLoan(newLoan);
+    const newLoanRef = await addDoc(collection(db, "loans"), newLoan);
 
-    // 3. Update old loan
+    // 4. Mark the old loan as "Paid" by updating its status and repaidAmount
     await updateDoc(oldLoanRef, {
-      status: "Refinanced",
-      repaidAmount: (oldLoanData.repaidAmount || 0) + amountPaidNow,
+      status: "Paid",
+      repaidAmount: oldLoanData.totalRepayable, // This effectively closes out the old loan
       updatedAt: serverTimestamp(),
     });
 
-    // 4. Add payment for the amount paid now
-    const paymentDocRef = await addDoc(collection(db, "payments"), {
-      loanId: oldLoanId,
-      amount: amountPaidNow,
-      date: serverTimestamp(),
-      userId: currentUser.uid,
-      createdAt: serverTimestamp(),
-    });
-
-    // 5. Log activity
+    // 5. Log activity, including the previous repaid amount for undo purposes
     await addActivityLog({
       type: "loan_refinanced",
-      description: `Loan ${oldLoanId} refinanced into new loan ${newLoanRef.id}`,
-      relatedId: oldLoanId, // The old loan is the primary subject
+      description: `Loan ${oldLoanId} refinanced into new loan ${newLoanRef.id} with a principal of ZMW ${newPrincipal.toFixed(2)}`,
+      relatedId: oldLoanId,
       newLoanId: newLoanRef.id,
-      paymentId: paymentDocRef.id,
-      amount: amountPaidNow,
+      previousRepaidAmount: previousRepaidAmount, // For undo
       undoable: true,
     });
   };

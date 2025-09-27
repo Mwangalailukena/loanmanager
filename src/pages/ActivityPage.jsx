@@ -204,7 +204,7 @@ export default function ActivityPage() {
   const handleUndo = async () => {
     if (!confirmUndo.log) return;
 
-    const { id, type, relatedId, newLoanId, paymentId, amount } = confirmUndo.log;
+    const { id, type, relatedId, newLoanId, amount, previousRepaidAmount } = confirmUndo.log;
 
     try {
       if (type === "loan_creation") {
@@ -212,7 +212,7 @@ export default function ActivityPage() {
       } else if (type === "payment_add") {
         await undoPayment(relatedId, confirmUndo.log.loanId, amount);
       } else if (type === "loan_refinanced") {
-        await undoRefinanceLoan(relatedId, newLoanId, paymentId, amount);
+        await undoRefinanceLoan(relatedId, newLoanId, previousRepaidAmount);
       }
 
       await updateActivityLog(id, { undone: true });
