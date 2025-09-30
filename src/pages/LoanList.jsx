@@ -310,6 +310,16 @@ export default function LoanList() {
 
         if (monthFilter && dayjs(loan.startDate).format("YYYY-MM") !== monthFilter) return false;
         
+        if (statusFilter === 'upcoming') {
+            if (loan.status === 'Defaulted') return false;
+            const totalRepayable = Number(loan.totalRepayable || 0);
+            const repaidAmount = Number(loan.repaidAmount || 0);
+            if (repaidAmount >= totalRepayable && totalRepayable > 0) return false;
+            const dueDate = dayjs(loan.dueDate);
+            const now = dayjs();
+            return dueDate.isAfter(now, "day") && dueDate.isBefore(now.add(7, 'day'), "day");
+        }
+
         if (statusFilter !== "all" && calcStatus(loan).toLowerCase() !== statusFilter.toLowerCase()) return false;
         
         if (
@@ -692,6 +702,7 @@ export default function LoanList() {
             <MenuItem value="paid">Paid</MenuItem>
             <MenuItem value="overdue">Overdue</MenuItem>
             <MenuItem value="defaulted">Defaulted</MenuItem>
+            <MenuItem value="upcoming">Upcoming</MenuItem>
           </Select>
         </FormControl>
         <TextField

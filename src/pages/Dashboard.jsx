@@ -228,13 +228,21 @@ export default function Dashboard() {
                 Dashboard
             </Typography>
 
-            {(actionItems.overdueCount > 0 || actionItems.dueThisWeekCount > 0) &&
-                <Box sx={{ p: 2, mb: 2, backgroundColor: theme.palette.warning.light, borderRadius: 2, display: 'flex', alignItems: 'center', cursor: 'pointer', '&:hover': { backgroundColor: theme.palette.warning.main, } }} onClick={() => navigate('/loans?filter=overdue')} >
-                    <WarningAmber sx={{ color: theme.palette.warning.contrastText, mr: 1.5 }} />
+            {actionItems.overdueCount > 0 &&
+                <Box sx={{ p: 2, mb: 2, backgroundColor: theme.palette.error.light, borderRadius: 2, display: 'flex', alignItems: 'center', cursor: 'pointer', '&:hover': { backgroundColor: theme.palette.error.main, } }} onClick={() => navigate('/loans?filter=overdue')} >
+                    <WarningAmber sx={{ color: theme.palette.error.contrastText, mr: 1.5 }} />
                     <Box>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: theme.palette.warning.contrastText }}>Action Required</Typography>
-                        {actionItems.overdueCount > 0 && ( <Typography variant="body2" sx={{ color: theme.palette.warning.contrastText }}>{actionItems.overdueCount} loan(s) are overdue.</Typography> )}
-                        {actionItems.dueThisWeekCount > 0 && ( <Typography variant="body2" sx={{ color: theme.palette.warning.contrastText }}>{actionItems.dueThisWeekCount} payment(s) due this week.</Typography> )}
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: theme.palette.error.contrastText }}>Overdue Loans</Typography>
+                        <Typography variant="body2" sx={{ color: theme.palette.error.contrastText }}>{actionItems.overdueCount} loan(s) are overdue.</Typography>
+                    </Box>
+                </Box>
+            }
+            {actionItems.dueThisWeekCount > 0 &&
+                <Box sx={{ p: 2, mb: 2, backgroundColor: theme.palette.info.light, borderRadius: 2, display: 'flex', alignItems: 'center', cursor: 'pointer', '&:hover': { backgroundColor: theme.palette.info.main, } }} onClick={() => navigate('/loans?filter=upcoming')} >
+                    <WarningAmber sx={{ color: theme.palette.info.contrastText, mr: 1.5 }} />
+                    <Box>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: theme.palette.info.contrastText }}>Upcoming Payments</Typography>
+                        <Typography variant="body2" sx={{ color: theme.palette.info.contrastText }}>{actionItems.dueThisWeekCount} payment(s) due this week.</Typography>
                     </Box>
                 </Box>
             }
