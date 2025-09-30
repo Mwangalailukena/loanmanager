@@ -405,10 +405,12 @@ export function FirestoreProvider({ children }) {
       type: "loan_refinanced",
       description: `Loan ${oldLoanId} refinanced into new loan ${newLoanRef.id} with a principal of ZMW ${newPrincipal.toFixed(2)}`,
       relatedId: oldLoanId,
-      newLoanId: newLoanRef.id,
-      previousRepaidAmount: previousRepaidAmount, // For undo
+      newLoanId: newLoanRef.id, // For undo purposes
+      previousRepaidAmount: previousRepaidAmount, // For undo purposes
       undoable: true,
     });
+
+    return { ...newLoan, id: newLoanRef.id };
   };
 
   const value = {

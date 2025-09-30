@@ -187,6 +187,7 @@ export default function LoanList() {
   const [refinanceDueDate, setRefinanceDueDate] = useState(dayjs().add(1, "week").format("YYYY-MM-DD"));
   const [refinanceError, setRefinanceError] = useState("");
   const [isRefinancing, setIsRefinancing] = useState(false);
+  const [refinancePreview, setRefinancePreview] = useState(null);
   
   const [sortKey, setSortKey] = useState("startDate");
   const [sortDirection, setSortDirection] = useState("desc");
@@ -588,11 +589,41 @@ export default function LoanList() {
     [searchParams, setSearchParams]
   );
 
+  const calculateRefinancePreview = (loan, startDate) => {
+    if (!loan) return;
+
+    const outstandingBalance = (loan.totalRepayable || 0) - (loan.repaidAmount || 0);
+    const newPrincipal = outstandingBalance;
+
+    if (newPrincipal <= 0) {
+      setRefinancePreview(null);
+      return;
+    }
+
+    const interestDuration = loan.interestDuration || 1;
+    const interestRate = interestRates[interestDuration] || 0;
+    const newInterest = newPrincipal * interestRate;
+    const newTotalRepayable = newPrincipal + newInterest;
+
+    setRefinancePreview({
+      principal: newPrincipal,
+      interest: newInterest,
+      totalRepayable: newTotalRepayable,
+    });
+  };
+
+  
+
+  
+
+  
+
   const openRefinanceModal = (loan) => {
     setRefinanceStartDate(dayjs().format("YYYY-MM-DD"));
     setRefinanceDueDate(dayjs().add(1, "week").format("YYYY-MM-DD"));
     setRefinanceError("");
     setRefinanceModal({ open: true, loan });
+    calculateRefinancePreview(loan, dayjs().format("YYYY-MM-DD"));
   };
 
   const handleRefinanceSubmit = async () => {
@@ -609,6 +640,7 @@ export default function LoanList() {
     try {
       await refinanceLoan(refinanceModal.loan.id, refinanceStartDate, refinanceDueDate);
       setRefinanceModal({ open: false, loan: null });
+      setPaymentSuccess(true);
     } catch (error) {
       console.error("Error refinancing loan:", error);
       setRefinanceError("Failed to refinance loan. Please try again.");
@@ -1371,7 +1403,10 @@ export default function LoanList() {
               label="New Start Date"
               type="date"
               value={refinanceStartDate}
-              onChange={(e) => setRefinanceStartDate(e.target.value)}
+              onChange={(e) => {
+                setRefinanceStartDate(e.target.value)
+                calculateRefinancePreview(refinanceModal.loan, e.target.value)
+              }}
               size="small"
               fullWidth
               error={!!refinanceError}
@@ -1387,11 +1422,19 @@ export default function LoanList() {
               fullWidth
               sx={filterInputStyles}
             />
+            {refinancePreview && (
+              <Box sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+                <Typography variant="subtitle2" gutterBottom>Refinance Preview</Typography>
+                <Typography variant="body2">New Principal: ZMW {refinancePreview.principal.toFixed(2)}</Typography>
+                <Typography variant="body2">New Interest: ZMW {refinancePreview.interest.toFixed(2)}</Typography>
+                <Typography variant="body2">New Total Repayable: ZMW {refinancePreview.totalRepayable.toFixed(2)}</Typography>
+              </Box>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions sx={{ pb: 1 }}>
           <Button size="small" onClick={() => setRefinanceModal({ open: false, loan: null })} disabled={isRefinancing}> Cancel </Button>
-          <Button size="small" variant="contained" onClick={handleRefinanceSubmit} disabled={isRefinancing} color="secondary">
+          <Button size="small" variant="contained" onClick={handleRefinanceSubmit} disabled={isRefinancing || !refinancePreview} color="secondary">
             {isRefinancing ? <CircularProgress size={20} color="inherit" /> : 'Refinance'}
           </Button>
         </DialogActions>
