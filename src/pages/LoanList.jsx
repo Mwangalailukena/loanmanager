@@ -655,6 +655,28 @@ export default function LoanList() {
     calculateRefinancePreview(loan, dayjs().format("YYYY-MM-DD"));
   };
 
+  const exportLoanListData = () => {
+    const dataToExport = filteredLoans.map(loan => {
+      const displayInfo = getDisplayBorrowerInfo(loan);
+      const outstanding = (loan.totalRepayable || 0) - (loan.repaidAmount || 0);
+      const status = calcStatus(loan);
+
+      return {
+        'Borrower': displayInfo.name,
+        'Phone': displayInfo.phone,
+        'Principal': loan.principal,
+        'Interest': loan.interest,
+        'Total Repayable': loan.totalRepayable,
+        'Total Outstanding': outstanding,
+        'Start Date': loan.startDate,
+        'Due Date': loan.dueDate,
+        'Status': status,
+      };
+    });
+
+    exportToCsv("loan_records.csv", dataToExport);
+  };
+
   const handleRefinanceSubmit = async () => {
     if (!refinanceStartDate || !refinanceDueDate) {
       setRefinanceError("Both start and due dates are required.");
@@ -737,7 +759,7 @@ export default function LoanList() {
           variant="outlined"
           color="secondary"
           size="small"
-          onClick={() => exportToCsv("loans.csv", filteredLoans)}
+          onClick={exportLoanListData}
           sx={{ height: 32 }}
         >
           Export CSV
