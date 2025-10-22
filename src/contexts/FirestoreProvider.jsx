@@ -14,6 +14,7 @@ import {
   serverTimestamp,
   getDoc, // Added getDoc
   getDocs, // Added getDocs
+  setDoc,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "./AuthProvider";
@@ -141,13 +142,40 @@ export function FirestoreProvider({ children }) {
 
   const updateLoan = async (id, updates) => {
     const docRef = doc(db, "loans", id);
+    const loanSnap = await getDoc(docRef);
+    if (!loanSnap.exists()) {
+      throw new Error("Loan to update not found.");
+    }
+    const oldLoanData = loanSnap.data();
+
     await updateDoc(docRef, { ...updates, updatedAt: serverTimestamp() });
-    await addActivityLog({ type: "edit", description: `Loan updated (ID: ${id})` });
+
+    await addActivityLog({
+      type: "loan_update",
+      description: `Loan updated (ID: ${id})`,
+      relatedId: id,
+      undoable: true,
+      undoData: { oldLoan: oldLoanData },
+    });
   };
 
   const deleteLoan = async (id) => {
-    await deleteDoc(doc(db, "loans", id));
-    await addActivityLog({ type: "delete", description: `Loan deleted (ID: ${id})` });
+    const loanRef = doc(db, "loans", id);
+    const loanSnap = await getDoc(loanRef);
+    if (!loanSnap.exists()) {
+      throw new Error("Loan to delete not found.");
+    }
+    const loanData = loanSnap.data();
+
+    await deleteDoc(loanRef);
+
+    await addActivityLog({
+      type: "loan_delete",
+      description: `Loan deleted (ID: ${id})`,
+      relatedId: id,
+      undoable: true,
+      undoData: { loan: loanData },
+    });
   };
 
   const markLoanAsDefaulted = async (id) => {
@@ -456,6 +484,28 @@ export function FirestoreProvider({ children }) {
       type: "loan_top_up",
       description: `Loan ${loanId} topped up with ZMW ${topUpAmount.toFixed(2)}`,
       relatedId: loanId,
+      undoable: true,
+      undoData: { oldLoan: loanData },
+    });
+  };
+
+  const undoDeleteLoan = async (loanId, undoData) => {
+    const { loan } = undoData;
+    await setDoc(doc(db, "loans", loanId), loan);
+
+    await addActivityLog({
+      type: "undo_loan_delete",
+      description: `Undo: Loan Deleted (ID: ${loanId})`,
+    });
+  };
+
+  const undoUpdateLoan = async (loanId, undoData) => {
+    const { oldLoan } = undoData;
+    await setDoc(doc(db, "loans", loanId), oldLoan);
+
+    await addActivityLog({
+      type: "undo_loan_update",
+      description: `Undo: Loan Update (ID: ${loanId})`,
     });
   };
 
@@ -470,7 +520,7 @@ export function FirestoreProvider({ children }) {
     addExpense, updateExpense, deleteExpense,
     undoLoanCreation, undoPayment, updateActivityLog,
     refinanceLoan, undoRefinanceLoan,
-    topUpLoan,
+    topUpLoan, undoDeleteLoan, undoUpdateLoan,
   };
 
   return (

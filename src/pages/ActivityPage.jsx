@@ -32,6 +32,7 @@ import WarningIcon from "@mui/icons-material/Warning";
 import SettingsIcon from "@mui/icons-material/Settings";
 import UndoIcon from "@mui/icons-material/Undo";
 import AutorenewIcon from "@mui/icons-material/Autorenew";
+import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import {
   Button,
   Dialog,
@@ -61,9 +62,13 @@ const actionLabels = {
   settings_update: "Settings Updated",
   loan_defaulted: "Loan Defaulted",
   loan_refinanced: "Loan Refinanced",
+  loan_update: "Loan Updated",
+  loan_top_up: "Loan Topped Up",
   undo_loan_creation: "Undo: Loan Creation",
   undo_payment: "Undo: Payment",
   undo_refinance: "Undo: Refinance",
+  undo_loan_delete: "Undo: Loan Deletion",
+  undo_loan_update: "Undo: Loan Update",
 };
 
 // Colors for Chips based on action type
@@ -76,17 +81,25 @@ const actionChipColors = {
   settings_update: "secondary",
   loan_defaulted: "warning",
   loan_refinanced: "secondary",
+  loan_update: "default",
+  loan_top_up: "primary",
   undo_loan_creation: "default",
   undo_payment: "default",
   undo_refinance: "default",
+  undo_loan_delete: "default",
+  undo_loan_update: "default",
 };
 
 const timelineDotColors = {
   ...actionChipColors,
   edit: "grey",
+  loan_update: "grey",
+  loan_top_up: "primary",
   undo_loan_creation: "grey",
   undo_payment: "grey",
   undo_refinance: "grey",
+  undo_loan_delete: "grey",
+  undo_loan_update: "grey",
 };
 
 const actionIcons = {
@@ -98,13 +111,17 @@ const actionIcons = {
   settings_update: <SettingsIcon />,
   loan_defaulted: <WarningIcon />,
   loan_refinanced: <AutorenewIcon />,
+  loan_update: <EditIcon />,
+  loan_top_up: <AttachMoneyIcon />,
   undo_loan_creation: <UndoIcon />,
   undo_payment: <UndoIcon />,
   undo_refinance: <UndoIcon />,
+  undo_loan_delete: <UndoIcon />,
+  undo_loan_update: <UndoIcon />,
 };
 
 export default function ActivityPage() {
-  const { activityLogs, undoLoanCreation, undoPayment, updateActivityLog, undoRefinanceLoan } = useFirestore();
+  const { activityLogs, undoLoanCreation, undoPayment, updateActivityLog, undoRefinanceLoan, undoDeleteLoan, undoUpdateLoan } = useFirestore();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const showSnackbar = useSnackbar();
@@ -204,7 +221,7 @@ export default function ActivityPage() {
   const handleUndo = async () => {
     if (!confirmUndo.log) return;
 
-    const { id, type, relatedId, newLoanId, amount, previousRepaidAmount } = confirmUndo.log;
+    const { id, type, relatedId, newLoanId, amount, previousRepaidAmount, undoData } = confirmUndo.log;
 
     try {
       if (type === "loan_creation") {
@@ -213,6 +230,10 @@ export default function ActivityPage() {
         await undoPayment(relatedId, confirmUndo.log.loanId, amount);
       } else if (type === "loan_refinanced") {
         await undoRefinanceLoan(relatedId, newLoanId, previousRepaidAmount);
+      } else if (type === "loan_delete") {
+        await undoDeleteLoan(relatedId, undoData);
+      } else if (type === "loan_update" || type === "loan_top_up") {
+        await undoUpdateLoan(relatedId, undoData);
       }
 
       await updateActivityLog(id, { undone: true });
