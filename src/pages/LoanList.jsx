@@ -57,6 +57,7 @@ import dayjs from "dayjs";
 import { useSearchParams, Link } from "react-router-dom";
 import { visuallyHidden } from '@mui/utils';
 import TopUpLoanDialog from '../components/TopUpLoanDialog';
+import { Grid } from "@mui/material";
 
 const PAGE_SIZE = 10;
 
@@ -805,61 +806,88 @@ export default function LoanList() {
                         </IconButton>
                       </Stack>
                       <Collapse in={expandedRow === loan.id} timeout="auto" unmountOnExit>
-                        <Box mt={1} fontSize="0.8rem" sx={{ color: theme.palette.text.secondary }}>
-                          <Typography noWrap>Principal: ZMW {Number(loan.principal).toFixed(2)}</Typography>
-                          <Typography noWrap>Interest: ZMW {Number(loan.interest).toFixed(2)}</Typography>
-                          <Typography noWrap>Total Repayable: ZMW {Number(loan.totalRepayable).toFixed(2)}</Typography>
-                          <Typography noWrap>Outstanding: <Typography component="span" fontWeight="bold" color="secondary.main">{outstanding.toFixed(2)}</Typography></Typography>
-                          <Typography noWrap>Start: {loan.startDate}</Typography>
-                          <Typography noWrap>Due: {loan.dueDate}</Typography>
-                          <Stack direction="row" spacing={0.5} mt={1} justifyContent="flex-start">
-                            <Tooltip title="Edit">
-                              <span>
-                                <IconButton size="small" onClick={() => openEditModal(loan)} aria-label="edit" disabled={isPaid} color="secondary">
-                                  <Edit fontSize="small" />
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.3, ease: 'easeInOut' }}
+                        >
+                          <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                            <Grid container spacing={2}>
+                              <Grid item xs={6}>
+                                <Typography variant="caption" color="text.secondary">Principal</Typography>
+                                <Typography variant="body2" fontWeight="bold">ZMW {Number(loan.principal).toFixed(2)}</Typography>
+                              </Grid>
+                              <Grid item xs={6}>
+                                <Typography variant="caption" color="text.secondary">Interest</Typography>
+                                <Typography variant="body2" fontWeight="bold">ZMW {Number(loan.interest).toFixed(2)}</Typography>
+                              </Grid>
+                              <Grid item xs={6}>
+                                <Typography variant="caption" color="text.secondary">Total Repayable</Typography>
+                                <Typography variant="body2" fontWeight="bold">ZMW {Number(loan.totalRepayable).toFixed(2)}</Typography>
+                              </Grid>
+                              <Grid item xs={6}>
+                                <Typography variant="caption" color="text.secondary">Outstanding</Typography>
+                                <Typography variant="body2" fontWeight="bold" color="secondary.main">{outstanding.toFixed(2)}</Typography>
+                              </Grid>
+                              <Grid item xs={6}>
+                                <Typography variant="caption" color="text.secondary">Start Date</Typography>
+                                <Typography variant="body2">{loan.startDate}</Typography>
+                              </Grid>
+                              <Grid item xs={6}>
+                                <Typography variant="caption" color="text.secondary">Due Date</Typography>
+                                <Typography variant="body2">{loan.dueDate}</Typography>
+                              </Grid>
+                            </Grid>
+                            <Stack direction="row" spacing={0.5} mt={2} justifyContent="flex-start" sx={{ overflowX: 'auto' }}>
+                              <Tooltip title="Edit">
+                                <span>
+                                  <IconButton size="small" onClick={() => openEditModal(loan)} aria-label="edit" disabled={isPaid} color="secondary">
+                                    <Edit fontSize="small" />
+                                  </IconButton>
+                                </span>
+                              </Tooltip>
+                              <Tooltip title="Delete">
+                                <span>
+                                  <IconButton size="small" color="error" onClick={() => setConfirmDelete({ open: true, loanId: loan.id })} aria-label="delete" disabled={isPaid}>
+                                    <Delete fontSize="small" />
+                                  </IconButton>
+                                </span>
+                              </Tooltip>
+                              <Tooltip title="Add Payment">
+                                <span>
+                                  <IconButton size="small" onClick={() => openPaymentModal(loan.id)} aria-label="payment" disabled={isPaid} color="secondary">
+                                    <Payment fontSize="small" />
+                                  </IconButton>
+                                </span>
+                              </Tooltip>
+                              <Tooltip title="Top-up">
+                                <span>
+                                  <IconButton size="small" onClick={() => openTopUpModal(loan)} aria-label="top-up" disabled={isPaid || loan.repaidAmount > 0} color="secondary">
+                                    <AttachMoneyIcon fontSize="small" />
+                                  </IconButton>
+                                </span>
+                              </Tooltip>
+                              <Tooltip title="View History">
+                                <IconButton size="small" onClick={() => openHistoryModal(loan.id)} aria-label="history" color="secondary">
+                                  <History fontSize="small" />
                                 </IconButton>
-                              </span>
-                            </Tooltip>
-                            <Tooltip title="Delete">
-                              <span>
-                                <IconButton size="small" color="error" onClick={() => setConfirmDelete({ open: true, loanId: loan.id })} aria-label="delete" disabled={isPaid}>
-                                  <Delete fontSize="small" />
+                              </Tooltip>
+                              <Tooltip title="Details">
+                                <IconButton size="small" onClick={() => openLoanDetail(loan.id)} aria-label="details" color="secondary">
+                                  <InfoIcon fontSize="small" />
                                 </IconButton>
-                              </span>
-                            </Tooltip>
-                            <Tooltip title="Add Payment">
-                              <span>
-                                <IconButton size="small" onClick={() => openPaymentModal(loan.id)} aria-label="payment" disabled={isPaid} color="secondary">
-                                  <Payment fontSize="small" />
-                                </IconButton>
-                              </span>
-                            </Tooltip>
-                            <Tooltip title="Top-up">
-                              <span>
-                                <IconButton size="small" onClick={() => openTopUpModal(loan)} aria-label="top-up" disabled={isPaid || loan.repaidAmount > 0} color="secondary">
-                                  <AttachMoneyIcon fontSize="small" />
-                                </IconButton>
-                              </span>
-                            </Tooltip>
-                            <Tooltip title="View History">
-                              <IconButton size="small" onClick={() => openHistoryModal(loan.id)} aria-label="history" color="secondary">
-                                <History fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Details">
-                              <IconButton size="small" onClick={() => openLoanDetail(loan.id)} aria-label="details" color="secondary">
-                                <InfoIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Refinance">
-                              <span>
-                                <IconButton size="small" onClick={() => openRefinanceModal(loan)} aria-label="refinance" disabled={isPaid} color="secondary">
-                                  <AutorenewIcon fontSize="small" />
-                                </IconButton>
-                              </span>
-                            </Tooltip>
-                          </Stack>
-                        </Box>
+                              </Tooltip>
+                              <Tooltip title="Refinance">
+                                <span>
+                                  <IconButton size="small" onClick={() => openRefinanceModal(loan)} aria-label="refinance" disabled={isPaid} color="secondary">
+                                    <AutorenewIcon fontSize="small" />
+                                  </IconButton>
+                                </span>
+                              </Tooltip>
+                            </Stack>
+                          </Box>
+                        </motion.div>
                       </Collapse>
                     </motion.div>
                   );
