@@ -413,6 +413,52 @@ export function FirestoreProvider({ children }) {
     return { ...newLoan, id: newLoanRef.id };
   };
 
+  const topUpLoan = async (loanId, topUpAmount) => {
+    const loanRef = doc(db, "loans", loanId);
+    const loanSnap = await getDoc(loanRef);
+
+    if (!loanSnap.exists()) {
+      throw new Error("Loan to top-up not found.");
+    }
+
+    const loanData = loanSnap.data();
+
+    if ((loanData.repaidAmount || 0) > 0) {
+      throw new Error("Cannot top-up a loan that has already been partially paid.");
+    }
+
+    const newPrincipal = (loanData.principal || 0) + topUpAmount;
+
+    let interestRate;
+    if (loanData.interestRate) {
+      interestRate = loanData.interestRate / 100;
+    } else if (loanData.manualInterestRate) {
+      interestRate = loanData.manualInterestRate / 100;
+    } else {
+      const settingsRef = doc(db, "settings", "config");
+      const settingsSnap = await getDoc(settingsRef);
+      const currentSettings = settingsSnap.exists() ? settingsSnap.data() : { interestRates: { 1: 0.15, 2: 0.2, 3: 0.3, 4: 0.3 } };
+      const interestDuration = loanData.interestDuration || 1;
+      interestRate = currentSettings.interestRates[interestDuration] || 0;
+    }
+
+    const newInterest = newPrincipal * interestRate;
+    const newTotalRepayable = newPrincipal + newInterest;
+
+    await updateDoc(loanRef, {
+      principal: newPrincipal,
+      interest: newInterest,
+      totalRepayable: newTotalRepayable,
+      updatedAt: serverTimestamp(),
+    });
+
+    await addActivityLog({
+      type: "loan_top_up",
+      description: `Loan ${loanId} topped up with ZMW ${topUpAmount.toFixed(2)}`,
+      relatedId: loanId,
+    });
+  };
+
   const value = {
     loans, payments, borrowers, settings, activityLogs, comments, guarantors, expenses, loading,
     addLoan, updateLoan, deleteLoan, markLoanAsDefaulted,
@@ -424,6 +470,7 @@ export function FirestoreProvider({ children }) {
     addExpense, updateExpense, deleteExpense,
     undoLoanCreation, undoPayment, updateActivityLog,
     refinanceLoan, undoRefinanceLoan,
+    topUpLoan,
   };
 
   return (

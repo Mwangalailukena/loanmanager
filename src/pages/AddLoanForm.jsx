@@ -257,6 +257,7 @@ function AutoLoanForm() {
     setLoading(true);
 
     const principal = Number(amount);
+    const interestRate = interestRates[interestDuration];
     const interest = calculateInterest(principal, interestDuration);
     const totalRepayable = principal + interest;
     const startDate = dayjs().format("YYYY-MM-DD");
@@ -273,6 +274,7 @@ function AutoLoanForm() {
         status: "Active",
         repaidAmount: 0,
         interestDuration,
+        interestRate: interestRate * 100, // Save rate as a percentage
       });
 
       await addActivityLog({
@@ -384,6 +386,7 @@ function AutoLoanForm() {
               status: "Active",
               repaidAmount: 0,
               interestDuration: interestDur,
+              interestRate: interestRates[interestDur] * 100,
             });
             successCount++;
           } catch (addError) {

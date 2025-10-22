@@ -48,6 +48,7 @@ import {
   Close as CloseIcon,
   AddCircleOutline as AddCircleOutlineIcon,
   Autorenew as AutorenewIcon,
+  AttachMoney as AttachMoneyIcon,
 } from "@mui/icons-material";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { exportToCsv } from "../utils/exportCSV";
@@ -55,6 +56,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import dayjs from "dayjs";
 import { useSearchParams, Link } from "react-router-dom";
 import { visuallyHidden } from '@mui/utils';
+import TopUpLoanDialog from '../components/TopUpLoanDialog';
 
 const PAGE_SIZE = 10;
 
@@ -144,7 +146,7 @@ const LoanListSkeleton = ({ isMobile }) => {
 // ... (rest of imports)
 
 export default function LoanList() {
-  const { loans, loadingLoans, deleteLoan, addPayment, updateLoan, getPaymentsByLoanId, settings, borrowers, refinanceLoan } = useFirestore();
+  const { loans, loadingLoans, deleteLoan, addPayment, updateLoan, getPaymentsByLoanId, settings, borrowers, refinanceLoan, topUpLoan } = useFirestore();
   const { openLoanDetail } = useSearch();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -191,6 +193,9 @@ export default function LoanList() {
   
   const [sortKey, setSortKey] = useState("startDate");
   const [sortDirection, setSortDirection] = useState("desc");
+
+  const [topUpModal, setTopUpModal] = useState({ open: false, loan: null });
+  const [isToppingUp, setIsToppingUp] = useState(false);
 
   const interestRates = settings.interestRates || {
     1: 0.15,
@@ -622,11 +627,24 @@ export default function LoanList() {
     });
   };
 
-  
+  const openTopUpModal = (loan) => {
+    setTopUpModal({ open: true, loan });
+  };
 
-  
-
-  
+  const handleTopUpSubmit = async (topUpAmount) => {
+    if (topUpModal.loan) {
+      setIsToppingUp(true);
+      try {
+        await topUpLoan(topUpModal.loan.id, topUpAmount);
+        setTopUpModal({ open: false, loan: null });
+        setPaymentSuccess(true); // Or a new success message for top-up
+      } catch (error) {
+        console.error("Error topping up loan:", error);
+      } finally {
+        setIsToppingUp(false);
+      }
+    }
+  };
 
   const openRefinanceModal = (loan) => {
     setRefinanceStartDate(dayjs().format("YYYY-MM-DD"));
@@ -813,6 +831,13 @@ export default function LoanList() {
                               <span>
                                 <IconButton size="small" onClick={() => openPaymentModal(loan.id)} aria-label="payment" disabled={isPaid} color="secondary">
                                   <Payment fontSize="small" />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
+                            <Tooltip title="Top-up">
+                              <span>
+                                <IconButton size="small" onClick={() => openTopUpModal(loan)} aria-label="top-up" disabled={isPaid || loan.repaidAmount > 0} color="secondary">
+                                  <AttachMoneyIcon fontSize="small" />
                                 </IconButton>
                               </span>
                             </Tooltip>
@@ -1075,6 +1100,19 @@ export default function LoanList() {
                                 color="secondary"
                               >
                                 <Payment fontSize="small" />
+                              </IconButton>
+                            </span>
+                          </Tooltip>
+                          <Tooltip title="Top-up">
+                            <span>
+                              <IconButton
+                                size="small"
+                                onClick={() => openTopUpModal(loan)}
+                                aria-label="top-up"
+                                disabled={isPaid || loan.repaidAmount > 0}
+                                color="secondary"
+                              >
+                                <AttachMoneyIcon fontSize="small" />
                               </IconButton>
                             </span>
                           </Tooltip>
@@ -1450,6 +1488,14 @@ export default function LoanList() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Top-up Modal */}
+      <TopUpLoanDialog
+        open={topUpModal.open}
+        onClose={() => setTopUpModal({ open: false, loan: null })}
+        onConfirm={handleTopUpSubmit}
+        loading={isToppingUp}
+      />
     </Box>
   );
 }
