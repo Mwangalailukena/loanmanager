@@ -52,6 +52,7 @@ import {
 } from "@mui/icons-material";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { exportToCsv } from "../utils/exportCSV";
+import { exportToPdf } from "../utils/exportPDF";
 import { motion, AnimatePresence } from "framer-motion";
 import dayjs from "dayjs";
 import { useSearchParams, Link } from "react-router-dom";
@@ -674,11 +675,49 @@ export default function LoanList() {
       };
     });
 
-    exportToCsv("loan_records.csv", dataToExport);
-  };
-
-  const handleRefinanceSubmit = async () => {
-    if (!refinanceStartDate || !refinanceDueDate) {
+          exportToCsv("loan_records.csv", dataToExport);
+        };
+    
+        const exportLoanListPdf = useCallback(() => {
+          const head = [
+            'Borrower',
+            'Phone',
+            'Principal',
+            'Interest',
+            'Total Repayable',
+            'Outstanding',
+            'Start Date',
+            'Due Date',
+            'Status',
+          ];
+    
+          const body = filteredLoans.map(loan => {
+            const displayInfo = getDisplayBorrowerInfo(loan);
+            const outstanding = (Number(loan.totalRepayable || 0) - Number(loan.repaidAmount || 0));
+            const status = calcStatus(loan);
+    
+            return [
+              displayInfo.name,
+              displayInfo.phone,
+              Number(loan.principal).toFixed(2),
+              Number(loan.interest).toFixed(2),
+              Number(loan.totalRepayable).toFixed(2),
+              outstanding.toFixed(2),
+              loan.startDate,
+              loan.dueDate,
+              status,
+            ];
+          });
+    
+          exportToPdf(
+            `Loan Records - ${dayjs().format('YYYY-MM-DD')}`,
+            head,
+            body,
+            `loan_records_${dayjs().format('YYYYMMDD')}.pdf`
+          );
+        }, [filteredLoans, getDisplayBorrowerInfo]);
+    
+        const handleRefinanceSubmit = async () => {    if (!refinanceStartDate || !refinanceDueDate) {
       setRefinanceError("Both start and due dates are required.");
       return;
     }
@@ -763,6 +802,15 @@ export default function LoanList() {
           sx={{ height: 32 }}
         >
           Export CSV
+        </Button>
+        <Button
+          variant="contained"
+          color="secondary"
+          size="small"
+          onClick={exportLoanListPdf}
+          sx={{ height: 32 }}
+        >
+          Export PDF
         </Button>
         {selectedLoanIds.length > 0 && (
           <Button

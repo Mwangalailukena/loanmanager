@@ -11,6 +11,7 @@ import { ResponsivePie } from "@nivo/pie";
 import dayjs from "dayjs";
 import isBetween from 'dayjs/plugin/isBetween';
 import PropTypes from 'prop-types';
+import { useNavigate } from 'react-router-dom';
 
 // Extend dayjs
 dayjs.extend(isBetween);
@@ -100,6 +101,7 @@ const NoDataMessage = ({ message }) => (
 const Charts = ({ loans, borrowers, payments, expenses }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const navigate = useNavigate();
   const [openDialog, setOpenDialog] = useState(false);
   const [dialogChartConfig, setDialogChartConfig] = useState(null);
 
@@ -189,7 +191,7 @@ const Charts = ({ loans, borrowers, payments, expenses }) => {
         const outstanding = Number(loan.principal || 0) - Number(loan.repaidAmount || 0);
         borrowerBalances.set(loan.borrowerId, (borrowerBalances.get(loan.borrowerId) || 0) + outstanding);
     });
-    const topBorrowersData = Array.from(borrowerBalances.entries()).map(([borrowerId, balance]) => ({ borrowerName: borrowers.find(b => b.id === borrowerId)?.name || 'Unknown', balance })).sort((a, b) => b.balance - a.balance).slice(0, 5).reverse();
+    const topBorrowersData = Array.from(borrowerBalances.entries()).map(([borrowerId, balance]) => ({ id: borrowerId, borrowerName: borrowers.find(b => b.id === borrowerId)?.name || 'Unknown', balance })).sort((a, b) => b.balance - a.balance).slice(0, 5).reverse();
     return { activeLoanStatusData, topBorrowersData };
   }, [loans, borrowers, isLoading]);
 
@@ -241,13 +243,13 @@ const Charts = ({ loans, borrowers, payments, expenses }) => {
             </ChartPaper>
         </Grid>
         <Grid item xs={12} md={6}>
-            <ChartPaper title="Active Loan Status" tooltip="The number of currently active loans, categorized by their status." onClick={() => handleOpenDialog({ type: 'status', data: activeLoanStatusData, title: 'Active Loan Status' })}>
-                {activeLoanStatusData.some(d => d.value > 0) ? <ResponsivePie data={activeLoanStatusData} margin={{ top: 20, right: 20, bottom: 60, left: 20 }} innerRadius={0.5} padAngle={2} cornerRadius={3} activeOuterRadiusOffset={8} colors={({ id }) => loanStatusColors[id]} theme={nivoTheme} arcLinkLabelsSkipAngle={10} arcLabelsSkipAngle={10} legends={[{ anchor: 'bottom', direction: 'row', justify: false, translateY: 45, itemsSpacing: 20, itemWidth: 80, itemHeight: 18, symbolSize: 14 }]} /> : <NoDataMessage message="No active loans to display." />}
+            <ChartPaper title="Active Loan Status" tooltip="The number of currently active loans, categorized by their status. Click a slice to see the loans.">
+                {activeLoanStatusData.some(d => d.value > 0) ? <ResponsivePie data={activeLoanStatusData} onClick={(datum) => navigate(`/loans?filter=${datum.id.toLowerCase()}`)} margin={{ top: 20, right: 20, bottom: 60, left: 20 }} innerRadius={0.5} padAngle={2} cornerRadius={3} activeOuterRadiusOffset={8} colors={({ id }) => loanStatusColors[id]} theme={nivoTheme} arcLinkLabelsSkipAngle={10} arcLabelsSkipAngle={10} legends={[{ anchor: 'bottom', direction: 'row', justify: false, translateY: 45, itemsSpacing: 20, itemWidth: 80, itemHeight: 18, symbolSize: 14 }]} /> : <NoDataMessage message="No active loans to display." />}
             </ChartPaper>
         </Grid>
         <Grid item xs={12} md={6}>
-            <ChartPaper title="Top 5 Borrowers by Balance" tooltip="The top 5 borrowers with the highest outstanding principal balance across all their active loans." onClick={() => handleOpenDialog({ type: 'topBorrowers', data: topBorrowersData, title: 'Top 5 Borrowers by Balance' })}>
-                {topBorrowersData.length > 0 ? <ResponsiveBar data={topBorrowersData} keys={['balance']} indexBy="borrowerName" layout="horizontal" margin={{ top: 10, right: 20, bottom: 50, left: 100 }} theme={nivoTheme} colors={theme.palette.secondary.main} labelFormat={d => formatCurrency(d)} axisLeft={{ tickSize: 0, tickPadding: 10 }} axisBottom={{ legend: 'Balance', legendPosition: 'middle', legendOffset: 40, format: d => '' }} enableGridY={false} tooltipLabel={d=>d.indexValue} valueFormat={value => formatCurrency(value)} /> : <NoDataMessage message="No active borrowers with outstanding balances." />}
+            <ChartPaper title="Top 5 Borrowers by Balance" tooltip="The top 5 borrowers with the highest outstanding principal balance. Click a bar to see the borrower's profile.">
+                {topBorrowersData.length > 0 ? <ResponsiveBar data={topBorrowersData} keys={['balance']} indexBy="borrowerName" layout="horizontal" onClick={(datum) => navigate(`/borrowers/${datum.data.id}`)} margin={{ top: 10, right: 20, bottom: 50, left: 100 }} theme={nivoTheme} colors={theme.palette.secondary.main} labelFormat={d => formatCurrency(d)} axisLeft={{ tickSize: 0, tickPadding: 10 }} axisBottom={{ legend: 'Balance', legendPosition: 'middle', legendOffset: 40, format: d => '' }} enableGridY={false} tooltipLabel={d=>d.indexValue} valueFormat={value => formatCurrency(value)} /> : <NoDataMessage message="No active borrowers with outstanding balances." />}
             </ChartPaper>
         </Grid>
       </Grid>

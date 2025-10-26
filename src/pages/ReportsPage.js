@@ -23,13 +23,19 @@ import {
   Grid,
   Stack,
   Button,
+  Autocomplete,
 } from "@mui/material";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend as RechartsLegend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { exportToCsv } from "../utils/exportCSV";
+import { exportToPdf } from "../utils/exportPDF";
 import dayjs from "dayjs";
 import isBetween from 'dayjs/plugin/isBetween';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+
 dayjs.extend(isBetween);
 
 // --- Constants ---
@@ -46,14 +52,15 @@ const calcStatus = (loan) => {
 const PIE_CHART_COLORS = ['#FFC107', '#FF8F00', '#E65100', '#D84315'];
 
 export default function ReportsPage() {
-  const { loans, loadingLoans, payments, loadingPayments, getAllPayments } = useFirestore();
+  const { loans, loadingLoans, payments, loadingPayments, getAllPayments, borrowers } = useFirestore();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   // --- Filters State ---
   const [activeTab, setActiveTab] = useState(0);
-  const [startDate, setStartDate] = useState(dayjs().subtract(6, 'months').startOf('month').format('YYYY-MM-DD'));
-  const [endDate, setEndDate] = useState(dayjs().endOf('month').format('YYYY-MM-DD'));
+  const [startDate, setStartDate] = useState(dayjs().subtract(6, 'months').startOf('month'));
+  const [endDate, setEndDate] = useState(dayjs().endOf('month'));
+  const [selectedBorrower, setSelectedBorrower] = useState(null);
   const [includePaid, setIncludePaid] = useState(true);
   const [includeActive, setIncludeActive] = useState(true);
   const [includeOverdue, setIncludeOverdue] = useState(true);
@@ -69,14 +76,11 @@ export default function ReportsPage() {
   const filteredLoansForReports = useMemo(() => {
     if (loadingLoans || !loans) return [];
 
-    const filterStartDate = dayjs(startDate);
-    const filterEndDate = dayjs(endDate);
-
     return loans.filter(loan => {
       const loanStartDate = dayjs(loan.startDate);
       const status = calcStatus(loan);
 
-      const inDateRange = loanStartDate.isBetween(filterStartDate, filterEndDate, 'day', '[]');
+      const inDateRange = loanStartDate.isBetween(startDate, endDate, 'day', '[]');
 
       let statusMatches = false;
       if (status === "Paid" && includePaid) statusMatches = true;
@@ -84,9 +88,11 @@ export default function ReportsPage() {
       if (status === "Overdue" && includeOverdue) statusMatches = true;
       if (status === "Defaulted" && includeDefaulted) statusMatches = true;
 
-      return inDateRange && statusMatches;
+      const borrowerMatches = !selectedBorrower || loan.borrowerId === selectedBorrower.id;
+
+      return inDateRange && statusMatches && borrowerMatches;
     });
-  }, [loans, startDate, endDate, includePaid, includeActive, includeOverdue, includeDefaulted, loadingLoans]);
+  }, [loans, startDate, endDate, includePaid, includeActive, includeOverdue, includeDefaulted, selectedBorrower, loadingLoans]);
 
 
   // --- REPORT 1: Loan Portfolio Summary ---
@@ -237,13 +243,10 @@ export default function ReportsPage() {
   const cashFlowReport = useMemo(() => {
     if (loadingLoans || loadingPayments || !payments) return { data: [], totals: { totalInflow: 0, totalOutflow: 0, netCashFlow: 0 } };
 
-    const filterStartDate = dayjs(startDate);
-    const filterEndDate = dayjs(endDate);
-
     const inflows = payments
       .filter(p => {
         const paymentDate = dayjs(p.date);
-        return paymentDate.isBetween(filterStartDate, filterEndDate, 'day', '[]');
+        return paymentDate.isBetween(startDate, endDate, 'day', '[]');
       })
       .map(p => ({
         date: dayjs(p.date).format('YYYY-MM-DD'),
@@ -320,9 +323,59 @@ export default function ReportsPage() {
     exportToCsv(`Cash_Flow_Report_${dayjs().format('YYYYMMDD')}.csv`, dataForExport);
   }, [cashFlowReport]);
 
+  const exportPortfolioSummaryPdf = useCallback(() => {
+    const head = [['Metric', 'Value']];
+    const body = [
+        ['Total Loans (Selected Period)', portfolioSummary.totalLoans],
+        ['Active Loans (Selected Period)', portfolioSummary.activeLoans],
+        ['Paid Loans (Selected Period)', portfolioSummary.paidLoans],
+        ['Overdue Loans (Selected Period)', portfolioSummary.overdueLoans],
+        ['Total Principal Disbursed', portfolioSummary.totalPrincipalDisbursed.toFixed(2)],
+        ['Total Interest Accrued', portfolioSummary.totalInterestAccrued.toFixed(2)],
+        ['Total Outstanding Balance', portfolioSummary.totalOutstanding.toFixed(2)],
+        ['Total Amount Repaid', portfolioSummary.totalRepaid.toFixed(2)],
+    ];
+    exportToPdf('Loan Portfolio Summary', head, body, `Portfolio_Summary_${dayjs().format('YYYYMMDD')}.pdf`);
+  }, [portfolioSummary]);
 
-  
+  const exportArrearsAgingPdf = useCallback(() => {
+    const head = [['Borrower', 'Phone', 'Outstanding', 'Due Date', 'Days Overdue']];
+    const body = arrearsAgingReport.list.map(loan => [
+        loan.borrower,
+        loan.phone,
+        loan.outstanding.toFixed(2),
+        loan.dueDate,
+        loan.daysOverdue,
+    ]);
+    exportToPdf('Arrears Aging Report', head, body, `Arrears_Aging_${dayjs().format('YYYYMMDD')}.pdf`);
+  }, [arrearsAgingReport]);
 
+  const exportDetailedLoanListPdf = useCallback(() => {
+    const head = Object.keys(detailedLoanListReport[0] || {});
+    const body = detailedLoanListReport.map(row => Object.values(row));
+    exportToPdf('Detailed Loan List', [head], body, `Detailed_Loan_List_${dayjs().format('YYYYMMDD')}.pdf`);
+  }, [detailedLoanListReport]);
+
+  const exportCashFlowPdf = useCallback(() => {
+    const head = [['Date', 'Type', 'Description', 'Amount (ZMW)']];
+    const body = cashFlowReport.data.map(item => [
+        item.date,
+        item.type,
+        item.description,
+        item.amount.toFixed(2)
+    ]);
+    exportToPdf('Cash Flow Report', head, body, `Cash_Flow_${dayjs().format('YYYYMMDD')}.pdf`);
+  }, [cashFlowReport]);
+
+  const setDateRange = (unit, count) => {
+    setStartDate(dayjs().subtract(count, unit).startOf(unit));
+    setEndDate(dayjs().endOf(unit));
+  };
+
+  const setThisMonth = () => {
+      setStartDate(dayjs().startOf('month'));
+      setEndDate(dayjs().endOf('month'));
+  }
 
   // Reusable styles for the focused state of form fields
   const filterInputStyles = {
@@ -444,7 +497,10 @@ export default function ReportsPage() {
                         </Card>
                     </Grid>
                     <Grid item xs={12}>
-                        <Button variant="outlined" color="secondary" onClick={exportPortfolioSummary}>Export Summary CSV</Button>
+                        <Stack direction="row" spacing={2}>
+                            <Button variant="outlined" color="secondary" onClick={exportPortfolioSummary}>Export Summary CSV</Button>
+                            <Button variant="contained" color="secondary" onClick={exportPortfolioSummaryPdf}>Export Summary PDF</Button>
+                        </Stack>
                     </Grid>
                 </Grid>
             )}
@@ -520,7 +576,10 @@ export default function ReportsPage() {
                         </TableContainer>
                     </Grid>
                     <Grid item xs={12}>
-                        <Button variant="outlined" color="secondary" onClick={exportArrearsAging}>Export Arrears CSV</Button>
+                        <Stack direction="row" spacing={2}>
+                            <Button variant="outlined" color="secondary" onClick={exportArrearsAging}>Export Arrears CSV</Button>
+                            <Button variant="contained" color="secondary" onClick={exportArrearsAgingPdf}>Export Arrears PDF</Button>
+                        </Stack>
                     </Grid>
                 </Grid>
             )}
@@ -584,7 +643,10 @@ export default function ReportsPage() {
                             </TableBody>
                         </Table>
                     </TableContainer>
-                    <Button variant="outlined" color="secondary" sx={{ mt: 2 }} onClick={exportCashFlow}>Export Cash Flow CSV</Button>
+                    <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                        <Button variant="outlined" color="secondary" onClick={exportCashFlow}>Export Cash Flow CSV</Button>
+                        <Button variant="contained" color="secondary" onClick={exportCashFlowPdf}>Export Cash Flow PDF</Button>
+                    </Stack>
                 </Box>
             )}
 
@@ -631,7 +693,10 @@ export default function ReportsPage() {
                             </Table>
                         </TableContainer>
                     )}
-                    <Button variant="outlined" color="secondary" sx={{ mt: 2 }} onClick={exportDetailedLoanList}>Export Detailed List CSV</Button>
+                    <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                        <Button variant="outlined" color="secondary" onClick={exportDetailedLoanList}>Export Detailed List CSV</Button>
+                        <Button variant="contained" color="secondary" onClick={exportDetailedLoanListPdf}>Export Detailed List PDF</Button>
+                    </Stack>
                 </Box>
             )}
         </Box>
@@ -639,82 +704,62 @@ export default function ReportsPage() {
   };
 
   return (
-    <Box sx={{ p: isMobile ? 1 : 3 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Reports & Analytics
-      </Typography>
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <Box sx={{ p: isMobile ? 1 : 3 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Reports & Analytics
+        </Typography>
 
-      <Paper elevation={1} sx={{ p: 2, mb: 3 }}>
-        <Stack direction={isMobile ? "column" : "row"} spacing={2} alignItems="center">
-          <TextField
-            sx={filterInputStyles}
-            label="Start Date"
-            type="date"
-            size="small"
-            fullWidth={isMobile}
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-          />
-          <TextField
-            sx={filterInputStyles}
-            label="End Date"
-            type="date"
-            size="small"
-            fullWidth={isMobile}
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-          />
+        <Paper elevation={1} sx={{ p: 2, mb: 3 }}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={6} lg={4}>
+              <Autocomplete
+                options={borrowers || []}
+                getOptionLabel={(option) => option.name}
+                value={selectedBorrower}
+                onChange={(event, newValue) => {
+                  setSelectedBorrower(newValue);
+                }}
+                renderInput={(params) => <TextField {...params} label="Filter by Borrower" size="small" sx={filterInputStyles} />}
+              />
+            </Grid>
+            <Grid item xs={12} md={6} lg={4}>
+              <Stack direction="row" spacing={1}>
+                <DatePicker
+                  label="Start Date"
+                  value={startDate}
+                  onChange={(newValue) => setStartDate(newValue)}
+                  renderInput={(params) => <TextField {...params} size="small" fullWidth sx={filterInputStyles} />}
+                />
+                <DatePicker
+                  label="End Date"
+                  value={endDate}
+                  onChange={(newValue) => setEndDate(newValue)}
+                  renderInput={(params) => <TextField {...params} size="small" fullWidth sx={filterInputStyles} />}
+                />
+              </Stack>
+            </Grid>
+            <Grid item xs={12} lg={4}>
+                <Stack direction="row" spacing={1} justifyContent="flex-start" flexWrap="wrap">
+                    <Button size="small" onClick={setThisMonth}>This Month</Button>
+                    <Button size="small" onClick={() => setDateRange('month', 1)}>Last Month</Button>
+                    <Button size="small" onClick={() => setDateRange('day', 90)}>Last 90 Days</Button>
+                    <Button size="small" onClick={() => setDateRange('year', 0)}>This Year</Button>
+                </Stack>
+            </Grid>
+            <Grid item xs={12}>
+              <Stack direction="row" spacing={0} flexWrap="wrap">
+                <FormControlLabel control={<Checkbox checked={includeActive} onChange={(e) => setIncludeActive(e.target.checked)} size="small" sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }} />} label="Active" />
+                <FormControlLabel control={<Checkbox checked={includePaid} onChange={(e) => setIncludePaid(e.target.checked)} size="small" sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }} />} label="Paid" />
+                <FormControlLabel control={<Checkbox checked={includeOverdue} onChange={(e) => setIncludeOverdue(e.target.checked)} size="small" sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }} />} label="Overdue" />
+                <FormControlLabel control={<Checkbox checked={includeDefaulted} onChange={(e) => setIncludeDefaulted(e.target.checked)} size="small" sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }} />} label="Defaulted" />
+              </Stack>
+            </Grid>
+          </Grid>
+        </Paper>
 
-          <FormControlLabel
-              control={
-                <Checkbox
-                  checked={includeActive}
-                  onChange={(e) => setIncludeActive(e.target.checked)}
-                  size="small"
-                  sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }}
-                />
-              }
-              label="Active"
-          />
-          <FormControlLabel
-              control={
-                <Checkbox
-                  checked={includePaid}
-                  onChange={(e) => setIncludePaid(e.target.checked)}
-                  size="small"
-                  sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }}
-                />
-              }
-              label="Paid"
-          />
-          <FormControlLabel
-              control={
-                <Checkbox
-                  checked={includeOverdue}
-                  onChange={(e) => setIncludeOverdue(e.target.checked)}
-                  size="small"
-                  sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }}
-                />
-              }
-              label="Overdue"
-          />
-          <FormControlLabel
-              control={
-                <Checkbox
-                  checked={includeDefaulted}
-                  onChange={(e) => setIncludeDefaulted(e.target.checked)}
-                  size="small"
-                  sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }}
-                />
-              }
-              label="Defaulted"
-          />
-        </Stack>
-      </Paper>
-
-      {renderReportContent()}
-    </Box>
+        {renderReportContent()}
+      </Box>
+    </LocalizationProvider>
   );
 }
