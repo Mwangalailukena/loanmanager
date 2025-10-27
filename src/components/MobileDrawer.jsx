@@ -41,6 +41,7 @@ import {
   People as PeopleIcon,
   Receipt as ReceiptIcon,
   ExpandMore,
+  Calculate as CalculateIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
@@ -164,6 +165,7 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onSea
     { text: 'Expenses', icon: <ReceiptIcon />, path: '/expenses' },
     { text: 'Activity', icon: <HistoryIcon />, path: '/activity' },
     { text: 'Reports', icon: <AssessmentIcon />, path: '/reports' },
+    { text: 'Simulator', icon: <CalculateIcon />, path: '/simulator' },
     { text: 'Notifications', icon: <NotificationsIcon />, onClick: (e) => setNotificationAnchor(e.currentTarget) },
     { text: 'Search', icon: <SearchIcon />, onClick: () => { onClose(); onSearchOpen(); } },
   ];
