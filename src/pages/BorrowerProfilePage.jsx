@@ -103,47 +103,52 @@ const getStatusChipColor = (status) => {
   }
 };
 
-const CreditScoreGauge = ({ score, color }) => {
-    const scoreMin = 300;
-    const scoreMax = 850;
-    const normalizedScore = ((score - scoreMin) * 100) / (scoreMax - scoreMin);
+const CreditScoreCard = ({ score, remarks, positiveFactors, negativeFactors, stats }) => {
+  const getScoreColor = (score) => {
+    if (score >= 80) return 'success.main';
+    if (score >= 60) return 'warning.main';
+    return 'error.main';
+  };
 
-    return (
-        <Box sx={{ position: 'relative', display: 'inline-flex', justifyContent: 'center' }}>
-            <CircularProgress
-                variant="determinate"
-                value={100}
-                size={150}
-                thickness={4}
-                sx={{ color: 'grey.300' }}
-            />
-            <CircularProgress
-                variant="determinate"
-                value={normalizedScore}
-                size={150}
-                thickness={4}
-                sx={{ color: color, position: 'absolute', left: 0, '& .MuiCircularProgress-circle': { strokeLinecap: 'round' } }}
-            />
-            <Box
-                sx={{
-                    top: 0,
-                    left: 0,
-                    bottom: 0,
-                    right: 0,
-                    position: 'absolute',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexDirection: 'column'
-                }}
-            >
-                <Typography variant="h3" component="div" color="text.primary" fontWeight="bold">
-                    {score}
-                </Typography>
-                <Typography variant="caption">Credit Score</Typography>
-            </Box>
-        </Box>
-    );
+  return (
+    <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
+      <CardHeader
+        title="Credit Score"
+        action={
+          <MuiTooltip title="This score reflects the borrower's repayment history, loan terms, and overall reliability. A higher score indicates lower risk.">
+            <InfoIcon color="action" />
+          </MuiTooltip>
+        }
+        sx={{ p: 0, pb: 1 }}
+        titleTypographyProps={{ fontWeight: 'bold', variant: 'h6' }}
+      />
+      <Box sx={{ textAlign: 'center', my: 2 }}>
+        <Typography variant="h2" component="div" fontWeight="bold" sx={{ color: getScoreColor(score) }}>
+          {score}
+        </Typography>
+        <Chip label={remarks} sx={{ backgroundColor: getScoreColor(score), color: 'white', fontWeight: 'bold', mt: 1 }} />
+      </Box>
+      <Divider sx={{ my: 2 }} />
+      <Typography variant="subtitle2" gutterBottom>Scoring Factors</Typography>
+      <Stack spacing={1}>
+        {positiveFactors.map((factor, index) => (
+          <Typography key={index} variant="body2" sx={{ color: 'success.main' }}>+ {factor}</Typography>
+        ))}
+        {negativeFactors.map((factor, index) => (
+          <Typography key={index} variant="body2" sx={{ color: 'error.main' }}>- {factor}</Typography>
+        ))}
+      </Stack>
+      <Divider sx={{ my: 2 }} />
+      <Typography variant="subtitle2" gutterBottom>Statistics</Typography>
+      <List dense disablePadding>
+        <ListItem disableGutters><ListItemText primary="Total Loans" /><Typography variant="body2">{stats.totalLoans}</Typography></ListItem>
+        <ListItem disableGutters><ListItemText primary="Paid Loans" /><Typography variant="body2">{stats.paidLoans}</Typography></ListItem>
+        <ListItem disableGutters><ListItemText primary="Overdue Loans" /><Typography variant="body2">{stats.overdueLoans}</Typography></ListItem>
+        <ListItem disableGutters><ListItemText primary="Defaulted Loans" /><Typography variant="body2">{stats.defaultedLoans}</Typography></ListItem>
+        <ListItem disableGutters><ListItemText primary="On-Time Repayment Rate" /><Typography variant="body2">{(stats.repaymentRate * 100).toFixed(0)}%</Typography></ListItem>
+      </List>
+    </Paper>
+  );
 };
 
 export default function BorrowerProfilePage() {
@@ -151,7 +156,7 @@ export default function BorrowerProfilePage() {
   const navigate = useNavigate();
   const showSnackbar = useSnackbar();
   const {
-    borrowers, loans, payments, loading, deleteBorrower,
+    borrowers, loans, loading, deleteBorrower,
     comments, addComment, deleteComment,
     guarantors, deleteGuarantor,
     refinanceLoan,
@@ -178,7 +183,7 @@ export default function BorrowerProfilePage() {
   const borrowerComments = comments.filter(comment => comment.borrowerId === id);
   const borrowerGuarantors = guarantors.filter(g => g.borrowerId === id);
 
-  const { score, label, color, history } = useCreditScore(id, loans, payments);
+  const creditScoreData = useCreditScore(associatedLoans);
 
   const financialStats = useMemo(() => {
     const stats = associatedLoans.reduce((acc, loan) => {
@@ -359,26 +364,7 @@ export default function BorrowerProfilePage() {
                 <TabPanel value={activeTab} index={0}>
                   <Grid container spacing={3}>
                     <Grid item xs={12} md={6}>
-                      <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
-                        <CardHeader 
-                            title="Credit Score"
-                            action={
-                                <MuiTooltip title="This score reflects the borrower's repayment history, loan terms, and overall reliability. A higher score indicates lower risk.">
-                                    <InfoIcon color="action" />
-                                </MuiTooltip>
-                            }
-                            sx={{ p: 0, pb: 1 }} 
-                            titleTypographyProps={{ fontWeight: 'bold', variant: 'h6' }} 
-                        />
-                        <Box sx={{ textAlign: 'center', my: 2 }}>
-                            <CreditScoreGauge score={score} color={color} />
-                            <Chip label={label} sx={{ backgroundColor: color, color: 'white', fontWeight: 'bold', mt: 2 }} />
-                        </Box>
-                        <Typography variant="subtitle2" gutterBottom>Scoring History</Typography>
-                        <Paper variant="outlined" sx={{ p: 1, maxHeight: 100, overflowY: 'auto', fontSize: '0.75rem', backgroundColor: 'grey.100' }}>
-                            {history.map((item, index) => <div key={index}>{item}</div>)}
-                        </Paper>
-                      </Paper>
+                      <CreditScoreCard {...creditScoreData} />
                     </Grid>
                     <Grid item xs={12} md={6}>
                       <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>

@@ -12,6 +12,7 @@ import dayjs from "dayjs";
 import isBetween from 'dayjs/plugin/isBetween';
 import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
 // Extend dayjs
 dayjs.extend(isBetween);
@@ -73,21 +74,23 @@ const ChartPaper = ({ title, tooltip, children, onClick }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const chartPaperHeight = isMobile ? 300 : 350;
   return (
-    <Paper
-      elevation={2}
-      sx={{
-        p: isMobile ? 1.5 : 2.5, borderRadius: 3, height: chartPaperHeight,
-        cursor: onClick ? 'pointer' : 'default', transition: 'box-shadow 0.3s',
-        '&:hover': { boxShadow: onClick ? theme.shadows[6] : theme.shadows[2] }
-      }}
-      onClick={onClick}
-    >
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: isMobile ? 1 : 2 }}>
-        <Typography variant="h6" sx={{ fontWeight: 600, fontSize: isMobile ? '1rem' : '1.15rem' }}>{title}</Typography>
-        <Tooltip title={tooltip}><IconButton size="small" sx={{ ml: 1 }}><HelpOutlineIcon fontSize="small" /></IconButton></Tooltip>
-      </Box>
-      <Box sx={{ height: `calc(${chartPaperHeight}px - ${isMobile ? 60 : 70}px)` }}>{children}</Box>
-    </Paper>
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+      <Paper
+        elevation={2}
+        sx={{
+          p: isMobile ? 1.5 : 2.5, borderRadius: 3, height: chartPaperHeight,
+          cursor: onClick ? 'pointer' : 'default', transition: 'box-shadow 0.3s',
+          '&:hover': { boxShadow: onClick ? theme.shadows[6] : theme.shadows[2] }
+        }}
+        onClick={onClick}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: isMobile ? 1 : 2 }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, fontSize: isMobile ? '1rem' : '1.15rem' }}>{title}</Typography>
+          <Tooltip title={tooltip}><IconButton size="small" sx={{ ml: 1 }}><HelpOutlineIcon fontSize="small" /></IconButton></Tooltip>
+        </Box>
+        <Box sx={{ height: `calc(${chartPaperHeight}px - ${isMobile ? 60 : 70}px)` }}>{children}</Box>
+      </Paper>
+    </motion.div>
   );
 };
 

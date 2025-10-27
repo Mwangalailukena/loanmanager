@@ -1,112 +1,107 @@
 import { useMemo } from 'react';
 import dayjs from 'dayjs';
 
-// --- Enhanced Credit Scoring Model ---
-// The model is more dynamic, considering loan value, payment history, and overdue severity.
+const MAX_SCORE = 100;
 
-const BASE_SCORE = 500;
-
-// --- Positive Factors ---
-const POINTS_PER_PAID_LOAN = 20; 
-const BONUS_PER_1000_PRINCIPAL_PAID = 5; // Reward for handling larger amounts
-const ON_TIME_PAYMENT_BONUS = 5; // Bonus for each on-time payment
-
-// --- Negative Factors ---
-const DEDUCTION_FOR_OVERDUE_LOAN = -50;
-const DEDUCTION_FOR_DEFAULTED_LOAN = -100;
-const DEDUCTION_PER_DAY_OVERDUE = -2; // Penalty increases with time
-const DEDUCTION_PER_1000_PRINCIPAL_OVERDUE = -5; // Higher penalty for large overdue loans
-
-const getRating = (score) => {
-  if (score >= 750) return { label: 'Excellent', color: '#4CAF50' };
-  if (score >= 650) return { label: 'Good', color: '#8BC34A' };
-  if (score >= 550) return { label: 'Fair', color: '#FFC107' };
-  if (score >= 450) return { label: 'Poor', color: '#FF9800' };
-  return { label: 'Very Poor', color: '#F44336' };
+// Define the weights for each factor
+const WEIGHTS = {
+  repaymentRate: 0.4,
+  paidLoans: 0.2,
+  loanHistory: 0.2,
+  overduePenalty: 0.15,
+  defaultPenalty: 0.05,
 };
 
-export function useCreditScore(borrowerId, allLoans, allPayments) {
-  const creditScoreData = useMemo(() => {
-    const defaultScore = { score: BASE_SCORE, ...getRating(BASE_SCORE), history: ['Base score assigned.'] };
+const calcStatus = (loan) => {
+  if (loan.status === 'Defaulted') return 'Defaulted';
+  const totalRepayable = Number(loan.totalRepayable || 0);
+  const repaidAmount = Number(loan.repaidAmount || 0);
 
-    if (!borrowerId || !allLoans || allLoans.length === 0) {
-      return defaultScore;
+  if (repaidAmount >= totalRepayable && totalRepayable > 0) {
+    return 'Paid';
+  }
+  const now = dayjs();
+  const due = dayjs(loan.dueDate);
+  if (due.isBefore(now, 'day')) {
+    return 'Overdue';
+  }
+  return 'Active';
+};
+
+export const useCreditScore = (loans) => {
+  const creditScore = useMemo(() => {
+    if (!loans || loans.length === 0) {
+      return {
+        score: 0,
+        remarks: 'No loan history',
+        positiveFactors: [],
+        negativeFactors: [],
+      };
     }
 
-    const borrowerLoans = allLoans.filter(loan => loan.borrowerId === borrowerId);
-    if (borrowerLoans.length === 0) {
-        return defaultScore;
-    }
+    const totalLoans = loans.length;
+    const paidLoans = loans.filter(loan => calcStatus(loan) === 'Paid');
+    const overdueLoans = loans.filter(loan => calcStatus(loan) === 'Overdue');
+    const defaultedLoans = loans.filter(loan => loan.status === 'Defaulted');
 
-    let score = BASE_SCORE;
-    let history = [`Base Score: ${score}`];
+    // 1. Repayment Rate Score
+    const onTimeRepayments = paidLoans.filter(loan => {
+      const paymentDate = dayjs(loan.updatedAt.toDate()); // Assuming updatedAt reflects payment date
+      const dueDate = dayjs(loan.dueDate);
+      return paymentDate.isBefore(dueDate) || paymentDate.isSame(dueDate, 'day');
+    }).length;
+    
+    const repaymentRate = paidLoans.length > 0 ? onTimeRepayments / paidLoans.length : 0;
+    const repaymentScore = repaymentRate * WEIGHTS.repaymentRate * MAX_SCORE;
 
-    borrowerLoans.forEach(loan => {
-      const principalInThousands = (loan.principal || 0) / 1000;
+    // 2. Paid Loans Score
+    const paidLoansRatio = totalLoans > 0 ? paidLoans.length / totalLoans : 0;
+    const paidLoansScore = Math.min(paidLoansRatio * 2, 1) * WEIGHTS.paidLoans * MAX_SCORE; // Cap at 1
 
-      // --- Scoring based on current loan status ---
-      switch (loan.status) {
-        case 'Paid':
-          score += POINTS_PER_PAID_LOAN;
-          history.push(`+${POINTS_PER_PAID_LOAN} pts for paid loan.`);
-          
-          score += principalInThousands * BONUS_PER_1000_PRINCIPAL_PAID;
-          history.push(`+${(principalInThousands * BONUS_PER_1000_PRINCIPAL_PAID).toFixed(1)} pts for paid principal.`);
-          break;
+    // 3. Loan History Score
+    const loanHistoryRatio = Math.min(totalLoans / 10, 1); // Score increases up to 10 loans
+    const loanHistoryScore = loanHistoryRatio * WEIGHTS.loanHistory * MAX_SCORE;
 
-        case 'Overdue':
-          score += DEDUCTION_FOR_OVERDUE_LOAN;
-          history.push(`${DEDUCTION_FOR_OVERDUE_LOAN} pts for overdue loan.`);
+    // 4. Overdue Penalty
+    const overduePenalty = (overdueLoans.length / totalLoans) * WEIGHTS.overduePenalty * MAX_SCORE;
 
-          const overdueDays = dayjs().diff(dayjs(loan.dueDate), 'day');
-          if (overdueDays > 0) {
-            const penalty = overdueDays * DEDUCTION_PER_DAY_OVERDUE;
-            score += penalty;
-            history.push(`${penalty} pts for ${overdueDays} days overdue.`);
-          }
+    // 5. Default Penalty
+    const defaultPenalty = (defaultedLoans.length / totalLoans) * WEIGHTS.defaultPenalty * MAX_SCORE;
 
-          const overduePrincipalPenalty = principalInThousands * DEDUCTION_PER_1000_PRINCIPAL_OVERDUE;
-          score += overduePrincipalPenalty;
-          history.push(`${overduePrincipalPenalty.toFixed(1)} pts for overdue principal amount.`);
-          break;
+    // Final Score
+    let score = repaymentScore + paidLoansScore + loanHistoryScore - overduePenalty - defaultPenalty;
+    score = Math.max(0, Math.min(score, MAX_SCORE)); // Clamp score between 0 and 100
 
-        case 'Defaulted':
-          score += DEDUCTION_FOR_DEFAULTED_LOAN;
-          history.push(`${DEDUCTION_FOR_DEFAULTED_LOAN} pts for defaulted loan.`);
-          break;
+    // Remarks and Factors
+    let remarks = '';
+    if (score >= 80) remarks = 'Excellent';
+    else if (score >= 60) remarks = 'Good';
+    else if (score >= 40) remarks = 'Fair';
+    else if (score >= 20) remarks = 'Poor';
+    else remarks = 'Very Poor';
 
-        default: // Active loans, etc.
-          break;
+    const positiveFactors = [];
+    if (repaymentRate === 1) positiveFactors.push('Perfect on-time repayment record');
+    if (paidLoans.length > 5) positiveFactors.push('Extensive history of repaid loans');
+
+    const negativeFactors = [];
+    if (overdueLoans.length > 0) negativeFactors.push(`${overdueLoans.length} overdue loan(s)`);
+    if (defaultedLoans.length > 0) negativeFactors.push(`${defaultedLoans.length} defaulted loan(s)`);
+
+    return {
+      score: Math.round(score),
+      remarks,
+      positiveFactors,
+      negativeFactors,
+      stats: {
+        totalLoans,
+        paidLoans: paidLoans.length,
+        overdueLoans: overdueLoans.length,
+        defaultedLoans: defaultedLoans.length,
+        repaymentRate,
       }
-    });
+    };
+  }, [loans]);
 
-    // --- Scoring based on payment history ---
-    if (allPayments) {
-        const borrowerPayments = allPayments.filter(p => 
-            borrowerLoans.some(l => l.id === p.loanId)
-        );
-
-        borrowerPayments.forEach(payment => {
-            const associatedLoan = borrowerLoans.find(l => l.id === payment.loanId);
-            if (associatedLoan) {
-                const paymentDate = dayjs(payment.date);
-                const dueDate = dayjs(associatedLoan.dueDate);
-
-                if (paymentDate.isBefore(dueDate) || paymentDate.isSame(dueDate, 'day')) {
-                    score += ON_TIME_PAYMENT_BONUS;
-                    history.push(`+${ON_TIME_PAYMENT_BONUS} pts for on-time payment.`);
-                }
-            }
-        });
-    }
-
-    // Clamp the score between a min and max (e.g., 300-850)
-    const finalScore = Math.max(300, Math.min(Math.round(score), 850));
-    history.push(`Final Score: ${finalScore}`);
-
-    return { score: finalScore, ...getRating(finalScore), history };
-
-  }, [borrowerId, allLoans, allPayments]);
-
-  return creditScoreData;
-}
+  return creditScore;
+};

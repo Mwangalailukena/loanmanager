@@ -509,6 +509,12 @@ export function FirestoreProvider({ children }) {
     });
   };
 
+  const updateUser = async (updates) => {
+    if (!currentUser) return;
+    const userRef = doc(db, "users", currentUser.uid);
+    await updateDoc(userRef, updates);
+  };
+
   const value = {
     loans, payments, borrowers, settings, activityLogs, comments, guarantors, expenses, loading,
     addLoan, updateLoan, deleteLoan, markLoanAsDefaulted,
@@ -521,6 +527,7 @@ export function FirestoreProvider({ children }) {
     undoLoanCreation, undoPayment, updateActivityLog,
     refinanceLoan, undoRefinanceLoan,
     topUpLoan, undoDeleteLoan, undoUpdateLoan,
+    updateUser,
   };
 
   return (

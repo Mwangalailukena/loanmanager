@@ -10,6 +10,16 @@ import {
     Tab,
     Grid,
     Skeleton,
+    List,
+    ListItem,
+    ListItemText,
+    Button,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Checkbox,
+    FormControlLabel,
 } from "@mui/material";
 import { keyframes } from "@mui/system";
 
@@ -17,6 +27,8 @@ import { keyframes } from "@mui/system";
 import SummarizeIcon from '@mui/icons-material/Summarize';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
+import InsightsIcon from '@mui/icons-material/Insights';
+import TuneIcon from '@mui/icons-material/Tune';
 
 import WarningAmber from '@mui/icons-material/WarningAmber';
 import { useNavigate } from "react-router-dom";
@@ -28,6 +40,7 @@ import { useSnackbar } from "../components/SnackbarProvider";
 import { DragDropContext } from "@hello-pangea/dnd";
 import { BOTTOM_NAV_HEIGHT } from "../components/BottomNavBar";
 import { useDashboardCalculations } from "../hooks/dashboard/useDashboardCalculations";
+import { useInsights } from "../hooks/useInsights";
 import DashboardSection from "../components/dashboard/DashboardSection";
 import DashboardCardSkeleton from "../components/dashboard/DashboardCardSkeleton";
 
@@ -35,6 +48,7 @@ const LazyCharts = lazy(() => import("../components/Charts"));
 
 // (The rest of the initial constants and helper functions remain the same)
 const STORAGE_KEY = "dashboardCardOrder";
+const HIDDEN_CARDS_KEY = "hiddenDashboardCards";
 const DEFAULT_CARD_IDS = [
     "investedCapital", "availableCapital", "totalDisbursed", "totalCollected", "partnerDividends",
     "totalLoans", "paidLoans", "activeLoans", "overdueLoans", "totalOutstanding",
@@ -75,6 +89,8 @@ export default function Dashboard() {
 
     const [selectedMonth, setSelectedMonth] = useState(dayjs().format("YYYY-MM"));
     const [cardsOrder, setCardsOrder] = useState([]);
+    const [hiddenCards, setHiddenCards] = useState([]);
+    const [customizeOpen, setCustomizeOpen] = useState(false);
     const [activeTab, setActiveTab] = useState(0);
     const [showWelcome, setShowWelcome] = useState(false);
 
@@ -98,6 +114,8 @@ export default function Dashboard() {
         settings,
         isMobile
     );
+
+    const insights = useInsights(loans, borrowers);
 
     const actionItems = useMemo(() => {
         if (!loans) return { overdueCount: 0, dueThisWeekCount: 0 };
@@ -129,14 +147,18 @@ export default function Dashboard() {
     useEffect(() => {
         if (loans) {
             const savedOrder = localStorage.getItem(STORAGE_KEY);
+            const savedHidden = localStorage.getItem(HIDDEN_CARDS_KEY);
             try {
                 const parsedOrder = savedOrder ? JSON.parse(savedOrder) : [];
+                const parsedHidden = savedHidden ? JSON.parse(savedHidden) : [];
                 const validOrder = parsedOrder.filter((id) => DEFAULT_CARD_IDS.includes(id));
                 const finalOrder = [...new Set([...validOrder, ...DEFAULT_CARD_IDS])];
                 setCardsOrder(finalOrder);
+                setHiddenCards(parsedHidden);
             } catch (error) {
                 console.error("Error parsing saved card order from localStorage:", error);
                 setCardsOrder(DEFAULT_CARD_IDS);
+                setHiddenCards([]);
             }
         }
     }, [loans]);
@@ -146,8 +168,8 @@ export default function Dashboard() {
     };
 
     const cardsToRender = useMemo(
-        () => cardsOrder.length ? cardsOrder.map((id) => defaultCards.find((c) => c.id === id)).filter(Boolean) : defaultCards,
-        [cardsOrder, defaultCards]
+        () => cardsOrder.length ? cardsOrder.map((id) => defaultCards.find((c) => c.id === id)).filter(Boolean).filter(card => !hiddenCards.includes(card.id)) : defaultCards.filter(card => !hiddenCards.includes(card.id)),
+        [cardsOrder, defaultCards, hiddenCards]
     );
 
     const executiveSummaryCards = cardsToRender.filter((card) => EXECUTIVE_SUMMARY_IDS.includes(card.id));
@@ -188,6 +210,12 @@ export default function Dashboard() {
         navigate(`/loans?${params.toString()}`);
     };
 
+    const handleHiddenChange = (cardId) => {
+        const newHidden = hiddenCards.includes(cardId) ? hiddenCards.filter(id => id !== cardId) : [...hiddenCards, cardId];
+        setHiddenCards(newHidden);
+        localStorage.setItem(HIDDEN_CARDS_KEY, JSON.stringify(newHidden));
+    };
+
     if (loading) {
         return (
             <Box sx={{ p: { xs: 2, md: 3 } }}>
@@ -224,9 +252,12 @@ export default function Dashboard() {
                     </Typography>
                 </Box>
             )}
-            <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 0.5, fontSize: { xs: "1.5rem", md: "2rem" } }}>
-                Dashboard
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 0.5, fontSize: { xs: "1.5rem", md: "2rem" } }}>
+                  Dashboard
+              </Typography>
+              <Button startIcon={<TuneIcon />} onClick={() => setCustomizeOpen(true)}>Customize</Button>
+            </Box>
 
             {actionItems.overdueCount > 0 &&
                 <Box sx={{ p: 2, mb: 2, backgroundColor: theme.palette.error.light, borderRadius: 2, display: 'flex', alignItems: 'center', cursor: 'pointer', '&:hover': { backgroundColor: theme.palette.error.main, } }} onClick={() => navigate('/loans?filter=overdue')} >
@@ -257,6 +288,7 @@ export default function Dashboard() {
                         <Tab icon={<SummarizeIcon />} label="Summary" {...a11yProps(0)} />
                         <Tab icon={<BarChartIcon />} label="Metrics" {...a11yProps(1)} />
                         <Tab icon={<ShowChartIcon />} label="Charts" {...a11yProps(2)} />
+                        <Tab icon={<InsightsIcon />} label="Insights" {...a11yProps(3)} />
                     </Tabs>
                 </Box>
                 <DragDropContext onDragEnd={onDragEnd}>
@@ -277,7 +309,36 @@ export default function Dashboard() {
                         />
                     </Suspense>
                 </TabPanel>
+                <TabPanel value={activeTab} index={3}>
+                    <List>
+                        {insights.map((insight, index) => (
+                            <ListItem key={index}>
+                                <ListItemText primary={insight} />
+                            </ListItem>
+                        ))}
+                    </List>
+                </TabPanel>
             </Box>
+            <Dialog open={customizeOpen} onClose={() => setCustomizeOpen(false)}>
+                <DialogTitle>Customize Dashboard</DialogTitle>
+                <DialogContent>
+                    <Typography>Select the cards you want to see on your dashboard.</Typography>
+                    {DEFAULT_CARD_IDS.map(cardId => {
+                        const card = defaultCards.find(c => c.id === cardId);
+                        if (!card) return null;
+                        return (
+                            <FormControlLabel
+                                key={cardId}
+                                control={<Checkbox checked={!hiddenCards.includes(cardId)} onChange={() => handleHiddenChange(cardId)} />}
+                                label={card.label}
+                            />
+                        )
+                    })}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setCustomizeOpen(false)}>Close</Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 }

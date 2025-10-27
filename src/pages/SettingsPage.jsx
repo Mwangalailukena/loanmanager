@@ -15,7 +15,7 @@ import {
   Grid,
 } from "@mui/material";
 import { useFirestore } from "../contexts/FirestoreProvider";
-import { requestNotificationPermission } from "../utils/notifications";
+import { subscribeUser } from "../utils/push";
 
 // TabPanel component for managing tab content visibility and accessibility
 function TabPanel({ children, value, index, ...other }) {
@@ -44,7 +44,7 @@ function a11yProps(index) {
 
 // SettingsPage component, accepts an onClose prop for when it's rendered in a Dialog
 export default function SettingsPage({ onClose }) {
-  const { settings, updateSettings } = useFirestore();
+  const { settings, updateSettings, updateUser } = useFirestore();
 
   const [tabIndex, setTabIndex] = useState(0);
   
@@ -305,7 +305,7 @@ export default function SettingsPage({ onClose }) {
           </Typography>
           <Button
             variant="contained"
-            onClick={requestNotificationPermission}
+            onClick={() => subscribeUser(updateUser)}
             sx={{ mt: 2 }}
           >
             Enable Notifications
