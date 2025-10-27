@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -12,21 +12,55 @@ import {
   MenuItem,
 } from '@mui/material';
 import { useFirestore } from '../contexts/FirestoreProvider';
+import { useCreditScore } from '../hooks/useCreditScore';
+import dayjs from 'dayjs';
 
 export default function LoanSimulatorPage() {
-  const { settings } = useFirestore();
+  const { settings, loans: existingLoans } = useFirestore();
   const [principal, setPrincipal] = useState(1000);
   const [duration, setDuration] = useState(1);
 
-  const interestRates = settings.interestRates || {
-    1: 0.15,
-    2: 0.2,
-    3: 0.3,
-    4: 0.3,
+  const currentMonthYear = dayjs().format("YYYY-MM");
+  const monthlySettings = settings?.monthlySettings?.[currentMonthYear];
+
+  const effectiveInterestRates = monthlySettings?.interestRates || {
+    oneWeek: 0.15,
+    twoWeeks: 0.2,
+    threeWeeks: 0.3,
+    fourWeeks: 0.3,
   };
 
-  const interest = principal * (interestRates[duration] || 0);
+  const interestRateKey = {
+    1: 'oneWeek',
+    2: 'twoWeeks',
+    3: 'threeWeeks',
+    4: 'fourWeeks',
+  }[duration];
+
+  const selectedInterestRate = (effectiveInterestRates[interestRateKey] || 0) / 100;
+
+  const interest = principal * selectedInterestRate;
   const totalRepayable = principal + interest;
+
+  const simulatedLoan = useMemo(() => ({
+    principal,
+    interest,
+    totalRepayable,
+    interestDuration: duration,
+    startDate: dayjs().format('YYYY-MM-DD'),
+    dueDate: dayjs().add(duration, 'week').format('YYYY-MM-DD'),
+    status: 'Active',
+    repaidAmount: 0,
+    createdAt: dayjs().toDate(),
+    updatedAt: dayjs().toDate(),
+  }), [principal, duration, interest, totalRepayable]);
+
+  const hypotheticalLoans = useMemo(() => [
+    ...existingLoans,
+    simulatedLoan,
+  ], [existingLoans, simulatedLoan]);
+
+  const { score: hypotheticalScore, remarks: hypotheticalRemarks } = useCreditScore(hypotheticalLoans);
 
   return (
     <Paper sx={{ maxWidth: 600, mx: 'auto', mt: 4, p: 3, borderRadius: 3 }}>
@@ -62,10 +96,10 @@ export default function LoanSimulatorPage() {
               label="Loan Duration"
               onChange={(e) => setDuration(e.target.value)}
             >
-              <MenuItem value={1}>1 Week</MenuItem>
-              <MenuItem value={2}>2 Weeks</MenuItem>
-              <MenuItem value={3}>3 Weeks</MenuItem>
-              <MenuItem value={4}>4 Weeks</MenuItem>
+              <MenuItem value={1}>1 Week ({((effectiveInterestRates.oneWeek)).toFixed(0)}%)</MenuItem>
+              <MenuItem value={2}>2 Weeks ({((effectiveInterestRates.twoWeeks)).toFixed(0)}%)</MenuItem>
+              <MenuItem value={3}>3 Weeks ({((effectiveInterestRates.threeWeeks)).toFixed(0)}%)</MenuItem>
+              <MenuItem value={4}>4 Weeks ({((effectiveInterestRates.fourWeeks)).toFixed(0)}%)</MenuItem>
             </Select>
           </FormControl>
         </Grid>
@@ -74,6 +108,15 @@ export default function LoanSimulatorPage() {
           <Box sx={{ mt: 2 }}>
             <Typography>Interest: ZMW {interest.toFixed(2)}</Typography>
             <Typography>Total Repayable: ZMW {totalRepayable.toFixed(2)}</Typography>
+          </Box>
+        </Grid>
+        <Grid item xs={12}>
+          <Typography variant="h6">What If Scenario (Credit Score)</Typography>
+          <Box sx={{ mt: 2 }}>
+            <Typography>Hypothetical Credit Score: {hypotheticalScore} ({hypotheticalRemarks})</Typography>
+            <Typography variant="body2" color="text.secondary">
+              This is your estimated credit score if you were to take out this loan and repay it on time.
+            </Typography>
           </Box>
         </Grid>
       </Grid>

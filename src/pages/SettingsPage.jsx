@@ -13,6 +13,9 @@ import {
   FormControl,
   InputLabel,
   Grid,
+  FormGroup,
+  FormControlLabel,
+  Checkbox,
 } from "@mui/material";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { subscribeUser } from "../utils/push";
@@ -44,7 +47,7 @@ function a11yProps(index) {
 
 // SettingsPage component, accepts an onClose prop for when it's rendered in a Dialog
 export default function SettingsPage({ onClose }) {
-  const { settings, updateSettings, updateUser } = useFirestore();
+  const { settings, updateSettings, updateUser, currentUser } = useFirestore();
 
   const [tabIndex, setTabIndex] = useState(0);
   
@@ -59,6 +62,11 @@ export default function SettingsPage({ onClose }) {
     twoWeeks: "0",
     threeWeeks: "0",
     fourWeeks: "0",
+  });
+
+  const [notificationPreferences, setNotificationPreferences] = useState({
+    overdue: true,
+    upcoming: true,
   });
 
   const [message, setMessage] = useState("");
@@ -80,14 +88,16 @@ export default function SettingsPage({ onClose }) {
           threeWeeks: monthSettings.interestRates.threeWeeks?.toString() || "0",
           fourWeeks: monthSettings.interestRates.fourWeeks?.toString() || "0",
         });
-      } else {
-        setInterestRates({ oneWeek: "0", twoWeeks: "0", threeWeeks: "0", fourWeeks: "0" });
       }
     } else {
       setMonthlyCapital("0");
       setInterestRates({ oneWeek: "0", twoWeeks: "0", threeWeeks: "0", fourWeeks: "0" });
     }
-  }, [settings, selectedYear, selectedMonth]);
+
+    if (currentUser && currentUser.notificationPreferences) {
+      setNotificationPreferences(currentUser.notificationPreferences);
+    }
+  }, [settings, selectedYear, selectedMonth, currentUser]);
 
   const handleTabChange = (_, newValue) => {
     setTabIndex(newValue);
@@ -102,6 +112,26 @@ export default function SettingsPage({ onClose }) {
   const handleInterestRateChange = (field) => (e) => {
     setMessage(""); // Clear message on input change
     setInterestRates({ ...interestRates, [field]: e.target.value });
+  };
+
+  const handleNotificationPreferenceChange = (event) => {
+    setNotificationPreferences({
+      ...notificationPreferences,
+      [event.target.name]: event.target.checked,
+    });
+  };
+
+  const handleSaveNotificationPreferences = async () => {
+    setLoading(true);
+    try {
+      await updateUser({ notificationPreferences });
+      setMessage("Notification preferences saved successfully.");
+    } catch (error) {
+      console.error("Error updating notification preferences:", error);
+      setMessage("Failed to save notification preferences. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -310,6 +340,27 @@ export default function SettingsPage({ onClose }) {
           >
             Enable Notifications
           </Button>
+          <Box mt={4}>
+            <Typography variant="h6">Notification Preferences</Typography>
+            <FormGroup>
+              <FormControlLabel
+                control={<Checkbox checked={notificationPreferences.overdue} onChange={handleNotificationPreferenceChange} name="overdue" />}
+                label="Overdue Loan Reminders"
+              />
+              <FormControlLabel
+                control={<Checkbox checked={notificationPreferences.upcoming} onChange={handleNotificationPreferenceChange} name="upcoming" />}
+                label="Upcoming Payment Reminders"
+              />
+            </FormGroup>
+            <Button
+              variant="contained"
+              onClick={handleSaveNotificationPreferences}
+              sx={{ mt: 2 }}
+              disabled={loading}
+            >
+              {loading ? "Saving..." : "Save Preferences"}
+            </Button>
+          </Box>
         </TabPanel>
 
         {tabIndex !== 1 && (

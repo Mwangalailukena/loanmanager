@@ -30,6 +30,7 @@ import {
   CardHeader,
   Link,
   Tooltip as MuiTooltip,
+  useTheme,
 } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
 import PhoneIcon from '@mui/icons-material/Phone';
@@ -47,7 +48,90 @@ import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import GuarantorDialog from '../components/GuarantorDialog';
 import { useCreditScore } from '../hooks/useCreditScore';
+import { ResponsiveLine } from '@nivo/line';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+
+const CreditScoreHistoryChart = ({ history }) => {
+  const theme = useTheme();
+  const data = [
+    {
+      id: "Credit Score",
+      data: history.map(h => ({ x: h.date, y: h.score })),
+    },
+  ];
+
+  return (
+    <Paper variant="outlined" sx={{ p: 2, height: 300 }}>
+      <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
+        Credit Score History
+      </Typography>
+      <ResponsiveLine
+        data={data}
+        margin={{ top: 20, right: 20, bottom: 60, left: 60 }}
+        xScale={{ type: 'point' }}
+        yScale={{
+          type: 'linear',
+          min: 'auto',
+          max: 'auto',
+          stacked: true,
+          reverse: false
+        }}
+        axisTop={null}
+        axisRight={null}
+        axisBottom={{
+          orient: 'bottom',
+          tickSize: 5,
+          tickPadding: 5,
+          tickRotation: 0,
+          legend: 'Date',
+          legendOffset: 36,
+          legendPosition: 'middle'
+        }}
+        axisLeft={{
+          orient: 'left',
+          tickSize: 5,
+          tickPadding: 5,
+          tickRotation: 0,
+          legend: 'Score',
+          legendOffset: -40,
+          legendPosition: 'middle'
+        }}
+        colors={{ scheme: 'category10' }}
+        pointSize={10}
+        pointColor={{ theme: 'background' }}
+        pointBorderWidth={2}
+        pointBorderColor={{ from: 'serieColor' }}
+        pointLabelYOffset={-12}
+        useMesh={true}
+        theme={{
+          axis: {
+            ticks: {
+              text: {
+                fill: theme.palette.text.secondary,
+              },
+            },
+            legend: {
+              text: {
+                fill: theme.palette.text.primary,
+              },
+            },
+          },
+          grid: {
+            line: {
+              stroke: theme.palette.divider,
+            },
+          },
+          tooltip: {
+            container: {
+              background: theme.palette.background.paper,
+              color: theme.palette.text.primary,
+            },
+          },
+        }}
+      />
+    </Paper>
+  );
+};
 
 dayjs.extend(relativeTime);
 
@@ -404,16 +488,7 @@ export default function BorrowerProfilePage() {
                       </Paper>
                     </Grid>
                     <Grid item xs={12}>
-                        <Paper variant="outlined" sx={{ p: 2 }}>
-                             <Typography variant="h6" fontWeight="bold">Loan Summary</Typography>
-                             <Divider sx={{ my: 1 }} />
-                            <List dense disablePadding>
-                                <ListItem disableGutters>
-                                    <ListItemText primary="Total Loans" secondary={`${financialStats.paidLoans} Paid, ${financialStats.activeLoans} Active, ${financialStats.overdueLoans} Overdue, ${financialStats.defaultedLoans} Defaulted`} />
-                                    <Typography variant="h6" fontWeight="bold">{financialStats.totalLoans}</Typography>
-                                </ListItem>
-                            </List>
-                        </Paper>
+                      <CreditScoreHistoryChart history={creditScoreData.history} />
                     </Grid>
                   </Grid>
                 </TabPanel>
