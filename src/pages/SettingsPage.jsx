@@ -18,7 +18,7 @@ import {
   Checkbox,
 } from "@mui/material";
 import { useFirestore } from "../contexts/FirestoreProvider";
-import { subscribeUser } from "../utils/push";
+import { subscribeUserToPushNotifications } from "../utils/push";
 
 // TabPanel component for managing tab content visibility and accessibility
 function TabPanel({ children, value, index, ...other }) {
@@ -335,7 +335,7 @@ export default function SettingsPage({ onClose }) {
           </Typography>
           <Button
             variant="contained"
-            onClick={() => subscribeUser(updateUser)}
+            onClick={subscribeUserToPushNotifications}
             sx={{ mt: 2 }}
           >
             Enable Notifications

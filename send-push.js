@@ -17,6 +17,16 @@ webpush.setVapidDetails(
 
 const db = admin.firestore();
 
+async function sendNotificationToUser(userId, payload) {
+  const subscriptions = await db.collection('subscriptions').where('userId', '==', userId).get();
+  subscriptions.forEach(subscription => {
+    const pushSubscription = subscription.data();
+    webpush.sendNotification(pushSubscription, JSON.stringify(payload)).catch(error => {
+      console.error(error.stack);
+    });
+  });
+}
+
 async function sendPushNotifications() {
   const subscriptions = await db.collection('subscriptions').get();
   subscriptions.forEach(subscription => {
@@ -31,4 +41,9 @@ async function sendPushNotifications() {
   });
 }
 
-sendPushNotifications();
+// We will not call this function directly anymore, but we'll keep it for reference
+// sendPushNotifications();
+
+module.exports = {
+  sendNotificationToUser
+};

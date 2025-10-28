@@ -94,7 +94,7 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onSea
   const { pathname } = useLocation();
   const theme = useTheme();
   const { currentUser } = useAuth();
-  const { loans, loadingLoans } = useFirestore();
+  const { loans, borrowers, loadingLoans } = useFirestore();
   const { openLoanDetail } = useSearch();
 
   const [profileOpen, setProfileOpen] = useState(false);
@@ -115,11 +115,12 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onSea
   const openNotifications = Boolean(notificationAnchor);
 
   useEffect(() => {
-    if (!loans) return;
+    if (!loans || !borrowers) return;
     const now = dayjs();
     const notes = [];
     loans.forEach(loan => {
-      const borrowerName = loan.borrower?.name || 'a borrower';
+      const borrower = borrowers.find(b => b.id === loan.borrowerId);
+      const borrowerName = borrower ? borrower.name : 'a borrower';
       if ((loan.repaidAmount || 0) >= (loan.totalRepayable || 0)) return;
       const dueDate = dayjs(loan.dueDate);
       const diffInDays = dueDate.diff(now, "day");
@@ -130,7 +131,7 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onSea
       }
     });
     setAllNotifications(notes);
-  }, [loans]);
+  }, [loans, borrowers]);
 
   const unreadNotifications = allNotifications.filter((note) => !readNotifications.includes(note.id));
 

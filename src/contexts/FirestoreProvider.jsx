@@ -16,6 +16,7 @@ import {
   getDocs, // Added getDocs
   setDoc,
 } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import { db } from "../firebase";
 import { useAuth } from "./AuthProvider";
 import { useSnackbar } from "../components/SnackbarProvider";
@@ -25,6 +26,9 @@ import useOfflineStatus from "../hooks/useOfflineStatus";
 
 const FirestoreContext = createContext();
 export const useFirestore = () => useContext(FirestoreContext);
+
+const functions = getFunctions();
+const sendPushNotification = httpsCallable(functions, 'sendPushNotification');
 
 export function FirestoreProvider({ children }) {
   const { currentUser } = useAuth();
@@ -131,12 +135,29 @@ export function FirestoreProvider({ children }) {
   const addLoan = async (loan) => {
     const loanWithMeta = { ...loan, userId: currentUser.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
     const docRef = await addDoc(collection(db, "loans"), loanWithMeta);
+
+    const borrower = borrowers.find(b => b.id === loan.borrowerId);
+    const borrowerName = borrower ? borrower.name : "A borrower";
+
     await addActivityLog({
       type: "loan_creation",
-      description: `Loan added for borrower ID ${loan.borrowerId}`,
+      description: `Loan added for borrower ${borrowerName}`,
       relatedId: docRef.id,
       undoable: true 
     });
+
+    try {
+      await sendPushNotification({ 
+        userId: currentUser.uid, 
+        payload: { 
+          title: "New Loan Added", 
+          body: `A new loan of ${loan.principal} has been added for ${borrowerName}.` 
+        }
+      });
+    } catch (error) {
+      console.error("Error sending push notification:", error);
+    }
+
     return docRef;
   };
 

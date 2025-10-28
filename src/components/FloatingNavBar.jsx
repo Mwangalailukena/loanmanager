@@ -70,7 +70,7 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
   const location = useLocation();
   const theme = useTheme();
   const { currentUser } = useAuth();
-  const { loans } = useFirestore();
+  const { loans, borrowers } = useFirestore();
 
   // Consume search context
   const {
@@ -131,22 +131,27 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
   ];
 
   useEffect(() => {
-    if (!loans) return;
+    if (!loans || !borrowers) return;
     const now = dayjs();
     const notes = [];
     
     loans.forEach(loan => {
       if (loan.status === "Paid") return;
+
+      // Find the borrower for the current loan
+      const borrower = borrowers.find(b => b.id === loan.borrowerId);
+      const borrowerName = borrower ? borrower.name : "A borrower";
+
       const dueDate = dayjs(loan.dueDate);
       const diffInDays = dueDate.diff(now, "day");
       if (diffInDays < 3 && diffInDays >= 0) {
-        notes.push({ id: `${loan.id}-upcoming`, message: `Loan for ${loan.borrower} is due on ${dueDate.format("MMM D")}.`, loanId: loan.id, isOverdue: false, });
+        notes.push({ id: `${loan.id}-upcoming`, message: `Loan for ${borrowerName} is due on ${dueDate.format("MMM D")}.`, loanId: loan.id, isOverdue: false, });
       } else if (dueDate.isBefore(now, "day")) {
-        notes.push({ id: `${loan.id}-overdue`, message: `Loan for ${loan.borrower} is overdue!`, loanId: loan.id, isOverdue: true, });
+        notes.push({ id: `${loan.id}-overdue`, message: `Loan for ${borrowerName} is overdue!`, loanId: loan.id, isOverdue: true, });
       }
     });
     setAllNotifications(notes);
-  }, [loans]);
+  }, [loans, borrowers]);
 
   const unreadNotifications = allNotifications.filter((note) => !readNotifications.includes(note.id));
 
