@@ -533,7 +533,7 @@ export function FirestoreProvider({ children }) {
   const updateUser = async (updates) => {
     if (!currentUser) return;
     const userRef = doc(db, "users", currentUser.uid);
-    await updateDoc(userRef, updates);
+    await setDoc(userRef, updates, { merge: true });
   };
 
   const value = {

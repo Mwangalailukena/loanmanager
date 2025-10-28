@@ -17,6 +17,7 @@ import {
   FormControlLabel,
   Checkbox,
 } from "@mui/material";
+import { useSnackbar } from "../components/SnackbarProvider";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { subscribeUserToPushNotifications } from "../utils/push";
 
@@ -48,6 +49,7 @@ function a11yProps(index) {
 // SettingsPage component, accepts an onClose prop for when it's rendered in a Dialog
 export default function SettingsPage({ onClose }) {
   const { settings, updateSettings, updateUser, currentUser } = useFirestore();
+  const showSnackbar = useSnackbar();
 
   const [tabIndex, setTabIndex] = useState(0);
   
@@ -131,6 +133,15 @@ export default function SettingsPage({ onClose }) {
       setMessage("Failed to save notification preferences. Please try again.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSubscribe = async () => {
+    try {
+      await subscribeUserToPushNotifications();
+      showSnackbar("Successfully subscribed to notifications!", "success");
+    } catch (error) {
+      showSnackbar("Failed to subscribe to notifications.", "error");
     }
   };
 
@@ -335,7 +346,7 @@ export default function SettingsPage({ onClose }) {
           </Typography>
           <Button
             variant="contained"
-            onClick={subscribeUserToPushNotifications}
+            onClick={handleSubscribe}
             sx={{ mt: 2 }}
           >
             Enable Notifications
