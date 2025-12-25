@@ -9,10 +9,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from 'framer-motion';
 
 import DashboardIcon from "@mui/icons-material/Dashboard";
-import AddIcon from "@mui/icons-material/Add";
 import ListAltIcon from "@mui/icons-material/ListAlt";
 import PeopleIcon from '@mui/icons-material/People';
-import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 
 export const BOTTOM_NAV_HEIGHT = 64;
 
@@ -28,7 +26,7 @@ const BottomNavBar = () => {
   const theme = useTheme();
 
   const getValue = () => {
-    const paths = ["/dashboard", "/add-loan", "/borrowers", "/loans", "/expenses"];
+    const paths = ["/dashboard", "/loans", "/borrowers"];
     return paths.find(path => location.pathname.startsWith(path)) || null;
   };
   
@@ -41,10 +39,8 @@ const BottomNavBar = () => {
 
   const navItems = [
       { label: "Dashboard", value: "/dashboard", icon: <DashboardIcon /> },
-      { label: "Add Loan", value: "/add-loan", icon: <AddIcon /> },
-      { label: "Borrowers", value: "/borrowers", icon: <PeopleIcon /> },
       { label: "Loans", value: "/loans", icon: <ListAltIcon /> },
-      { label: "Expenses", value: "/expenses", icon: <ReceiptLongIcon /> },
+      { label: "Borrowers", value: "/borrowers", icon: <PeopleIcon /> },
   ];
 
   return (
@@ -91,8 +87,7 @@ const BottomNavBar = () => {
                         <motion.div
                             animate={{ 
                                 y: isSelected ? -4 : 0,
-                                // --- FIX: Use a single value for scale with spring animation ---
-                                scale: isSelected ? 1.2 : 1
+                                scale: isSelected ? 1.1 : 1 // Reduced scale for subtlety
                             }}
                             // --- FIX: Remove duration/ease and use only spring properties ---
                             transition={{ 

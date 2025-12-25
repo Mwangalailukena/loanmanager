@@ -96,6 +96,9 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
   const [helpOpen, setHelpOpen] = useState(false);
   const [barVisible, setBarVisible] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [loanManagementAnchor, setLoanManagementAnchor] = useState(null);
+  const [analyticsReportingAnchor, setAnalyticsReportingAnchor] = useState(null);
+  const [accountSettingsAnchor, setAccountSettingsAnchor] = useState(null);
   const searchInputRef = useRef();
 
   const openMenu = Boolean(anchorEl);
@@ -122,12 +125,24 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
   const navItems = [
     { text: "Dashboard", icon: <DashboardIcon />, path: "/dashboard" },
     { text: "Borrowers", icon: <PeopleIcon />, path: "/borrowers" },
-    { text: "Add Loan", icon: <AddIcon />, path: "/add-loan" },
-    { text: "Add Payment", icon: <AttachMoneyIcon />, path: "/add-payment" },
-    { text: "Loan Records", icon: <ListAltIcon />, path: "/loans" },
-    { text: "Expenses", icon: <ReceiptIcon />, path: "/expenses" }, // New: Expenses link
-    { text: "Reports", icon: <AssessmentIcon />, path: "/reports" },
-    { text: "Activity", icon: <HistoryIcon />, path: "/activity" },
+    {
+      text: "Loan Management",
+      icon: <ListAltIcon />,
+      children: [
+        { text: "Add Loan", icon: <AddIcon />, path: "/add-loan" },
+        { text: "Add Payment", icon: <AttachMoneyIcon />, path: "/add-payment" },
+        { text: "Loan Records", icon: <ListAltIcon />, path: "/loans" },
+        { text: "Expenses", icon: <ReceiptIcon />, path: "/expenses" },
+      ],
+    },
+    {
+      text: "Analytics & Reporting",
+      icon: <AssessmentIcon />,
+      children: [
+        { text: "Reports", icon: <AssessmentIcon />, path: "/reports" },
+        { text: "Activity", icon: <HistoryIcon />, path: "/activity" },
+      ],
+    },
   ];
 
   useEffect(() => {
@@ -213,31 +228,99 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
           }}
         >
           {navItems.map((item) => (
-            <Button
-              key={item.text}
-              onClick={() => navigate(item.path)}
-              sx={{
-                textTransform: "none",
-                color: theme.palette.text.secondary,
-                borderRadius: 12,
-                px: 2,
-                py: 1,
-                fontWeight: 500,
-                transition: "all 0.2s ease-in-out",
-                "&:hover": {
-                  bgcolor: alpha(theme.palette.grey[900], 0.1),
-                  transform: "scale(1.02)",
-                  boxShadow: `0 0 8px ${alpha(theme.palette.primary.main, 0.3)}`,
-                },
-                ...(location.pathname.startsWith(item.path) && {
-                  bgcolor: theme.palette.grey[900],
-                  color: theme.palette.common.white,
-                  "&:hover": { bgcolor: theme.palette.grey[900] },
-                }),
-              }}
-            >
-              {item.text}
-            </Button>
+            item.children ? (
+              <React.Fragment key={item.text}>
+                <Button
+                  onClick={(e) => {
+                    if (item.text === "Loan Management") setLoanManagementAnchor(e.currentTarget);
+                    if (item.text === "Analytics & Reporting") setAnalyticsReportingAnchor(e.currentTarget);
+                  }}
+                  sx={{
+                    textTransform: "none",
+                    color: theme.palette.text.secondary,
+                    borderRadius: 12,
+                    px: 2,
+                    py: 1,
+                    fontWeight: 500,
+                    transition: "all 0.2s ease-in-out",
+                    "&:hover": {
+                      bgcolor: alpha(theme.palette.grey[900], 0.1),
+                      transform: "scale(1.02)",
+                      boxShadow: `0 0 8px ${alpha(theme.palette.primary.main, 0.3)}`,
+                    },
+                    // Add active styling if any child path is active
+                    ...((item.children.some(child => location.pathname.startsWith(child.path))) && {
+                      bgcolor: theme.palette.grey[900],
+                      color: theme.palette.common.white,
+                      "&:hover": { bgcolor: theme.palette.grey[900] },
+                    }),
+                  }}
+                >
+                  {item.text}
+                </Button>
+                <Menu
+                  anchorEl={item.text === "Loan Management" ? loanManagementAnchor : analyticsReportingAnchor}
+                  open={item.text === "Loan Management" ? Boolean(loanManagementAnchor) : Boolean(analyticsReportingAnchor)}
+                  onClose={() => {
+                    if (item.text === "Loan Management") setLoanManagementAnchor(null);
+                    if (item.text === "Analytics & Reporting") setAnalyticsReportingAnchor(null);
+                  }}
+                  TransitionComponent={Fade}
+                  PaperProps={{
+                    elevation: 4,
+                    sx: {
+                      mt: 1.5,
+                      borderRadius: 2,
+                      backdropFilter: 'blur(12px) saturate(180%)',
+                      backgroundColor: alpha(theme.palette.background.paper, 0.1),
+                      border: '1px solid ' + alpha(theme.palette.divider, 0.2),
+                    },
+                  }}
+                  transformOrigin={{ horizontal: "left", vertical: "top" }}
+                  anchorOrigin={{ horizontal: "left", vertical: "bottom" }}
+                >
+                  {item.children.map((child) => (
+                    <MenuItem
+                      key={child.text}
+                      onClick={() => {
+                        navigate(child.path);
+                        if (item.text === "Loan Management") setLoanManagementAnchor(null);
+                        if (item.text === "Analytics & Reporting") setAnalyticsReportingAnchor(null);
+                      }}
+                    >
+                      <ListItemIcon>{child.icon}</ListItemIcon>
+                      {child.text}
+                    </MenuItem>
+                  ))}
+                </Menu>
+              </React.Fragment>
+            ) : (
+              <Button
+                key={item.text}
+                onClick={() => navigate(item.path)}
+                sx={{
+                  textTransform: "none",
+                  color: theme.palette.text.secondary,
+                  borderRadius: 12,
+                  px: 2,
+                  py: 1,
+                  fontWeight: 500,
+                  transition: "all 0.2s ease-in-out",
+                  "&:hover": {
+                    bgcolor: alpha(theme.palette.grey[900], 0.1),
+                    transform: "scale(1.02)",
+                    boxShadow: `0 0 8px ${alpha(theme.palette.primary.main, 0.3)}`,
+                  },
+                  ...(location.pathname.startsWith(item.path) && {
+                    bgcolor: theme.palette.grey[900],
+                    color: theme.palette.common.white,
+                    "&:hover": { bgcolor: theme.palette.grey[900] },
+                  }),
+                }}
+              >
+                {item.text}
+              </Button>
+            )
           ))}
         </Box>
 
@@ -325,10 +408,41 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
         transformOrigin={{ horizontal: "right", vertical: "top" }}
         anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
       >
+        <Typography variant="subtitle1" sx={{ px: 2, pt: 1, fontWeight: 'bold' }}>
+            {currentUser?.displayName || "User"}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ px: 2, pb: 1 }}>
+            {currentUser?.email}
+        </Typography>
+        <Divider sx={{ my: 0.5 }} />
         <MenuItem onClick={handleProfileClick}><ListItemIcon><AccountCircleIcon fontSize="small" /></ListItemIcon>Profile</MenuItem>
-        <MenuItem onClick={handleSettingsClick}><ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>Interest Rate/ Capital</MenuItem>
-        <MenuItem onClick={handleChangePasswordClick}><ListItemIcon><LockResetIcon fontSize="small" /></ListItemIcon>Change Password</MenuItem>
-        <MenuItem onClick={openHelpDialog}><ListItemIcon><HelpOutline fontSize="small" /></ListItemIcon>Help</MenuItem>
+        
+        <MenuItem onClick={(e) => setAccountSettingsAnchor(e.currentTarget)}>
+            <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
+            Settings
+        </MenuItem>
+        <Menu
+          anchorEl={accountSettingsAnchor}
+          open={Boolean(accountSettingsAnchor)}
+          onClose={() => setAccountSettingsAnchor(null)}
+          TransitionComponent={Fade}
+          PaperProps={{
+            elevation: 4,
+            sx: {
+              mt: 1.5,
+              borderRadius: 2,
+              backdropFilter: 'blur(12px) saturate(180%)',
+              backgroundColor: alpha(theme.palette.background.paper, 0.1),
+              border: '1px solid ' + alpha(theme.palette.divider, 0.2),
+            },
+          }}
+          transformOrigin={{ horizontal: "left", vertical: "top" }}
+          anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+        >
+          <MenuItem onClick={handleSettingsClick}><ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>Interest Rate/ Capital</MenuItem>
+          <MenuItem onClick={handleChangePasswordClick}><ListItemIcon><LockResetIcon fontSize="small" /></ListItemIcon>Change Password</MenuItem>
+          <MenuItem onClick={openHelpDialog}><ListItemIcon><HelpOutline fontSize="small" /></ListItemIcon>Help</MenuItem>
+        </Menu>
         
         {/* NEW: Dark Mode Toggle */}
         <MenuItem onClick={onToggleDarkMode}>

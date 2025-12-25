@@ -10,23 +10,23 @@ const getAppTheme = (mode) =>
     palette: {
       mode,
       primary: {
-        main: '#1976d2',
-        light: '#63a4ff',
-        dark: '#004ba0',
-        contrastText: '#fff',
+        main: '#6200EE', // Deep Purple
+        light: '#BB86FC',
+        dark: '#3700B3',
+        contrastText: '#FFFFFF',
       },
       secondary: {
-        main: '#009688',
-        light: '#52c7b8',
-        dark: '#00675b',
-        contrastText: '#fff',
+        main: '#03DAC6', // Vibrant Teal/Aqua
+        light: '#66FAF1',
+        dark: '#00B8AC',
+        contrastText: '#000000', // Ensure good contrast
       },
       error: {
-        main: '#f44336',
+        main: mode === 'dark' ? '#CF6679' : '#f44336', // Slightly softer red for dark mode
       },
       background: {
-        default: mode === 'dark' ? '#121212' : '#f5f5f5',
-        paper: mode === 'dark' ? '#1d1d1d' : '#ffffff',
+        default: mode === 'dark' ? '#121212' : '#F8F8F8', // Slightly lighter default for light mode
+        paper: mode === 'dark' ? '#1E1E1E' : '#FFFFFF',
       },
       text: {
         primary: mode === 'dark' ? '#ffffff' : '#212121',
@@ -81,8 +81,21 @@ const getAppTheme = (mode) =>
       MuiButton: {
         styleOverrides: {
           root: {
-            borderRadius: 12,
-            boxShadow: '0 3px 5px 2px rgba(0, 0, 0, .1)',
+            borderRadius: 20, // More rounded (pill-shaped)
+            boxShadow: '0 4px 10px 0 rgba(0,0,0,0.15)', // Slightly more pronounced shadow
+            transition: 'all 0.3s ease-in-out',
+            '&:hover': {
+              boxShadow: '0 6px 12px 0 rgba(0,0,0,0.2)', // Lift effect on hover
+              transform: 'translateY(-2px)',
+            },
+          },
+        },
+      },
+      MuiPaper: {
+        styleOverrides: {
+          root: {
+            borderRadius: 12, // Apply a consistent border radius to all Paper components
+            boxShadow: '0 4px 8px rgba(0, 0, 0, 0.08)', // More noticeable but elegant shadow
           },
         },
       },

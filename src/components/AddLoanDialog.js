@@ -82,7 +82,7 @@ function ColorlibStepIcon(props) {
     2: <CheckCircleIcon sx={{ fontSize: 20 }} />,
   };
   return (
-    <ColorlibStepIconRoot ownerState={{ completed, active }} className={className}>
+  ColorlibStepIconRoot ownerState={{ completed, active }} className={className}>
       {icons[String(icon)]}
     </ColorlibStepIconRoot>
   );
@@ -498,7 +498,7 @@ export default function AddLoanDialog({ open, onClose, borrowerId }) {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
         <DialogTitle fontWeight="bold" sx={{ pb: 1, pt: 2 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="h6" fontWeight="bold">Add Loan</Typography>

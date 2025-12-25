@@ -14,8 +14,6 @@ import {
   MenuItem,
   useTheme,
   Dialog,
-  Popover,
-  Fade,
   Button,
   CircularProgress,
   Collapse,
@@ -103,8 +101,6 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, searc
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [notificationAnchor, setNotificationAnchor] = useState(null);
-  const [generalOpen, setGeneralOpen] = useState(true);
-  const [accountOpen, setAccountOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false); // Declare notificationsOpen state
   const [readNotifications, setReadNotifications] = useState(() => {
     try {
@@ -113,8 +109,6 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, searc
     } catch { return []; }
   });
   const [allNotifications, setAllNotifications] = useState([]);
-
-  const openNotifications = Boolean(notificationAnchor);
 
   useEffect(() => {
     if (!loans || !borrowers) return;
@@ -287,50 +281,50 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, searc
         <Divider />
 
         <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
-          {['general', 'account'].map(sectionName => (
-            <List key={sectionName}>
-              <ListItemButton onClick={() => handleToggleSection(sectionName)}>
-                <ListItemText primary={sectionName === 'general' ? 'General' : 'Account'} sx={{ pl: 1, '& .MuiTypography-root': { fontWeight: 'bold', color: 'text.secondary' } }} />
-                <motion.div animate={{ rotate: openSections[sectionName] ? 180 : 0 }}><ExpandMore /></motion.div>
-              </ListItemButton>
-              <Collapse in={openSections[sectionName]} timeout="auto" unmountOnExit>
-                <motion.div initial="hidden" animate="visible" variants={listVariants}>
-                  <List component="div" disablePadding>
-                    {menuItems.filter(item => item.section === sectionName).map((item) => (
-                      <motion.div variants={itemVariants} key={item.text}>
-                        {item.children ? (
-                          <>
+            {menuItems.map((item, index) => (
+                <List key={item.text}>
+                    {item.section && index > 0 && item.section !== menuItems[index - 1].section && <Divider />} {/* Add divider between sections */}
+                    
+                    {item.children ? (
+                        <>
                             <ListItemButton onClick={() => handleToggleSection(item.text)}>
-                              <ListItemIcon>{item.icon}</ListItemIcon>
-                              <ListItemText primary={item.text} />
-                              <motion.div animate={{ rotate: openSections[item.text] ? 180 : 0 }}><ExpandMore /></motion.div>
+                                <ListItemIcon>{item.icon}</ListItemIcon>
+                                <ListItemText primary={item.text} />
+                                <motion.div animate={{ rotate: openSections[item.text] ? 180 : 0 }}><ExpandMore /></motion.div>
                             </ListItemButton>
                             <Collapse in={openSections[item.text]} timeout="auto" unmountOnExit>
-                              <List component="div" disablePadding>
-                                {item.children.map(child => (
-                                  <ListItem key={child.text} disablePadding onClick={(e) => {
-                                    if (child.path) { navigate(child.path); }
-                                    else if (child.onClick) { child.onClick(e); }
-                                    onClose();
-                                  }}>
-                                    <ListItemButton selected={child.path === pathname} sx={{ ...listItemSx, pl: 4 }}> {/* Increased padding for nested items */}
-                                      <ListItemIcon>{child.icon}</ListItemIcon>
-                                      <ListItemText primary={child.text} />
-                                    </ListItemButton>
-                                  </ListItem>
-                                ))}
-                              </List>
+                                <motion.div initial="hidden" animate="visible" variants={listVariants}>
+                                    <List component="div" disablePadding>
+                                        {item.children.map(child => (
+                                            <motion.div variants={itemVariants} key={child.text}>
+                                                <ListItem
+                                                    disablePadding
+                                                    onClick={(e) => {
+                                                        if (child.path) { navigate(child.path); }
+                                                        else if (child.onClick) { child.onClick(e); }
+                                                        onClose();
+                                                    }}
+                                                >
+                                                    <ListItemButton selected={child.path === pathname} sx={{ ...listItemSx, pl: 4 }}>
+                                                        <ListItemIcon>{child.icon}</ListItemIcon>
+                                                        <ListItemText primary={child.text} />
+                                                    </ListItemButton>
+                                                </ListItem>
+                                            </motion.div>
+                                        ))}
+                                    </List>
+                                </motion.div>
                             </Collapse>
-                          </>
-                        ) : item.isNotifications ? (
-                          <>
+                        </>
+                    ) : item.isNotifications ? (
+                        <>
                             <ListItemButton onClick={() => setNotificationsOpen(!notificationsOpen)}>
-                              <ListItemIcon>{item.icon}</ListItemIcon>
-                              <ListItemText primary={item.text} />
-                              {unreadNotifications.length > 0 && (
-                                <Box component="span" sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "error.main", animation: `${pulse} 1.5s infinite`, }} />
-                              )}
-                              <motion.div animate={{ rotate: notificationsOpen ? 180 : 0 }}><ExpandMore /></motion.div>
+                                <ListItemIcon>{item.icon}</ListItemIcon>
+                                <ListItemText primary={item.text} />
+                                {unreadNotifications.length > 0 && (
+                                    <Box component="span" sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "error.main", animation: `${pulse} 1.5s infinite`, }} />
+                                )}
+                                <motion.div animate={{ rotate: notificationsOpen ? 180 : 0 }}><ExpandMore /></motion.div>
                             </ListItemButton>
                             <Collapse in={notificationsOpen} timeout="auto" unmountOnExit>
                                 <Box sx={{ p: 2 }}>
@@ -348,30 +342,26 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, searc
                                     {unreadNotifications.length > 0 && <Button onClick={handleMarkAllAsRead} color="primary" sx={{ textTransform: 'none', mt: 1, width: '100%' }}>Mark all as read</Button>}
                                 </Box>
                             </Collapse>
-                          </>
-                        ) : (
-                          <ListItem
-                            disablePadding
-                            onClick={(e) => {
-                              if (item.path) { navigate(item.path); }
-                              else if (item.onClick) { item.onClick(e); }
-                              onClose();
-                            }}
-                          >
-                            <ListItemButton selected={item.path === pathname} sx={listItemSx}>
-                              <ListItemIcon>{item.icon}</ListItemIcon>
-                              <ListItemText primary={item.text} />
-                            </ListItemButton>
-                          </ListItem>
-                        )}
-                      </motion.div>
-                    ))}
-                  </List>
-                </motion.div>
-              </Collapse>
-              {sectionName === 'general' && <Divider />}
-            </List>
-          ))}
+                        </>
+                    ) : (
+                        <motion.div variants={itemVariants} key={item.text}>
+                            <ListItem
+                                disablePadding
+                                onClick={(e) => {
+                                    if (item.path) { navigate(item.path); }
+                                    else if (item.onClick) { item.onClick(e); }
+                                    onClose();
+                                }}
+                            >
+                                <ListItemButton selected={item.path === pathname} sx={listItemSx}>
+                                    <ListItemIcon>{item.icon}</ListItemIcon>
+                                    <ListItemText primary={item.text} />
+                                </ListItemButton>
+                            </ListItem>
+                        </motion.div>
+                    )}
+                </List>
+            ))}
         </Box>
 
         <Box sx={{ mt: 'auto' }}>

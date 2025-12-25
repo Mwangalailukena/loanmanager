@@ -112,7 +112,7 @@ export default function Dashboard() {
         isMobile
     );
 
-    const insights = useInsights(loans, borrowers);
+    const insights = useInsights(loans, borrowers, payments);
 
     useEffect(() => {
         if (!loans || loans.length === 0) return; // Ensure loans are loaded
@@ -170,7 +170,7 @@ export default function Dashboard() {
 
     const onDragEnd = useCallback(
         (result) => {
-            const { source, destination, draggableId } = result;
+            const { source, destination } = result;
 
             if (!destination) {
                 return;

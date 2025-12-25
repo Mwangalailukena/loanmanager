@@ -173,21 +173,21 @@ const calcStatus = (loan) => {
   return "Active";
 };
 
-const getStatusChipColor = (status) => {
+const getStatusChipColor = (status, theme) => {
   switch (status) {
     case 'Paid':
-      return { backgroundColor: '#4CAF50', color: 'white' };
+      return { backgroundColor: theme.palette.success.main, color: theme.palette.success.contrastText };
     case 'Overdue':
-      return { backgroundColor: '#F44336', color: 'white' };
+      return { backgroundColor: theme.palette.error.main, color: theme.palette.error.contrastText };
     case 'Defaulted':
-      return { backgroundColor: '#FFC107', color: 'white' };
+      return { backgroundColor: theme.palette.warning.main, color: theme.palette.warning.contrastText };
     case 'Active':
     default:
-      return { backgroundColor: '#2196F3', color: 'white' };
+      return { backgroundColor: theme.palette.primary.main, color: theme.palette.primary.contrastText };
   }
 };
 
-const CreditScoreCard = ({ score, remarks, positiveFactors, negativeFactors, stats }) => {
+const CreditScoreCard = ({ score, remarks, positiveFactors, negativeFactors, stats, theme }) => {
   const getScoreColor = (score) => {
     if (score >= 80) return 'success.main';
     if (score >= 60) return 'warning.main';
@@ -210,7 +210,7 @@ const CreditScoreCard = ({ score, remarks, positiveFactors, negativeFactors, sta
         <Typography variant="h2" component="div" fontWeight="bold" sx={{ color: getScoreColor(score) }}>
           {score}
         </Typography>
-        <Chip label={remarks} sx={{ backgroundColor: getScoreColor(score), color: 'white', fontWeight: 'bold', mt: 1 }} />
+        <Chip label={remarks} color={getScoreColor(score).split('.')[0]} sx={{ fontWeight: 'bold', mt: 1 }} />
       </Box>
       <Divider sx={{ my: 2 }} />
       <Typography variant="subtitle2" gutterBottom>Scoring Factors</Typography>
@@ -245,6 +245,7 @@ export default function BorrowerProfilePage() {
     guarantors, deleteGuarantor,
     refinanceLoan,
   } = useFirestore();
+  const theme = useTheme();
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [newComment, setNewComment] = useState("");
@@ -257,6 +258,21 @@ export default function BorrowerProfilePage() {
   const [refinanceDueDate, setRefinanceDueDate] = useState(dayjs().add(1, "week").format("YYYY-MM-DD"));
   const [refinanceError, setRefinanceError] = useState("");
   const [isRefinancing, setIsRefinancing] = useState(false);
+
+  const getTextFieldStyles = (theme) => ({
+    "& .MuiOutlinedInput-root": {
+      "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+        borderColor: theme.palette.secondary.main,
+      },
+      "& .MuiInputBase-input": { padding: "10px 12px", fontSize: "0.875rem" },
+    },
+    "& .MuiInputLabel-root.Mui-focused": { color: theme.palette.secondary.main },
+    "& .MuiInputLabel-root": { fontSize: "0.875rem", transform: "translate(12px, 12px) scale(1)" },
+    "& .MuiInputLabel-shrink": { transform: "translate(12px, -9px) scale(0.75)" },
+    "& .MuiFormHelperText-root": { fontSize: "0.75rem" },
+  });
+
+  const textFieldStyles = getTextFieldStyles(theme);
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
@@ -301,7 +317,7 @@ export default function BorrowerProfilePage() {
     { name: 'Outstanding', value: financialStats.outstanding },
   ].filter(item => item.value > 0); 
 
-  const COLORS = ['#4CAF50', '#F44336'];
+  const COLORS = [theme.palette.success.main, theme.palette.error.main];
 
   // --- Handlers ---
   const handleOpenDeleteDialog = () => setDeleteDialogOpen(true);
@@ -399,7 +415,7 @@ export default function BorrowerProfilePage() {
       <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 4 }}>
         <Grid container spacing={3}>
           <Grid item xs={12} md={3}>
-            <Paper elevation={4} sx={{ p: 3, borderRadius: 3 }}>
+            <Paper elevation={4} sx={{ p: 3 }}>
               <Stack direction="column" alignItems="center" spacing={2}>
                 <Avatar sx={{ width: 80, height: 80, bgcolor: 'secondary.main' }}><PersonIcon sx={{ fontSize: 50 }} /></Avatar>
                 <Typography variant="h5" fontWeight="bold" textAlign="center">{borrower.name}</Typography>
@@ -434,7 +450,7 @@ export default function BorrowerProfilePage() {
           </Grid>
 
           <Grid item xs={12} md={9}>
-            <Paper elevation={4} sx={{ borderRadius: 3 }}>
+            <Paper elevation={4}>
               <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
                 <Tabs value={activeTab} onChange={handleTabChange} aria-label="borrower profile tabs">
                   <Tab label="Summary" />
@@ -448,7 +464,7 @@ export default function BorrowerProfilePage() {
                 <TabPanel value={activeTab} index={0}>
                   <Grid container spacing={3}>
                     <Grid item xs={12} md={6}>
-                      <CreditScoreCard {...creditScoreData} />
+                      <CreditScoreCard {...creditScoreData} theme={theme} />
                     </Grid>
                     <Grid item xs={12} md={6}>
                       <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
@@ -514,7 +530,7 @@ export default function BorrowerProfilePage() {
                                 <Typography variant="body2" color="text.secondary">{dayjs(loan.startDate).format('DD MMM YYYY')}</Typography>
                                 <Typography variant="h6" fontWeight="500">ZMW {Number(loan.principal).toLocaleString()}</Typography>
                               </Box>
-                              <Chip label={calcStatus(loan)} sx={getStatusChipColor(calcStatus(loan))} size="small" />
+                              <Chip label={calcStatus(loan)} sx={getStatusChipColor(calcStatus(loan), theme)} size="small" />
                             </Stack>
                             <Divider sx={{ my: 1 }} />
                             <Stack direction="row" justifyContent="space-between" sx={{ fontSize: '0.875rem' }}>
@@ -652,8 +668,10 @@ export default function BorrowerProfilePage() {
               onChange={(e) => setRefinanceStartDate(e.target.value)}
               size="small"
               fullWidth
+              InputLabelProps={{ shrink: true }}
               error={!!refinanceError}
               helperText={refinanceError}
+              sx={textFieldStyles}
             />
             <TextField
               label="New Due Date"
@@ -662,6 +680,8 @@ export default function BorrowerProfilePage() {
               onChange={(e) => setRefinanceDueDate(e.target.value)}
               size="small"
               fullWidth
+              InputLabelProps={{ shrink: true }}
+              sx={textFieldStyles}
             />
           </Stack>
         </DialogContent>

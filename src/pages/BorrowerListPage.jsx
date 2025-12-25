@@ -5,11 +5,6 @@ import { useCreditScore } from '../hooks/useCreditScore';
 import {
   Box,
   Typography,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemAvatar,
-  Avatar,
   Paper,
   CircularProgress,
   TextField,
@@ -19,7 +14,13 @@ import {
   Menu,
   MenuItem,
   Chip,
-  Button
+  Button,
+  Grid,
+  Card,
+  CardContent,
+  Avatar,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import AddIcon from '@mui/icons-material/Add';
@@ -27,12 +28,14 @@ import SearchIcon from '@mui/icons-material/Search';
 import PersonIcon from '@mui/icons-material/Person';
 import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline';
 
-const BorrowerRow = ({ borrower }) => {
+const BorrowerCard = ({ borrower }) => {
   const { loans } = useFirestore();
   const navigate = useNavigate();
   const associatedLoans = useMemo(() => loans.filter((loan) => loan.borrowerId === borrower.id), [loans, borrower.id]);
   const { score, remarks } = useCreditScore(associatedLoans);
   const [anchorEl, setAnchorEl] = useState(null);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const handleMenuClick = (event) => {
     event.stopPropagation();
@@ -51,43 +54,51 @@ const BorrowerRow = ({ borrower }) => {
   };
 
   return (
-    <ListItem
-      button
-      onClick={() => navigate(`/borrowers/${borrower.id}`)}
-      secondaryAction={
-        <IconButton
-          edge="end"
-          aria-label="more"
-          aria-controls="long-menu"
-          aria-haspopup="true"
-          onClick={handleMenuClick}
-        >
-          <MoreVertIcon />
-        </IconButton>
-      }
-      sx={{ 
-        mb: 1, 
-        borderRadius: 2, 
-        '&:hover': { bgcolor: 'action.hover' }
+    <Card
+      sx={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        '&:hover': {
+          boxShadow: 4,
+          transform: 'translateY(-2px)',
+        },
+        transition: 'box-shadow 0.3s, transform 0.3s',
+        cursor: 'pointer',
       }}
+      onClick={() => navigate(`/borrowers/${borrower.id}`)}
     >
-      <ListItemAvatar>
-        <Avatar sx={{ bgcolor: 'secondary.main' }}>
-          <PersonIcon />
-        </Avatar>
-      </ListItemAvatar>
-      <ListItemText
-        primary={borrower.name}
-        secondary={`Phone: ${borrower.phone} | Email: ${borrower.email || 'N/A'}`}
-      />
-      <Stack direction="row" spacing={1} alignItems="center">
-        <Chip label={score} color={getScoreColor(score)} size="small" />
-        <Typography variant="caption" color="text.secondary">{remarks}</Typography>
-      </Stack>
+      <CardContent sx={{ flexGrow: 1, p: isMobile ? 1.5 : 2 }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+          <Stack direction="row" alignItems="center" spacing={1.5}>
+            <Avatar sx={{ width: 48, height: 48, bgcolor: 'secondary.main' }}>
+              <PersonIcon />
+            </Avatar>
+            <Box>
+              <Typography variant="h6" component="div" fontWeight="600" noWrap>
+                {borrower.name}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" noWrap>{borrower.phone}</Typography>
+            </Box>
+          </Stack>
+          <IconButton
+            size="small"
+            aria-label="more"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleMenuClick(e);
+            }}
+          >
+            <MoreVertIcon />
+          </IconButton>
+        </Stack>
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1.5 }}>
+          <Chip label={`Score: ${score}`} color={getScoreColor(score)} size="small" variant="outlined" />
+          <Typography variant="caption" color="text.secondary" noWrap>{remarks}</Typography>
+        </Stack>
+      </CardContent>
       <Menu
-        id="long-menu"
         anchorEl={anchorEl}
-        keepMounted
         open={Boolean(anchorEl)}
         onClose={handleMenuClose}
       >
@@ -96,22 +107,24 @@ const BorrowerRow = ({ borrower }) => {
           to={`/add-loan?borrowerId=${borrower?.id}`}
           onClick={handleMenuClose}
         >
-          Add Loan for this Borrower
+          Add Loan
         </MenuItem>
         <MenuItem onClick={(e) => {
+          e.stopPropagation();
           window.location.href = `tel:${borrower?.phone}`;
           handleMenuClose(e);
         }}>
           Call
         </MenuItem>
         <MenuItem onClick={(e) => {
+          e.stopPropagation();
           window.location.href = `sms:${borrower?.phone}`;
           handleMenuClose(e);
         }}>
           Send SMS
         </MenuItem>
       </Menu>
-    </ListItem>
+    </Card>
   );
 };
 
@@ -171,11 +184,13 @@ export default function BorrowerListPage() {
           <CircularProgress color="secondary" />
         </Box>
       ) : filteredBorrowers.length > 0 ? (
-        <List sx={{ width: '100%' }}>
+        <Grid container spacing={2}>
           {filteredBorrowers.map((borrower) => (
-            <BorrowerRow key={borrower.id} borrower={borrower} />
+            <Grid item xs={6} sm={4} md={3} key={borrower.id}>
+              <BorrowerCard borrower={borrower} />
+            </Grid>
           ))}
-        </List>
+        </Grid>
       ) : (
         <Box sx={{ textAlign: 'center', mt: 4, color: 'text.secondary' }}>
           <PeopleOutlineIcon sx={{ fontSize: 48, color: 'grey.400' }} />

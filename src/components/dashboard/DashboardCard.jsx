@@ -60,14 +60,13 @@ const DashboardCard = ({
           <Card
             sx={{
               p: isMobile ? 1.5 : 2,
-              borderRadius: 3,
               height: "100%",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               textAlign: "center",
               backgroundColor: theme.palette.background.paper,
-              boxShadow: snapshot.isDragging ? theme.shadows[8] : theme.shadows[1],
+              boxShadow: snapshot.isDragging ? theme.shadows[8] : undefined, // Remove base override
               border: `1px solid ${theme.palette.divider}`,
               transition: "box-shadow 0.3s ease-in-out, border-color 0.3s ease-in-out",
               transform: snapshot.isDragging ? 'rotate(2deg)' : 'rotate(0deg)',

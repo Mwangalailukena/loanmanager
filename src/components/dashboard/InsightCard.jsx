@@ -40,7 +40,7 @@ export default function InsightCard({ insight }) {
           <Box display="flex" alignItems="center" mb={1}>
             {React.cloneElement(IconComponent, { sx: { mr: 1, color: textColor } })}
             <Typography variant="subtitle2" fontWeight="bold" color={textColor}>
-              {insight.type.charAt(0).toUpperCase() + insight.type.slice(1)}
+              {insight.title || (insight.type.charAt(0).toUpperCase() + insight.type.slice(1))}
             </Typography>
           </Box>
           <Typography variant="body2" color={textColor} mb={1}>

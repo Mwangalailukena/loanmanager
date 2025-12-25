@@ -76,7 +76,6 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
     searchTerm,
     handleSearchChange,
     isMobileSearchOpen,
-    handleMobileSearchOpen,
     handleMobileSearchClose,
     loanDetailOpen,
     selectedLoanId,
