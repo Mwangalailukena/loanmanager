@@ -160,7 +160,7 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
           {children}
         </Container>
       </Box>
-      <MobileDrawer open={mobileDrawerOpen} onClose={handleDrawerClose} onOpen={handleDrawerOpen} darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} onOpenLoanDetail={openLoanDetail} onSearchOpen={handleMobileSearchOpen} />
+      <MobileDrawer open={mobileDrawerOpen} onClose={handleDrawerClose} onOpen={handleDrawerOpen} darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} onOpenLoanDetail={openLoanDetail} searchTerm={searchTerm} handleSearchChange={handleSearchChange} />
       {!hideLayout && isMobile && <BottomNavBar />}
       <LoanDetailDialog key={selectedLoanId} open={loanDetailOpen} onClose={closeLoanDetail} loanId={selectedLoanId} />
 

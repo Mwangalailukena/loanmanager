@@ -19,6 +19,7 @@ import {
   Button,
   CircularProgress,
   Collapse,
+  TextField,
 } from '@mui/material';
 import { alpha, keyframes } from '@mui/material/styles';
 import { motion } from 'framer-motion';
@@ -89,7 +90,7 @@ function stringToInitials(name = "") {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase();
 }
 
-const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onSearchOpen }) => {
+const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, searchTerm, handleSearchChange }) => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const theme = useTheme();
@@ -104,6 +105,7 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onSea
   const [notificationAnchor, setNotificationAnchor] = useState(null);
   const [generalOpen, setGeneralOpen] = useState(true);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false); // Declare notificationsOpen state
   const [readNotifications, setReadNotifications] = useState(() => {
     try {
       const saved = localStorage.getItem("readNotifications");
@@ -158,26 +160,61 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onSea
     localStorage.setItem("readNotifications", JSON.stringify(allIds));
   };
 
-  const generalItems = [
-    { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-    { text: 'Borrowers', icon: <PeopleIcon />, path: '/borrowers' },
-    { text: 'Loans', icon: <AttachMoneyIcon />, path: '/loans' },
-    { text: 'Add Loan', icon: <AddIcon />, path: '/add-loan' },
-    { text: 'Expenses', icon: <ReceiptIcon />, path: '/expenses' },
-    { text: 'Activity', icon: <HistoryIcon />, path: '/activity' },
-    { text: 'Reports', icon: <AssessmentIcon />, path: '/reports' },
-    { text: 'Simulator', icon: <CalculateIcon />, path: '/simulator' },
-    { text: 'Notifications', icon: <NotificationsIcon />, onClick: (e) => setNotificationAnchor(e.currentTarget) },
-    { text: 'Search', icon: <SearchIcon />, onClick: () => { onClose(); onSearchOpen(); } },
+  const menuItems = [
+    { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard', section: 'general' },
+    { text: 'Borrowers', icon: <PeopleIcon />, path: '/borrowers', section: 'general' },
+    {
+      text: 'Loan Management',
+      icon: <AttachMoneyIcon />,
+      section: 'general',
+      children: [
+        { text: 'Loans', icon: <AttachMoneyIcon />, path: '/loans' },
+        { text: 'Add Loan', icon: <AddIcon />, path: '/add-loan' },
+      ],
+    },
+    { text: 'Expenses', icon: <ReceiptIcon />, path: '/expenses', section: 'general' },
+    {
+      text: 'Analytics & Reporting',
+      icon: <AssessmentIcon />,
+      section: 'general',
+      children: [
+        { text: 'Reports', icon: <AssessmentIcon />, path: '/reports' },
+        { text: 'Activity', icon: <HistoryIcon />, path: '/activity' },
+        { text: 'Simulator', icon: <CalculateIcon />, path: '/simulator' },
+      ],
+    },
+    {
+      text: 'Notifications',
+      icon: <NotificationsIcon />,
+      section: 'general',
+      isNotifications: true, // Custom flag to identify notification item
+    },
+    {
+      text: 'Settings',
+      icon: <SettingsIcon />,
+      section: 'account',
+      children: [
+        { text: 'Profile', icon: <AccountCircleIcon />, onClick: () => { onClose(); setProfileOpen(true); } },
+        { text: 'Interest Rate/Capital', icon: <SettingsIcon />, onClick: () => { onClose(); setSettingsOpen(true); } },
+        { text: 'Change Password', icon: <LockResetIcon />, onClick: () => { onClose(); setChangePasswordOpen(true); } },
+        { text: 'Help', icon: <HelpOutline />, onClick: () => { onClose(); setHelpOpen(true); } },
+        { text: darkMode ? 'Light Mode' : 'Dark Mode', icon: darkMode ? <LightModeIcon /> : <DarkModeIcon />, onClick: onToggleDarkMode },
+      ],
+    },
   ];
 
-  const accountItems = [
-    { text: 'Profile', icon: <AccountCircleIcon />, onClick: () => { onClose(); setProfileOpen(true); } },
-    { text: 'Interest Rate/ Capital', icon: <SettingsIcon />, onClick: () => { onClose(); setSettingsOpen(true); } },
-    { text: 'Change Password', icon: <LockResetIcon />, onClick: () => { onClose(); setChangePasswordOpen(true); } },
-    { text: 'Help', icon: <HelpOutline />, onClick: () => { onClose(); setHelpOpen(true); } },
-    { text: darkMode ? 'Light Mode' : 'Dark Mode', icon: darkMode ? <LightModeIcon /> : <DarkModeIcon />, onClick: onToggleDarkMode },
-  ];
+  // State to manage collapse for nested menus
+  const [openSections, setOpenSections] = useState({
+    'general': true,
+    'Loan Management': false,
+    'Analytics & Reporting': false,
+    'account': true,
+    'Settings': false,
+  });
+
+  const handleToggleSection = (sectionName) => {
+    setOpenSections(prev => ({ ...prev, [sectionName]: !prev[sectionName] }));
+  };
 
   const listItemSx = {
     borderRadius: theme.shape.borderRadius,
@@ -211,7 +248,7 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onSea
           },
         }}
       >
-        <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Box sx={{ p: 2, pb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
             <Avatar sx={{ width: 40, height: 40, mr: 2, flexShrink: 0 }} src={currentUser?.photoURL || ''}>
               {stringToInitials(currentUser?.displayName || "U")}
@@ -223,65 +260,118 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onSea
           </Box>
           <IconButton onClick={onClose}><CloseIcon /></IconButton>
         </Box>
+        <Box sx={{ px: 2, pb: 2 }}>
+            <TextField
+                fullWidth
+                size="small"
+                variant="outlined"
+                placeholder="Search loans..."
+                value={searchTerm}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                InputProps={{
+                    startAdornment: (
+                        <SearchIcon sx={{ color: 'action.active', mr: 1 }} />
+                    ),
+                    endAdornment: searchTerm && (
+                        <IconButton
+                            size="small"
+                            onClick={() => handleSearchChange('')}
+                            sx={{ visibility: searchTerm ? 'visible' : 'hidden' }}
+                        >
+                            <CloseIcon fontSize="small" />
+                        </IconButton>
+                    ),
+                }}
+            />
+        </Box>
         <Divider />
 
         <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
-          <List>
-            <ListItemButton onClick={() => setGeneralOpen(!generalOpen)}>
-              <ListItemText primary="General" sx={{ pl: 1, '& .MuiTypography-root': { fontWeight: 'bold', color: 'text.secondary' } }} />
-              <motion.div animate={{ rotate: generalOpen ? 180 : 0 }}><ExpandMore /></motion.div>
-            </ListItemButton>
-            <Collapse in={generalOpen} timeout="auto" unmountOnExit>
-              <motion.div initial="hidden" animate="visible" variants={listVariants}>
-                <List component="div" disablePadding>
-                  {generalItems.map((item) => (
-                    <motion.div variants={itemVariants} key={item.text}>
-                      <ListItem
-                        disablePadding
-                        onClick={(e) => {
-                          if (item.path) { navigate(item.path); }
-                          else if (item.onClick) { item.onClick(e); }
-                          onClose();
-                        }}
-                      >
-                        <ListItemButton selected={item.path === pathname} sx={listItemSx}>
-                          <ListItemIcon>{item.icon}</ListItemIcon>
-                          <ListItemText primary={item.text} />
-                          {item.text === "Notifications" && unreadNotifications.length > 0 && (
-                            <Box component="span" sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "error.main", animation: `${pulse} 1.5s infinite`, }} />
-                          )}
-                        </ListItemButton>
-                      </ListItem>
-                    </motion.div>
-                  ))}
-                </List>
-              </motion.div>
-            </Collapse>
-          </List>
-          <Divider />
-
-          <List>
-            <ListItemButton onClick={() => setAccountOpen(!accountOpen)}>
-              <ListItemText primary="Account" sx={{ pl: 1, '& .MuiTypography-root': { fontWeight: 'bold', color: 'text.secondary' } }} />
-              <motion.div animate={{ rotate: accountOpen ? 180 : 0 }}><ExpandMore /></motion.div>
-            </ListItemButton>
-            <Collapse in={accountOpen} timeout="auto" unmountOnExit>
-              <motion.div initial="hidden" animate="visible" variants={listVariants}>
-                <List component="div" disablePadding>
-                  {accountItems.map((item) => (
-                    <motion.div variants={itemVariants} key={item.text}>
-                      <ListItem disablePadding onClick={() => { item.onClick(); onClose(); }}>
-                        <ListItemButton sx={listItemSx}>
-                          <ListItemIcon>{item.icon}</ListItemIcon>
-                          <ListItemText primary={item.text} />
-                        </ListItemButton>
-                      </ListItem>
-                    </motion.div>
-                  ))}
-                </List>
-              </motion.div>
-            </Collapse>
-          </List>
+          {['general', 'account'].map(sectionName => (
+            <List key={sectionName}>
+              <ListItemButton onClick={() => handleToggleSection(sectionName)}>
+                <ListItemText primary={sectionName === 'general' ? 'General' : 'Account'} sx={{ pl: 1, '& .MuiTypography-root': { fontWeight: 'bold', color: 'text.secondary' } }} />
+                <motion.div animate={{ rotate: openSections[sectionName] ? 180 : 0 }}><ExpandMore /></motion.div>
+              </ListItemButton>
+              <Collapse in={openSections[sectionName]} timeout="auto" unmountOnExit>
+                <motion.div initial="hidden" animate="visible" variants={listVariants}>
+                  <List component="div" disablePadding>
+                    {menuItems.filter(item => item.section === sectionName).map((item) => (
+                      <motion.div variants={itemVariants} key={item.text}>
+                        {item.children ? (
+                          <>
+                            <ListItemButton onClick={() => handleToggleSection(item.text)}>
+                              <ListItemIcon>{item.icon}</ListItemIcon>
+                              <ListItemText primary={item.text} />
+                              <motion.div animate={{ rotate: openSections[item.text] ? 180 : 0 }}><ExpandMore /></motion.div>
+                            </ListItemButton>
+                            <Collapse in={openSections[item.text]} timeout="auto" unmountOnExit>
+                              <List component="div" disablePadding>
+                                {item.children.map(child => (
+                                  <ListItem key={child.text} disablePadding onClick={(e) => {
+                                    if (child.path) { navigate(child.path); }
+                                    else if (child.onClick) { child.onClick(e); }
+                                    onClose();
+                                  }}>
+                                    <ListItemButton selected={child.path === pathname} sx={{ ...listItemSx, pl: 4 }}> {/* Increased padding for nested items */}
+                                      <ListItemIcon>{child.icon}</ListItemIcon>
+                                      <ListItemText primary={child.text} />
+                                    </ListItemButton>
+                                  </ListItem>
+                                ))}
+                              </List>
+                            </Collapse>
+                          </>
+                        ) : item.isNotifications ? (
+                          <>
+                            <ListItemButton onClick={() => setNotificationsOpen(!notificationsOpen)}>
+                              <ListItemIcon>{item.icon}</ListItemIcon>
+                              <ListItemText primary={item.text} />
+                              {unreadNotifications.length > 0 && (
+                                <Box component="span" sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "error.main", animation: `${pulse} 1.5s infinite`, }} />
+                              )}
+                              <motion.div animate={{ rotate: notificationsOpen ? 180 : 0 }}><ExpandMore /></motion.div>
+                            </ListItemButton>
+                            <Collapse in={notificationsOpen} timeout="auto" unmountOnExit>
+                                <Box sx={{ p: 2 }}>
+                                    {loadingLoans ? (
+                                        <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}><CircularProgress size={24} /></Box>
+                                    ) : unreadNotifications.length === 0 ? (
+                                        <Typography variant="body2" color="text.secondary">No new notifications.</Typography>
+                                    ) : (
+                                        unreadNotifications.map(({ id, message, loanId }) => (
+                                            <MenuItem key={id} onClick={() => handleNotificationItemClick(id, loanId)}>
+                                                <Typography variant="body2" component="span">{message}</Typography>
+                                            </MenuItem>
+                                        ))
+                                    )}
+                                    {unreadNotifications.length > 0 && <Button onClick={handleMarkAllAsRead} color="primary" sx={{ textTransform: 'none', mt: 1, width: '100%' }}>Mark all as read</Button>}
+                                </Box>
+                            </Collapse>
+                          </>
+                        ) : (
+                          <ListItem
+                            disablePadding
+                            onClick={(e) => {
+                              if (item.path) { navigate(item.path); }
+                              else if (item.onClick) { item.onClick(e); }
+                              onClose();
+                            }}
+                          >
+                            <ListItemButton selected={item.path === pathname} sx={listItemSx}>
+                              <ListItemIcon>{item.icon}</ListItemIcon>
+                              <ListItemText primary={item.text} />
+                            </ListItemButton>
+                          </ListItem>
+                        )}
+                      </motion.div>
+                    ))}
+                  </List>
+                </motion.div>
+              </Collapse>
+              {sectionName === 'general' && <Divider />}
+            </List>
+          ))}
         </Box>
 
         <Box sx={{ mt: 'auto' }}>
@@ -295,14 +385,6 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, onSea
         </Box>
       </SwipeableDrawer>
 
-      <Popover open={openNotifications} anchorEl={notificationAnchor} onClose={closeAllDialogs} anchorOrigin={{ vertical: "bottom", horizontal: "right" }} transformOrigin={{ vertical: "top", horizontal: "right" }} TransitionComponent={Fade} PaperProps={{ sx: { width: 320, p: 2, borderRadius: 2, boxShadow: theme.shadows[4], }, }} >
-        <Typography variant="h6" sx={{ pb: 1 }}>Notifications</Typography>
-        {loadingLoans ? (<Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}><CircularProgress size={24} /></Box>
-        ) : unreadNotifications.length === 0 ? (<Typography variant="body2" color="text.secondary" sx={{ p: 1 }}>No new notifications.</Typography>
-        ) : (unreadNotifications.map(({ id, message, loanId }) => (<MenuItem key={id} onClick={() => handleNotificationItemClick(id, loanId)}><Typography variant="body2" component="span">{message}</Typography></MenuItem>))
-        )}
-        {unreadNotifications.length > 0 && <Button onClick={handleMarkAllAsRead} color="primary" sx={{ textTransform: 'none', mt: 1, width: '100%' }}>Mark all as read</Button>}
-      </Popover>
       <Dialog open={profileOpen} onClose={closeAllDialogs} maxWidth="sm" fullWidth><Profile onClose={closeAllDialogs} /></Dialog>
       <Dialog open={settingsOpen} onClose={closeAllDialogs} maxWidth="sm" fullWidth><SettingsPage onClose={closeAllDialogs} /></Dialog>
       <Dialog open={changePasswordOpen} onClose={closeAllDialogs} maxWidth="sm" fullWidth><ChangePassword onClose={closeAllDialogs} /></Dialog>
