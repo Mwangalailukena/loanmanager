@@ -57,7 +57,7 @@ export default function AddPaymentPage() {
     }
   }, [borrowers]);
 
-  const calcStatus = (loan) => {
+  const calcStatus = useCallback((loan) => {
     if (loan.status === "Defaulted") return "Defaulted";
 
     const totalRepayable = Number(loan.totalRepayable || 0);
@@ -74,7 +74,8 @@ export default function AddPaymentPage() {
     }
 
     return "Active";
-  };
+  }, []); // No dependencies needed for calcStatus
+
 
   useEffect(() => {
     const activeLoans = loans

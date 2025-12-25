@@ -188,7 +188,6 @@ export default function LoanList() {
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [refinanceModal, setRefinanceModal] = useState({ open: false, loan: null });
   const [refinanceStartDate, setRefinanceStartDate] = useState(dayjs().format("YYYY-MM-DD"));
-  const [refinanceDueDate, setRefinanceDueDate] = useState(dayjs().add(1, "week").format("YYYY-MM-DD"));
   const [refinanceAmount, setRefinanceAmount] = useState("");
   const [refinanceInterestDuration, setRefinanceInterestDuration] = useState(1);
   const [refinanceCurrentOutstanding, setRefinanceCurrentOutstanding] = useState(0);
@@ -658,7 +657,6 @@ export default function LoanList() {
     setRefinanceAmount(outstanding.toFixed(2)); // Default to full outstanding
     setRefinanceInterestDuration(loan.interestDuration || 1); // Default to old duration
     setRefinanceStartDate(dayjs().format("YYYY-MM-DD"));
-    setRefinanceDueDate(dayjs().add(loan.interestDuration || 1, "week").format("YYYY-MM-DD")); // Estimate new due date
     setRefinanceError("");
     setRefinanceModal({ open: true, loan });
     calculateRefinancePreview(loan, outstanding, loan.interestDuration || 1, dayjs().format("YYYY-MM-DD"));

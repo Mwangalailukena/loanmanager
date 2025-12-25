@@ -24,7 +24,6 @@ import {
   Stack,
   Button,
   Autocomplete,
-  IconButton,
 } from "@mui/material";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend as RechartsLegend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
