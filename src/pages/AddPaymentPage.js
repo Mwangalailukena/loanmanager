@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Box,
   TextField,
@@ -29,11 +29,12 @@ import PhoneIcon from '@mui/icons-material/Phone';
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { useSnackbar } from "../components/SnackbarProvider";
+import dayjs from "dayjs";
 
 
 export default function AddPaymentPage() {
   const theme = useTheme();
-  const { loans, addPayment, loadingLoans } = useFirestore();
+  const { loans, addPayment, loadingLoans, borrowers } = useFirestore();
   const showSnackbar = useSnackbar();
   const location = useLocation();
   const navigate = useNavigate();
@@ -46,8 +47,44 @@ export default function AddPaymentPage() {
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
   const [filteredLoans, setFilteredLoans] = useState([]);
 
+  const getDisplayBorrowerInfo = useCallback((loan) => {
+    if (loan.borrowerId) {
+      const borrower = borrowers.find(b => b.id === loan.borrowerId);
+      return { name: borrower?.name, phone: borrower?.phone };
+    } else {
+      // Old loan format
+      return { name: loan.borrower, phone: loan.phone };
+    }
+  }, [borrowers]);
+
+  const calcStatus = (loan) => {
+    if (loan.status === "Defaulted") return "Defaulted";
+
+    const totalRepayable = Number(loan.totalRepayable || 0);
+    const repaidAmount = Number(loan.repaidAmount || 0);
+
+    if (repaidAmount >= totalRepayable && totalRepayable > 0) {
+      return "Paid";
+    }
+
+    const now = dayjs();
+    const due = dayjs(loan.dueDate);
+    if (due.isBefore(now, "day")) {
+      return "Overdue";
+    }
+
+    return "Active";
+  };
+
   useEffect(() => {
-    const activeLoans = loans.filter(loan => loan.status === "Active");
+    const activeLoans = loans
+      .map(loan => {
+        const displayInfo = getDisplayBorrowerInfo(loan);
+        const status = calcStatus(loan);
+        return { ...loan, borrower: displayInfo.name, phone: displayInfo.phone, status };
+      })
+      .filter(loan => loan.status === "Active" || loan.status === "Overdue");
+
     const borrowerId = location.state?.borrowerId;
 
     if (borrowerId) {
@@ -60,7 +97,7 @@ export default function AddPaymentPage() {
     } else {
       setFilteredLoans(activeLoans);
     }
-  }, [loans, location.state]);
+  }, [loans, location.state, getDisplayBorrowerInfo, calcStatus]);
 
   const setFieldError = (field, message) => {
     setFieldErrors(prev => ({ ...prev, [field]: message }));
@@ -170,7 +207,7 @@ export default function AddPaymentPage() {
             sx={textFieldStyles}
             id="loan-borrower-search"
             options={filteredLoans}
-            getOptionLabel={(option) => option.borrower}
+            getOptionLabel={(option) => option.borrower || ''}
             value={selectedLoan}
             onChange={(e, newValue) => setSelectedLoan(newValue)}
             loading={loadingLoans}
@@ -228,11 +265,14 @@ export default function AddPaymentPage() {
               );
             }}
             filterOptions={(options, { inputValue }) => {
+              if (!inputValue) {
+                return [];
+              }
               const search = inputValue.toLowerCase();
               return options.filter(
                 (option) =>
-                  option.borrower.toLowerCase().includes(search) ||
-                  option.phone.includes(search)
+                  (option.borrower && option.borrower.toLowerCase().includes(search)) ||
+                  (option.phone && option.phone.includes(search))
               );
             }}
             noOptionsText="No active loans found for this search."

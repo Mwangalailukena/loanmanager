@@ -24,20 +24,13 @@ export default function LoanSimulatorPage() {
   const monthlySettings = settings?.monthlySettings?.[currentMonthYear];
 
   const effectiveInterestRates = monthlySettings?.interestRates || {
-    oneWeek: 0.15,
-    twoWeeks: 0.2,
-    threeWeeks: 0.3,
-    fourWeeks: 0.3,
+    1: 0.15,
+    2: 0.2,
+    3: 0.3,
+    4: 0.3,
   };
 
-  const interestRateKey = {
-    1: 'oneWeek',
-    2: 'twoWeeks',
-    3: 'threeWeeks',
-    4: 'fourWeeks',
-  }[duration];
-
-  const selectedInterestRate = (effectiveInterestRates[interestRateKey] || 0) / 100;
+  const selectedInterestRate = (effectiveInterestRates[duration] || 0) / 100;
 
   const interest = principal * selectedInterestRate;
   const totalRepayable = principal + interest;
@@ -96,10 +89,10 @@ export default function LoanSimulatorPage() {
               label="Loan Duration"
               onChange={(e) => setDuration(e.target.value)}
             >
-              <MenuItem value={1}>1 Week ({((effectiveInterestRates.oneWeek)).toFixed(0)}%)</MenuItem>
-              <MenuItem value={2}>2 Weeks ({((effectiveInterestRates.twoWeeks)).toFixed(0)}%)</MenuItem>
-              <MenuItem value={3}>3 Weeks ({((effectiveInterestRates.threeWeeks)).toFixed(0)}%)</MenuItem>
-              <MenuItem value={4}>4 Weeks ({((effectiveInterestRates.fourWeeks)).toFixed(0)}%)</MenuItem>
+              <MenuItem value={1}>1 Week ({((effectiveInterestRates[1]) || 0).toFixed(0)}%)</MenuItem>
+              <MenuItem value={2}>2 Weeks ({((effectiveInterestRates[2]) || 0).toFixed(0)}%)</MenuItem>
+              <MenuItem value={3}>3 Weeks ({((effectiveInterestRates[3]) || 0).toFixed(0)}%)</MenuItem>
+              <MenuItem value={4}>4 Weeks ({((effectiveInterestRates[4]) || 0).toFixed(0)}%)</MenuItem>
             </Select>
           </FormControl>
         </Grid>

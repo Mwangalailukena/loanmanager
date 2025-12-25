@@ -30,7 +30,6 @@ import ShowChartIcon from '@mui/icons-material/ShowChart';
 import InsightsIcon from '@mui/icons-material/Insights';
 import TuneIcon from '@mui/icons-material/Tune';
 
-import WarningAmber from '@mui/icons-material/WarningAmber';
 import { useNavigate } from "react-router-dom";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { useAuth } from "../contexts/AuthProvider.js";
@@ -43,6 +42,7 @@ import { useDashboardCalculations } from "../hooks/dashboard/useDashboardCalcula
 import { useInsights } from "../hooks/useInsights";
 import DashboardSection from "../components/dashboard/DashboardSection";
 import DashboardCardSkeleton from "../components/dashboard/DashboardCardSkeleton";
+import InsightCard from "../components/dashboard/InsightCard";
 
 const LazyCharts = lazy(() => import("../components/Charts"));
 
@@ -117,51 +117,24 @@ export default function Dashboard() {
 
     const insights = useInsights(loans, borrowers);
 
-    const actionItems = useMemo(() => {
-        if (!loans) return { overdueCount: 0, dueThisWeekCount: 0 };
-
-        const overdue = loans.filter(loan => {
-            if (loan.status === 'Defaulted') return false;
-            const totalRepayable = Number(loan.totalRepayable || 0);
-            const repaidAmount = Number(loan.repaidAmount || 0);
-            if (repaidAmount >= totalRepayable && totalRepayable > 0) return false;
-            return dayjs(loan.dueDate).isBefore(dayjs(), "day");
-        });
-
-        const dueThisWeek = loans.filter(loan => {
-            if (loan.status === 'Defaulted') return false;
-            const totalRepayable = Number(loan.totalRepayable || 0);
-            const repaidAmount = Number(loan.repaidAmount || 0);
-            if (repaidAmount >= totalRepayable && totalRepayable > 0) return false;
-            const dueDate = dayjs(loan.dueDate);
-            const now = dayjs();
-            return dueDate.isAfter(now, "day") && dueDate.isBefore(now.add(7, 'day'), "day");
-        });
-
-        return {
-            overdueCount: overdue.length,
-            dueThisWeekCount: dueThisWeek.length,
-        };
-    }, [loans]);
-
     useEffect(() => {
-        if (loans) {
-            const savedOrder = localStorage.getItem(STORAGE_KEY);
-            const savedHidden = localStorage.getItem(HIDDEN_CARDS_KEY);
-            try {
-                const parsedOrder = savedOrder ? JSON.parse(savedOrder) : [];
-                const parsedHidden = savedHidden ? JSON.parse(savedHidden) : [];
-                const validOrder = parsedOrder.filter((id) => DEFAULT_CARD_IDS.includes(id));
-                const finalOrder = [...new Set([...validOrder, ...DEFAULT_CARD_IDS])];
-                setCardsOrder(finalOrder);
-                setHiddenCards(parsedHidden);
-            } catch (error) {
-                console.error("Error parsing saved card order from localStorage:", error);
-                setCardsOrder(DEFAULT_CARD_IDS);
-                setHiddenCards([]);
-            }
+        if (!loans || loans.length === 0) return; // Ensure loans are loaded
+
+        const savedOrder = localStorage.getItem(STORAGE_KEY);
+        const savedHidden = localStorage.getItem(HIDDEN_CARDS_KEY);
+        try {
+            const parsedOrder = savedOrder ? JSON.parse(savedOrder) : [];
+            const parsedHidden = savedHidden ? JSON.parse(savedHidden) : [];
+            const validOrder = parsedOrder.filter((id) => DEFAULT_CARD_IDS.includes(id));
+            const finalOrder = [...new Set([...validOrder, ...DEFAULT_CARD_IDS])];
+            setCardsOrder(finalOrder);
+            setHiddenCards(parsedHidden);
+        } catch (error) {
+            console.error("Error parsing saved card order from localStorage:", error);
+            setCardsOrder(DEFAULT_CARD_IDS);
+            setHiddenCards([]);
         }
-    }, [loans]);
+    }, [loans]); // Dependency array for useEffect
 
     const handleTabChange = (event, newValue) => {
         setActiveTab(newValue);
@@ -259,25 +232,23 @@ export default function Dashboard() {
               <Button startIcon={<TuneIcon />} onClick={() => setCustomizeOpen(true)}>Customize</Button>
             </Box>
 
-            {actionItems.overdueCount > 0 &&
-                <Box sx={{ p: 2, mb: 2, backgroundColor: theme.palette.error.light, borderRadius: 2, display: 'flex', alignItems: 'center', cursor: 'pointer', '&:hover': { backgroundColor: theme.palette.error.main, } }} onClick={() => navigate('/loans?filter=overdue')} >
-                    <WarningAmber sx={{ color: theme.palette.error.contrastText, mr: 1.5 }} />
-                    <Box>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: theme.palette.error.contrastText }}>Overdue Loans</Typography>
-                        <Typography variant="body2" sx={{ color: theme.palette.error.contrastText }}>{actionItems.overdueCount} loan(s) are overdue.</Typography>
-                    </Box>
-                </Box>
-            }
-            {actionItems.dueThisWeekCount > 0 &&
-                <Box sx={{ p: 2, mb: 2, backgroundColor: theme.palette.info.light, borderRadius: 2, display: 'flex', alignItems: 'center', cursor: 'pointer', '&:hover': { backgroundColor: theme.palette.info.main, } }} onClick={() => navigate('/loans?filter=upcoming')} >
-                    <WarningAmber sx={{ color: theme.palette.info.contrastText, mr: 1.5 }} />
-                    <Box>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: theme.palette.info.contrastText }}>Upcoming Payments</Typography>
-                        <Typography variant="body2" sx={{ color: theme.palette.info.contrastText }}>{actionItems.dueThisWeekCount} payment(s) due this week.</Typography>
-                    </Box>
-                </Box>
-            }
-
+            {/* Actionable Insights Section */}
+            {insights.filter(insight => insight.action).map((insight, index) => (
+              <InsightCard key={index} insight={{
+                ...insight,
+                action: {
+                  ...insight.action,
+                  onClick: () => {
+                    if (insight.action.label === 'View Overdue Loans') {
+                      navigate('/loans?filter=overdue');
+                    } else if (insight.action.label === 'View Upcoming Loans') {
+                      navigate('/loans?filter=upcoming');
+                    }
+                  }
+                }
+              }} />
+            ))}
+            
             <Box mb={isMobile ? 1.5 : 2} maxWidth={isMobile ? "100%" : 200}>
                 <TextField label="Select Month" type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} size="small" fullWidth InputLabelProps={{ shrink: true }} />
             </Box>
@@ -310,13 +281,13 @@ export default function Dashboard() {
                     </Suspense>
                 </TabPanel>
                 <TabPanel value={activeTab} index={3}>
-                    <List>
-                        {insights.map((insight, index) => (
-                            <ListItem key={index}>
-                                <ListItemText primary={insight} />
-                            </ListItem>
+                    <Grid container spacing={2}>
+                        {insights.filter(insight => !insight.action).map((insight, index) => (
+                            <Grid item xs={12} sm={6} md={4} key={index}>
+                                <InsightCard insight={insight} />
+                            </Grid>
                         ))}
-                    </List>
+                    </Grid>
                 </TabPanel>
             </Box>
             <Dialog open={customizeOpen} onClose={() => setCustomizeOpen(false)}>

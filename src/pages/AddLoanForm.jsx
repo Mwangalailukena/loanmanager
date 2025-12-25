@@ -194,13 +194,15 @@ function AutoLoanForm() {
   }, [location.state, showSnackbar]);
 
   const monthKey = dayjs().format("YYYY-MM");
-  const monthlyRates = settings?.monthlySettings?.[monthKey]?.interestRates;
+  const currentMonthSettings = settings?.monthlySettings?.[monthKey];
+  const effectiveInterestRatesSource = currentMonthSettings?.interestRates || settings?.interestRates; // Fallback to general settings
 
+  // Ensure rates are always decimals (assuming they are stored as such in settings)
   const interestRates = {
-    1: monthlyRates?.oneWeek ? monthlyRates.oneWeek / 100 : 0.15,
-    2: monthlyRates?.twoWeeks ? monthlyRates.twoWeeks / 100 : 0.2,
-    3: monthlyRates?.threeWeeks ? monthlyRates.threeWeeks / 100 : 0.3,
-    4: monthlyRates?.fourWeeks ? monthlyRates.fourWeeks / 100 : 0.3,
+    1: (effectiveInterestRatesSource?.[1] || 0.15),
+    2: (effectiveInterestRatesSource?.[2] || 0.20),
+    3: (effectiveInterestRatesSource?.[3] || 0.30),
+    4: (effectiveInterestRatesSource?.[4] || 0.30),
   };
 
   const calculateInterest = (principal, weeks) => principal * (interestRates[weeks] || 0);

@@ -56,7 +56,7 @@ const itemVariants = {
 const actionLabels = {
   loan_creation: "Loan Created",
   edit: "Edited",
-  payment: "Payment Made",
+  payment_add: "Payment Made",
   login: "Login",
   delete: "Loan Deleted",
   settings_update: "Settings Updated",
@@ -75,7 +75,7 @@ const actionLabels = {
 const actionChipColors = {
   loan_creation: "primary",
   edit: "default",
-  payment: "success",
+  payment_add: "success",
   login: "info",
   delete: "error",
   settings_update: "secondary",
@@ -93,6 +93,7 @@ const actionChipColors = {
 const timelineDotColors = {
   ...actionChipColors,
   edit: "grey",
+  payment_add: "success",
   loan_update: "grey",
   loan_top_up: "primary",
   undo_loan_creation: "grey",
@@ -105,7 +106,7 @@ const timelineDotColors = {
 const actionIcons = {
   loan_creation: <AddCircleOutlineIcon />,
   edit: <EditIcon />,
-  payment: <PaymentIcon />,
+  payment_add: <PaymentIcon />,
   login: <LoginIcon />,
   delete: <DeleteIcon />,
   settings_update: <SettingsIcon />,
@@ -230,7 +231,7 @@ export default function ActivityPage() {
         await undoPayment(relatedId, confirmUndo.log.loanId, amount);
       } else if (type === "loan_refinanced") {
         await undoRefinanceLoan(relatedId, newLoanId, previousRepaidAmount);
-      } else if (type === "loan_delete") {
+      } else if (type === "delete") {
         await undoDeleteLoan(relatedId, undoData);
       } else if (type === "loan_update" || type === "loan_top_up") {
         await undoUpdateLoan(relatedId, undoData);

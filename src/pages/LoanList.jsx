@@ -189,6 +189,10 @@ export default function LoanList() {
   const [refinanceModal, setRefinanceModal] = useState({ open: false, loan: null });
   const [refinanceStartDate, setRefinanceStartDate] = useState(dayjs().format("YYYY-MM-DD"));
   const [refinanceDueDate, setRefinanceDueDate] = useState(dayjs().add(1, "week").format("YYYY-MM-DD"));
+  const [refinanceAmount, setRefinanceAmount] = useState("");
+  const [refinanceInterestDuration, setRefinanceInterestDuration] = useState(1);
+  const [refinanceCurrentOutstanding, setRefinanceCurrentOutstanding] = useState(0);
+  const [refinanceOriginalLoan, setRefinanceOriginalLoan] = useState(null);
   const [refinanceError, setRefinanceError] = useState("");
   const [isRefinancing, setIsRefinancing] = useState(false);
   const [refinancePreview, setRefinancePreview] = useState(null);
@@ -606,26 +610,25 @@ export default function LoanList() {
     [searchParams, setSearchParams]
   );
 
-  const calculateRefinancePreview = (loan, startDate) => {
-    if (!loan) return;
-
-    const outstandingBalance = (loan.totalRepayable || 0) - (loan.repaidAmount || 0);
-    const newPrincipal = outstandingBalance;
-
-    if (newPrincipal <= 0) {
+  const calculateRefinancePreview = (loan, amount, duration, startDate) => {
+    if (!loan || !amount || !duration || amount <= 0) {
       setRefinancePreview(null);
       return;
     }
 
-    const interestDuration = loan.interestDuration || 1;
-    const interestRate = interestRates[interestDuration] || 0;
+    const newPrincipal = Number(amount);
+    const interestRate = interestRates[duration] || 0;
     const newInterest = newPrincipal * interestRate;
     const newTotalRepayable = newPrincipal + newInterest;
+
+    // Calculate new due date based on new start date and duration
+    const newDueDate = dayjs(startDate).add(duration, 'week').format("YYYY-MM-DD");
 
     setRefinancePreview({
       principal: newPrincipal,
       interest: newInterest,
       totalRepayable: newTotalRepayable,
+      dueDate: newDueDate, // Add new due date to preview
     });
   };
 
@@ -649,11 +652,16 @@ export default function LoanList() {
   };
 
   const openRefinanceModal = (loan) => {
+    const outstanding = (loan.totalRepayable || 0) - (loan.repaidAmount || 0);
+    setRefinanceOriginalLoan(loan);
+    setRefinanceCurrentOutstanding(outstanding);
+    setRefinanceAmount(outstanding.toFixed(2)); // Default to full outstanding
+    setRefinanceInterestDuration(loan.interestDuration || 1); // Default to old duration
     setRefinanceStartDate(dayjs().format("YYYY-MM-DD"));
-    setRefinanceDueDate(dayjs().add(1, "week").format("YYYY-MM-DD"));
+    setRefinanceDueDate(dayjs().add(loan.interestDuration || 1, "week").format("YYYY-MM-DD")); // Estimate new due date
     setRefinanceError("");
     setRefinanceModal({ open: true, loan });
-    calculateRefinancePreview(loan, dayjs().format("YYYY-MM-DD"));
+    calculateRefinancePreview(loan, outstanding, loan.interestDuration || 1, dayjs().format("YYYY-MM-DD"));
   };
 
   const exportLoanListData = () => {
@@ -680,15 +688,17 @@ export default function LoanList() {
     
         const exportLoanListPdf = useCallback(() => {
           const head = [
-            'Borrower',
-            'Phone',
-            'Principal',
-            'Interest',
-            'Total Repayable',
-            'Outstanding',
-            'Start Date',
-            'Due Date',
-            'Status',
+            [
+              'Borrower',
+              'Phone',
+              'Principal',
+              'Interest',
+              'Total Repayable',
+              'Outstanding',
+              'Start Date',
+              'Due Date',
+              'Status',
+            ]
           ];
     
           const body = filteredLoans.map(loan => {
@@ -717,23 +727,34 @@ export default function LoanList() {
           );
         }, [filteredLoans, getDisplayBorrowerInfo]);
     
-        const handleRefinanceSubmit = async () => {    if (!refinanceStartDate || !refinanceDueDate) {
-      setRefinanceError("Both start and due dates are required.");
+        const handleRefinanceSubmit = async () => {
+    if (!refinanceStartDate || !refinanceAmount || refinanceAmount <= 0) {
+      setRefinanceError("Refinance amount and start date are required.");
       return;
     }
-    if (dayjs(refinanceDueDate).isBefore(dayjs(refinanceStartDate))) {
-      setRefinanceError("Due date must be after the start date.");
-      return;
+    if (parseFloat(refinanceAmount) > refinanceCurrentOutstanding) {
+        setRefinanceError(`Refinance amount (ZMW ${refinanceAmount}) cannot exceed outstanding balance (ZMW ${refinanceCurrentOutstanding.toFixed(2)}).`);
+        return;
+    }
+    if (!refinancePreview?.dueDate) {
+        setRefinanceError("New due date could not be calculated. Please check inputs.");
+        return;
     }
 
     setIsRefinancing(true);
     try {
-      await refinanceLoan(refinanceModal.loan.id, refinanceStartDate, refinanceDueDate);
+      await refinanceLoan(
+        refinanceModal.loan.id,
+        refinanceStartDate,
+        refinancePreview.dueDate, // Use calculated due date
+        parseFloat(refinanceAmount),
+        refinanceInterestDuration
+      );
       setRefinanceModal({ open: false, loan: null });
       setPaymentSuccess(true);
     } catch (error) {
       console.error("Error refinancing loan:", error);
-      setRefinanceError("Failed to refinance loan. Please try again.");
+      setRefinanceError(error.message || "Failed to refinance loan. Please try again.");
     } finally {
       setIsRefinancing(false);
     }
@@ -804,7 +825,7 @@ export default function LoanList() {
           Export CSV
         </Button>
         <Button
-          variant="contained"
+          variant="outlined"
           color="secondary"
           size="small"
           onClick={exportLoanListPdf}
@@ -1543,32 +1564,76 @@ export default function LoanList() {
 
       {/* Refinance Modal */}
       <Dialog open={refinanceModal.open} onClose={() => setRefinanceModal({ open: false, loan: null })} maxWidth="xs" fullWidth>
-        <DialogTitle fontSize="1.1rem">Refinance Loan</DialogTitle>
+        <DialogTitle fontSize="1.1rem">Refinance Loan: {refinanceOriginalLoan?.borrower}</DialogTitle>
         <DialogContent sx={{ pb: 1 }}>
           <Stack spacing={2} mt={1}>
+            {refinanceOriginalLoan && (
+              <Alert severity="info">
+                Outstanding Balance of Old Loan: ZMW {refinanceCurrentOutstanding.toFixed(2)}
+              </Alert>
+            )}
+
             <TextField
-              label="New Start Date"
-              type="date"
-              value={refinanceStartDate}
+              label="Refinance Amount (New Principal)"
+              type="number"
+              value={refinanceAmount}
               onChange={(e) => {
-                setRefinanceStartDate(e.target.value)
-                calculateRefinancePreview(refinanceModal.loan, e.target.value)
+                const amount = parseFloat(e.target.value);
+                setRefinanceAmount(e.target.value);
+                calculateRefinancePreview(refinanceOriginalLoan, amount, refinanceInterestDuration, refinanceStartDate);
               }}
               size="small"
               fullWidth
               error={!!refinanceError}
               helperText={refinanceError}
               sx={filterInputStyles}
+              InputProps={{
+                startAdornment: (<InputAdornment position="start">ZMW</InputAdornment>),
+              }}
             />
+
+            <FormControl size="small" fullWidth sx={filterInputStyles}>
+              <InputLabel>New Interest Duration</InputLabel>
+              <Select
+                value={refinanceInterestDuration}
+                label="New Interest Duration"
+                onChange={(e) => {
+                  const duration = e.target.value;
+                  setRefinanceInterestDuration(duration);
+                  calculateRefinancePreview(refinanceOriginalLoan, parseFloat(refinanceAmount), duration, refinanceStartDate);
+                }}
+              >
+                {interestOptions.map((option) => {
+                  const rate = (settings.interestRates[option.value] || 0) * 100;
+                  return (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label} ({rate.toFixed(0)}%)
+                    </MenuItem>
+                  );
+                })}
+              </Select>
+            </FormControl>
+
             <TextField
-              label="New Due Date"
+              label="New Start Date"
               type="date"
-              value={refinanceDueDate}
-              onChange={(e) => setRefinanceDueDate(e.target.value)}
+              value={refinanceStartDate}
+              onChange={(e) => {
+                setRefinanceStartDate(e.target.value)
+                calculateRefinancePreview(refinanceOriginalLoan, parseFloat(refinanceAmount), refinanceInterestDuration, e.target.value)
+              }}
               size="small"
               fullWidth
+              InputLabelProps={{ shrink: true }}
+              error={!!refinanceError}
+              helperText={refinanceError}
               sx={filterInputStyles}
             />
+            {/* The due date will be calculated automatically based on duration */}
+            <Typography variant="body2" color="text.secondary">
+              Est. New Due Date: {refinancePreview?.dueDate || "N/A"}
+            </Typography>
+
             {refinancePreview && (
               <Box sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
                 <Typography variant="subtitle2" gutterBottom>Refinance Preview</Typography>

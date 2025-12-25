@@ -60,10 +60,10 @@ export default function SettingsPage({ onClose }) {
   // State for monthly capital and interest rates
   const [monthlyCapital, setMonthlyCapital] = useState("0");
   const [interestRates, setInterestRates] = useState({
-    oneWeek: "0",
-    twoWeeks: "0",
-    threeWeeks: "0",
-    fourWeeks: "0",
+    1: "0",
+    2: "0",
+    3: "0",
+    4: "0",
   });
 
   const [notificationPreferences, setNotificationPreferences] = useState({
@@ -85,15 +85,15 @@ export default function SettingsPage({ onClose }) {
       setMonthlyCapital(monthSettings.capital?.toString() || "0");
       if (monthSettings.interestRates) {
         setInterestRates({
-          oneWeek: monthSettings.interestRates.oneWeek?.toString() || "0",
-          twoWeeks: monthSettings.interestRates.twoWeeks?.toString() || "0",
-          threeWeeks: monthSettings.interestRates.threeWeeks?.toString() || "0",
-          fourWeeks: monthSettings.interestRates.fourWeeks?.toString() || "0",
+          1: monthSettings.interestRates['1']?.toString() || "0",
+          2: monthSettings.interestRates['2']?.toString() || "0",
+          3: monthSettings.interestRates['3']?.toString() || "0",
+          4: monthSettings.interestRates['4']?.toString() || "0",
         });
       }
     } else {
       setMonthlyCapital("0");
-      setInterestRates({ oneWeek: "0", twoWeeks: "0", threeWeeks: "0", fourWeeks: "0" });
+      setInterestRates({ 1: "0", 2: "0", 3: "0", 4: "0" });
     }
 
     if (currentUser && currentUser.notificationPreferences) {
@@ -145,86 +145,85 @@ export default function SettingsPage({ onClose }) {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage(""); // Clear previous messages before new submission
-
-    const capitalValue = parseFloat(monthlyCapital);
-    if (isNaN(capitalValue) || capitalValue < 0) {
-      setMessage("Please enter a valid non-negative number for Invested Capital.");
-      setLoading(false);
-      return;
-    }
-
-    const numericInterestRates = {};
-    for (const key in interestRates) {
-      const val = parseFloat(interestRates[key]);
-      if (isNaN(val) || val < 0) {
-        setMessage("Please enter valid non-negative numbers for all interest rates.");
+      const handleSubmit = async (e) => {
+      e.preventDefault();
+      setLoading(true);
+      setMessage(""); // Clear previous messages before new submission
+  
+      const capitalValue = parseFloat(monthlyCapital);
+      if (isNaN(capitalValue) || capitalValue < 0) {
+        setMessage("Please enter a valid non-negative number for Invested Capital.");
         setLoading(false);
         return;
       }
-      numericInterestRates[key] = val;
-    }
-
-    if (capitalValue > 1_000_000_000) {
-      setMessage("Invested Capital seems excessively high. Please review.");
-      setLoading(false);
-      return;
-    }
-
-    const year = selectedYear.toString();
-    const month = selectedMonth.toString().padStart(2, '0');
-    const monthKey = `${year}-${month}`;
-
-    const updatedSettings = {
-      ...settings,
-      monthlySettings: {
-        ...(settings.monthlySettings || {}),
-        [monthKey]: {
-          capital: capitalValue,
-          interestRates: numericInterestRates,
-        },
-      },
-    };
-
-    try {
-      await updateSettings(updatedSettings);
-      setMessage("Settings saved successfully.");
-    } catch (error) {
-      console.error("Error updating settings:", error);
-      setMessage("Failed to save settings. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleReset = () => {
-    setMessage(""); // Clear message on reset
-    const year = selectedYear.toString();
-    const month = selectedMonth.toString().padStart(2, '0');
-    const monthKey = `${year}-${month}`;
-
-    if (settings && settings.monthlySettings && settings.monthlySettings[monthKey]) {
-        const monthSettings = settings.monthlySettings[monthKey];
-        setMonthlyCapital(monthSettings.capital?.toString() || "0");
-        if (monthSettings.interestRates) {
-            setInterestRates({
-                oneWeek: monthSettings.interestRates.oneWeek?.toString() || "0",
-                twoWeeks: monthSettings.interestRates.twoWeeks?.toString() || "0",
-                threeWeeks: monthSettings.interestRates.threeWeeks?.toString() || "0",
-                fourWeeks: monthSettings.interestRates.fourWeeks?.toString() || "0",
-            });
-        } else {
-            setInterestRates({ oneWeek: "0", twoWeeks: "0", threeWeeks: "0", fourWeeks: "0" });
+  
+      const numericInterestRates = {};
+      for (const key of Object.keys(interestRates)) {
+        const val = parseFloat(interestRates[key]);
+        if (isNaN(val) || val < 0) {
+          setMessage("Please enter valid non-negative numbers for all interest rates.");
+          setLoading(false);
+          return;
         }
-    } else {
-        setMonthlyCapital("0");
-        setInterestRates({ oneWeek: "0", twoWeeks: "0", threeWeeks: "0", fourWeeks: "0" });
-    }
-  };
-
+        numericInterestRates[key] = val;
+      }
+  
+      if (capitalValue > 1_000_000_000) {
+        setMessage("Invested Capital seems excessively high. Please review.");
+        setLoading(false);
+        return;
+      }
+  
+      const year = selectedYear.toString();
+      const month = selectedMonth.toString().padStart(2, '0');
+      const monthKey = `${year}-${month}`;
+  
+      const updatedSettings = {
+        ...settings,
+        monthlySettings: {
+          ...(settings.monthlySettings || {}),
+          [monthKey]: {
+            capital: capitalValue,
+            interestRates: numericInterestRates,
+          },
+        },
+      };
+  
+      try {
+        await updateSettings(updatedSettings);
+        setMessage("Settings saved successfully.");
+      } catch (error) {
+        console.error("Error updating settings:", error);
+        setMessage("Failed to save settings. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+  
+    const handleReset = () => {
+      setMessage(""); // Clear message on reset
+      const year = selectedYear.toString();
+      const month = selectedMonth.toString().padStart(2, '0');
+      const monthKey = `${year}-${month}`;
+  
+      if (settings && settings.monthlySettings && settings.monthlySettings[monthKey]) {
+          const monthSettings = settings.monthlySettings[monthKey];
+          setMonthlyCapital(monthSettings.capital?.toString() || "0");
+          if (monthSettings.interestRates) {
+              setInterestRates({
+                  1: monthSettings.interestRates['1']?.toString() || "0",
+                  2: monthSettings.interestRates['2']?.toString() || "0",
+                  3: monthSettings.interestRates['3']?.toString() || "0",
+                  4: monthSettings.interestRates['4']?.toString() || "0",
+              });
+          } else {
+              setInterestRates({ 1: "0", 2: "0", 3: "0", 4: "0" });
+          }
+      } else {
+          setMonthlyCapital("0");
+          setInterestRates({ 1: "0", 2: "0", 3: "0", 4: "0" });
+      }
+    };
   const years = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i);
   const months = Array.from({ length: 12 }, (_, i) => ({ value: i + 1, label: new Date(0, i).toLocaleString('default', { month: 'long' }) }));
 
@@ -304,8 +303,8 @@ export default function SettingsPage({ onClose }) {
             <TextField
               label="Interest Rate for 1 Week (%)"
               type="number"
-              value={interestRates.oneWeek}
-              onChange={handleInterestRateChange("oneWeek")}
+              value={interestRates[1]}
+              onChange={handleInterestRateChange(1)}
               required
               inputProps={{ min: 0, step: "any" }}
               margin="normal"
@@ -313,8 +312,8 @@ export default function SettingsPage({ onClose }) {
             <TextField
               label="Interest Rate for 2 Weeks (%)"
               type="number"
-              value={interestRates.twoWeeks}
-              onChange={handleInterestRateChange("twoWeeks")}
+              value={interestRates[2]}
+              onChange={handleInterestRateChange(2)}
               required
               inputProps={{ min: 0, step: "any" }}
               margin="normal"
@@ -322,8 +321,8 @@ export default function SettingsPage({ onClose }) {
             <TextField
               label="Interest Rate for 3 Weeks (%)"
               type="number"
-              value={interestRates.threeWeeks}
-              onChange={handleInterestRateChange("threeWeeks")}
+              value={interestRates[3]}
+              onChange={handleInterestRateChange(3)}
               required
               inputProps={{ min: 0, step: "any" }}
               margin="normal"
@@ -331,8 +330,8 @@ export default function SettingsPage({ onClose }) {
             <TextField
               label="Interest Rate for 4 Weeks (%)"
               type="number"
-              value={interestRates.fourWeeks}
-              onChange={handleInterestRateChange("fourWeeks")}
+              value={interestRates[4]}
+              onChange={handleInterestRateChange(4)}
               required
               inputProps={{ min: 0, step: "any" }}
               margin="normal"

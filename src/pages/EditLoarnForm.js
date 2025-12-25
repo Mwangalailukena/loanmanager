@@ -29,21 +29,15 @@ export default function EditLoanForm() {
   const [interestDuration, setInterestDuration] = useState(1);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    const loan = loans.find((l) => l.id === id);
-    if (loan) {
-      setBorrower(loan.borrower);
-      setPhone(loan.phone);
-      setAmount(loan.principal);
-      setInterestDuration(loan.interestDuration || 1);
-    }
-  }, [id, loans]);
+  const monthKey = dayjs().format("YYYY-MM");
+  const currentMonthSettings = settings?.monthlySettings?.[monthKey];
+  const effectiveInterestRatesSource = currentMonthSettings?.interestRates || settings?.interestRates;
 
-  const interestRates = settings.interestRates || {
-    1: 0.15,
-    2: 0.2,
-    3: 0.3,
-    4: 0.3,
+  const interestRates = {
+    1: (effectiveInterestRatesSource?.[1] || 0.15),
+    2: (effectiveInterestRatesSource?.[2] || 0.20),
+    3: (effectiveInterestRatesSource?.[3] || 0.30),
+    4: (effectiveInterestRatesSource?.[4] || 0.30),
   };
 
   const calculateInterest = (principal, weeks) => principal * (interestRates[weeks] || 0);

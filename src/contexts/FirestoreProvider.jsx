@@ -22,6 +22,7 @@ import { useAuth } from "./AuthProvider";
 import { useSnackbar } from "../components/SnackbarProvider";
 import localforage from "localforage";
 import useOfflineStatus from "../hooks/useOfflineStatus";
+import dayjs from "dayjs";
 
 
 const FirestoreContext = createContext();
@@ -47,6 +48,16 @@ export function FirestoreProvider({ children }) {
   const [guarantors, setGuarantors] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Helper function to get effective interest rates for a given date
+  const getEffectiveInterestRates = (settingsObj, dateString) => {
+    const monthKey = dayjs(dateString).format("YYYY-MM");
+    const monthlyRates = settingsObj?.monthlySettings?.[monthKey]?.interestRates;
+    const generalRates = settingsObj?.interestRates || { 1: 0.15, 2: 0.2, 3: 0.3, 4: 0.3 };
+
+    // Prioritize monthly rates, then general rates
+    return monthlyRates || generalRates;
+  };
 
   const addActivityLog = async (logEntry) => {
     if (!currentUser) return;
@@ -394,7 +405,7 @@ export function FirestoreProvider({ children }) {
     });
   };
 
-  const refinanceLoan = async (oldLoanId, newStartDate, newDueDate) => {
+  const refinanceLoan = async (oldLoanId, newStartDate, newDueDate, refinanceAmount, newInterestDuration) => {
     const oldLoanRef = doc(db, "loans", oldLoanId);
     const oldLoanSnap = await getDoc(oldLoanRef);
 
@@ -410,17 +421,21 @@ export function FirestoreProvider({ children }) {
     const oldLoanData = oldLoanSnap.data();
     const previousRepaidAmount = oldLoanData.repaidAmount || 0;
 
-    // 1. Calculate new principal from outstanding balance
+    // 1. Calculate new principal from outstanding balance, allowing for partial refinance
     const outstandingBalance = (oldLoanData.totalRepayable || 0) - previousRepaidAmount;
-    const newPrincipal = outstandingBalance;
+    const newPrincipal = refinanceAmount > 0 ? refinanceAmount : outstandingBalance;
 
     if (newPrincipal <= 0) {
-      throw new Error("Loan has no outstanding balance to refinance.");
+      throw new Error("Loan has no outstanding balance or refinance amount is zero.");
+    }
+    if (newPrincipal > outstandingBalance) {
+      throw new Error("Refinance amount cannot exceed outstanding balance.");
     }
 
-    // 2. Recalculate interest for the new loan using the old loan's duration
-    const interestDuration = oldLoanData.interestDuration || 1;
-    const interestRate = currentSettings.interestRates[interestDuration] || 0;
+    // 2. Recalculate interest for the new loan using the provided new interest duration
+    const interestDuration = newInterestDuration || oldLoanData.interestDuration || 1;
+    const effectiveRates = getEffectiveInterestRates(currentSettings, newStartDate);
+    const interestRate = effectiveRates[interestDuration] || 0;
     const newInterest = newPrincipal * interestRate;
     const newTotalRepayable = newPrincipal + newInterest;
 
@@ -442,17 +457,18 @@ export function FirestoreProvider({ children }) {
     };
     const newLoanRef = await addDoc(collection(db, "loans"), newLoan);
 
-    // 4. Mark the old loan as "Paid" by updating its status and repaidAmount
+    // 4. Mark the old loan as "Paid" by updating its status and repaidAmount (proportional to refinance amount)
+    const newOldLoanRepaidAmount = previousRepaidAmount + newPrincipal;
     await updateDoc(oldLoanRef, {
-      status: "Paid",
-      repaidAmount: oldLoanData.totalRepayable, // This effectively closes out the old loan
+      status: newOldLoanRepaidAmount >= oldLoanData.totalRepayable ? "Paid" : oldLoanData.status,
+      repaidAmount: newOldLoanRepaidAmount,
       updatedAt: serverTimestamp(),
     });
 
     // 5. Log activity, including the previous repaid amount for undo purposes
     await addActivityLog({
       type: "loan_refinanced",
-      description: `Loan ${oldLoanId} refinanced into new loan ${newLoanRef.id} with a principal of ZMW ${newPrincipal.toFixed(2)}`,
+      description: `Loan ${oldLoanId} partially refinanced with ZMW ${newPrincipal.toFixed(2)} into new loan ${newLoanRef.id}`,
       relatedId: oldLoanId,
       newLoanId: newLoanRef.id, // For undo purposes
       previousRepaidAmount: previousRepaidAmount, // For undo purposes
@@ -478,18 +494,21 @@ export function FirestoreProvider({ children }) {
 
     const newPrincipal = (loanData.principal || 0) + topUpAmount;
 
-    let interestRate;
-    if (loanData.interestRate) {
-      interestRate = loanData.interestRate / 100;
-    } else if (loanData.manualInterestRate) {
-      interestRate = loanData.manualInterestRate / 100;
+    // Use current settings to get the effective interest rates for the loan's start date
+    const settingsRef = doc(db, "settings", "config");
+    const settingsSnap = await getDoc(settingsRef);
+    const currentSettings = settingsSnap.exists() ? settingsSnap.data() : null; // Get full settings
+
+    let effectiveRates = {};
+    if (currentSettings) {
+        effectiveRates = getEffectiveInterestRates(currentSettings, loanData.startDate);
     } else {
-      const settingsRef = doc(db, "settings", "config");
-      const settingsSnap = await getDoc(settingsRef);
-      const currentSettings = settingsSnap.exists() ? settingsSnap.data() : { interestRates: { 1: 0.15, 2: 0.2, 3: 0.3, 4: 0.3 } };
-      const interestDuration = loanData.interestDuration || 1;
-      interestRate = currentSettings.interestRates[interestDuration] || 0;
+        // Fallback to a default if no settings are available
+        effectiveRates = { 1: 0.15, 2: 0.2, 3: 0.3, 4: 0.3 };
     }
+
+    const interestDuration = loanData.interestDuration || 1;
+    const interestRate = effectiveRates[interestDuration] || 0;
 
     const newInterest = newPrincipal * interestRate;
     const newTotalRepayable = newPrincipal + newInterest;

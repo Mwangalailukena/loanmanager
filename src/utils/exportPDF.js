@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import dayjs from 'dayjs';
 
 /**
@@ -22,9 +22,9 @@ export const exportToPdf = (title, head, body, fileName) => {
   doc.text(`Report generated on: ${dayjs().format('YYYY-MM-DD HH:mm')}`, 14, 30);
 
   // Add the table
-  doc.autoTable({
+  autoTable(doc, {
     startY: 35,
-    head: [head],
+    head: head,
     body: body,
     theme: 'grid',
     headStyles: { fillColor: [22, 160, 133] }, // Theme color
@@ -34,3 +34,4 @@ export const exportToPdf = (title, head, body, fileName) => {
   // Save the PDF
   doc.save(fileName);
 };
+

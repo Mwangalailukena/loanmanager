@@ -24,9 +24,10 @@ import {
   Stack,
   Button,
   Autocomplete,
+  IconButton,
 } from "@mui/material";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend as RechartsLegend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-
+import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { exportToCsv } from "../utils/exportCSV";
 import { exportToPdf } from "../utils/exportPDF";
@@ -65,6 +66,27 @@ export default function ReportsPage() {
   const [includeActive, setIncludeActive] = useState(true);
   const [includeOverdue, setIncludeOverdue] = useState(true);
   const [includeDefaulted, setIncludeDefaulted] = useState(true);
+  const [screenshotMode, setScreenshotMode] = useState(false);
+
+  const handleClearFilters = () => {
+    setStartDate(dayjs().subtract(6, 'months').startOf('month'));
+    setEndDate(dayjs().endOf('month'));
+    setSelectedBorrower(null);
+    setIncludePaid(true);
+    setIncludeActive(true);
+    setIncludeOverdue(true);
+    setIncludeDefaulted(true);
+  };
+
+  const getDisplayBorrowerInfo = useCallback((loan) => {
+    if (loan.borrowerId) {
+      const borrower = borrowers.find(b => b.id === loan.borrowerId);
+      return { name: borrower?.name, phone: borrower?.phone };
+    } else {
+      // Old loan format
+      return { name: loan.borrower, phone: loan.phone };
+    }
+  }, [borrowers]);
 
   useEffect(() => {
     if (!payments && !loadingPayments) {
@@ -76,23 +98,27 @@ export default function ReportsPage() {
   const filteredLoansForReports = useMemo(() => {
     if (loadingLoans || !loans) return [];
 
-    return loans.filter(loan => {
-      const loanStartDate = dayjs(loan.startDate);
-      const status = calcStatus(loan);
+    return loans
+      .map(loan => {
+        const displayInfo = getDisplayBorrowerInfo(loan);
+        const status = calcStatus(loan);
+        return { ...loan, borrower: displayInfo.name, phone: displayInfo.phone, status };
+      })
+      .filter(loan => {
+        const loanStartDate = dayjs(loan.startDate);
+        const inDateRange = loanStartDate.isBetween(startDate, endDate, 'day', '[]');
 
-      const inDateRange = loanStartDate.isBetween(startDate, endDate, 'day', '[]');
+        let statusMatches = false;
+        if (loan.status === "Paid" && includePaid) statusMatches = true;
+        if (loan.status === "Active" && includeActive) statusMatches = true;
+        if (loan.status === "Overdue" && includeOverdue) statusMatches = true;
+        if (loan.status === "Defaulted" && includeDefaulted) statusMatches = true;
 
-      let statusMatches = false;
-      if (status === "Paid" && includePaid) statusMatches = true;
-      if (status === "Active" && includeActive) statusMatches = true;
-      if (status === "Overdue" && includeOverdue) statusMatches = true;
-      if (status === "Defaulted" && includeDefaulted) statusMatches = true;
+        const borrowerMatches = !selectedBorrower || loan.borrowerId === selectedBorrower.id;
 
-      const borrowerMatches = !selectedBorrower || loan.borrowerId === selectedBorrower.id;
-
-      return inDateRange && statusMatches && borrowerMatches;
-    });
-  }, [loans, startDate, endDate, includePaid, includeActive, includeOverdue, includeDefaulted, selectedBorrower, loadingLoans]);
+        return inDateRange && statusMatches && borrowerMatches;
+      });
+  }, [loans, startDate, endDate, includePaid, includeActive, includeOverdue, includeDefaulted, selectedBorrower, loadingLoans, getDisplayBorrowerInfo]);
 
 
   // --- REPORT 1: Loan Portfolio Summary ---
@@ -753,12 +779,27 @@ export default function ReportsPage() {
                 <FormControlLabel control={<Checkbox checked={includePaid} onChange={(e) => setIncludePaid(e.target.checked)} size="small" sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }} />} label="Paid" />
                 <FormControlLabel control={<Checkbox checked={includeOverdue} onChange={(e) => setIncludeOverdue(e.target.checked)} size="small" sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }} />} label="Overdue" />
                 <FormControlLabel control={<Checkbox checked={includeDefaulted} onChange={(e) => setIncludeDefaulted(e.target.checked)} size="small" sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }} />} label="Defaulted" />
+                <Button onClick={handleClearFilters}>Clear Filters</Button>
+              </Stack>
+            </Grid>
+            <Grid item xs={12}>
+              <Stack direction="row" spacing={2} justifyContent="flex-end">
+                <Button
+                  startIcon={<CameraAltIcon />}
+                  onClick={() => setScreenshotMode(!screenshotMode)}
+                  variant={screenshotMode ? "contained" : "outlined"}
+                  color="secondary"
+                >
+                  {screenshotMode ? "Exit Screenshot Mode" : "Screenshot Mode"}
+                </Button>
               </Stack>
             </Grid>
           </Grid>
         </Paper>
 
-        {renderReportContent()}
+        <div className={screenshotMode ? "screenshot-container" : ""}>
+          {renderReportContent()}
+        </div>
       </Box>
     </LocalizationProvider>
   );
