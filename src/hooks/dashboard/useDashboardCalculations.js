@@ -159,6 +159,7 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
             tooltip: "Invested capital for the selected month",
             progress: null,
             icon: iconMap.investedCapital,
+            group: "Financial Overview",
           },
           {
             id: "availableCapital",
@@ -169,6 +170,7 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
             tooltip: "Capital currently available to issue new loans. Progress against invested capital for the month.",
             progress: investedCapital > 0 ? availableCapital / investedCapital : 0,
             icon: iconMap.availableCapital,
+            group: "Financial Overview",
           },
           {
             id: "totalDisbursed",
@@ -180,6 +182,7 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
             progress: null,
             icon: iconMap.totalDisbursed,
             trend: disbursedTrend,
+            group: "Financial Overview",
           },
           {
             id: "totalCollected",
@@ -191,6 +194,7 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
             progress: totalDisbursed > 0 ? totalCollected / totalDisbursed : null,
             icon: iconMap.totalCollected,
             trend: collectedTrend,
+            group: "Financial Overview",
           },
           {
             id: "partnerDividends",
@@ -217,6 +221,29 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
             // --- FIX: Removed the progress bar
             progress: null,
             icon: iconMap.partnerDividends,
+            group: "Financial Overview",
+          },
+          {
+            id: "expectedProfit",
+            label: "Interest Expected",
+            value: `K ${totalExpectedProfit.toLocaleString()}`,
+            color: "secondary",
+            filter: "all",
+            tooltip: "Total expected profit from interest",
+            progress: null,
+            icon: iconMap.expectedProfit,
+            group: "Financial Overview",
+          },
+          {
+            id: "actualProfit",
+            label: "Actual Interest",
+            value: `K ${actualProfit.toLocaleString()}`,
+            color: "success",
+            filter: "paid",
+            tooltip: "Profit earned from fully repaid loans",
+            progress: totalExpectedProfit > 0 ? actualProfit / totalExpectedProfit : null,
+            icon: iconMap.actualProfit,
+            group: "Financial Overview",
           },
           {
             id: "totalLoans",
@@ -227,6 +254,7 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
             tooltip: "Total number of loans issued this month",
             progress: null,
             icon: iconMap.totalLoans,
+            group: "Loan Portfolio",
           },
           {
             id: "paidLoans",
@@ -237,6 +265,7 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
             tooltip: "Loans fully paid back this month",
             progress: totalLoansCount ? paidLoansCount / totalLoansCount : 0,
             icon: iconMap.paidLoans,
+            group: "Loan Portfolio",
           },
           {
             id: "activeLoans",
@@ -247,6 +276,7 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
             tooltip: "Loans currently active and being repaid",
             progress: totalLoansCount ? activeLoansCount / totalLoansCount : 0,
             icon: iconMap.activeLoans,
+            group: "Loan Portfolio",
           },
           {
             id: "overdueLoans",
@@ -258,6 +288,7 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
             progress: totalLoansCount ? overdueLoansCount / totalLoansCount : 0,
             icon: iconMap.overdueLoans(overdueLoansCount),
             pulse: overdueLoansCount > 0,
+            group: "Loan Portfolio",
           },
           {
             id: "defaultedLoans",
@@ -269,6 +300,7 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
             progress: totalLoansCount ? defaultedLoansCount / totalLoansCount : 0,
             icon: iconMap.defaultedLoans,
             pulse: defaultedLoansCount > 0,
+            group: "Loan Portfolio",
           },
           {
             id: "totalOutstanding",
@@ -279,26 +311,7 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
             tooltip: "Total outstanding repayments still due",
             progress: null,
             icon: iconMap.totalOutstanding,
-          },
-          {
-            id: "expectedProfit",
-            label: "Interest Expected",
-            value: `K ${totalExpectedProfit.toLocaleString()}`,
-            color: "secondary",
-            filter: "all",
-            tooltip: "Total expected profit from interest",
-            progress: null,
-            icon: iconMap.expectedProfit,
-          },
-          {
-            id: "actualProfit",
-            label: "Actual Interest",
-            value: `K ${actualProfit.toLocaleString()}`,
-            color: "success",
-            filter: "paid",
-            tooltip: "Profit earned from fully repaid loans",
-            progress: totalExpectedProfit > 0 ? actualProfit / totalExpectedProfit : null,
-            icon: iconMap.actualProfit,
+            group: "Loan Portfolio",
           },
           {
             id: "averageLoan",
@@ -309,6 +322,7 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
             tooltip: "Average loan amount issued this month",
             progress: null,
             icon: iconMap.averageLoan,
+            group: "Loan Portfolio",
           },
         ];
 

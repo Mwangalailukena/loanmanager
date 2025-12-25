@@ -137,40 +137,111 @@ export default function Dashboard() {
         setActiveTab(newValue);
     };
 
-    const cardsToRender = useMemo(
-        () => cardsOrder.length ? cardsOrder.map((id) => defaultCards.find((c) => c.id === id)).filter(Boolean).filter(card => !hiddenCards.includes(card.id)) : defaultCards.filter(card => !hiddenCards.includes(card.id)),
-        [cardsOrder, defaultCards, hiddenCards]
-    );
+    const cardsToRender = useMemo(() => {
+        const allVisibleCards = defaultCards.filter(card => !hiddenCards.includes(card.id));
+        const sortedCards = cardsOrder.length
+            ? cardsOrder
+                .map(id => allVisibleCards.find(c => c.id === id))
+                .filter(Boolean)
+            : allVisibleCards;
 
-    const executiveSummaryCards = cardsToRender.filter((card) => EXECUTIVE_SUMMARY_IDS.includes(card.id));
-    const metricsCards = cardsToRender.filter((card) => !EXECUTIVE_SUMMARY_IDS.includes(card.id));
+        // Group cards by their 'group' property
+        const grouped = sortedCards.reduce((acc, card) => {
+            const groupName = card.group || 'Ungrouped'; // Default to 'Ungrouped' if no group is defined
+            if (!acc[groupName]) {
+                acc[groupName] = [];
+            }
+            acc[groupName].push(card);
+            return acc;
+        }, {});
+
+        // Maintain order of groups for display
+        const orderedGroupNames = [
+          "Financial Overview", // Explicitly define group order
+          "Loan Portfolio",
+          "Ungrouped" // Fallback for cards without a defined group
+        ].filter(groupName => grouped[groupName] && grouped[groupName].length > 0);
+
+        return orderedGroupNames.map(groupName => ({
+            name: groupName,
+            cards: grouped[groupName]
+        }));
+    }, [cardsOrder, defaultCards, hiddenCards]);
 
     const onDragEnd = useCallback(
         (result) => {
-            const { source, destination } = result;
-            if (!destination || source.droppableId !== destination.droppableId) {
-                showSnackbar("Cards can only be reordered within their own section.", "error");
+            const { source, destination, draggableId } = result;
+
+            if (!destination) {
                 return;
             }
-            let reorderedCards; let newCardsOrder;
-            if (source.droppableId === "executive-summary-droppable") {
-                reorderedCards = Array.from(executiveSummaryCards);
-                const [removed] = reorderedCards.splice(source.index, 1);
-                reorderedCards.splice(destination.index, 0, removed);
-                const metricsSectionIds = metricsCards.map((c) => c.id);
-                newCardsOrder = [...reorderedCards.map((c) => c.id), ...metricsSectionIds];
-            } else {
-                reorderedCards = Array.from(metricsCards);
-                const [removed] = reorderedCards.splice(source.index, 1);
-                reorderedCards.splice(destination.index, 0, removed);
-                const executiveSectionIds = executiveSummaryCards.map((c) => c.id);
-                newCardsOrder = [...executiveSectionIds, ...reorderedCards.map((c) => c.id)];
+
+            // Helper to reorder an array
+            const reorder = (list, startIndex, endIndex) => {
+                const result = Array.from(list);
+                const [removed] = result.splice(startIndex, 1);
+                result.splice(endIndex, 0, removed);
+                return result;
+            };
+
+            // Helper to move an item from one list to another
+            const move = (sourceList, destinationList, source, destination) => {
+                const sourceClone = Array.from(sourceList);
+                const destClone = Array.from(destinationList);
+                // eslint-disable-next-line no-unused-vars
+                const [removed] = sourceClone.splice(source.index, 1);
+
+                destClone.splice(destination.index, 0, removed);
+                return { sourceList: sourceClone, destinationList: destClone };
+            };
+
+            // Get a flat list of all currently visible cards with their full data
+            const allVisibleCards = defaultCards.filter(card => !hiddenCards.includes(card.id));
+            const currentFlatCards = cardsOrder.length
+                ? cardsOrder.map(id => allVisibleCards.find(c => c.id === id)).filter(Boolean)
+                : allVisibleCards;
+
+            // Reconstruct the grouped structure based on the currentFlatCards
+            const currentGroupedCards = currentFlatCards.reduce((acc, card) => {
+                const groupName = card.group || 'Ungrouped';
+                if (!acc[groupName]) {
+                    acc[groupName] = [];
+                }
+                acc[groupName].push(card);
+                return acc;
+            }, {});
+
+            // Extract the actual lists of cards for source and destination droppables
+            const sourceCards = currentGroupedCards[source.droppableId];
+            const destinationCards = currentGroupedCards[destination.droppableId];
+
+            let newGroupedCards = { ...currentGroupedCards };
+
+            // Case 1: Dragged within the same group
+            if (source.droppableId === destination.droppableId) {
+                const reordered = reorder(sourceCards, source.index, destination.index);
+                newGroupedCards[source.droppableId] = reordered;
             }
-            setCardsOrder(newCardsOrder);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(newCardsOrder));
+            // Case 2: Dragged to a different group
+            else {
+                const result = move(
+                    sourceCards,
+                    destinationCards,
+                    source,
+                    destination
+                );
+                newGroupedCards[source.droppableId] = result.sourceList;
+                newGroupedCards[destination.droppableId] = result.destinationList;
+            }
+
+            // Flatten the new grouped structure back into the single cardsOrder array
+            const finalFlatOrder = Object.values(newGroupedCards).flat().map(card => card.id);
+
+            setCardsOrder(finalFlatOrder);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(finalFlatOrder));
             showSnackbar("Dashboard layout saved!", "success");
         },
-        [executiveSummaryCards, metricsCards, showSnackbar]
+        [cardsOrder, defaultCards, hiddenCards, showSnackbar]
     );
 
     const handleCardClick = (filter) => {
@@ -261,10 +332,24 @@ export default function Dashboard() {
                 </Box>
                 <DragDropContext onDragEnd={onDragEnd}>
                     <TabPanel value={activeTab} index={0}>
-                        <DashboardSection cards={executiveSummaryCards} droppableId="executive-summary-droppable" isMobile={isMobile} handleCardClick={handleCardClick} />
+                        {cardsToRender.filter(group => group.cards.some(card => EXECUTIVE_SUMMARY_IDS.includes(card.id))).map(group => (
+                            <Box key={group.name} sx={{ mb: 4 }}>
+                                <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 1, px: 2, fontWeight: 'bold' }}>
+                                    {group.name}
+                                </Typography>
+                                <DashboardSection cards={group.cards} droppableId={group.name} isMobile={isMobile} handleCardClick={handleCardClick} />
+                            </Box>
+                        ))}
                     </TabPanel>
                     <TabPanel value={activeTab} index={1}>
-                        <DashboardSection cards={metricsCards} droppableId="metrics-droppable" isMobile={isMobile} handleCardClick={handleCardClick} />
+                        {cardsToRender.filter(group => group.cards.some(card => !EXECUTIVE_SUMMARY_IDS.includes(card.id))).map(group => (
+                            <Box key={group.name} sx={{ mb: 4 }}>
+                                <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 1, px: 2, fontWeight: 'bold' }}>
+                                    {group.name}
+                                </Typography>
+                                <DashboardSection cards={group.cards} droppableId={group.name} isMobile={isMobile} handleCardClick={handleCardClick} />
+                            </Box>
+                        ))}
                     </TabPanel>
                 </DragDropContext>
                 <TabPanel value={activeTab} index={2}>
