@@ -50,6 +50,7 @@ import GuarantorDialog from '../components/GuarantorDialog';
 import { useCreditScore } from '../hooks/useCreditScore';
 import { ResponsiveLine } from '@nivo/line';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { calcStatus } from '../utils/loanUtils';
 
 const CreditScoreHistoryChart = ({ history }) => {
   const theme = useTheme();
@@ -155,23 +156,6 @@ function TabPanel(props) {
   );
 }
 
-const calcStatus = (loan) => {
-  if (loan.status === "Defaulted") return "Defaulted";
-  const totalRepayable = Number(loan.totalRepayable || 0);
-  const repaidAmount = Number(loan.repaidAmount || 0);
-
-  if (repaidAmount >= totalRepayable && totalRepayable > 0) {
-    return "Paid";
-  }
-
-  const now = dayjs();
-  const due = dayjs(loan.dueDate);
-  if (due.isBefore(now, "day")) {
-    return "Overdue";
-  }
-
-  return "Active";
-};
 
 const getStatusChipColor = (status, theme) => {
   switch (status) {

@@ -1,29 +1,12 @@
 import { useMemo } from 'react';
 import dayjs from 'dayjs';
+import { calcStatus } from '../utils/loanUtils';
 
 export const useInsights = (loans, borrowers, payments) => {
   const insights = useMemo(() => {
     if (!loans || loans.length === 0) {
       return [];
     }
-
-    const calcStatus = (loan) => {
-      if (loan.status === "Defaulted") return "Defaulted";
-      const totalRepayable = Number(loan.totalRepayable || 0);
-      const repaidAmount = Number(loan.repaidAmount || 0);
-
-      if (repaidAmount >= totalRepayable && totalRepayable > 0) {
-        return "Paid";
-      }
-
-      const now = dayjs();
-      const due = dayjs(loan.dueDate);
-      if (due.isBefore(now, "day")) {
-        return "Overdue";
-      }
-
-      return "Active";
-    };
 
     const activeLoans = loans.filter(loan => loan.status !== 'Defaulted' && calcStatus(loan) === 'Active').length;
 

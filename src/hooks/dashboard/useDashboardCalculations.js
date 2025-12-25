@@ -14,21 +14,7 @@ import {
   import BarChartIcon from "@mui/icons-material/BarChart";
   import PaidIcon from "@mui/icons-material/Payments";
 
-const calcStatus = (loan) => {
-    if (loan.status === "Defaulted") return "Defaulted";
-    const totalRepayable = Number(loan.totalRepayable || 0);
-    const repaidAmount = Number(loan.repaidAmount || 0);
-  
-    if (repaidAmount >= totalRepayable && totalRepayable > 0) {
-      return "Paid";
-    }
-    const now = dayjs();
-    const due = dayjs(loan.dueDate);
-    if (due.isBefore(now, "day")) {
-      return "Overdue";
-    }
-    return "Active";
-  };
+import { calcStatus } from "../../utils/loanUtils";
   
   const getTrendPercentage = (current, previous) => {
     if (previous === 0) return current > 0 ? "New" : null;
@@ -84,34 +70,67 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
           (loan) => dayjs(loan.startDate).format("YYYY-MM") === previousMonth
         );
 
-        const totalDisbursed = loansThisMonth.reduce(
-          (sum, loan) => sum + Number(loan.principal || 0),
-          0
-        );
-        const totalCollected = loansThisMonth.reduce(
-          (sum, loan) => sum + Number(loan.repaidAmount || 0),
-          0
-        );
+        const initialStats = {
+          totalDisbursed: 0,
+          totalCollected: 0,
+          actualProfit: 0,
+          totalExpectedProfit: 0,
+          paidLoansCount: 0,
+          activeLoansCount: 0,
+          overdueLoansCount: 0,
+          defaultedLoansCount: 0,
+          totalOutstanding: 0,
+        };
+
+        const monthlyStats = loansThisMonth.reduce((stats, loan) => {
+          const principal = Number(loan.principal || 0);
+          const repaidAmount = Number(loan.repaidAmount || 0);
+          const interest = Number(loan.interest || 0);
+          const status = calcStatus(loan);
+
+          stats.totalDisbursed += principal;
+          stats.totalCollected += repaidAmount;
+          stats.totalExpectedProfit += interest;
+
+          if (status === "Paid") {
+            stats.paidLoansCount += 1;
+            if (repaidAmount >= principal + interest) {
+              stats.actualProfit += interest;
+            }
+          } else if (status === "Active") {
+            stats.activeLoansCount += 1;
+            stats.totalOutstanding += (principal + interest - repaidAmount);
+          } else if (status === "Overdue") {
+            stats.overdueLoansCount += 1;
+            stats.totalOutstanding += (principal + interest - repaidAmount);
+          } else if (status === "Defaulted") {
+            stats.defaultedLoansCount += 1;
+            stats.totalOutstanding += (principal + interest - repaidAmount);
+          }
+
+          return stats;
+        }, initialStats);
+
+        const { 
+          totalDisbursed, 
+          totalCollected, 
+          actualProfit, 
+          totalExpectedProfit, 
+          paidLoansCount,
+          activeLoansCount,
+          overdueLoansCount,
+          defaultedLoansCount,
+          totalOutstanding
+        } = monthlyStats;
+        
+        const totalLoansCount = loansThisMonth.length;
+        
         const totalDisbursedLastMonth = loansLastMonth.reduce(
           (sum, loan) => sum + Number(loan.principal || 0),
           0
         );
         const totalCollectedLastMonth = loansLastMonth.reduce(
           (sum, loan) => sum + Number(loan.repaidAmount || 0),
-          0
-        );
-        
-        const actualProfit = loansThisMonth
-            .filter(
-                (loan) =>
-                calcStatus(loan) === "Paid" &&
-                Number(loan.repaidAmount || 0) >=
-                    Number(loan.principal || 0) + Number(loan.interest || 0)
-            )
-            .reduce((sum, loan) => sum + Number(loan.interest || 0), 0);
-
-        const totalExpectedProfit = loansThisMonth.reduce(
-          (sum, loan) => sum + Number(loan.interest || 0),
           0
         );
         
@@ -127,22 +146,6 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
         const monthKey = dayjs(selectedMonth).format("YYYY-MM");
         const investedCapital = Number(settings?.monthlySettings?.[monthKey]?.capital) || 0;
         const availableCapital = investedCapital - totalDisbursed + totalCollected;
-        const totalLoansCount = loansThisMonth.length;
-        const paidLoansCount = loansThisMonth.filter((l) => calcStatus(l) === "Paid").length;
-        const activeLoansCount = loansThisMonth.filter((l) => calcStatus(l) === "Active").length;
-        const overdueLoansCount = loansThisMonth.filter((l) => calcStatus(l) === "Overdue").length;
-        const defaultedLoansCount = loansThisMonth.filter((l) => calcStatus(l) === "Defaulted").length;
-
-        const totalOutstanding = loansThisMonth
-          .filter((loan) => calcStatus(loan) === "Active" || calcStatus(loan) === "Overdue" || calcStatus(loan) === "Defaulted")
-          .reduce(
-            (sum, loan) =>
-              sum +
-              (Number(loan.principal || 0) +
-                Number(loan.interest || 0) -
-                Number(loan.repaidAmount || 0)),
-            0
-          );
         
         const averageLoan = totalLoansCount > 0 ? Math.round(totalDisbursed / totalLoansCount) : 0;
 
