@@ -154,7 +154,19 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
       {isMobile && ( <Box sx={{ position: 'fixed', top: 8, left: 8, zIndex: theme.zIndex.appBar + 1, bgcolor: 'background.paper', borderRadius: '50%', boxShadow: theme.shadows[2], }} > <IconButton onClick={handleDrawerOpen} sx={{ color: theme.palette.secondary.main }}><MenuIcon /></IconButton> </Box> )}
       <MobileSearchBar onSearchChange={handleSearchChange} onClose={handleMobileSearchClose} open={isMobileSearchOpen} searchTerm={searchTerm} />
       {isMobileSearchOpen && ( <SearchResults variant="paper" onOpenLoanDetail={openLoanDetail} onClose={handleMobileSearchClose} /> )}
-      <Box component="main" sx={{ flexGrow: 1, overflowY: 'auto', boxSizing: 'border-box', background: theme.palette.background.default, minHeight: 0, height: '100%', pb: `${bottomNavHeight}px`, paddingTop: !isMobile ? '100px' : '64px', }} >
+      <Box component="main" sx={{
+        flexGrow: 1,
+        overflowY: 'auto',
+        boxSizing: 'border-box',
+        background: theme.palette.background.default,
+        minHeight: 0,
+        height: '100%',
+        pb: `${bottomNavHeight}px`,
+        paddingTop: !isMobile ? '100px' : '64px',
+        backgroundImage: `url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23${theme.palette.text.disabled.substring(1)}' fill-opacity='0.1'%3E%3Ccircle cx='10' cy='10' r='1'%3E%3C/circle%3E%3C/g%3E%3C/svg%3E")`,
+        backgroundAttachment: 'fixed',
+        backgroundSize: '20px 20px',
+      }} >
         <Container maxWidth="lg" sx={{ pb: 4, px: isMobile ? 2 : 4, }} >
           {children}
         </Container>
