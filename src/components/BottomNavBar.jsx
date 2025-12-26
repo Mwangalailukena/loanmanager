@@ -11,6 +11,8 @@ import { motion } from 'framer-motion';
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import ListAltIcon from "@mui/icons-material/ListAlt";
 import PeopleIcon from '@mui/icons-material/People';
+import AddIcon from '@mui/icons-material/Add'; // Import AddIcon
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney'; // Import AttachMoneyIcon
 
 export const BOTTOM_NAV_HEIGHT = 64;
 
@@ -26,7 +28,7 @@ const BottomNavBar = () => {
   const theme = useTheme();
 
   const getValue = () => {
-    const paths = ["/dashboard", "/loans", "/borrowers"];
+    const paths = ["/dashboard", "/loans", "/borrowers", "/add-loan", "/add-payment"];
     return paths.find(path => location.pathname.startsWith(path)) || null;
   };
   
@@ -40,6 +42,8 @@ const BottomNavBar = () => {
   const navItems = [
       { label: "Dashboard", value: "/dashboard", icon: <DashboardIcon /> },
       { label: "Loans", value: "/loans", icon: <ListAltIcon /> },
+      { label: "Add Loan", value: "/add-loan", icon: <AddIcon /> }, // Added Add Loan
+      { label: "Add Payment", value: "/add-payment", icon: <AttachMoneyIcon /> }, // Added Add Payment
       { label: "Borrowers", value: "/borrowers", icon: <PeopleIcon /> },
   ];
 

@@ -155,13 +155,14 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, searc
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard', section: 'general' },
     { text: 'Borrowers', icon: <PeopleIcon />, path: '/borrowers', section: 'general' },
+    { text: 'Add Loan', icon: <AddIcon />, path: '/add-loan', section: 'general' }, // Elevated Add Loan
+    { text: 'Add Payment', icon: <AttachMoneyIcon />, path: '/add-payment', section: 'general' }, // Added Add Payment
     {
       text: 'Loan Management',
       icon: <AttachMoneyIcon />,
       section: 'general',
       children: [
         { text: 'Loans', icon: <AttachMoneyIcon />, path: '/loans' },
-        { text: 'Add Loan', icon: <AddIcon />, path: '/add-loan' },
       ],
     },
     { text: 'Expenses', icon: <ReceiptIcon />, path: '/expenses', section: 'general' },
