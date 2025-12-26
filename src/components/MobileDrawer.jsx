@@ -100,7 +100,6 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, searc
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
-  const [notificationAnchor, setNotificationAnchor] = useState(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false); // Declare notificationsOpen state
   const [readNotifications, setReadNotifications] = useState(() => {
     try {
@@ -140,7 +139,6 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, searc
     setSettingsOpen(false);
     setChangePasswordOpen(false);
     setHelpOpen(false);
-    setNotificationAnchor(null);
   };
 
   const handleNotificationItemClick = (notificationId, loanId) => {
