@@ -112,7 +112,7 @@ export default function Dashboard() {
         isMobile
     );
 
-    const insights = useInsights(loans, borrowers, payments);
+    const insights = useInsights(loans, borrowers, payments, dayjs(selectedMonth).startOf('month').format("YYYY-MM-DD"), dayjs(selectedMonth).endOf('month').format("YYYY-MM-DD"));
 
     useEffect(() => {
         if (!loans || loans.length === 0) return; // Ensure loans are loaded
@@ -257,6 +257,34 @@ export default function Dashboard() {
         localStorage.setItem(HIDDEN_CARDS_KEY, JSON.stringify(newHidden));
     };
 
+    const handleGroupVisibilityChange = (groupName, show) => {
+        const cardIdsInGroup = defaultCards
+            .filter(card => (card.group || 'Ungrouped') === groupName)
+            .map(card => card.id);
+
+        let newHidden = [...hiddenCards];
+        if (show) { // Show all cards in this group
+            newHidden = newHidden.filter(id => !cardIdsInGroup.includes(id));
+        } else { // Hide all cards in this group
+            newHidden = [...new Set([...newHidden, ...cardIdsInGroup])];
+        }
+        setHiddenCards(newHidden);
+        localStorage.setItem(HIDDEN_CARDS_KEY, JSON.stringify(newHidden));
+    };
+
+    const handleGlobalVisibilityChange = (show) => {
+        const allCardIds = DEFAULT_CARD_IDS; // Or use defaultCards.map(c => c.id)
+
+        let newHidden = [...hiddenCards];
+        if (show) { // Show all cards globally
+            newHidden = newHidden.filter(id => !allCardIds.includes(id));
+        } else { // Hide all cards globally
+            newHidden = [...new Set([...newHidden, ...allCardIds])];
+        }
+        setHiddenCards(newHidden);
+        localStorage.setItem(HIDDEN_CARDS_KEY, JSON.stringify(newHidden));
+    };
+
     if (loading) {
         return (
             <Box sx={{ p: { xs: 2, md: 3 } }}>
@@ -375,18 +403,35 @@ export default function Dashboard() {
             <Dialog open={customizeOpen} onClose={() => setCustomizeOpen(false)}>
                 <DialogTitle>Customize Dashboard</DialogTitle>
                 <DialogContent>
-                    <Typography>Select the cards you want to see on your dashboard.</Typography>
-                    {DEFAULT_CARD_IDS.map(cardId => {
-                        const card = defaultCards.find(c => c.id === cardId);
-                        if (!card) return null;
-                        return (
-                            <FormControlLabel
-                                key={cardId}
-                                control={<Checkbox checked={!hiddenCards.includes(cardId)} onChange={() => handleHiddenChange(cardId)} />}
-                                label={card.label}
-                            />
-                        )
-                    })}
+                    <Typography variant="body2" sx={{ mb: 2 }}>Select the cards you want to see on your dashboard.</Typography>
+
+                    <Box sx={{ mb: 3, display: 'flex', gap: 1 }}>
+                        <Button size="small" variant="outlined" onClick={() => handleGlobalVisibilityChange(true)}>Show All</Button>
+                        <Button size="small" variant="outlined" onClick={() => handleGlobalVisibilityChange(false)}>Hide All</Button>
+                    </Box>
+
+                    {cardsToRender.map(group => (
+                        <Box key={group.name} sx={{ mb: 3 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                <Typography variant="h6" gutterBottom>
+                                    {group.name}
+                                </Typography>
+                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                    <Button size="small" onClick={() => handleGroupVisibilityChange(group.name, true)}>Show Group</Button>
+                                    <Button size="small" onClick={() => handleGroupVisibilityChange(group.name, false)}>Hide Group</Button>
+                                </Box>
+                            </Box>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', ml: 2 }}>
+                                {group.cards.map(card => (
+                                    <FormControlLabel
+                                        key={card.id}
+                                        control={<Checkbox checked={!hiddenCards.includes(card.id)} onChange={() => handleHiddenChange(card.id)} />}
+                                        label={card.label}
+                                    />
+                                ))}
+                            </Box>
+                        </Box>
+                    ))}
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setCustomizeOpen(false)}>Close</Button>

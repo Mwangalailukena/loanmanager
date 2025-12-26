@@ -31,10 +31,16 @@ import {
   Link,
   Tooltip as MuiTooltip,
   useTheme,
+  LinearProgress,
+  Select,
+  MenuItem,
+  InputLabel,
+  FormControl,
 } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
 import PhoneIcon from '@mui/icons-material/Phone';
 import EmailIcon from '@mui/icons-material/Email';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -44,6 +50,10 @@ import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import AddCommentIcon from '@mui/icons-material/AddComment';
 import PostAddIcon from '@mui/icons-material/PostAdd';
 import InfoIcon from '@mui/icons-material/Info';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'; // NEW
+import Collapse from '@mui/material/Collapse'; // NEW
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import GuarantorDialog from '../components/GuarantorDialog';
@@ -242,6 +252,9 @@ export default function BorrowerProfilePage() {
   const [refinanceDueDate, setRefinanceDueDate] = useState(dayjs().add(1, "week").format("YYYY-MM-DD"));
   const [refinanceError, setRefinanceError] = useState("");
   const [isRefinancing, setIsRefinancing] = useState(false);
+  const [loanSortKey, setLoanSortKey] = useState('dueDate'); // Default sort
+  const [loanSortDirection, setLoanSortDirection] = useState('asc'); // 'asc' or 'desc'
+  const [expandedLoanId, setExpandedLoanId] = useState(null); // NEW
 
   const getTextFieldStyles = (theme) => ({
     "& .MuiOutlinedInput-root": {
@@ -295,6 +308,39 @@ export default function BorrowerProfilePage() {
     stats.totalLoans = associatedLoans.length;
     return stats;
   }, [associatedLoans]);
+
+  const sortedAssociatedLoans = useMemo(() => {
+    const sortableLoans = [...associatedLoans];
+    return sortableLoans.sort((a, b) => {
+      let valA, valB;
+
+      switch (loanSortKey) {
+        case 'startDate':
+        case 'dueDate':
+          valA = dayjs(a[loanSortKey]).valueOf();
+          valB = dayjs(b[loanSortKey]).valueOf();
+          break;
+        case 'principal':
+          valA = Number(a.principal || 0);
+          valB = Number(b.principal || 0);
+          break;
+        case 'status':
+          // Sort by status: Overdue > Defaulted > Active > Paid
+          const statusOrder = { 'Overdue': 0, 'Defaulted': 1, 'Active': 2, 'Paid': 3 };
+          valA = statusOrder[calcStatus(a)];
+          valB = statusOrder[calcStatus(b)];
+          break;
+        default:
+          valA = dayjs(a.dueDate).valueOf();
+          valB = dayjs(b.dueDate).valueOf();
+          break;
+      }
+
+      if (valA < valB) return loanSortDirection === 'asc' ? -1 : 1;
+      if (valA > valB) return loanSortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [associatedLoans, loanSortKey, loanSortDirection]);
   
   const chartData = [
     { name: 'Repaid', value: financialStats.totalRepaid },
@@ -413,15 +459,34 @@ export default function BorrowerProfilePage() {
               <Stack spacing={1.5}>
                 <Stack direction="row" alignItems="center" spacing={1.5}>
                   <PhoneIcon color="action" />
-                  <Link href={`tel:+260${borrower.phone.substring(1)}`} underline="hover" color="inherit">
+                  <Link href={`tel:${borrower.phone}`} underline="hover" color="inherit" sx={{ display: 'flex', alignItems: 'center' }}>
                     <Typography variant="body1">{borrower.phone}</Typography>
                   </Link>
+                  {/* WhatsApp Button */}
+                  {borrower.phone && ( // Only show if phone number exists
+                    <IconButton
+                      size="small"
+                      aria-label="whatsapp"
+                      onClick={() => { window.open(`https://wa.me/${borrower.phone}`, '_blank'); }}
+                      sx={{ ml: 1, color: 'success.main' }} // WhatsApp green color
+                    >
+                      <WhatsAppIcon fontSize="small" />
+                    </IconButton>
+                  )}
                 </Stack>
                 <Stack direction="row" alignItems="center" spacing={1.5}>
                   <EmailIcon color="action" />
                   {borrower.email ? (
-                     <Link href={`mailto:${borrower.email}`} underline="hover" color="inherit">
+                     <Link href={`mailto:${borrower.email}`} underline="hover" color="inherit" sx={{ display: 'flex', alignItems: 'center' }}>
                         <Typography variant="body1">{borrower.email}</Typography>
+                        <IconButton
+                          size="small"
+                          aria-label="email"
+                          onClick={() => { window.location.href = `mailto:${borrower.email}`; }}
+                          sx={{ ml: 1, color: 'primary.main' }}
+                        >
+                          <EmailIcon fontSize="small" />
+                        </IconButton>
                      </Link>
                   ) : (
                     <Typography variant="body1" color="text.secondary">No email provided</Typography>
@@ -496,34 +561,106 @@ export default function BorrowerProfilePage() {
                 <TabPanel value={activeTab} index={1}>
                   <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
                     <Typography variant="h6" fontWeight="bold">Associated Loans</Typography>
-                    <Button
-                        variant="contained"
-                        onClick={() => navigate('/add-loan', { state: { borrower } })}
-                        startIcon={<PostAddIcon />}
-                      >
-                        Add New Loan
-                      </Button>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                        <FormControl size="small" sx={{ minWidth: 120 }}>
+                            <InputLabel>Sort By</InputLabel>
+                            <Select
+                                value={loanSortKey}
+                                label="Sort By"
+                                onChange={(e) => setLoanSortKey(e.target.value)}
+                            >
+                                <MenuItem value="startDate">Start Date</MenuItem>
+                                <MenuItem value="dueDate">Due Date</MenuItem>
+                                <MenuItem value="principal">Principal Amount</MenuItem>
+                                <MenuItem value="status">Status</MenuItem>
+                            </Select>
+                        </FormControl>
+                        <IconButton onClick={() => setLoanSortDirection(loanSortDirection === 'asc' ? 'desc' : 'asc')}>
+                            {loanSortDirection === 'asc' ? <ArrowUpwardIcon /> : <ArrowDownwardIcon />}
+                        </IconButton>
+                        <Button
+                            variant="contained"
+                            onClick={() => navigate('/add-loan', { state: { borrower } })}
+                            startIcon={<PostAddIcon />}
+                          >
+                            Add New Loan
+                          </Button>
+                    </Stack>
                   </Stack>
-                  {associatedLoans.length > 0 ? (
+                  {sortedAssociatedLoans.length > 0 ? (
                     <List disablePadding>
-                      {associatedLoans.map((loan) => (
+                      {sortedAssociatedLoans.map((loan) => (
                         <Card key={loan.id} variant="outlined" sx={{ mb: 1.5 }}>
-                          <CardContent>
-                            <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                              <Box>
+                          <CardContent sx={{ pb: expandedLoanId === loan.id ? 0 : 2 }}> {/* Adjust padding for expansion */}
+                            <Stack direction="row" justifyContent="space-between" alignItems="center">
+                              <Box onClick={() => setExpandedLoanId(expandedLoanId === loan.id ? null : loan.id)} sx={{ cursor: 'pointer', flexGrow: 1 }}> {/* Make clickable */}
                                 <Typography variant="body2" color="text.secondary">{dayjs(loan.startDate).format('DD MMM YYYY')}</Typography>
                                 <Typography variant="h6" fontWeight="500">ZMW {Number(loan.principal).toLocaleString()}</Typography>
                               </Box>
-                              <Chip label={calcStatus(loan)} sx={getStatusChipColor(calcStatus(loan), theme)} size="small" />
+                              <Stack direction="row" alignItems="center" spacing={1}>
+                                <Chip label={calcStatus(loan)} sx={getStatusChipColor(calcStatus(loan), theme)} size="small" />
+                                <IconButton
+                                  onClick={() => setExpandedLoanId(expandedLoanId === loan.id ? null : loan.id)}
+                                  aria-expanded={expandedLoanId === loan.id}
+                                  aria-label="show more"
+                                  sx={{
+                                    transform: expandedLoanId === loan.id ? 'rotate(180deg)' : 'rotate(0deg)',
+                                    transition: theme.transitions.create('transform', {
+                                      duration: theme.transitions.duration.shortest,
+                                    }),
+                                  }}
+                                >
+                                  <ExpandMoreIcon />
+                                </IconButton>
+                              </Stack>
                             </Stack>
                             <Divider sx={{ my: 1 }} />
-                            <Stack direction="row" justifyContent="space-between" sx={{ fontSize: '0.875rem' }}>
-                              <Typography variant="body2">Total Repayable: <strong>ZMW {Number(loan.totalRepayable).toLocaleString()}</strong></Typography>
-                              <Typography variant="body2">Due: <strong>{dayjs(loan.dueDate).format('DD MMM YYYY')}</strong></Typography>
-                            </Stack>
-                            <Stack direction="row" spacing={1} mt={1}>
-                              <Button size="small" variant="outlined" onClick={() => openRefinanceModal(loan)}>Refinance</Button>
-                            </Stack>
+                            <Collapse in={expandedLoanId === loan.id} timeout="auto" unmountOnExit>
+                                <Box sx={{ mt: 2 }}>
+                                    <Typography variant="subtitle2" fontWeight="bold">Loan Details:</Typography>
+                                    <List dense disablePadding>
+                                        <ListItem disableGutters><ListItemText primary="Loan ID" /><Typography variant="body2">{loan.id}</Typography></ListItem>
+                                        <ListItem disableGutters><ListItemText primary="Term" /><Typography variant="body2">{loan.term} {loan.termUnit}</Typography></ListItem>
+                                        <ListItem disableGutters><ListItemText primary="Interest Rate" /><Typography variant="body2">{loan.interestRate}%</Typography></ListItem>
+                                        <ListItem disableGutters><ListItemText primary="Installment Amount" /><Typography variant="body2">ZMW {Number(loan.installmentAmount).toLocaleString()}</Typography></ListItem>
+                                        {/* Add more detailed info here, e.g., repayment schedule breakdown */}
+                                    </List>
+                                    <Divider sx={{ my: 1 }} />
+                                    <Stack direction="row" spacing={1} mt={1}>
+                                      <Button size="small" variant="outlined" onClick={() => openRefinanceModal(loan)}>Refinance</Button>
+                                    </Stack>
+                                </Box>
+                            </Collapse>
+                            {! (expandedLoanId === loan.id) && ( // Show original action buttons if not expanded
+                              <>
+                                <Stack direction="row" justifyContent="space-between" sx={{ fontSize: '0.875rem' }}>
+                                  <Typography variant="body2">Total Repayable: <strong>ZMW {Number(loan.totalRepayable).toLocaleString()}</strong></Typography>
+                                  <Typography variant="body2">Due: <strong>{dayjs(loan.dueDate).format('DD MMM YYYY')}</strong></Typography>
+                                </Stack>
+                                {/* Next Upcoming Due Date */}
+                                {calcStatus(loan) === 'Active' && dayjs(loan.dueDate).isAfter(dayjs(), 'day') && (
+                                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                                        Next Payment Due: <strong>{dayjs(loan.dueDate).fromNow()}</strong> ({dayjs(loan.dueDate).format('DD MMM')})
+                                    </Typography>
+                                )}
+                                {/* Loan Progress Indicator */}
+                                {loan.totalRepayable > 0 && (
+                                  <Box sx={{ width: '100%', mt: 1 }}>
+                                    <LinearProgress 
+                                      variant="determinate" 
+                                      value={(Number(loan.repaidAmount || 0) / Number(loan.totalRepayable || 0)) * 100} 
+                                      sx={{ height: 8, borderRadius: 5 }} 
+                                    />
+                                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                                      {(Number(loan.repaidAmount || 0) / Number(loan.totalRepayable || 0) * 100).toFixed(1)}% repaid
+                                    </Typography>
+                                  </Box>
+                                )}
+                                <Stack direction="row" spacing={1} mt={1}>
+                                  <Button size="small" variant="outlined" onClick={() => openRefinanceModal(loan)}>Refinance</Button>
+                                </Stack>
+                              </>
+                            )}
                           </CardContent>
                         </Card>
                       ))}
@@ -557,8 +694,38 @@ export default function BorrowerProfilePage() {
                         <ListItem key={g.id} disablePadding divider>
                             <ListItemText primary={g.name} secondary={`Phone: ${g.phone}`} />
                             <Stack direction="row" spacing={1}>
-                            <IconButton onClick={() => handleOpenGuarantorDialog(g)}><EditIcon fontSize="small" /></IconButton>
-                            <IconButton onClick={() => handleOpenDeleteGuarantorConfirm(g)}><DeleteIcon fontSize="small" /></IconButton>
+                                {g.phone && (
+                                    <>
+                                        <IconButton
+                                            size="small"
+                                            aria-label="call guarantor"
+                                            onClick={(e) => { e.stopPropagation(); window.location.href = `tel:${g.phone}`; }}
+                                            color="primary"
+                                        >
+                                            <PhoneIcon fontSize="small" />
+                                        </IconButton>
+                                        <IconButton
+                                            size="small"
+                                            aria-label="whatsapp guarantor"
+                                            onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/${g.phone}`, '_blank'); }}
+                                            sx={{ color: 'success.main' }}
+                                        >
+                                            <WhatsAppIcon fontSize="small" />
+                                        </IconButton>
+                                    </>
+                                )}
+                                {g.email && (
+                                    <IconButton
+                                        size="small"
+                                        aria-label="email guarantor"
+                                        onClick={(e) => { e.stopPropagation(); window.location.href = `mailto:${g.email}`; }}
+                                        color="primary"
+                                    >
+                                        <EmailIcon fontSize="small" />
+                                    </IconButton>
+                                )}
+                                <IconButton onClick={() => handleOpenGuarantorDialog(g)}><EditIcon fontSize="small" /></IconButton>
+                                <IconButton onClick={() => handleOpenDeleteGuarantorConfirm(g)}><DeleteIcon fontSize="small" /></IconButton>
                             </Stack>
                         </ListItem>
                         ))}
@@ -613,8 +780,7 @@ export default function BorrowerProfilePage() {
                           Add
                       </Button>
                     </Stack>
-                </TabPanel>
-              </Box>
+                </TabPanel>              </Box>
             </Paper>
           </Grid>
         </Grid>

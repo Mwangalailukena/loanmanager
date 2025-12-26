@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useFirestore } from '../contexts/FirestoreProvider';
 import { useCreditScore } from '../hooks/useCreditScore';
+import dayjs from 'dayjs'; // NEW
 import {
   Box,
   Typography,
@@ -21,12 +22,17 @@ import {
   Avatar,
   useTheme,
   useMediaQuery,
+  Switch,
+  FormControlLabel,
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import PersonIcon from '@mui/icons-material/Person';
 import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline';
+import CallIcon from '@mui/icons-material/Call';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
+import { calcStatus } from '../utils/loanUtils';
 
 const BorrowerCard = ({ borrower }) => {
   const { loans } = useFirestore();
@@ -78,7 +84,34 @@ const BorrowerCard = ({ borrower }) => {
               <Typography variant="h6" component="div" fontWeight="600" noWrap>
                 {borrower.name}
               </Typography>
-              <Typography variant="body2" color="text.secondary" noWrap>{borrower.phone}</Typography>
+              <Stack direction="row" alignItems="center" spacing={0.5}> {/* NEW STACK */}
+                <Typography variant="body2" color="text.secondary" noWrap>{borrower.phone}</Typography>
+                {borrower.phone && ( // Only show if phone number exists
+                  <IconButton
+                    size="small"
+                    aria-label="whatsapp"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.open(`https://wa.me/${borrower.phone}`, '_blank');
+                    }}
+                    sx={{ color: 'success.main' }} // WhatsApp green color
+                  >
+                    <WhatsAppIcon fontSize="small" />
+                  </IconButton>
+                )}
+                {/* Keep call option as an explicit button */}
+                <IconButton
+                  size="small"
+                  aria-label="call"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.location.href = `tel:${borrower?.phone}`;
+                  }}
+                  sx={{ color: 'primary.main' }}
+                >
+                  <CallIcon fontSize="small" />
+                </IconButton>
+              </Stack>
             </Box>
           </Stack>
           <IconButton
@@ -109,38 +142,103 @@ const BorrowerCard = ({ borrower }) => {
         >
           Add Loan
         </MenuItem>
-        <MenuItem onClick={(e) => {
-          e.stopPropagation();
-          window.location.href = `tel:${borrower?.phone}`;
-          handleMenuClose(e);
-        }}>
-          Call
-        </MenuItem>
-        <MenuItem onClick={(e) => {
-          e.stopPropagation();
-          window.location.href = `sms:${borrower?.phone}`;
-          handleMenuClose(e);
-        }}>
-          Send SMS
-        </MenuItem>
       </Menu>
     </Card>
   );
 };
 
 export default function BorrowerListPage() {
-  const { borrowers, loading } = useFirestore();
+  const { borrowers, loading, loans } = useFirestore();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [showActiveLoans, setShowActiveLoans] = useState(false);
+  const [showOverdueLoans, setShowOverdueLoans] = useState(false);
+
+  // Debounce effect
+  useEffect(() => {
+    const timerId = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500); // 500ms debounce delay
+
+    return () => {
+      clearTimeout(timerId);
+    };
+  }, [searchTerm]); // Re-run effect only if searchTerm changes
+
+  // Summary Statistics (NEW)
+  const summaryStats = useMemo(() => {
+    const totalBorrowers = borrowers.length;
+    
+    // Create a Set to store unique borrower IDs that have active/overdue loans
+    const borrowersWithActiveLoans = new Set();
+    const borrowersWithOverdueLoans = new Set();
+
+    loans.forEach(loan => {
+      const status = calcStatus(loan); // Use the utility function
+
+      if (status === 'Active') {
+        borrowersWithActiveLoans.add(loan.borrowerId);
+      } else if (status === 'Overdue') {
+        borrowersWithOverdueLoans.add(loan.borrowerId);
+      }
+      // Note: A loan could be both 'Active' (not paid/defaulted) and 'Overdue'.
+      // If a loan is overdue, it's typically considered in the 'Overdue' category, not 'Active'.
+      // The calcStatus utility should handle this hierarchy.
+    });
+
+    return {
+      totalBorrowers,
+      borrowersWithActiveLoansCount: borrowersWithActiveLoans.size,
+      borrowersWithOverdueLoansCount: borrowersWithOverdueLoans.size,
+    };
+  }, [borrowers, loans]); // Recalculate if borrowers or loans change
+
 
   const filteredBorrowers = useMemo(() => {
-    if (!searchTerm) {
-      return borrowers;
+    // Start with the full list of borrowers
+    let currentFilteredBorrowers = borrowers;
+
+    // Apply search term filter
+    if (debouncedSearchTerm) {
+      currentFilteredBorrowers = currentFilteredBorrowers.filter((borrower) =>
+        borrower.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+      );
     }
-    return borrowers.filter((borrower) =>
-      borrower.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [borrowers, searchTerm]);
+
+    // Apply "Show Active Loans Only" filter
+    if (showActiveLoans) {
+      currentFilteredBorrowers = currentFilteredBorrowers.filter(borrower => {
+        const hasActiveLoan = loans.some(loan => 
+          loan.borrowerId === borrower.id && 
+          loan.status !== 'Defaulted' && 
+          loan.status !== 'Paid' // Assuming 'Active' implies not defaulted and not paid
+        );
+        return hasActiveLoan;
+      });
+    }
+
+    // Apply "Show Overdue Loans Only" filter
+    if (showOverdueLoans) {
+      currentFilteredBorrowers = currentFilteredBorrowers.filter(borrower => {
+        const hasOverdueLoan = loans.some(loan => {
+          if (loan.borrowerId !== borrower.id) return false;
+          if (loan.status === 'Defaulted' || loan.status === 'Paid') return false;
+          const totalRepayable = Number(loan.totalRepayable || 0);
+          const repaidAmount = Number(loan.repaidAmount || 0);
+          const dueDate = dayjs(loan.dueDate);
+          const now = dayjs();
+          return (repaidAmount < totalRepayable || totalRepayable === 0) && dueDate.isBefore(now, 'day');
+        });
+        return hasOverdueLoan;
+      });
+    }
+
+    return currentFilteredBorrowers;
+  }, [borrowers, debouncedSearchTerm, showActiveLoans, showOverdueLoans, loans]); // Added loans to dependency
+
+
+
 
   return (
     <Paper
@@ -154,6 +252,23 @@ export default function BorrowerListPage() {
         border: (theme) => `1px solid ${theme.palette.divider}`,
       }}
     >
+      {/* Summary Section (NEW) */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={12} sm={6}> {/* Adjusted to sm={6} for better layout with 2 items */}
+          <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
+            <Typography variant="h6" color="text.secondary">Total Borrowers</Typography>
+            <Typography variant="h4" fontWeight="bold">{summaryStats.totalBorrowers}</Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} sm={6}> {/* Adjusted to sm={6} for better layout with 2 items */}
+          <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
+            <Typography variant="h6" color="text.secondary">Overdue Borrowers</Typography>
+            <Typography variant="h4" fontWeight="bold" color="error.main">{summaryStats.borrowersWithOverdueLoansCount}</Typography>
+          </Paper>
+        </Grid>
+      </Grid>
+      {/* End Summary Section */}
+
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
         <Typography variant="h5" fontWeight="bold">
           Borrowers
@@ -178,6 +293,17 @@ export default function BorrowerListPage() {
         }}
         sx={{ mb: 2 }}
       />
+
+      <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+            <FormControlLabel
+                control={<Switch checked={showActiveLoans} onChange={(e) => setShowActiveLoans(e.target.checked)} />}
+                label="Show Active Loans Only"
+            />
+            <FormControlLabel
+                control={<Switch checked={showOverdueLoans} onChange={(e) => setShowOverdueLoans(e.target.checked)} />}
+                label="Show Overdue Loans Only"
+            />
+        </Stack>
 
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>

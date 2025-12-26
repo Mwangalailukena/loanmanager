@@ -14,10 +14,11 @@ import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 
 const cardVariants = {
-  hidden: { opacity: 0, y: 20 },
+  hidden: { opacity: 0, y: 20, scale: 0.95 },
   visible: (i) => ({
     opacity: 1,
     y: 0,
+    scale: 1,
     transition: { delay: i * 0.1, duration: 0.4, ease: "easeOut" },
   }),
 };

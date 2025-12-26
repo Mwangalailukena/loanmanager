@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from "react";
 import {
   Box, Typography, useTheme, useMediaQuery, CircularProgress, Paper, Grid,
-  IconButton, Tooltip, Dialog, DialogTitle, DialogContent, Slide, Card, CardContent
+  IconButton, Tooltip, Dialog, DialogTitle, DialogContent, Slide, Card, CardContent,
+  TextField, Button
 } from "@mui/material";
 import CloseIcon from '@mui/icons-material/Close';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
@@ -24,6 +25,16 @@ const formatCurrency = (value) => new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(value);
+
+const formatLargeNumber = (value) => {
+  if (Math.abs(value) >= 1_000_000) {
+    return (value / 1_000_000).toFixed(1) + 'M';
+  }
+  if (Math.abs(value) >= 1_000) {
+    return (value / 1_000).toFixed(1) + 'K';
+  }
+  return value;
+};
 
 const calcStatusAsOf = (loan, asOfDate) => {
   if ((loan.repaidAmount || 0) >= (loan.principal || 0)) return 'Paid';
@@ -108,6 +119,10 @@ const Charts = ({ loans, borrowers, payments, expenses }) => {
   const [openDialog, setOpenDialog] = useState(false);
   const [dialogChartConfig, setDialogChartConfig] = useState(null);
 
+  const [chartStartDate, setChartStartDate] = useState(dayjs().subtract(1, 'year').format('YYYY-MM-DD')); // Default to last year
+  const [chartEndDate, setChartEndDate] = useState(dayjs().format('YYYY-MM-DD')); // Default to today
+
+
   const isLoading = !loans || !borrowers || !payments || !expenses;
 
   const loanStatusColors = useMemo(() => ({
@@ -139,36 +154,54 @@ const Charts = ({ loans, borrowers, payments, expenses }) => {
     if (isLoading || !loans || loans.length === 0) return [];
     const dataByMonth = new Map();
     
-    loans.forEach(loan => {
+    // Filter loans, payments, expenses by chartStartDate and chartEndDate
+    const filteredLoans = loans.filter(loan => dayjs(loan.startDate).isBetween(chartStartDate, chartEndDate, 'day', '[]'));
+    const filteredPayments = payments.filter(payment => {
+        const paymentDate = dayjs(payment.date?.toDate ? payment.date.toDate() : payment.date);
+        return paymentDate.isBetween(chartStartDate, chartEndDate, 'day', '[]');
+    });
+    const filteredExpenses = expenses.filter(expense => dayjs(expense.date).isBetween(chartStartDate, chartEndDate, 'day', '[]'));
+
+    filteredLoans.forEach(loan => {
         const month = dayjs(loan.startDate).format('YYYY-MM');
         const monthData = dataByMonth.get(month) || { revenue: 0, costs: 0 };
         monthData.costs += Number(loan.principal || 0); dataByMonth.set(month, monthData);
     });
 
-    payments.forEach(payment => {
-        // CHANGED: Robustly handle both Firestore Timestamps and date strings
+    filteredPayments.forEach(payment => {
         const dateToParse = payment.date?.toDate ? payment.date.toDate() : payment.date;
         const month = dayjs(dateToParse).format('YYYY-MM');
         const monthData = dataByMonth.get(month) || { revenue: 0, costs: 0 };
         monthData.revenue += Number(payment.amount || 0); dataByMonth.set(month, monthData);
     });
 
-    expenses.forEach(expense => {
+    filteredExpenses.forEach(expense => {
         const month = dayjs(expense.date).format('YYYY-MM');
         const monthData = dataByMonth.get(month) || { revenue: 0, costs: 0 };
         monthData.costs += Number(expense.amount || 0); dataByMonth.set(month, monthData);
     });
     return Array.from(dataByMonth.entries()).map(([month, data]) => ({ month, ...data, net: data.revenue - data.costs })).sort((a, b) => dayjs(a.month).diff(dayjs(b.month)));
-  }, [loans, payments, expenses, isLoading]);
+  }, [loans, payments, expenses, isLoading, chartStartDate, chartEndDate]); // Add chartStartDate, chartEndDate to dependencies
 
   const portfolioHealthData = useMemo(() => {
     if (isLoading || !loans || loans.length === 0) return [];
-    const firstLoanDate = dayjs(Math.min(...loans.map(l => dayjs(l.startDate).valueOf())));
-    const data = []; let currentMonth = firstLoanDate.startOf('month');
-    while (currentMonth.isBefore(dayjs().endOf('month'))) {
+
+    // Filter loans by chartStartDate and chartEndDate for this calculation
+    const relevantLoans = loans.filter(loan => {
+        const loanStartDate = dayjs(loan.startDate);
+        return loanStartDate.isBetween(chartStartDate, chartEndDate, 'day', '[]');
+    });
+
+    const firstLoanDate = relevantLoans.length > 0 ? dayjs(Math.min(...relevantLoans.map(l => dayjs(l.startDate).valueOf()))) : dayjs(chartStartDate);
+    const data = [];
+    let currentMonth = dayjs(firstLoanDate).startOf('month');
+    const endProcessingMonth = dayjs(chartEndDate).endOf('month');
+
+    while (currentMonth.isBefore(endProcessingMonth) || currentMonth.isSame(endProcessingMonth, 'month')) {
         let performingValue = 0, overdueValue = 0;
         // eslint-disable-next-line no-loop-func
-        loans.forEach(loan => {
+        relevantLoans.forEach(loan => {
+            // Ensure loan started before or in the current month being processed and not paid
             if (dayjs(loan.startDate).isAfter(currentMonth.endOf('month'))) return;
             const status = calcStatusAsOf(loan, currentMonth.endOf('month'));
             const outstanding = Number(loan.principal || 0) - Number(loan.repaidAmount || 0);
@@ -181,11 +214,16 @@ const Charts = ({ loans, borrowers, payments, expenses }) => {
         currentMonth = currentMonth.add(1, 'month');
     }
     return [{ id: 'Performing', data: data.map(d => ({ x: d.x, y: d.Performing })) }, { id: 'Overdue', data: data.map(d => ({ x: d.x, y: d.Overdue })) }];
-  }, [loans, isLoading]);
+  }, [loans, isLoading, chartStartDate, chartEndDate]); // Add chartStartDate, chartEndDate to dependencies
 
   const { activeLoanStatusData, topBorrowersData } = useMemo(() => {
     if (isLoading || !loans || loans.length === 0) return { activeLoanStatusData: [], topBorrowersData: [] };
-    const today = dayjs(); const activeLoans = loans.filter(loan => calcStatusAsOf(loan, today) !== 'Paid');
+    const today = dayjs(chartEndDate); // Use chartEndDate as "today" for these calculations
+    const activeLoans = loans.filter(loan => {
+        const loanStartDate = dayjs(loan.startDate);
+        // Filter active loans based on the selected chart date range
+        return calcStatusAsOf(loan, today) !== 'Paid' && loanStartDate.isBetween(chartStartDate, chartEndDate, 'day', '[]');
+    });
     const statusCounts = { 'Active': 0, 'Overdue': 0 };
     activeLoans.forEach(loan => { const status = calcStatusAsOf(loan, today); if (status in statusCounts) statusCounts[status]++; });
     const activeLoanStatusData = Object.entries(statusCounts).map(([id, value]) => ({ id, label: id, value }));
@@ -196,7 +234,7 @@ const Charts = ({ loans, borrowers, payments, expenses }) => {
     });
     const topBorrowersData = Array.from(borrowerBalances.entries()).map(([borrowerId, balance]) => ({ id: borrowerId, borrowerName: borrowers.find(b => b.id === borrowerId)?.name || 'Unknown', balance })).sort((a, b) => b.balance - a.balance).slice(0, 5).reverse();
     return { activeLoanStatusData, topBorrowersData };
-  }, [loans, borrowers, isLoading]);
+  }, [loans, borrowers, isLoading, chartStartDate, chartEndDate]); // Add chartStartDate, chartEndDate to dependencies
 
   const handleOpenDialog = (config) => { setDialogChartConfig(config); setOpenDialog(true); };
   const handleCloseDialog = () => { setOpenDialog(false); setDialogChartConfig(null); };
@@ -227,6 +265,43 @@ const Charts = ({ loans, borrowers, payments, expenses }) => {
     <Box sx={{ p: isMobile ? 1 : 3 }}>
       <Typography variant={isMobile ? "h5" : "h4"} sx={{ fontWeight: 700, mb: 3 }}>Portfolio Dashboard</Typography>
       
+      <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+            <TextField
+                label="Start Date"
+                type="date"
+                value={chartStartDate}
+                onChange={(e) => setChartStartDate(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                size="small"
+                sx={{ minWidth: 150 }}
+            />
+            <TextField
+                label="End Date"
+                type="date"
+                value={chartEndDate}
+                onChange={(e) => setChartEndDate(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                size="small"
+                sx={{ minWidth: 150 }}
+            />
+            <Button size="small" variant={dayjs(chartStartDate).isSame(dayjs().subtract(3, 'month').format('YYYY-MM-DD'), 'day') && dayjs(chartEndDate).isSame(dayjs().format('YYYY-MM-DD'), 'day') ? "contained" : "outlined"} onClick={() => {
+                setChartStartDate(dayjs().subtract(3, 'month').format('YYYY-MM-DD'));
+                setChartEndDate(dayjs().format('YYYY-MM-DD'));
+            }}>3M</Button>
+            <Button size="small" variant={dayjs(chartStartDate).isSame(dayjs().subtract(6, 'month').format('YYYY-MM-DD'), 'day') && dayjs(chartEndDate).isSame(dayjs().format('YYYY-MM-DD'), 'day') ? "contained" : "outlined"} onClick={() => {
+                setChartStartDate(dayjs().subtract(6, 'month').format('YYYY-MM-DD'));
+                setChartEndDate(dayjs().format('YYYY-MM-DD'));
+            }}>6M</Button>
+            <Button size="small" variant={dayjs(chartStartDate).isSame(dayjs().subtract(1, 'year').format('YYYY-MM-DD'), 'day') && dayjs(chartEndDate).isSame(dayjs().format('YYYY-MM-DD'), 'day') ? "contained" : "outlined"} onClick={() => {
+                setChartStartDate(dayjs().subtract(1, 'year').format('YYYY-MM-DD'));
+                setChartEndDate(dayjs().format('YYYY-MM-DD'));
+            }}>1Y</Button>
+            <Button size="small" variant={dayjs(chartStartDate).isSame(dayjs('1970-01-01').format('YYYY-MM-DD'), 'day') && dayjs(chartEndDate).isSame(dayjs().format('YYYY-MM-DD'), 'day') ? "contained" : "outlined"} onClick={() => {
+                setChartStartDate(dayjs('1970-01-01').format('YYYY-MM-DD')); // "All Time"
+                setChartEndDate(dayjs().format('YYYY-MM-DD'));
+            }}>All Time</Button>
+        </Box>
+      
       <Grid container spacing={isMobile ? 2 : 3} sx={{ mb: isMobile ? 3 : 4 }}>
         <Grid item xs={6} md={3}><KpiCard title="Total Outstanding" value={formatCurrency(kpiData.outstandingPrincipal)} isLoading={isLoading} tooltip="The total principal amount currently owed by all borrowers across all active loans." /></Grid>
         <Grid item xs={6} md={3}><KpiCard title="Principal Overdue" value={formatCurrency(kpiData.overduePrincipal)} isLoading={isLoading} tooltip="The portion of the total outstanding principal that belongs to loans currently marked as 'Overdue'."/></Grid>
@@ -237,22 +312,22 @@ const Charts = ({ loans, borrowers, payments, expenses }) => {
       <Grid container spacing={isMobile ? 2 : 3}>
         <Grid item xs={12} md={6}>
             <ChartPaper title="Profitability Analysis" tooltip="Shows monthly revenue (collections), costs (disbursements + expenses), and net profit." onClick={() => handleOpenDialog({ type: 'profitability', data: profitabilityData, title: 'Profitability Analysis' })}>
-                {profitabilityData.length > 0 ? <ResponsiveBar data={profitabilityData} keys={['revenue', 'costs']} indexBy="month" margin={{ top: 10, right: 80, bottom: 50, left: 60 }} theme={nivoTheme} colors={({ id }) => id === 'costs' ? theme.palette.error.light : theme.palette.success.light} axisBottom={{ format: value => dayjs(value).format('MMM YY'), legend: 'Month', legendPosition: 'middle', legendOffset: 40 }} axisLeft={{ legend: 'Amount', legendPosition: 'middle', legendOffset: -50 }} legends={[{ dataFrom: 'keys', anchor: 'bottom-right', direction: 'column', translateX: 70, itemWidth: 60, itemHeight: 20, symbolSize: 12 }]} enableLabel={false} /> : <NoDataMessage message="Not enough data for profitability analysis." />}
+                {profitabilityData.length > 0 ? <ResponsiveBar data={profitabilityData} keys={['revenue', 'costs']} indexBy="month" margin={{ top: 80, right: 80, bottom: 50, left: 60 }} theme={nivoTheme} colors={({ id }) => id === 'costs' ? theme.palette.error.light : theme.palette.success.light} axisBottom={{ format: value => dayjs(value).format('MMM YY'), legend: 'Month', legendPosition: 'middle', legendOffset: 40 }} axisLeft={{ legend: 'Amount', legendPosition: 'middle', legendOffset: -50, format: formatLargeNumber }} tooltip={({ value }) => formatCurrency(value)} legends={[{ dataFrom: 'keys', anchor: 'top-left', direction: 'column', justify: false, translateX: 0, translateY: -70, itemWidth: 80, itemHeight: 18, itemOpacity: 0.75, symbolSize: 10, symbolShape: 'circle', effects: [{ on: 'hover', style: { itemOpacity: 1 } }] }]} enableLabel={false} /> : <NoDataMessage message="Not enough data for profitability analysis." />}
             </ChartPaper>
         </Grid>
         <Grid item xs={12} md={6}>
             <ChartPaper title="Portfolio Health Over Time" tooltip="Shows the total monetary value of the portfolio, split into performing (active) and overdue principal each month." onClick={() => handleOpenDialog({ type: 'health', data: portfolioHealthData, title: 'Portfolio Health Over Time' })}>
-                {portfolioHealthData[0]?.data.length > 0 ? <ResponsiveLine data={portfolioHealthData} enableArea={true} areaOpacity={0.3} useMesh={true} margin={{ top: 10, right: 80, bottom: 50, left: 60 }} theme={nivoTheme} colors={({ id }) => loanStatusColors[id]} xScale={{ type: 'time', format: '%Y-%m-%d', useUTC: false }} xFormat="time:%b %Y" axisBottom={{ format: '%b %y', tickValues: 'every 3 months', legend: 'Date', legendPosition: 'middle', legendOffset: 40 }} axisLeft={{ legend: 'Principal', legendPosition: 'middle', legendOffset: -50 }} legends={[{ anchor: 'bottom-right', direction: 'column', translateX: 70, itemWidth: 60, itemHeight: 20, symbolSize: 12 }]} /> : <NoDataMessage message="Not enough data to show portfolio health trend." />}
+                {portfolioHealthData[0]?.data.length > 0 ? <ResponsiveLine data={portfolioHealthData} enableArea={true} areaOpacity={0.3} useMesh={true} margin={{ top: 80, right: 80, bottom: 50, left: 60 }} theme={nivoTheme} colors={({ id }) => loanStatusColors[id]} xScale={{ type: 'time', format: '%Y-%m-%d', useUTC: false }} xFormat="time:%b %Y" axisBottom={{ format: '%b %y', tickValues: 'every 3 months', legend: 'Date', legendPosition: 'middle', legendOffset: 40 }} axisLeft={{ legend: 'Principal', legendPosition: 'middle', legendOffset: -50, format: formatLargeNumber }} tooltip={({ point }) => `${point.serieId}: ${formatCurrency(point.data.y)}`} legends={[{ anchor: 'top-left', direction: 'column', justify: false, translateX: 0, translateY: -70, itemWidth: 80, itemHeight: 18, itemOpacity: 0.75, symbolSize: 10, symbolShape: 'circle', effects: [{ on: 'hover', style: { itemOpacity: 1 } }] }]} /> : <NoDataMessage message="Not enough data to show portfolio health trend." />}
             </ChartPaper>
         </Grid>
         <Grid item xs={12} md={6}>
             <ChartPaper title="Active Loan Status" tooltip="The number of currently active loans, categorized by their status. Click a slice to see the loans.">
-                {activeLoanStatusData.some(d => d.value > 0) ? <ResponsivePie data={activeLoanStatusData} onClick={(datum) => navigate(`/loans?filter=${datum.id.toLowerCase()}`)} margin={{ top: 20, right: 20, bottom: 60, left: 20 }} innerRadius={0.5} padAngle={2} cornerRadius={3} activeOuterRadiusOffset={8} colors={({ id }) => loanStatusColors[id]} theme={nivoTheme} arcLinkLabelsSkipAngle={10} arcLabelsSkipAngle={10} legends={[{ anchor: 'bottom', direction: 'row', justify: false, translateY: 45, itemsSpacing: 20, itemWidth: 80, itemHeight: 18, symbolSize: 14 }]} /> : <NoDataMessage message="No active loans to display." />}
+                {activeLoanStatusData.some(d => d.value > 0) ? <ResponsivePie data={activeLoanStatusData} onClick={(datum) => navigate(`/loans?filter=${datum.id.toLowerCase()}`)} margin={{ top: 70, right: 20, bottom: 20, left: 20 }} innerRadius={0.5} padAngle={2} cornerRadius={3} activeOuterRadiusOffset={8} colors={({ id }) => loanStatusColors[id]} theme={nivoTheme} arcLinkLabelsSkipAngle={10} arcLabelsSkipAngle={10} tooltip={({ datum }) => `${datum.label}: ${datum.value} (${datum.percentage.toFixed(1)}%)`} legends={[{ anchor: 'top-left', direction: 'column', justify: false, translateX: 0, translateY: -40, itemWidth: 70, itemHeight: 16, itemOpacity: 0.75, symbolSize: 12, symbolShape: 'circle', effects: [{ on: 'hover', style: { itemOpacity: 1 } }] }]} /> : <NoDataMessage message="No active loans to display." />}
             </ChartPaper>
         </Grid>
         <Grid item xs={12} md={6}>
             <ChartPaper title="Top 5 Borrowers by Balance" tooltip="The top 5 borrowers with the highest outstanding principal balance. Click a bar to see the borrower's profile.">
-                {topBorrowersData.length > 0 ? <ResponsiveBar data={topBorrowersData} keys={['balance']} indexBy="borrowerName" layout="horizontal" onClick={(datum) => navigate(`/borrowers/${datum.data.id}`)} margin={{ top: 10, right: 20, bottom: 50, left: 100 }} theme={nivoTheme} colors={theme.palette.secondary.main} labelFormat={d => formatCurrency(d)} axisLeft={{ tickSize: 0, tickPadding: 10 }} axisBottom={{ legend: 'Balance', legendPosition: 'middle', legendOffset: 40, format: d => '' }} enableGridY={false} tooltipLabel={d=>d.indexValue} valueFormat={value => formatCurrency(value)} /> : <NoDataMessage message="No active borrowers with outstanding balances." />}
+                {topBorrowersData.length > 0 ? <ResponsiveBar data={topBorrowersData} keys={['balance']} indexBy="borrowerName" layout="horizontal" onClick={(datum) => navigate(`/borrowers/${datum.data.id}`)} margin={{ top: 10, right: 20, bottom: 50, left: 100 }} theme={nivoTheme} colors={theme.palette.secondary.main} labelFormat={d => formatCurrency(d)} axisLeft={{ tickSize: 0, tickPadding: 10 }} axisBottom={{ legend: 'Balance', legendPosition: 'middle', legendOffset: 40, format: formatLargeNumber }} enableGridY={false} tooltipLabel={d=>d.indexValue} valueFormat={value => formatCurrency(value)} /> : <NoDataMessage message="No active borrowers with outstanding balances." />}
             </ChartPaper>
         </Grid>
       </Grid>
