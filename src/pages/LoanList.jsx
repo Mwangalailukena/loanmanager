@@ -36,6 +36,8 @@ import {
   TableSortLabel,
   InputAdornment,
   Skeleton,
+  LinearProgress,
+  Menu,
 } from "@mui/material";
 import {
   KeyboardArrowDown,
@@ -49,6 +51,7 @@ import {
   AddCircleOutline as AddCircleOutlineIcon,
   Autorenew as AutorenewIcon,
   AttachMoney as AttachMoneyIcon,
+  MoreVert as MoreVertIcon,
 } from "@mui/icons-material";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { exportToCsv } from "../utils/exportCSV";
@@ -201,6 +204,18 @@ export default function LoanList() {
 
   const [topUpModal, setTopUpModal] = useState({ open: false, loan: null });
   const [isToppingUp, setIsToppingUp] = useState(false);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedLoan, setSelectedLoan] = useState(null);
+
+  const handleMenuClick = (event, loan) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedLoan(loan);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedLoan(null);
+  };
 
   const interestRates = settings.interestRates || {
     1: 0.15,
@@ -883,6 +898,16 @@ export default function LoanList() {
                           <Typography variant="caption" color="textSecondary" noWrap>
                             {displayInfo.phone}
                           </Typography>
+                          <Box sx={{ width: '100%', mt: 1 }}>
+                            <LinearProgress
+                              variant="determinate"
+                              value={(loan.repaidAmount / loan.totalRepayable) * 100}
+                              sx={{ height: 6, borderRadius: 5 }}
+                            />
+                            <Typography variant="caption" color="text.secondary">
+                              ZMW {outstanding.toFixed(2)} outstanding
+                            </Typography>
+                          </Box>
                         </Box>
                         <Stack alignItems="flex-end" spacing={0.5}>
                           <Chip size="small" {...getStatusChipProps(calcStatus(loan))} />
@@ -1143,7 +1168,19 @@ export default function LoanList() {
                         role="checkbox"
                         aria-checked={isSelected}
                         selected={isSelected}
-                        sx={{ cursor: "pointer", py: 0.5 }}
+                        sx={{
+                          cursor: "pointer",
+                          py: 0.5,
+                          '&:nth-of-type(odd)': {
+                            backgroundColor: theme.palette.action.hover,
+                          },
+                          ...(calcStatus(loan) === 'Overdue' && {
+                            borderLeft: `5px solid ${theme.palette.error.main}`,
+                          }),
+                          ...(calcStatus(loan) === 'Defaulted' && {
+                            borderLeft: `5px solid ${theme.palette.warning.main}`,
+                          }),
+                        }}
                       >
                         <TableCell padding="checkbox" sx={{ py: 0.5 }}>
                           <Checkbox
@@ -1220,51 +1257,15 @@ export default function LoanList() {
                               </IconButton>
                             </span>
                           </Tooltip>
-                          <Tooltip title="Top-up">
-                            <span>
-                              <IconButton
-                                size="small"
-                                onClick={() => openTopUpModal(loan)}
-                                aria-label="top-up"
-                                disabled={isPaid || loan.repaidAmount > 0}
-                                color="secondary"
-                              >
-                                <AttachMoneyIcon fontSize="small" />
-                              </IconButton>
-                            </span>
-                          </Tooltip>
-                          <Tooltip title="View History">
+                          <Tooltip title="More">
                             <IconButton
                               size="small"
-                              onClick={() => openHistoryModal(loan.id)}
-                              aria-label="view history"
+                              onClick={(e) => handleMenuClick(e, loan)}
+                              aria-label="more"
                               color="secondary"
                             >
-                              <History fontSize="small" />
+                              <MoreVertIcon fontSize="small" />
                             </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Details">
-                            <IconButton
-                              size="small"
-                              onClick={() => openLoanDetail(loan.id)}
-                              aria-label="view details"
-                              color="secondary"
-                            >
-                              <InfoIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Refinance">
-                            <span>
-                              <IconButton
-                                size="small"
-                                onClick={() => openRefinanceModal(loan)}
-                                aria-label="refinance"
-                                disabled={isPaid}
-                                color="secondary"
-                              >
-                                <AutorenewIcon fontSize="small" />
-                              </IconButton>
-                            </span>
                           </Tooltip>
                         </TableCell>
                       </TableRow>
@@ -1292,6 +1293,16 @@ export default function LoanList() {
                   </TableRow>
                 </TableFooter>
               </Table>
+              <Menu
+                anchorEl={anchorEl}
+                open={Boolean(anchorEl)}
+                onClose={handleMenuClose}
+              >
+                <MenuItem onClick={() => { openTopUpModal(selectedLoan); handleMenuClose(); }}>Top-up</MenuItem>
+                <MenuItem onClick={() => { openRefinanceModal(selectedLoan); handleMenuClose(); }}>Refinance</MenuItem>
+                <MenuItem onClick={() => { openHistoryModal(selectedLoan.id); handleMenuClose(); }}>View History</MenuItem>
+                <MenuItem onClick={() => { openLoanDetail(selectedLoan.id); handleMenuClose(); }}>Details</MenuItem>
+              </Menu>
               {!useInfiniteScroll && (
                 <Stack direction="row" justifyContent="center" spacing={1} mt={1} mb={2}>
                   <Button
