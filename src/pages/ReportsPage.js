@@ -35,6 +35,7 @@ import isBetween from 'dayjs/plugin/isBetween';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import CostOfDefault from '../components/reports/CostOfDefault';
 
 dayjs.extend(isBetween);
 
@@ -303,6 +304,30 @@ export default function ReportsPage() {
     };
   }, [filteredLoansForReports, payments, loadingLoans, loadingPayments, startDate, endDate]);
 
+  // --- REPORT 5: Cost of Default ---
+  const costOfDefaultReport = useMemo(() => {
+    const defaultedLoans = filteredLoansForReports.filter(loan => loan.status === 'Defaulted');
+    const totalCostOfDefault = defaultedLoans.reduce((acc, loan) => {
+      return acc + (Number(loan.totalRepayable || 0) - Number(loan.repaidAmount || 0));
+    }, 0);
+
+    const costByBorrower = defaultedLoans.reduce((acc, loan) => {
+      const outstanding = Number(loan.totalRepayable || 0) - Number(loan.repaidAmount || 0);
+      if (acc[loan.borrower]) {
+        acc[loan.borrower] += outstanding;
+      } else {
+        acc[loan.borrower] = outstanding;
+      }
+      return acc;
+    }, {});
+
+    return {
+      totalCostOfDefault,
+      costByBorrower,
+      defaultedLoans,
+    };
+  }, [filteredLoansForReports]);
+
   // --- Export Functions ---
   const exportPortfolioSummary = useCallback(() => {
     const data = [
@@ -348,6 +373,15 @@ export default function ReportsPage() {
     exportToCsv(`Cash_Flow_Report_${dayjs().format('YYYYMMDD')}.csv`, dataForExport);
   }, [cashFlowReport]);
 
+  const exportCostOfDefault = useCallback(() => {
+    const data = costOfDefaultReport.defaultedLoans.map(loan => ({
+      'Borrower': loan.borrower,
+      'Phone': loan.phone,
+      'Outstanding Balance (ZMW)': (Number(loan.totalRepayable || 0) - Number(loan.repaidAmount || 0)).toFixed(2),
+    }));
+    exportToCsv(`Cost_Of_Default_Report_${dayjs().format('YYYYMMDD')}.csv`, data);
+  }, [costOfDefaultReport]);
+
   const exportPortfolioSummaryPdf = useCallback(() => {
     const head = [['Metric', 'Value']];
     const body = [
@@ -391,6 +425,16 @@ export default function ReportsPage() {
     ]);
     exportToPdf('Cash Flow Report', head, body, `Cash_Flow_${dayjs().format('YYYYMMDD')}.pdf`);
   }, [cashFlowReport]);
+  
+  const exportCostOfDefaultPdf = useCallback(() => {
+    const head = [['Borrower', 'Phone', 'Outstanding Balance (ZMW)']];
+    const body = costOfDefaultReport.defaultedLoans.map(loan => [
+        loan.borrower,
+        loan.phone,
+        (Number(loan.totalRepayable || 0) - Number(loan.repaidAmount || 0)).toFixed(2),
+    ]);
+    exportToPdf('Cost of Default Report', head, body, `Cost_Of_Default_Report_${dayjs().format('YYYYMMDD')}.pdf`);
+  }, [costOfDefaultReport]);
 
   const setDateRange = (unit, count) => {
     setStartDate(dayjs().subtract(count, unit).startOf(unit));
@@ -446,6 +490,15 @@ export default function ReportsPage() {
         { name: 'Amount Repaid', value: portfolioSummary.totalRepaid },
     ];
 
+    const loanStatusData = [
+      { name: 'Active', value: portfolioSummary.activeLoans },
+      { name: 'Paid', value: portfolioSummary.paidLoans },
+      { name: 'Overdue', value: portfolioSummary.overdueLoans },
+      { name: 'Defaulted', value: portfolioSummary.defaultedLoans },
+    ];
+
+    const LOAN_STATUS_COLORS = ['#4CAF50', '#2196F3', '#FFC107', '#F44336'];
+
     return (
         <Box>
             <Tabs value={activeTab} onChange={handleTabChange} aria-label="reports tabs" sx={{ mb: 2 }}>
@@ -453,6 +506,7 @@ export default function ReportsPage() {
                 <Tab label="Arrears Aging" />
                 <Tab label="Cash Flow" />
                 <Tab label="Detailed Loan List" />
+                <Tab label="Cost of Default" />
             </Tabs>
 
             {activeTab === 0 && (
@@ -479,17 +533,16 @@ export default function ReportsPage() {
                     <Grid item xs={12} md={4}>
                         <Card elevation={2} sx={{ height: '100%' }}>
                             <CardContent>
-                                <Typography variant="h6">Risks</Typography>
-                                <Stack spacing={1}>
-                                    <Typography>Number of Overdue Loans: <Typography component="span" fontWeight="bold" color="error.main">{portfolioSummary.overdueLoans}</Typography></Typography>
-                                    <Typography>Value of Overdue Loans: <Typography component="span" fontWeight="bold" color="error.main">ZMW {arrearsAgingReport.buckets['1-7 Days'].total + arrearsAgingReport.buckets['8-14 Days'].total + arrearsAgingReport.buckets['15-30 Days'].total + arrearsAgingReport.buckets['30+ Days'].total}</Typography></Typography>
-                                    <Divider sx={{ my: 1 }} />
-                                    <Typography>Overdue Breakdown:</Typography>
-                                    <Typography>1-7 Days: {arrearsAgingReport.buckets['1-7 Days'].loans.length}</Typography>
-                                    <Typography>8-14 Days: {arrearsAgingReport.buckets['8-14 Days'].loans.length}</Typography>
-                                    <Typography>15-30 Days: {arrearsAgingReport.buckets['15-30 Days'].loans.length}</Typography>
-                                    <Typography>30+ Days: {arrearsAgingReport.buckets['30+ Days'].loans.length}</Typography>
-                                </Stack>
+                                <Typography variant="h6">Loan Status Distribution</Typography>
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <PieChart>
+                                        <Pie data={loanStatusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                                            {loanStatusData.map((entry, index) => <Cell key={`cell-${index}`} fill={LOAN_STATUS_COLORS[index % LOAN_STATUS_COLORS.length]} />)}
+                                        </Pie>
+                                        <RechartsTooltip />
+                                        <RechartsLegend />
+                                    </PieChart>
+                                </ResponsiveContainer>
                             </CardContent>
                         </Card>
                     </Grid>
@@ -558,10 +611,10 @@ export default function ReportsPage() {
                     <Grid item xs={12} md={5}>
                         <Card elevation={2}>
                             <CardContent>
-                                <Typography variant="h6">Overdue Distribution by Amount</Typography>
+                                <Typography variant="h6">Arrears Distribution by Amount</Typography>
                                 <ResponsiveContainer width="100%" height={300}>
                                     <PieChart>
-                                        <Pie data={arrearsAgingReport.chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                                        <Pie data={arrearsAgingReport.chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={100} label>
                                             {arrearsAgingReport.chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={PIE_CHART_COLORS[index % PIE_CHART_COLORS.length]} />)}
                                         </Pie>
                                         <RechartsTooltip formatter={(value) => `ZMW ${value.toFixed(2)}`} />
@@ -620,7 +673,11 @@ export default function ReportsPage() {
                                 <YAxis />
                                 <RechartsTooltip />
                                 <RechartsLegend />
-                                <Bar dataKey="amount" fill="#8884d8" />
+                                <Bar dataKey="amount">
+                                    {cashFlowReport.data.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.amount >= 0 ? theme.palette.success.main : theme.palette.error.main} />
+                                    ))}
+                                </Bar>
                             </BarChart>
                         </ResponsiveContainer>
                     </Paper>
@@ -721,6 +778,16 @@ export default function ReportsPage() {
                     <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
                         <Button variant="outlined" color="secondary" onClick={exportDetailedLoanList}>Export Detailed List CSV</Button>
                         <Button variant="contained" color="secondary" onClick={exportDetailedLoanListPdf}>Export Detailed List PDF</Button>
+                    </Stack>
+                </Box>
+            )}
+
+            {activeTab === 4 && (
+                <Box>
+                    <CostOfDefault loans={filteredLoansForReports} />
+                    <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                        <Button variant="outlined" color="secondary" onClick={exportCostOfDefault}>Export Cost of Default CSV</Button>
+                        <Button variant="contained" color="secondary" onClick={exportCostOfDefaultPdf}>Export Cost of Default PDF</Button>
                     </Stack>
                 </Box>
             )}
