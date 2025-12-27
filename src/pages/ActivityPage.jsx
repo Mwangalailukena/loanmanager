@@ -14,6 +14,9 @@ import {
   Fade,
   Chip,
   Paper,
+  Switch,
+  IconButton,
+  FormControlLabel,
 } from "@mui/material";
 import {
   Timeline,
@@ -33,6 +36,7 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import UndoIcon from "@mui/icons-material/Undo";
 import AutorenewIcon from "@mui/icons-material/Autorenew";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
+import InfoIcon from "@mui/icons-material/Info";
 import {
   Button,
   Dialog,
@@ -136,6 +140,7 @@ export default function ActivityPage() {
 
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("all");
+  const [useRelativeTime, setUseRelativeTime] = useState(true);
 
   // Reusable styles for the focused state of form fields
   const filterInputStyles = {
@@ -256,9 +261,40 @@ export default function ActivityPage() {
       sx={{ overflowY: isMobile ? "auto" : "visible" }}
       ref={listRef}
     >
-      <Typography variant="h4" gutterBottom>
+      <Typography variant="h4" gutterBottom component="span">
         Activity Log
       </Typography>
+      <Tooltip
+        title={
+          <Box>
+            <Typography variant="subtitle2" gutterBottom>Activity Type Legend</Typography>
+            {Object.entries(actionLabels).map(([type, label]) => (
+              <Stack direction="row" alignItems="center" spacing={1} key={type}>
+                <TimelineDot
+                  color={timelineDotColors[type] || "grey"}
+                  variant="outlined"
+                  sx={{ width: 16, height: 16, my: 0 }}
+                >
+                  {actionIcons[type] || null}
+                </TimelineDot>
+                <Chip
+                  label={label}
+                  size="small"
+                  color={actionChipColors[type] || "default"}
+                  sx={{ textTransform: "capitalize" }}
+                />
+              </Stack>
+            ))}
+          </Box>
+        }
+        arrow
+        placement="right"
+        TransitionComponent={Fade}
+      >
+        <IconButton size="small" sx={{ ml: 1 }}>
+          <InfoIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
 
       <Stack direction={{ xs: "column", sm: "row" }} spacing={2} mb={3}>
         <TextField
@@ -288,6 +324,18 @@ export default function ActivityPage() {
             <MenuItem value="loan_refinanced">Loan Refinanced</MenuItem>
           </Select>
         </FormControl>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={useRelativeTime}
+              onChange={(e) => setUseRelativeTime(e.target.checked)}
+              name="timeFormat"
+              color="primary"
+            />
+          }
+          label="Relative Time"
+          labelPlacement="start"
+        />
       </Stack>
 
       <Timeline sx={{ p: 0 }}>
@@ -332,7 +380,7 @@ export default function ActivityPage() {
                     {index < displayedLogs.length - 1 && <TimelineConnector />}
                   </TimelineSeparator>
                   <TimelineContent sx={{ py: '12px', px: 2 }}>
-                    <Paper elevation={2} sx={{ p: 2, borderRadius: 2 }}>
+                    <Paper elevation={2} sx={{ p: 2, borderRadius: 2, backgroundColor: index % 2 ? theme.palette.action.hover : 'transparent' }}>
                       <ListItemText
                         primary={
                           <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
@@ -360,13 +408,13 @@ export default function ActivityPage() {
                               TransitionComponent={Fade}
                             >
                               <Typography
-                                component="span"
-                                variant="caption"
-                                color="text.secondary"
-                                sx={{ display: "block", mb: 0.5, fontStyle: "italic" }}
-                              >
-                                {relativeTime}
-                              </Typography>
+                              component="span"
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{ display: "block", mb: 0.5, fontStyle: "italic" }}
+                            >
+                              {useRelativeTime ? relativeTime : dateStr}
+                            </Typography>
                             </Tooltip>
                             <Typography component="span" variant="body2">
                               {highlightText(log.description ?? "", search)}
