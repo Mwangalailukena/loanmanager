@@ -33,8 +33,9 @@ import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline';
 import CallIcon from '@mui/icons-material/Call';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import { calcStatus } from '../utils/loanUtils';
+import WhatsAppDialog from '../components/WhatsAppDialog';
 
-const BorrowerCard = ({ borrower }) => {
+const BorrowerCard = ({ borrower, onWhatsAppClick }) => {
   const { loans } = useFirestore();
   const navigate = useNavigate();
   const associatedLoans = useMemo(() => loans.filter((loan) => loan.borrowerId === borrower.id), [loans, borrower.id]);
@@ -92,7 +93,7 @@ const BorrowerCard = ({ borrower }) => {
                     aria-label="whatsapp"
                     onClick={(e) => {
                       e.stopPropagation();
-                      window.open(`https://wa.me/${borrower.phone}`, '_blank');
+                      onWhatsAppClick(borrower);
                     }}
                     sx={{ color: 'success.main' }} // WhatsApp green color
                   >
@@ -154,6 +155,18 @@ export default function BorrowerListPage() {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [showActiveLoans, setShowActiveLoans] = useState(false);
   const [showOverdueLoans, setShowOverdueLoans] = useState(false);
+  const [whatsAppOpen, setWhatsAppOpen] = useState(false);
+  const [selectedBorrower, setSelectedBorrower] = useState(null);
+
+  const handleWhatsAppClick = (borrower) => {
+    setSelectedBorrower(borrower);
+    setWhatsAppOpen(true);
+  };
+
+  const handleWhatsAppClose = () => {
+    setWhatsAppOpen(false);
+    setSelectedBorrower(null);
+  };
 
   // Debounce effect
   useEffect(() => {
@@ -313,7 +326,7 @@ export default function BorrowerListPage() {
         <Grid container spacing={2}>
           {filteredBorrowers.map((borrower) => (
             <Grid item xs={6} sm={4} md={3} key={borrower.id}>
-              <BorrowerCard borrower={borrower} />
+              <BorrowerCard borrower={borrower} onWhatsAppClick={handleWhatsAppClick} />
             </Grid>
           ))}
         </Grid>
@@ -327,6 +340,14 @@ export default function BorrowerListPage() {
             Click the "Add Borrower" button to add your first borrower.
           </Typography>
         </Box>
+      )}
+      {selectedBorrower && (
+        <WhatsAppDialog
+          open={whatsAppOpen}
+          onClose={handleWhatsAppClose}
+          phoneNumber={selectedBorrower.phone}
+          defaultMessage={`Hello ${selectedBorrower.name},`}
+        />
       )}
     </Paper>
   );

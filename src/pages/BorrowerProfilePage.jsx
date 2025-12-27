@@ -61,6 +61,7 @@ import { useCreditScore } from '../hooks/useCreditScore';
 import { ResponsiveLine } from '@nivo/line';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { calcStatus } from '../utils/loanUtils';
+import WhatsAppDialog from '../components/WhatsAppDialog';
 
 const CreditScoreHistoryChart = ({ history }) => {
   const theme = useTheme();
@@ -255,6 +256,18 @@ export default function BorrowerProfilePage() {
   const [loanSortKey, setLoanSortKey] = useState('dueDate'); // Default sort
   const [loanSortDirection, setLoanSortDirection] = useState('asc'); // 'asc' or 'desc'
   const [expandedLoanId, setExpandedLoanId] = useState(null); // NEW
+  const [whatsAppOpen, setWhatsAppOpen] = useState(false);
+  const [whatsAppPerson, setWhatsAppPerson] = useState(null);
+
+  const handleWhatsAppClick = (person) => {
+    setWhatsAppPerson(person);
+    setWhatsAppOpen(true);
+  };
+
+  const handleWhatsAppClose = () => {
+    setWhatsAppOpen(false);
+    setWhatsAppPerson(null);
+  };
 
   const getTextFieldStyles = (theme) => ({
     "& .MuiOutlinedInput-root": {
@@ -420,7 +433,6 @@ export default function BorrowerProfilePage() {
       setRefinanceModal({ open: false, loan: null });
       showSnackbar('Loan refinanced successfully', 'success');
     } catch (error) {
-      console.error("Error refinancing loan:", error);
       setRefinanceError("Failed to refinance loan. Please try again.");
     } finally {
       setIsRefinancing(false);
@@ -467,7 +479,7 @@ export default function BorrowerProfilePage() {
                     <IconButton
                       size="small"
                       aria-label="whatsapp"
-                      onClick={() => { window.open(`https://wa.me/${borrower.phone}`, '_blank'); }}
+                      onClick={() => handleWhatsAppClick(borrower)}
                       sx={{ ml: 1, color: 'success.main' }} // WhatsApp green color
                     >
                       <WhatsAppIcon fontSize="small" />
@@ -707,7 +719,7 @@ export default function BorrowerProfilePage() {
                                         <IconButton
                                             size="small"
                                             aria-label="whatsapp guarantor"
-                                            onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/${g.phone}`, '_blank'); }}
+                                            onClick={(e) => { e.stopPropagation(); handleWhatsAppClick(g); }}
                                             sx={{ color: 'success.main' }}
                                         >
                                             <WhatsAppIcon fontSize="small" />
@@ -842,6 +854,14 @@ export default function BorrowerProfilePage() {
           </Button>
         </DialogActions>
       </Dialog>
+      {whatsAppPerson && (
+        <WhatsAppDialog
+          open={whatsAppOpen}
+          onClose={handleWhatsAppClose}
+          phoneNumber={whatsAppPerson.phone}
+          defaultMessage={`Hello ${whatsAppPerson.name},`}
+        />
+      )}
     </>
   );
 }
