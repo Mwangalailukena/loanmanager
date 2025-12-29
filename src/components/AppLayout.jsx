@@ -55,8 +55,18 @@ const MobileSearchBar = ({ onSearchChange, onClose, open, searchTerm }) => {
               onChange={(e) => onSearchChange(e.target.value)}
               value={searchTerm}
               InputProps={{
-                startAdornment: ( <InputAdornment position="start"><SearchIcon color="action" /></InputAdornment> ),
-                endAdornment: ( <InputAdornment position="end"><IconButton onClick={onClose} aria-label="close search"><CloseIcon color="action" /></IconButton></InputAdornment> ),
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon color="action" />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton onClick={onClose} aria-label="Close search">
+                      <CloseIcon color="action" />
+                    </IconButton>
+                  </InputAdornment>
+                ),
               }}
             />
           </Box>

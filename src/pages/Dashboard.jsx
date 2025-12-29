@@ -40,6 +40,7 @@ import { useInsights } from "../hooks/useInsights";
 import DashboardSection from "../components/dashboard/DashboardSection";
 import DashboardCardSkeleton from "../components/dashboard/DashboardCardSkeleton";
 import InsightCard from "../components/dashboard/InsightCard";
+import ProjectionCard from "../components/dashboard/ProjectionCard"; // NEW: Import ProjectionCard
 
 const LazyCharts = lazy(() => import("../components/Charts"));
 
@@ -370,14 +371,21 @@ export default function Dashboard() {
                         ))}
                     </TabPanel>
                     <TabPanel value={activeTab} index={1}>
-                        {cardsToRender.filter(group => group.cards.some(card => !EXECUTIVE_SUMMARY_IDS.includes(card.id))).map(group => (
-                            <Box key={group.name} sx={{ mb: 4 }}>
-                                <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 1, px: 2, fontWeight: 'bold' }}>
-                                    {group.name}
-                                </Typography>
-                                <DashboardSection cards={group.cards} droppableId={group.name} isMobile={isMobile} handleCardClick={handleCardClick} />
-                            </Box>
-                        ))}
+                        <Grid container spacing={2}>
+                            <Grid item xs={12} sm={6} md={4}>
+                                <ProjectionCard />
+                            </Grid>
+                            {cardsToRender.filter(group => group.cards.some(card => !EXECUTIVE_SUMMARY_IDS.includes(card.id))).map(group => (
+                                <Grid item xs={12} key={group.name}>
+                                    <Box sx={{ mb: 4 }}>
+                                        <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 1, px: 2, fontWeight: 'bold' }}>
+                                            {group.name}
+                                        </Typography>
+                                        <DashboardSection cards={group.cards} droppableId={group.name} isMobile={isMobile} handleCardClick={handleCardClick} />
+                                    </Box>
+                                </Grid>
+                            ))}
+                        </Grid>
                     </TabPanel>
                 </DragDropContext>
                 <TabPanel value={activeTab} index={2}>

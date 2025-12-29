@@ -338,6 +338,7 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
             onChange={(e) => handleSearchChange(e.target.value)} // Use handleSearchChange from context
             value={searchTerm} // Use searchTerm from context
             autoFocus
+            aria-label="Search loans, borrowers, and payments"
             sx={{
               ml: 1,
               width: isSearchOpen ? 200 : 0, // Use isSearchOpen from context

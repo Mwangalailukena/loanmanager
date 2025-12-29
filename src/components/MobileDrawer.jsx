@@ -17,7 +17,6 @@ import {
   Button,
   CircularProgress,
   Collapse,
-  TextField,
 } from '@mui/material';
 import { alpha, keyframes } from '@mui/material/styles';
 import { motion } from 'framer-motion';
@@ -33,7 +32,6 @@ import {
   Close as CloseIcon,
   Assessment as AssessmentIcon,
   History as HistoryIcon,
-  Search as SearchIcon,
   Dashboard as DashboardIcon,
   AttachMoney as AttachMoneyIcon,
   Add as AddIcon,
@@ -88,7 +86,7 @@ function stringToInitials(name = "") {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase();
 }
 
-const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, searchTerm, handleSearchChange }) => {
+const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode }) => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const theme = useTheme();
@@ -251,33 +249,9 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, searc
               <Typography variant="body2" color="text.secondary" noWrap>{currentUser?.email || ""}</Typography>
             </Box>
           </Box>
-          <IconButton onClick={onClose}><CloseIcon /></IconButton>
-        </Box>
-        <Box sx={{ px: 2, pb: 2 }}>
-            <TextField
-                fullWidth
-                size="small"
-                variant="outlined"
-                placeholder="Search loans..."
-                value={searchTerm}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                InputProps={{
-                    startAdornment: (
-                        <SearchIcon sx={{ color: 'action.active', mr: 1 }} />
-                    ),
-                    endAdornment: searchTerm && (
-                        <IconButton
-                            size="small"
-                            onClick={() => handleSearchChange('')}
-                            sx={{ visibility: searchTerm ? 'visible' : 'hidden' }}
-                        >
-                            <CloseIcon fontSize="small" />
-                        </IconButton>
-                    ),
-                }}
-            />
-        </Box>
-        <Divider />
+          <IconButton onClick={onClose} aria-label="Close drawer"><CloseIcon /></IconButton>
+                </Box>
+                <Divider />
 
         <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
             {menuItems.map((item, index) => (
@@ -286,12 +260,17 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, searc
                     
                     {item.children ? (
                         <>
-                            <ListItemButton onClick={() => handleToggleSection(item.text)}>
+                            <ListItemButton
+                                onClick={() => handleToggleSection(item.text)}
+                                aria-expanded={openSections[item.text]}
+                                aria-controls={`${item.text.replace(/\s/g, '-')}-list`}
+                                aria-label={`Toggle ${item.text} menu`}
+                            >
                                 <ListItemIcon>{item.icon}</ListItemIcon>
                                 <ListItemText primary={item.text} />
                                 <motion.div animate={{ rotate: openSections[item.text] ? 180 : 0 }}><ExpandMore /></motion.div>
                             </ListItemButton>
-                            <Collapse in={openSections[item.text]} timeout="auto" unmountOnExit>
+                            <Collapse in={openSections[item.text]} timeout="auto" unmountOnExit id={`${item.text.replace(/\s/g, '-')}-list`}>
                                 <motion.div initial="hidden" animate="visible" variants={listVariants}>
                                     <List component="div" disablePadding>
                                         {item.children.map(child => (
@@ -317,7 +296,12 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, searc
                         </>
                     ) : item.isNotifications ? (
                         <>
-                            <ListItemButton onClick={() => setNotificationsOpen(!notificationsOpen)}>
+                            <ListItemButton
+                                onClick={() => setNotificationsOpen(!notificationsOpen)}
+                                aria-expanded={notificationsOpen}
+                                aria-controls="notifications-list"
+                                aria-label={`Notifications, ${unreadNotifications.length} unread`}
+                            >
                                 <ListItemIcon>{item.icon}</ListItemIcon>
                                 <ListItemText primary={item.text} />
                                 {unreadNotifications.length > 0 && (
@@ -325,7 +309,7 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode, searc
                                 )}
                                 <motion.div animate={{ rotate: notificationsOpen ? 180 : 0 }}><ExpandMore /></motion.div>
                             </ListItemButton>
-                            <Collapse in={notificationsOpen} timeout="auto" unmountOnExit>
+                            <Collapse in={notificationsOpen} timeout="auto" unmountOnExit id="notifications-list">
                                 <Box sx={{ p: 2 }}>
                                     {loadingLoans ? (
                                         <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}><CircularProgress size={24} /></Box>
