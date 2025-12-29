@@ -707,6 +707,26 @@ export function FirestoreProvider({ children }) {
     await setDoc(userRef, updates, { merge: true });
   };
 
+  const saveFCMTokenToFirestore = async (token) => {
+    if (!currentUser) {
+      console.warn("Attempted to save FCM token without authenticated user.");
+      return;
+    }
+    try {
+      const tokensRef = collection(db, "fcmTokens");
+      // Use the token itself as the document ID for easy lookup and to prevent duplicates
+      await setDoc(doc(tokensRef, token), {
+        userId: currentUser.uid,
+        token: token,
+        createdAt: serverTimestamp(),
+      });
+      console.log("FCM token saved to Firestore for user:", currentUser.uid);
+    } catch (error) {
+      console.error("Error saving FCM token to Firestore:", error);
+      showSnackbar("Failed to save FCM token.", "error");
+    }
+  };
+
   const value = {
     loans, payments, borrowers, settings, activityLogs, comments, guarantors, expenses, loading,
     addLoan, updateLoan, deleteLoan, markLoanAsDefaulted,
@@ -720,6 +740,7 @@ export function FirestoreProvider({ children }) {
     refinanceLoan, undoRefinanceLoan,
     topUpLoan, undoDeleteLoan, undoUpdateLoan,
     updateUser,
+    saveFCMTokenToFirestore, // Add this line to expose the new function
   };
 
   return (

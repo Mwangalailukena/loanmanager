@@ -66,4 +66,4 @@ root.render(
   </React.StrictMode>
 );
 
-serviceWorkerRegistration.register();
+serviceWorkerRegistration.unregister(); // Unregister existing service worker as FCM will handle its own.
