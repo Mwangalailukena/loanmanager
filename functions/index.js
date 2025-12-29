@@ -10,22 +10,26 @@ const db = admin.firestore();
 // Use admin.functions() for Callable functions with updated SDK
 const sendPushNotificationCallable = admin.functions().httpsCallable('sendPushNotification');
 
-// It's recommended to store VAPID keys as environment variables or Secret Manager
-// For Secret Manager, use functions.runWith({secrets: ["SECRET_NAME"]})
+// It's recommended to store VAPID keys as environment variables
+const vapidKeys = require("./vapid-keys.json");
+
 webpush.setVapidDetails(
-  process.env.VAPID_EMAIL || functions.config().vapid?.email, // Fallback for local testing or older config
-  process.env.VAPID_PUBLIC_KEY || functions.config().vapid?.public_key,
-  process.env.VAPID_PRIVATE_KEY || functions.config().vapid?.private_key
+  "mailto:ilukenamwangala@gmail.com", // Replace with your email
+  vapidKeys.publicKey,
+  vapidKeys.privateKey
 );
 
-// Initialize Google Generative AI with API key from Secret Manager
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || functions.config().gemini?.api_key;
+// NEW: Initialize Google Generative AI
+// IMPORTANT: Replace 'YOUR_GEMINI_API_KEY' with your actual API key.
+// For production, use Firebase Environment Configuration (functions.config().gemini.api_key)
+// or Firebase Secret Manager (functions.runWith({secrets: ["GEMINI_API_KEY"]}).https.onCall)
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "YOUR_GEMINI_API_KEY"; // Ensure this is set securely
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
 
 // HTTPS Callable function to send push notifications
-exports.sendPushNotification = functions.runWith({secrets: ["VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "VAPID_EMAIL"]}).https.onCall(async (data, context) => {
+exports.sendPushNotification = functions.https.onCall(async (data, context) => {
   const { userId, payload } = data;
 
   if (!context.auth) {
@@ -68,7 +72,7 @@ exports.sendPushNotification = functions.runWith({secrets: ["VAPID_PUBLIC_KEY", 
 });
 
 // HTTPS Callable function for AI-powered monthly projection
-exports.getMonthlyProjectionAI = functions.runWith({secrets: ["GEMINI_API_KEY"]}).https.onCall(async (data, context) => {
+exports.getMonthlyProjectionAI = functions.https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError(
             "unauthenticated",
