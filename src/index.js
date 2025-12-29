@@ -4,10 +4,9 @@ import App from './App';
 import AppThemeProvider from './contexts/ThemeProvider';
 import { SnackbarProvider } from './components/SnackbarProvider';
 
-window.OneSignal = window.OneSignal || [];
-const OneSignal = window.OneSignal;
-OneSignal.push(function() {
-  OneSignal.init({
+window.OneSignalDeferred = window.OneSignalDeferred || [];
+OneSignalDeferred.push(async function(OneSignal) {
+  await OneSignal.init({
     appId: "85fb7b5e-ca58-4a5a-9223-6477f32c4992",
   });
 });
