@@ -3,7 +3,6 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import AppThemeProvider from './contexts/ThemeProvider';
 import { SnackbarProvider } from './components/SnackbarProvider';
-import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 
 window.OneSignal = window.OneSignal || [];
 const OneSignal = window.OneSignal;
@@ -25,4 +24,4 @@ root.render(
   </React.StrictMode>
 );
 
-serviceWorkerRegistration.register();
+// serviceWorkerRegistration.register();
