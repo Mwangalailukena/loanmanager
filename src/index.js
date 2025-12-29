@@ -13,7 +13,7 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 async function getFCMToken() {
   try {
     const messaging = getMessaging(firebaseApp);
-    const currentToken = await getToken(messaging, { vapidKey: "YOUR_FCM_VAPID_KEY" }); // Replace with your FCM VAPID Key
+    const currentToken = await getToken(messaging, { vapidKey: "BGowCFISFwFkhKJ2OfwwFNuk8--Sh4ThvuQwZpAwczyy2eakjo826snhYGrMmmA2MX371ykECPVbqB_zNeM-BoE" }); // Replace with your FCM VAPID Key
 
     if (currentToken) {
       console.log('FCM token:', currentToken);
