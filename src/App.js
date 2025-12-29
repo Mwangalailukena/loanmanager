@@ -89,7 +89,9 @@ function App() {
 const AppWithProviders = () => (
   <AppThemeProvider>
     <AuthProvider>
-      <App />
+      <FirestoreProvider> {/* Move FirestoreProvider here */}
+        <App />
+      </FirestoreProvider>
     </AuthProvider>
   </AppThemeProvider>
 );
