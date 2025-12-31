@@ -117,26 +117,42 @@ workbox.routing.registerRoute(
 
 // Handle push events for Firebase Messaging
 self.addEventListener('push', (event) => {
-  let payload;
-  try {
-    // Attempt to parse the push payload as JSON
-    payload = event.data.json();
-  } catch (e) {
-    console.error('Push payload is not valid JSON:', event.data);
-    // Fallback or error handling for non-JSON payloads
-    return;
+  let notificationTitle = 'New Notification';
+  let notificationBody = 'You have a new message.';
+  let notificationData = {}; // For notificationclick event
+
+  if (event.data) {
+    try {
+      // Attempt to parse as JSON
+      const parsedData = event.data.json();
+      notificationTitle = parsedData.title || notificationTitle;
+      notificationBody = parsedData.body || notificationBody;
+      notificationData = parsedData.data || notificationData; // Pass original data for click handler
+    } catch (e) {
+      // If not JSON, treat as plain text
+      notificationBody = event.data.text() || notificationBody;
+    }
   }
 
-  const notificationTitle = payload.title || 'New Message';
   const notificationOptions = {
-    body: payload.body,
-    icon: 'logo192.png', // Ensure this icon is precached
-    badge: 'logo192.png', // Ensure this badge icon is precached
-    data: payload.data, // Pass data from the payload to the notification
-    // You can add other notification options here, like actions, tag, etc.
+    body: notificationBody,
+    icon: 'logo192.png',
+    badge: 'logo192.png',
+    data: notificationData, // Ensure data is passed
+    tag: notificationData.tag || 'default-notification-tag', // Use a tag to prevent stacking
+    renotify: true, // Re-alert user if updated
+    actions: [
+      {
+        action: 'open_app',
+        title: 'Open App',
+      },
+      {
+        action: 'close',
+        title: 'Close',
+      },
+    ],
   };
 
-  // Show the notification
   event.waitUntil(
     self.registration.showNotification(notificationTitle, notificationOptions)
   );
@@ -145,29 +161,37 @@ self.addEventListener('push', (event) => {
 // Handle notification click events
 self.addEventListener('notificationclick', (event) => {
   const clickedNotification = event.notification;
-  clickedNotification.close();
+  clickedNotification.close(); // Always close the notification after interaction
 
   const notificationData = clickedNotification.data;
   const urlToOpen = notificationData?.url || '/';
 
-  event.waitUntil(
-    clients.matchAll({
-      type: 'window',
-      includeUncontrolled: true,
-    }).then((clientList) => {
-      if (clientList.length > 0) {
-        let client = clientList[0];
-        for (let i = 0; i < clientList.length; i++) {
-          if (clientList[i].focused) {
-            client = clientList[i];
+  // Determine the action based on event.action or default to opening the app
+  const actionToPerform = event.action || 'open_app'; // If no action button is clicked, treat as 'open_app'
+
+  if (actionToPerform === 'open_app') {
+    event.waitUntil(
+      clients.matchAll({
+        type: 'window',
+        includeUncontrolled: true,
+      }).then((clientList) => {
+        if (clientList.length > 0) {
+          let client = clientList[0]; // Prefer a focused client if available
+          for (let i = 0; i < clientList.length; i++) {
+            if (clientList[i].focused) {
+              client = clientList[i];
+            }
           }
+          client.focus();
+          return client.navigate(urlToOpen);
         }
-        client.focus();
-        return client.navigate(urlToOpen);
-      }
-      return clients.openWindow(urlToOpen);
-    })
-  );
+        return clients.openWindow(urlToOpen); // Open new window if no client is found
+      })
+    );
+  } else if (actionToPerform === 'close') {
+    // User clicked 'Close' button or dismissed notification, no further action needed
+  }
+  // Other actions can be added here
 });
 
 // Global catch handler for failed routes
