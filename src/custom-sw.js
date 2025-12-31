@@ -2,6 +2,9 @@ importScripts('https://storage.googleapis.com/workbox-cdn/releases/7.0.0/workbox
 
 const SW_VERSION = '1.0.0';
 
+// Data URI for a simple 1x1 gray GIF placeholder image
+const IMAGE_PLACEHOLDER_DATA_URI = 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==';
+
 self.addEventListener('install', () => {
   self.skipWaiting();
 });
@@ -42,6 +45,13 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'CHECK_HEALTH') {
     event.source.postMessage({ type: 'HEALTH_RESPONSE', version: SW_VERSION, status: 'running' });
   }
+});
+
+// Global error handling for unhandled promise rejections
+self.addEventListener('unhandledrejection', (event) => {
+  console.error('[Service Worker] Unhandled Promise Rejection:', event.reason);
+  // In a production environment, you might send this to a remote logging service
+  // e.g., myMonitoringService.logError(event.reason, 'unhandledrejection');
 });
 
 // This is the service worker script that will be injected with the manifest
@@ -85,18 +95,70 @@ workbox.routing.registerRoute(
   })
 );
 
-// Background Sync for POST requests to /api/data
-const bgSyncPlugin = new workbox.backgroundSync.BackgroundSyncPlugin('sync-queue', {
-  maxRetentionTime: 24 * 60 // Retry for max of 24 Hours
+// Background Sync for offline POST requests
+const bgSyncPlugin = new workbox.backgroundSync.BackgroundSyncPlugin('loanManagerQueue', {
+  maxRetentionTime: 24 * 60, // Retry for a maximum of 24 hours
 });
 
+// Example Workbox plugin for cache monitoring
+const cacheMonitorPlugin = {
+  // Runs whenever a response is added to a cache
+  cacheDidUpdate: async ({cacheName, request, oldResponse, newResponse}) => {
+    if (newResponse) {
+      console.log(`[Service Worker] Cache "${cacheName}" updated for: ${request.url}`);
+      // In a production environment, you might send this event to a remote logging service
+      // e.g., myMonitoringService.logCacheEvent('updated', cacheName, request.url);
+    } else {
+      console.log(`[Service Worker] Cache "${cacheName}" added for: ${request.url}`);
+      // e.g., myMonitoringService.logCacheEvent('added', cacheName, request.url);
+    }
+  },
+  // Optionally, you can add 'cacheWillUpdate' or 'cachedResponseWillBeUsed'
+  // for more detailed monitoring like cache hits/misses, but that gets more complex.
+};
+
+// Reordered API routes for correct precedence:
+
+// 1. API calls (POST requests to /api/ with NetworkOnly + Background Sync) - Handle mutations first
 workbox.routing.registerRoute(
-  ({url, request}) =>
-    url.pathname === '/api/data' && request.method === 'POST',
+  ({ url, request }) => request.method === 'POST' && url.pathname.startsWith('/api/'),
   new workbox.strategies.NetworkOnly({
-    plugins: [bgSyncPlugin]
+    plugins: [bgSyncPlugin],
   })
 );
+
+// 2. API calls (GET requests to /api/ with StaleWhileRevalidate) - Specific GET rule
+workbox.routing.registerRoute(
+  ({ url, request }) => request.method === 'GET' && url.pathname.startsWith('/api/'),
+  new workbox.strategies.StaleWhileRevalidate({
+    cacheName: 'api-cache',
+    plugins: [
+      new workbox.expiration.ExpirationPlugin({
+        maxEntries: 50,
+        maxAgeSeconds: 60 * 60 * 24, // 24 hours (for GET)
+      }),
+    ],
+  })
+);
+
+// 3. API calls (General /api/ requests with NetworkFirst) - Catches any other /api/ method, or as a final fallback
+workbox.routing.registerRoute(
+  ({ url }) => url.pathname.startsWith('/api/'),
+  new workbox.strategies.NetworkFirst({
+    cacheName: 'api-cache',
+    networkTimeoutSeconds: 3,
+    plugins: [
+      new workbox.cacheableResponse.CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+      new workbox.expiration.ExpirationPlugin({
+        maxEntries: 50,
+        maxAgeSeconds: 5 * 60, // 5 minutes (for non-GET /api/ or as a safety fallback)
+      }),
+    ],
+  })
+);
+
 
 // Cache static assets like scripts, styles, and images
 workbox.routing.registerRoute(
@@ -111,6 +173,27 @@ workbox.routing.registerRoute(
         maxEntries: 60,
         maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
       }),
+      // Add a custom plugin to provide an image fallback for failed image requests
+      {
+        handlerDidError: async ({ request }) => {
+          // Check if the request was for an image
+          if (request.destination === 'image') {
+            console.log(`[Service Worker] Image fetch failed, serving placeholder for: ${request.url}`);
+            try {
+              // Fetch the placeholder image from the data URI
+              const response = await fetch(IMAGE_PLACEHOLDER_DATA_URI);
+              return response;
+            } catch (error) {
+              console.error('[Service Worker] Failed to fetch image placeholder, returning error:', error);
+              return Response.error(); // Fallback if even placeholder fails
+            }
+          }
+          // For other asset types (script, style) or if not an image, let Workbox handle the error
+          return Response.error();
+        },
+      },
+      // Add cache monitoring plugin
+      cacheMonitorPlugin,
     ],
   })
 );
@@ -198,8 +281,8 @@ self.addEventListener('notificationclick', (event) => {
 workbox.routing.setCatchHandler(({ event }) => {
   switch (event.request.destination) {
     case 'document':
-      // For failed navigation requests, return the precached app shell.
-      return workbox.precaching.matchPrecache('/index.html');
+      // For failed navigation requests, return the precached offline page.
+      return caches.match('/offline.html');
     default:
       // For other failed requests, return a standard error response.
       return Response.error();

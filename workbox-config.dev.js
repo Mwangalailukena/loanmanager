@@ -5,6 +5,7 @@ module.exports = {
   globPatterns: [
     'index.html',
     'manifest.json',
+    'offline.html', // Added for offline fallback
     'android/*.png'
   ],
   maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
