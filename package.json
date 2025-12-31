@@ -52,15 +52,7 @@
     "eject": "react-scripts eject",
     "build-sw:dev": "workbox injectManifest workbox-config.dev.js"
   },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ],
-    "env": {
-      "worker": true
-    }
-  },
+
   "browserslist": {
     "production": [
       ">0.2%",
