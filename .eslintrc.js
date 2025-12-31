@@ -4,6 +4,16 @@ module.exports = {
     "react-app/jest"
   ],
   env: {
-    worker: true
+    browser: true,
+    es6: true,
+    serviceworker: true
+  },
+  globals: {
+    workbox: "readonly",
+    clients: "readonly",
+    self: "readonly"
+  },
+  rules: {
+    "no-restricted-globals": "off"
   }
 };
