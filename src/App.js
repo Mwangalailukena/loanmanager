@@ -13,6 +13,7 @@ import InstallPrompt from './components/InstallPrompt';
 import SplashScreen from './components/SplashScreen';
 import NetworkStatus from './components/NetworkStatus';
 import OfflineQueueProcessor from './components/OfflineQueueProcessor';
+import UpdateToast from './components/UpdateToast'; // Import the new component
 
 function App() {
   const { darkMode, onToggleDarkMode } = useThemeContext();
@@ -26,6 +27,7 @@ function App() {
     <Router>
       <NetworkStatus />
       <OfflineQueueProcessor />
+      <UpdateToast /> {/* Add the UpdateToast component here */}
       <SearchProvider>
         {/* Pass currentUser if AppRoutes needs it, otherwise it's fine as is */}
         <AppRoutes darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} />

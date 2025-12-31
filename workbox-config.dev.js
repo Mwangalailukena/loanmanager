@@ -4,7 +4,8 @@ module.exports = {
   globDirectory: 'public',
   globPatterns: [
     'index.html',
-    'manifest.json'
+    'manifest.json',
+    'android/*.png'
   ],
   maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
 };

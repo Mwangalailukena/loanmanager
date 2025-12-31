@@ -1,5 +1,49 @@
 importScripts('https://storage.googleapis.com/workbox-cdn/releases/7.0.0/workbox-sw.js');
 
+const SW_VERSION = '1.0.0';
+
+self.addEventListener('install', () => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    (async () => {
+      // Let Workbox clean up old precaches
+      workbox.precaching.cleanupOutdatedCaches();
+
+      // Define current runtime caches
+      const currentRuntimeCaches = new Set([
+        'app-shell-pages',
+        'api-cache',
+        'static-assets',
+      ]);
+
+      // Get all cache keys
+      const cacheNames = await caches.keys();
+
+      // Delete any runtime caches that are not in the current set
+      for (const cacheName of cacheNames) {
+        if (!cacheName.startsWith('workbox-') && !currentRuntimeCaches.has(cacheName)) {
+          await caches.delete(cacheName);
+        }
+      }
+
+      // Claim any currently open clients
+      await clients.claim();
+    })()
+  );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+  if (event.data && event.data.type === 'CHECK_HEALTH') {
+    event.source.postMessage({ type: 'HEALTH_RESPONSE', version: SW_VERSION, status: 'running' });
+  }
+});
+
 // This is the service worker script that will be injected with the manifest
 // by the `injectManifest` build process.
 workbox.precaching.precacheAndRoute(self.__WB_MANIFEST);
@@ -28,6 +72,7 @@ workbox.routing.registerRoute(
   ({ url }) => url.pathname.startsWith('/api/'), // Adjust this path as needed
   new workbox.strategies.NetworkFirst({
     cacheName: 'api-cache',
+    networkTimeoutSeconds: 3,
     plugins: [
       new workbox.cacheableResponse.CacheableResponsePlugin({
         statuses: [0, 200],
@@ -35,6 +80,36 @@ workbox.routing.registerRoute(
       new workbox.expiration.ExpirationPlugin({
         maxEntries: 50,
         maxAgeSeconds: 5 * 60, // Cache API responses for 5 minutes
+      }),
+    ],
+  })
+);
+
+// Background Sync for POST requests to /api/data
+const bgSyncPlugin = new workbox.backgroundSync.BackgroundSyncPlugin('sync-queue', {
+  maxRetentionTime: 24 * 60 // Retry for max of 24 Hours
+});
+
+workbox.routing.registerRoute(
+  ({url, request}) =>
+    url.pathname === '/api/data' && request.method === 'POST',
+  new workbox.strategies.NetworkOnly({
+    plugins: [bgSyncPlugin]
+  })
+);
+
+// Cache static assets like scripts, styles, and images
+workbox.routing.registerRoute(
+  ({ request }) =>
+    request.destination === 'script' ||
+    request.destination === 'style' ||
+    request.destination === 'image',
+  new workbox.strategies.StaleWhileRevalidate({
+    cacheName: 'static-assets',
+    plugins: [
+      new workbox.expiration.ExpirationPlugin({
+        maxEntries: 60,
+        maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
       }),
     ],
   })
@@ -70,22 +145,39 @@ self.addEventListener('push', (event) => {
 // Handle notification click events
 self.addEventListener('notificationclick', (event) => {
   const clickedNotification = event.notification;
-  clickedNotification.close(); // Close the notification
+  clickedNotification.close();
 
-  // Retrieve the data from the notification payload
   const notificationData = clickedNotification.data;
+  const urlToOpen = notificationData?.url || '/';
 
-  // Define a default URL or extract a URL from the payload if available
-  const urlToOpen = notificationData?.url || '/'; // Use notificationData instead of payload
-
-  // Open a window and focus it, navigating to the specified URL
   event.waitUntil(
-    self.clients.openWindow(urlToOpen).then(windowClient => {
-      if (windowClient) {
-        return windowClient.focus();
+    clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true,
+    }).then((clientList) => {
+      if (clientList.length > 0) {
+        let client = clientList[0];
+        for (let i = 0; i < clientList.length; i++) {
+          if (clientList[i].focused) {
+            client = clientList[i];
+          }
+        }
+        client.focus();
+        return client.navigate(urlToOpen);
       }
-      // If no window was opened (e.g., app was closed), you might want to handle this
-      // by opening a new window or redirecting.
+      return clients.openWindow(urlToOpen);
     })
   );
+});
+
+// Global catch handler for failed routes
+workbox.routing.setCatchHandler(({ event }) => {
+  switch (event.request.destination) {
+    case 'document':
+      // For failed navigation requests, return the precached app shell.
+      return workbox.precaching.matchPrecache('/index.html');
+    default:
+      // For other failed requests, return a standard error response.
+      return Response.error();
+  }
 });

@@ -129,6 +129,36 @@ function checkValidServiceWorker(swUrl, config) {
     });
 }
 
+export function checkServiceWorkerHealth() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.serviceWorker || !navigator.serviceWorker.controller) {
+      // No service worker active
+      return resolve('No service worker active.');
+    }
+
+    const timeout = setTimeout(() => {
+      reject(new Error('Service worker health check timed out.'));
+      // Unregister and reload
+      navigator.serviceWorker.ready.then((registration) => {
+        registration.unregister().then(() => {
+          window.location.reload();
+        });
+      });
+    }, 5000); // 5 second timeout
+
+    const messageListener = (event) => {
+      if (event.data && event.data.type === 'HEALTH_RESPONSE') {
+        clearTimeout(timeout);
+        navigator.serviceWorker.removeEventListener('message', messageListener);
+        resolve(event.data);
+      }
+    };
+
+    navigator.serviceWorker.addEventListener('message', messageListener);
+    navigator.serviceWorker.controller.postMessage({ type: 'CHECK_HEALTH' });
+  });
+}
+
 export function unregister() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.ready
