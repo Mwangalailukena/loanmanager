@@ -1,3 +1,91 @@
-importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js');
-if(!self.define){let e,c={};const a=(a,s)=>(a=new URL(a+".js",s).href,c[a]||new Promise(c=>{if("document"in self){const e=document.createElement("script");e.src=a,e.onload=c,document.head.appendChild(e)}else e=a,importScripts(a),c()}).then(()=>{let e=c[a];if(!e)throw new Error(`Module ${a} didn’t register its module`);return e}));self.define=(s,i)=>{const n=e||("document"in self?document.currentScript.src:"")||location.href;if(c[n])return;let d={};const r=e=>a(e,n),f={module:{uri:n},exports:d,require:r};c[n]=Promise.all(s.map(e=>f[e]||r(e))).then(e=>(i(...e),d))}}define(["./workbox-36eaa392"],function(e){"use strict";self.addEventListener("message",e=>{e.data&&"SKIP_WAITING"===e.data.type&&self.skipWaiting()}),e.precacheAndRoute([{url:"android/android-launchericon-144-144.png",revision:"5a76c4bc8e553ceb63ba73b7280eb03b"},{url:"android/android-launchericon-192-192.png",revision:"8ea05e15a927b893ca6fc8cdfd593373"},{url:"android/android-launchericon-48-48.png",revision:"685832cba81b7eb4e2c383eb4673a85e"},{url:"android/android-launchericon-512-512.png",revision:"07ba8c5f5b00089222373d9c44425394"},{url:"android/android-launchericon-72-72.png",revision:"bc99234a4dd9c1e072e1f0153483bd72"},{url:"android/android-launchericon-96-96.png",revision:"9b03133961813737d54b542c430787df"},{url:"asset-manifest.json",revision:"570454a728012bfbdcd489c5f32ecc0f"},{url:"favicon.ico",revision:"c92b85a5b907c70211f4ec25e29a8c4a"},{url:"icons/Appsplash.png",revision:"d46986de43a300d31865488d84fab2a1"},{url:"icons/Browser.png",revision:"1e619fc7a05524dd6b8fb458af935faa"},{url:"index.html",revision:"5910c90fa8cdcfa0fa08e9aa7abd9156"},{url:"logo192.png",revision:"33dbdd0177549353eeeb785d02c294af"},{url:"logo512.png",revision:"917515db74ea8d1aee6a246cfbcc0b45"},{url:"manifest.json",revision:"00f10fd74f1a04db7fd6f9af87d85fa6"},{url:"offline.html",revision:"24f0e4b24cc7901ed02ab2e82677e994"},{url:"static/js/130.4418a70c.chunk.js",revision:"8a893f6693ae56e06aa1948b667f265f"},{url:"static/js/16.3f4e6a29.chunk.js",revision:"bab64681fe14e5e1cba172c251f4f9d2"},{url:"static/js/169.1bdaa2d9.chunk.js",revision:"36c3ab3ee142a2133c0b891ee878ac90"},{url:"static/js/223.0907b124.chunk.js",revision:"e3d9afe19d10adcc2ca992711c730ed8"},{url:"static/js/281.49258038.chunk.js",revision:"9ee79e7273945bf3272655e6bc60b960"},{url:"static/js/295.31c1af7d.chunk.js",revision:"ec0e57921b46a1f2b99b3c1f8da2b360"},{url:"static/js/358.ec4e15f7.chunk.js",revision:"9d0931110e83ab35b7be27435cb84b04"},{url:"static/js/371.00be7d0f.chunk.js",revision:"2d5a043de4ab74ec0adb5f07cf937169"},{url:"static/js/388.8bd18c95.chunk.js",revision:"107eff2e6de072d20dab17ce8f2d9a1a"},{url:"static/js/446.dffd9c5e.chunk.js",revision:"bcd2c5add90e54e37d90484bb8fa103b"},{url:"static/js/47.bc65a86b.chunk.js",revision:"63f59f13296de29704b874616a85adba"},{url:"static/js/477.9e88e23e.chunk.js",revision:"b0fb9448660d61d194d70fef1a8c33bd"},{url:"static/js/490.a17275d3.chunk.js",revision:"ed2fdc2b3755f6c2f2a9b5e7a04f5e2b"},{url:"static/js/499.82af1c6d.chunk.js",revision:"077112d7e570e89b26d9f2e1c4092b9f"},{url:"static/js/547.ab7c59bb.chunk.js",revision:"cdf70a128aaff7af28d3a97631ce0a65"},{url:"static/js/55.493ac6df.chunk.js",revision:"fc71b03f80c659ec581983419f27f251"},{url:"static/js/583.dda1a5d6.chunk.js",revision:"0760776bfd735ee497a666711b40bc47"},{url:"static/js/586.4ab67396.chunk.js",revision:"4e7cd28268ab47a6666bcaa4edd07cc3"},{url:"static/js/714.dd9b813d.chunk.js",revision:"90085f3b5cba19c630b370d9869ed5bf"},{url:"static/js/779.c88693a4.chunk.js",revision:"36166c0f56ad2ba117e55a07b4e4cdfd"},{url:"static/js/808.ad74101b.chunk.js",revision:"de50fbd0c5325a5dd35cb027bdf55788"},{url:"static/js/864.4bd26b7d.chunk.js",revision:"a22a8f06df11f0bb456cf3aec2be3744"},{url:"static/js/89.6e1f9da9.chunk.js",revision:"505c1de08f2127a68f667b18aa412ae1"},{url:"static/js/main.a908fe4e.js",revision:"7efe06523d4676a54e9ae4d8a7fbe9f7"}],{}),e.registerRoute(/\.(?:png|jpg|jpeg|svg)$/,new e.CacheFirst({cacheName:"images",plugins:[new e.ExpirationPlugin({maxEntries:60,maxAgeSeconds:2592e3})]}),"GET"),e.registerRoute(/\.(?:js|css)$/,new e.StaleWhileRevalidate({cacheName:"static-resources",plugins:[]}),"GET")});
-//# sourceMappingURL=service-worker.js.map
+importScripts('https://storage.googleapis.com/workbox-cdn/releases/7.0.0/workbox-sw.js');
+
+// This is the service worker script that will be injected with the manifest
+// by the `injectManifest` build process.
+workbox.precaching.precacheAndRoute([{"revision":"d39853392df80baef1a647a9b7a1d823","url":"index.html"},{"revision":"5e1a301e9b82c1cb08aea4148bd56100","url":"manifest.json"}]);
+
+// Register route for navigation requests (e.g., HTML files)
+// Uses StaleWhileRevalidate strategy: serve from cache immediately, then update from network.
+workbox.routing.registerRoute(
+  ({ request }) => request.mode === 'navigate',
+  new workbox.strategies.StaleWhileRevalidate({
+    cacheName: 'app-shell-pages', // Cache for HTML pages
+    plugins: [
+      new workbox.cacheableResponse.CacheableResponsePlugin({
+        statuses: [0, 200], // Cache successful responses (0 for opaque, 200 for OK)
+      }),
+      new workbox.expiration.ExpirationPlugin({
+        maxEntries: 50, // Limit the number of pages stored
+        maxAgeSeconds: 24 * 60 * 60, // Cache pages for 1 day
+      }),
+    ],
+  })
+);
+
+// Example: Register route for API calls (e.g., requests starting with /api/)
+// Cache falling back to network, then cache.
+workbox.routing.registerRoute(
+  ({ url }) => url.pathname.startsWith('/api/'), // Adjust this path as needed
+  new workbox.strategies.NetworkFirst({
+    cacheName: 'api-cache',
+    plugins: [
+      new workbox.cacheableResponse.CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+      new workbox.expiration.ExpirationPlugin({
+        maxEntries: 50,
+        maxAgeSeconds: 5 * 60, // Cache API responses for 5 minutes
+      }),
+    ],
+  })
+);
+
+// Handle push events for Firebase Messaging
+self.addEventListener('push', (event) => {
+  let payload;
+  try {
+    // Attempt to parse the push payload as JSON
+    payload = event.data.json();
+  } catch (e) {
+    console.error('Push payload is not valid JSON:', event.data);
+    // Fallback or error handling for non-JSON payloads
+    return;
+  }
+
+  const notificationTitle = payload.title || 'New Message';
+  const notificationOptions = {
+    body: payload.body,
+    icon: 'logo192.png', // Ensure this icon is precached
+    badge: 'logo192.png', // Ensure this badge icon is precached
+    data: payload.data, // Pass data from the payload to the notification
+    // You can add other notification options here, like actions, tag, etc.
+  };
+
+  // Show the notification
+  event.waitUntil(
+    self.registration.showNotification(notificationTitle, notificationOptions)
+  );
+});
+
+// Handle notification click events
+self.addEventListener('notificationclick', (event) => {
+  const clickedNotification = event.notification;
+  clickedNotification.close(); // Close the notification
+
+  // Retrieve the data from the notification payload
+  const notificationData = clickedNotification.data;
+
+  // Define a default URL or extract a URL from the payload if available
+  const urlToOpen = notificationData?.url || '/'; // Use notificationData instead of payload
+
+  // Open a window and focus it, navigating to the specified URL
+  event.waitUntil(
+    self.clients.openWindow(urlToOpen).then(windowClient => {
+      if (windowClient) {
+        return windowClient.focus();
+      }
+      // If no window was opened (e.g., app was closed), you might want to handle this
+      // by opening a new window or redirecting.
+    })
+  );
+});

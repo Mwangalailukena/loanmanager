@@ -1,0 +1,109 @@
+[debug] [2025-12-30T16:44:48.070Z] ----------------------------------------------------------------------
+[debug] [2025-12-30T16:44:48.073Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\Agness\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js serve
+[debug] [2025-12-30T16:44:48.073Z] CLI Version:   15.1.0
+[debug] [2025-12-30T16:44:48.073Z] Platform:      win32
+[debug] [2025-12-30T16:44:48.073Z] Node Version:  v25.2.1
+[debug] [2025-12-30T16:44:48.073Z] Time:          Tue Dec 30 2025 18:44:48 GMT+0200 (Central Africa Time)
+[debug] [2025-12-30T16:44:48.073Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-12-30T16:44:49.938Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-12-30T16:44:49.938Z] > authorizing via signed-in user (ilukenamwangala@gmail.com)
+[debug] [2025-12-30T16:44:49.938Z] [iam] checking project ilukenas-loan-management for permissions ["firebase.projects.get"]
+[debug] [2025-12-30T16:44:49.939Z] Checked if tokens are valid: false, expires at: 1767048181936
+[debug] [2025-12-30T16:44:49.939Z] Checked if tokens are valid: false, expires at: 1767048181936
+[debug] [2025-12-30T16:44:49.939Z] > refreshing access token with scopes: []
+[debug] [2025-12-30T16:44:49.940Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-12-30T16:44:49.940Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-12-30T16:44:50.496Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-12-30T16:44:50.496Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-12-30T16:44:50.507Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/ilukenas-loan-management:testIamPermissions [none]
+[debug] [2025-12-30T16:44:50.507Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/ilukenas-loan-management:testIamPermissions x-goog-quota-user=projects/ilukenas-loan-management
+[debug] [2025-12-30T16:44:50.507Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/ilukenas-loan-management:testIamPermissions {"permissions":["firebase.projects.get"]}
+[debug] [2025-12-30T16:44:52.688Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/ilukenas-loan-management:testIamPermissions 200
+[debug] [2025-12-30T16:44:52.688Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/ilukenas-loan-management:testIamPermissions {"permissions":["firebase.projects.get"]}
+[debug] [2025-12-30T16:44:52.688Z] Checked if tokens are valid: true, expires at: 1767116689496
+[debug] [2025-12-30T16:44:52.689Z] Checked if tokens are valid: true, expires at: 1767116689496
+[debug] [2025-12-30T16:44:52.689Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/ilukenas-loan-management [none]
+[debug] [2025-12-30T16:44:53.061Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/ilukenas-loan-management 200
+[debug] [2025-12-30T16:44:53.061Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/ilukenas-loan-management {"projectNumber":"714108438492","projectId":"ilukenas-loan-management","lifecycleState":"ACTIVE","name":"ilukenas-loan-management","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2025-07-23T07:56:18.768570Z"}
+[info] 
+[info] === Serving from 'C:\Project\loanmanager'...
+[info] 
+[debug] [2025-12-30T16:44:53.068Z] Checked if tokens are valid: true, expires at: 1767116689496
+[debug] [2025-12-30T16:44:53.068Z] Checked if tokens are valid: true, expires at: 1767116689496
+[debug] [2025-12-30T16:44:53.077Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/ilukenas-loan-management/sites 
+[debug] [2025-12-30T16:44:53.118Z] defaultcredentials: writing to file C:\Users\Agness\AppData\Roaming\firebase\ilukenamwangala_gmail_com_application_default_credentials.json
+[debug] [2025-12-30T16:44:53.120Z] Setting GAC to C:\Users\Agness\AppData\Roaming\firebase\ilukenamwangala_gmail_com_application_default_credentials.json {"metadata":{"emulator":{"name":"functions"},"message":"Setting GAC to C:\\Users\\Agness\\AppData\\Roaming\\firebase\\ilukenamwangala_gmail_com_application_default_credentials.json"}}
+[debug] [2025-12-30T16:44:53.121Z] Checked if tokens are valid: true, expires at: 1767116689496
+[debug] [2025-12-30T16:44:53.121Z] Checked if tokens are valid: true, expires at: 1767116689496
+[debug] [2025-12-30T16:44:53.121Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/ilukenas-loan-management/adminSdkConfig [none]
+[debug] [2025-12-30T16:44:54.309Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/ilukenas-loan-management/adminSdkConfig 200
+[debug] [2025-12-30T16:44:54.309Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/ilukenas-loan-management/adminSdkConfig {"projectId":"ilukenas-loan-management","storageBucket":"ilukenas-loan-management.firebasestorage.app"}
+[debug] [2025-12-30T16:44:55.379Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/ilukenas-loan-management/sites 200
+[debug] [2025-12-30T16:44:55.379Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/ilukenas-loan-management/sites {"sites":[{"name":"projects/ilukenas-loan-management/sites/ilukenas-loan-management","defaultUrl":"https://ilukenas-loan-management.web.app","appId":"1:714108438492:web:6036fbfc93272f2aaeb119","type":"DEFAULT_SITE"}]}
+[debug] [2025-12-30T16:44:55.380Z] Checked if tokens are valid: true, expires at: 1767116689496
+[debug] [2025-12-30T16:44:55.380Z] Checked if tokens are valid: true, expires at: 1767116689496
+[debug] [2025-12-30T16:44:55.380Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/ilukenas-loan-management/webApps/1:714108438492:web:6036fbfc93272f2aaeb119/config [none]
+[debug] [2025-12-30T16:44:56.481Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/ilukenas-loan-management/webApps/1:714108438492:web:6036fbfc93272f2aaeb119/config 200
+[debug] [2025-12-30T16:44:56.481Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/ilukenas-loan-management/webApps/1:714108438492:web:6036fbfc93272f2aaeb119/config {"projectId":"ilukenas-loan-management","appId":"1:714108438492:web:6036fbfc93272f2aaeb119","storageBucket":"ilukenas-loan-management.firebasestorage.app","apiKey":"AIzaSyBJmjOEymW5xxgbhZEpWatOjSZx8byaFSY","authDomain":"ilukenas-loan-management.firebaseapp.com","messagingSenderId":"714108438492","measurementId":"G-V11PBG95V9","projectNumber":"714108438492","version":"2"}
+[debug] [2025-12-30T16:44:56.493Z] Checked if tokens are valid: true, expires at: 1767116689496
+[debug] [2025-12-30T16:44:56.493Z] Checked if tokens are valid: true, expires at: 1767116689496
+[debug] [2025-12-30T16:44:56.493Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/ilukenas-loan-management [none]
+[debug] [2025-12-30T16:44:56.928Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/ilukenas-loan-management 200
+[debug] [2025-12-30T16:44:56.928Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/ilukenas-loan-management {"projectId":"ilukenas-loan-management","projectNumber":"714108438492","displayName":"ilukenas-loan-management","name":"projects/ilukenas-loan-management","resources":{"hostingSite":"ilukenas-loan-management"},"state":"ACTIVE","etag":"1_858d085b-af7d-48fd-bd3c-d78eacc23b14"}
+[info] i  functions: Watching "C:\Project\loanmanager\functions" for Cloud Functions... {"metadata":{"emulator":{"name":"functions"},"message":"Watching \"C:\\Project\\loanmanager\\functions\" for Cloud Functions..."}}
+[info] i  hosting[ilukenas-loan-management]: Serving hosting files from: build {"metadata":{"emulator":{"name":"hosting"},"message":"Serving hosting files from: \u001b[1mbuild\u001b[22m"}}
+[info] +  hosting[ilukenas-loan-management]: Local server: http://localhost:5000 {"metadata":{"emulator":{"name":"hosting"},"message":"Local server: \u001b[4m\u001b[1mhttp://localhost:5000\u001b[22m\u001b[24m"}}
+[debug] [2025-12-30T16:44:56.955Z] Validating nodejs source
+[warn] !  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory. 
+[warn] !  functions: Please note that there will be breaking changes when you upgrade. 
+[debug] [2025-12-30T16:44:58.350Z] > [functions] package.json contents: {
+  "name": "functions",
+  "description": "Cloud Functions for Firebase",
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "firebase-admin": "12.1.0",
+    "firebase-functions": "^5.1.0",
+    "web-push": "^3.6.7",
+    "@google/generative-ai": "^0.1.0"
+  },
+  "devDependencies": {
+    "firebase-functions-test": "^0.2.0"
+  },
+  "private": true
+}
+[debug] [2025-12-30T16:44:58.350Z] Building nodejs source
+[debug] [2025-12-30T16:44:58.351Z] Failed to find version of module node: reached end of search path C:\Project\loanmanager\functions\node_modules
+[warn] !  functions: Your requested "node" version "20" doesn't match your global version "25". Using node@25 from host. 
+[debug] [2025-12-30T16:44:58.353Z] Could not find functions.yaml. Must use http discovery
+[debug] [2025-12-30T16:44:58.364Z] Found firebase-functions binary at 'C:\Project\loanmanager\functions\node_modules\.bin\firebase-functions'
+[info] Serving at port 8367
+
+[error] C:\Project\loanmanager\functions\index.js:46
+  );
+  ^
+
+SyntaxError: Unexpected token ')'
+    at wrapSafe (node:internal/modules/cjs/loader:1691:18)
+    at Module._compile (node:internal/modules/cjs/loader:1734:20)
+    at Object..js (node:internal/modules/cjs/loader:1892:10)
+    at Module.load (node:internal/modules/cjs/loader:1480:32)
+    at Module._load (node:internal/modules/cjs/loader:1299:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
+    at Module.require (node:internal/modules/cjs/loader:1503:12)
+    at require (node:internal/modules/helpers:152:16)
+    at loadModule (C:\Project\loanmanager\functions\node_modules\firebase-functions\lib\runtime\loader.js:40:16)
+
+[debug] [2025-12-30T16:44:58.792Z] Got response code 400; body Failed to generate manifest from function source: SyntaxError: Unexpected token ')'
+[error] !!  functions: Failed to load function definition from source: FirebaseError: Functions codebase could not be analyzed successfully. It may have a syntax or runtime error {"metadata":{"emulator":{"name":"functions"},"message":"Failed to load function definition from source: FirebaseError: Functions codebase could not be analyzed successfully. It may have a syntax or runtime error"}}
