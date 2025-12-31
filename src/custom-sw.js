@@ -6,7 +6,9 @@ const SW_VERSION = '1.0.0';
 const IMAGE_PLACEHOLDER_DATA_URI = 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==';
 
 self.addEventListener('install', () => {
-  self.skipWaiting();
+  // Removed self.skipWaiting() here. Activation will now wait until
+  // all active clients are closed, or the client explicitly sends
+  // a 'SKIP_WAITING' message (e.g., from an update prompt).
 });
 
 self.addEventListener('activate', (event) => {
