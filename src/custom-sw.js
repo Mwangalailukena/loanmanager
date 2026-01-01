@@ -80,22 +80,7 @@ workbox.routing.registerRoute(
 
 // Example: Register route for API calls (e.g., requests starting with /api/)
 // Cache falling back to network, then cache.
-workbox.routing.registerRoute(
-  ({ url }) => url.pathname.startsWith('/api/'), // Adjust this path as needed
-  new workbox.strategies.NetworkFirst({
-    cacheName: 'api-cache',
-    networkTimeoutSeconds: 3,
-    plugins: [
-      new workbox.cacheableResponse.CacheableResponsePlugin({
-        statuses: [0, 200],
-      }),
-      new workbox.expiration.ExpirationPlugin({
-        maxEntries: 50,
-        maxAgeSeconds: 5 * 60, // Cache API responses for 5 minutes
-      }),
-    ],
-  })
-);
+// This block will be replaced with consolidated API routing.
 
 // Background Sync for offline POST requests
 const bgSyncPlugin = new workbox.backgroundSync.BackgroundSyncPlugin('loanManagerQueue', {
@@ -119,9 +104,9 @@ const cacheMonitorPlugin = {
   // for more detailed monitoring like cache hits/misses, but that gets more complex.
 };
 
-// Reordered API routes for correct precedence:
+// Consolidated API routes:
 
-// 1. API calls (POST requests to /api/ with NetworkOnly + Background Sync) - Handle mutations first
+// 1. API calls (POST requests to /api/ with NetworkOnly + Background Sync)
 workbox.routing.registerRoute(
   ({ url, request }) => request.method === 'POST' && url.pathname.startsWith('/api/'),
   new workbox.strategies.NetworkOnly({
@@ -129,33 +114,19 @@ workbox.routing.registerRoute(
   })
 );
 
-// 2. API calls (GET requests to /api/ with StaleWhileRevalidate) - Specific GET rule
+// 2. API calls (GET requests to /api/ with NetworkFirst)
 workbox.routing.registerRoute(
   ({ url, request }) => request.method === 'GET' && url.pathname.startsWith('/api/'),
-  new workbox.strategies.StaleWhileRevalidate({
+  new workbox.strategies.NetworkFirst({ // Changed from StaleWhileRevalidate to NetworkFirst
     cacheName: 'api-cache',
-    plugins: [
-      new workbox.expiration.ExpirationPlugin({
-        maxEntries: 50,
-        maxAgeSeconds: 60 * 60 * 24, // 24 hours (for GET)
-      }),
-    ],
-  })
-);
-
-// 3. API calls (General /api/ requests with NetworkFirst) - Catches any other /api/ method, or as a final fallback
-workbox.routing.registerRoute(
-  ({ url }) => url.pathname.startsWith('/api/'),
-  new workbox.strategies.NetworkFirst({
-    cacheName: 'api-cache',
-    networkTimeoutSeconds: 3,
+    networkTimeoutSeconds: 3, // Keep network timeout
     plugins: [
       new workbox.cacheableResponse.CacheableResponsePlugin({
         statuses: [0, 200],
       }),
       new workbox.expiration.ExpirationPlugin({
         maxEntries: 50,
-        maxAgeSeconds: 5 * 60, // 5 minutes (for non-GET /api/ or as a safety fallback)
+        maxAgeSeconds: 5 * 60, // 5 minutes for NetworkFirst GETs
       }),
     ],
   })
