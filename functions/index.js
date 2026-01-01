@@ -1,36 +1,30 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-// const webpush = require("web-push"); // No longer needed for FCM
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 admin.initializeApp();
-
 const db = admin.firestore();
 
-// No longer needed as the client will directly call 'sendPushNotification'
-// const sendPushNotificationCallable = admin.functions().httpsCallable('sendPushNotification');
-
-// No longer needed for FCM, as FCM handles push subscription details
-// const vapidKeys = require("./vapid-keys.json");
-// webpush.setVapidDetails(
-//   "mailto:ilukenamwangala@gmail.com", // Replace with your email
-//   vapidKeys.publicKey,
-//   vapidKeys.privateKey
-// );
-
-// NEW: Initialize Google Generative AI
-// IMPORTANT: Replace 'YOUR_GEMINI_API_KEY' with your actual API key.
-// For production, use Firebase Environment Configuration (functions.config().gemini.api_key)
-// or Firebase Secret Manager (functions.runWith({secrets: ["GEMINI_API_KEY"]}).https.onCall)
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "YOUR_GEMINI_API_KEY"; // Ensure this is set securely
+// Securely initialize Generative AI
+const GEMINI_API_KEY = functions.config().gemini?.api_key || "YOUR_GEMINI_API_KEY";
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
 
-// HTTPS Callable function to send push notifications using FCM
+/**
+ * Sends a push notification to all devices registered to a specific user.
+ * This function is callable from a client application.
+ *
+ * @param {object} data - The data passed to the function.
+ * @param {string} data.userId - The ID of the user to send the notification to.
+ * @param {object} data.notification - The notification payload.
+ * @param {string} data.notification.title - The title of the notification.
+ * @param {string} data.notification.body - The body of the notification.
+ * @param {string} data.url - The URL to open when the notification is clicked.
+ * @param {object} context - The context of the function call.
+ * @returns {Promise<object>} A promise that resolves with the result of the send operation.
+ */
 exports.sendPushNotification = functions.https.onCall(async (data, context) => {
-  const { userId, payload } = data;
-
   if (!context.auth) {
     throw new functions.https.HttpsError(
       "unauthenticated",
@@ -38,77 +32,76 @@ exports.sendPushNotification = functions.https.onCall(async (data, context) => {
     );
   }
 
-  if (!userId || !payload) {
+  const { userId, notification, url } = data;
+
+  if (!userId || !notification || !notification.title || !notification.body) {
     throw new functions.https.HttpsError(
       "invalid-argument",
-      "The function must be called with two arguments, 'userId' and 'payload'."
+      "The function must be called with 'userId', 'notification.title', and 'notification.body'."
     );
-  );
   }
 
-  // Get all FCM tokens for the target userId from Firestore
-  const fcmTokensSnapshot = await db
+  // Get all FCM tokens for the target userId
+  const tokensSnapshot = await db
     .collection("fcmTokens")
     .where("userId", "==", userId)
     .get();
 
-  const tokens = fcmTokensSnapshot.docs.map(doc => doc.id); // doc.id is the token itself
-
-  if (tokens.length === 0) {
+  if (tokensSnapshot.empty) {
     console.log(`No FCM tokens found for user ${userId}.`);
-    return { success: false, message: "No tokens found." };
+    return { success: false, error: "No tokens found for user." };
   }
 
-  // Construct the FCM message
-  const message = {
+  const tokens = tokensSnapshot.docs.map(doc => doc.id);
+
+  // Construct the FCM message payload
+  const payload = {
     notification: {
-      title: payload.title,
-      body: payload.body,
+      title: notification.title,
+      body: notification.body,
+      icon: '/logo192.png',
     },
-    webpush: {
-      headers: {
-        Urgency: 'high',
-      },
-      notification: {
-        icon: payload.icon || '/logo192.png', // Fallback icon
-      },
-    },
-    tokens: tokens,
+    data: {
+      url: url || '/', // Default to the root URL if not provided
+    }
   };
 
   try {
-    const response = await admin.messaging().sendMulticast(message);
-    console.log('Successfully sent message:', response);
+    // Use sendToDevice for robust delivery and response handling
+    const response = await admin.messaging().sendToDevice(tokens, payload);
+    console.log(`Successfully sent message to ${response.successCount} devices.`);
 
-    // Clean up invalid tokens
-    if (response.failureCount > 0) {
-      const tokensToRemove = [];
-      response.responses.forEach((resp, idx) => {
-        if (!resp.success) {
-          console.error(`Failed to send message to token ${tokens[idx]}: ${resp.error}`);
-          // Delete the token from Firestore if it's no longer valid
-          if (resp.error && resp.error.code === 'messaging/invalid-registration-token' ||
-              resp.error.code === 'messaging/registration-token-not-registered') {
-            tokensToRemove.push(db.collection('fcmTokens').doc(tokens[idx]).delete());
-          }
+    // --- Clean up invalid or unregistered tokens ---
+    const tokensToRemove = [];
+    response.results.forEach((result, index) => {
+      const error = result.error;
+      if (error) {
+        console.error(`Failure sending notification to ${tokens[index]}`, error);
+        // Cleanup tokens that are no longer registered with FCM
+        if (
+          error.code === 'messaging/invalid-registration-token' ||
+          error.code === 'messaging/registration-token-not-registered'
+        ) {
+          tokensToRemove.push(db.collection('fcmTokens').doc(tokens[index]).delete());
         }
-      });
+      }
+    });
+
+    if (tokensToRemove.length > 0) {
       await Promise.all(tokensToRemove);
       console.log(`Removed ${tokensToRemove.length} invalid FCM tokens.`);
     }
 
-    return { success: true, response: response };
+    return { success: true, successCount: response.successCount, failureCount: response.failureCount };
+
   } catch (error) {
     console.error("Error sending FCM message:", error);
-    throw new functions.https.HttpsError(
-      "internal",
-      "Failed to send FCM message.",
-      error.message
-    );
+    throw new functions.https.HttpsError("internal", "Failed to send notification.", error.message);
   }
 });
 
-// HTTPS Callable function for AI-powered monthly projection
+
+// HTTPS Callable function for AI-powered monthly projection (Preserved)
 exports.getMonthlyProjectionAI = functions.https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError(
@@ -126,7 +119,6 @@ exports.getMonthlyProjectionAI = functions.https.onCall(async (data, context) =>
         );
     }
 
-    // Construct a prompt for the AI model
     const prompt = `You are an AI assistant specialized in financial projections for micro-lending.
     Given the following historical monthly data, project the 'projectedRevenue', 'projectedPayments', and 'projectedNewLoans' for the month of ${targetMonth}/${targetYear}.
     Focus on plausible and realistic projections based on the trends and patterns in the provided data.
@@ -142,11 +134,8 @@ exports.getMonthlyProjectionAI = functions.https.onCall(async (data, context) =>
         const result = await model.generateContent(prompt);
         const response = await result.response;
         const text = response.text();
-
-        // Attempt to parse the JSON response
         const projection = JSON.parse(text);
 
-        // Basic validation of the AI's response structure
         if (
             typeof projection.projectedRevenue !== 'number' ||
             typeof projection.projectedPayments !== 'number' ||
@@ -161,108 +150,36 @@ exports.getMonthlyProjectionAI = functions.https.onCall(async (data, context) =>
         return projection;
     } catch (error) {
         console.error("Error calling Gemini API for projection:", error);
-        if (error instanceof SyntaxError) {
-            console.error("AI response was not valid JSON:", error.message, "Raw AI Text:", text);
-        }
-        throw new functions.https.HttpsError(
-            "internal",
-            "Failed to get projection from AI.",
-            error.message
-        );
+        throw new functions.https.HttpsError("internal", "Failed to get projection from AI.", error.message);
     }
 });
 
-// Scheduled function to check for loan reminders
+// Scheduled function to check for loan reminders (Preserved)
 exports.checkLoanReminders = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
   const now = admin.firestore.Timestamp.now();
   const loansRef = db.collection('loans');
 
-  // 1. Check for overdue loans
+  // Overdue loans check
   const overdueLoansSnapshot = await loansRef
     .where('dueDate', '<', now)
-    .where('status', '==', 'Active') // Only consider active loans
+    .where('status', '==', 'Active')
     .get();
 
-  const notificationsToSend = [];
+  const notificationPromises = [];
 
-  for (const loanDoc of overdueLoansSnapshot.docs) {
-    const loan = loanDoc.data();
-    const userId = loan.userId;
-
-    // Fetch user's notification preferences
-    const userDoc = await db.collection('users').doc(userId).get();
-    if (userDoc.exists) {
-      const userData = userDoc.data();
-      if (userData.notificationPreferences && userData.notificationPreferences.overdue) {
-        notificationsToSend.push({
-          userId: userId,
-          payload: {
-            title: 'Overdue Loan Alert',
-            body: `Loan for ${loan.borrowerName || 'a borrower'} is overdue! Amount: ${loan.totalRepayable - (loan.repaidAmount || 0)}`,
-          },
-        });
-      }
-    }
-  }
-
-  // Send all collected notifications
-  for (const notification of notificationsToSend) {
-    try {
-      // Use the new FCM-based sendPushNotification logic
-      // Note: The sendPushNotification Callable is designed to be called from the client.
-      // For server-to-server sending, directly use admin.messaging()
-      const message = {
-        notification: {
-          title: notification.payload.title,
-          body: notification.payload.body,
-        },
-        webpush: {
-          headers: {
-            Urgency: 'high',
-          },
-          notification: {
-            icon: notification.payload.icon || '/logo192.png',
-          },
-        },
-      };
-
-      const fcmTokensSnapshot = await db
-        .collection("fcmTokens")
-        .where("userId", "==", notification.userId)
-        .get();
-
-      const tokens = fcmTokensSnapshot.docs.map(doc => doc.id);
-
-      if (tokens.length > 0) {
-        const response = await admin.messaging().sendEachForMulticast({ ...message, tokens: tokens });
-        console.log(`Successfully sent message to user ${notification.userId}:`, response);
-
-        if (response.failureCount > 0) {
-          const tokensToRemove = [];
-          response.responses.forEach((resp, idx) => {
-            if (!resp.success) {
-              console.error(`Failed to send message to token ${tokens[idx]}: ${resp.error}`);
-              if (resp.error && resp.error.code === 'messaging/invalid-registration-token' ||
-                  resp.error.code === 'messaging/registration-token-not-registered') {
-                tokensToRemove.push(db.collection('fcmTokens').doc(tokens[idx]).delete());
-              }
-            }
-          });
-          await Promise.all(tokensToRemove);
-          console.log(`Removed ${tokensToRemove.length} invalid FCM tokens for user ${notification.userId}.`);
-        }
-      } else {
-        console.log(`No FCM tokens found for user ${notification.userId} for reminders.`);
-      }
-
-    } catch (error) {
-      console.error('Error sending reminder notification:', error);
-    }
-  }
-
-  console.log('Overdue loan reminders checked and sent.');
-
-  // 2. Check for upcoming payments
+  overdueLoansSnapshot.forEach(doc => {
+    const loan = doc.data();
+    const payload = {
+      notification: {
+        title: 'Overdue Loan Alert',
+        body: `Loan for ${loan.borrowerName || 'a borrower'} is overdue! Amount: ${loan.totalRepayable - (loan.repaidAmount || 0)}`,
+      },
+      data: { url: `/loans/${doc.id}` }
+    };
+    notificationPromises.push(sendNotificationToUser(loan.userId, payload));
+  });
+  
+  // Upcoming payments check
   const sevenDaysFromNow = new Date();
   sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
   const sevenDaysFromNowTimestamp = admin.firestore.Timestamp.fromDate(sevenDaysFromNow);
@@ -273,76 +190,44 @@ exports.checkLoanReminders = functions.pubsub.schedule('every 24 hours').onRun(a
     .where('status', '==', 'Active')
     .get();
 
-  for (const loanDoc of upcomingLoansSnapshot.docs) {
-    const loan = loanDoc.data();
-    const userId = loan.userId;
+  upcomingLoansSnapshot.forEach(doc => {
+    const loan = doc.data();
+    const payload = {
+      notification: {
+        title: 'Upcoming Payment Reminder',
+        body: `Your loan for ${loan.borrowerName || 'a borrower'} is due on ${loan.dueDate.toDate().toLocaleDateString()}.`,
+      },
+      data: { url: `/loans/${doc.id}` }
+    };
+    notificationPromises.push(sendNotificationToUser(loan.userId, payload));
+  });
 
-    const userDoc = await db.collection('users').doc(userId).get();
-    if (userDoc.exists) {
-      const userData = userDoc.data();
-      if (userData.notificationPreferences && userData.notificationPreferences.upcoming) {
-        notificationsToSend.push({
-          userId: userId,
-          payload: {
-            title: 'Upcoming Payment Reminder',
-            body: `Your loan for ${loan.borrowerName || 'a borrower'} is due soon on ${loan.dueDate.toDate().toLocaleDateString()}.`,
-          },
-        });
-      }
-    }
-  }
-
-  // Send all collected notifications (including upcoming ones)
-  for (const notification of notificationsToSend) {
-    try {
-      const message = {
-        notification: {
-          title: notification.payload.title,
-          body: notification.payload.body,
-        },
-        webpush: {
-          headers: {
-            Urgency: 'high',
-          },
-          notification: {
-            icon: notification.payload.icon || '/logo192.png',
-          },
-        },
-      };
-
-      const fcmTokensSnapshot = await db
-        .collection("fcmTokens")
-        .where("userId", "==", notification.userId)
-        .get();
-
-      const tokens = fcmTokensSnapshot.docs.map(doc => doc.id);
-
-      if (tokens.length > 0) {
-        const response = await admin.messaging().sendEachForMulticast({ ...message, tokens: tokens });
-        console.log(`Successfully sent message to user ${notification.userId}:`, response);
-
-        if (response.failureCount > 0) {
-          const tokensToRemove = [];
-          response.responses.forEach((resp, idx) => {
-            if (!resp.success) {
-              console.error(`Failed to send message to token ${tokens[idx]}: ${resp.error}`);
-              if (resp.error && resp.error.code === 'messaging/invalid-registration-token' ||
-                  resp.error.code === 'messaging/registration-token-not-registered') {
-                tokensToRemove.push(db.collection('fcmTokens').doc(tokens[idx]).delete());
-              }
-            }
-          });
-          await Promise.all(tokensToRemove);
-          console.log(`Removed ${tokensToRemove.length} invalid FCM tokens for user ${notification.userId}.`);
-        }
-      } else {
-        console.log(`No FCM tokens found for user ${notification.userId} for upcoming payment reminders.`);
-      }
-    } catch (error) {
-      console.error('Error sending upcoming payment notification:', error);
-    }
-  }
-
-  console.log('Upcoming payment reminders checked and sent.');
+  await Promise.all(notificationPromises);
+  console.log('Loan reminder check complete.');
   return null;
 });
+
+async function sendNotificationToUser(userId, payload) {
+  const userDoc = await db.collection('users').doc(userId).get();
+  if (!userDoc.exists || !userDoc.data().notificationPreferences?.overdue) {
+    return; // User doesn't exist or has disabled these notifications
+  }
+
+  const tokensSnapshot = await db.collection("fcmTokens").where("userId", "==", userId).get();
+  if (tokensSnapshot.empty) {
+    return; // No devices to send to
+  }
+
+  const tokens = tokensSnapshot.docs.map(doc => doc.id);
+  const response = await admin.messaging().sendToDevice(tokens, payload);
+
+  // Clean up invalid tokens
+  const tokensToRemove = [];
+  response.results.forEach((result, index) => {
+    const error = result.error;
+    if (error && (error.code === 'messaging/invalid-registration-token' || error.code === 'messaging/registration-token-not-registered')) {
+      tokensToRemove.push(db.collection('fcmTokens').doc(tokens[index]).delete());
+    }
+  });
+  await Promise.all(tokensToRemove);
+}

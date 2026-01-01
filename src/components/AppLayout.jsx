@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'; // Added useEffect
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   useTheme,
@@ -13,7 +13,7 @@ import {
   SpeedDialIcon,
   SpeedDialAction,
   Fab,
-  Zoom, // --- New Import ---
+  Zoom,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -23,7 +23,7 @@ import {
   AttachMoney as AttachMoneyIcon,
   PersonAdd as PersonAddIcon,
   Receipt as ReceiptIcon,
-  KeyboardArrowUp as KeyboardArrowUpIcon, // --- New Import ---
+  KeyboardArrowUp as KeyboardArrowUpIcon,
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -33,6 +33,9 @@ import MobileDrawer from './MobileDrawer';
 import LoanDetailDialog from './LoanDetailDialog';
 import SearchResults from './SearchResults';
 import { useSearch } from '../contexts/SearchContext';
+import { useSnackbar } from '../components/SnackbarProvider'; // Import useSnackbar
+import { requestNotificationPermission, onForegroundMessage } from '../utils/push'; // Import push notification utils
+import { useAuth } from '../contexts/AuthProvider'; // Import auth context to check user status
 
 const MobileSearchBar = ({ onSearchChange, onClose, open, searchTerm }) => {
   // ... (This component remains unchanged)
@@ -81,6 +84,8 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const showSnackbar = useSnackbar();
+  const { currentUser } = useAuth();
 
   const {
     searchTerm,
@@ -94,14 +99,35 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   } = useSearch();
 
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
-
-  // --- Back to Top: State ---
   const [showBackToTop, setShowBackToTop] = useState(false);
+
+  // --- Push Notifications Effect ---
+  useEffect(() => {
+    // Only run if there is a logged-in user
+    if (currentUser) {
+      // Request permission as soon as the app layout mounts
+      requestNotificationPermission();
+
+      // Set up the foreground message listener
+      const unsubscribe = onForegroundMessage((payload) => {
+        const { notification } = payload;
+        // Display the notification using the app's snackbar
+        showSnackbar(
+          `${notification.title}: ${notification.body}`,
+          'info'
+        );
+      });
+
+      // Clean up the listener when the component unmounts
+      return () => {
+        unsubscribe();
+      };
+    }
+  }, [currentUser, showSnackbar]);
 
   // --- Back to Top: Scroll Listener Effect ---
   useEffect(() => {
     const handleScroll = () => {
-      // Show button if scrolled down more than 400px
       if (window.scrollY > 400) {
         setShowBackToTop(true);
       } else {
@@ -109,11 +135,9 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
       }
     };
     window.addEventListener('scroll', handleScroll);
-    // Cleanup function to remove the listener
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // --- Back to Top: Click Handler ---
   const handleScrollToTop = () => {
     window.scrollTo({
       top: 0,
@@ -132,7 +156,6 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   }
 
   const renderFab = () => {
-    // ... (This function remains unchanged)
     const fabStyles = { position: 'fixed', bottom: isMobile ? `calc(${bottomNavHeight}px + 16px)` : 16, right: 16, };
     let fabContent = null;
     switch (pathname) {
@@ -158,8 +181,6 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <CssBaseline />
       
-      {/* ... (Rest of the NavBar, Drawer, Search, and Main Content components remain the same) ... */}
-
       {!isMobile && ( <FloatingNavBar darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} onOpenLoanDetail={openLoanDetail} /> )}
       {isMobile && ( <Box sx={{ position: 'fixed', top: 8, left: 8, zIndex: theme.zIndex.appBar + 1, bgcolor: 'background.paper', borderRadius: '50%', boxShadow: theme.shadows[2], }} > <IconButton onClick={handleDrawerOpen} sx={{ color: theme.palette.secondary.main }}><MenuIcon /></IconButton> </Box> )}
       <MobileSearchBar onSearchChange={handleSearchChange} onClose={handleMobileSearchClose} open={isMobileSearchOpen} searchTerm={searchTerm} />
@@ -185,10 +206,8 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
       {!hideLayout && isMobile && <BottomNavBar />}
       <LoanDetailDialog key={selectedLoanId} open={loanDetailOpen} onClose={closeLoanDetail} loanId={selectedLoanId} />
 
-      {/* --- Main FAB Renderer --- */}
       {renderFab()}
 
-      {/* --- Back to Top FAB --- */}
       <Zoom in={showBackToTop}>
         <Fab
           color="primary"
@@ -197,7 +216,6 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
           onClick={handleScrollToTop}
           sx={{
             position: 'fixed',
-            // Position it above the main FAB and Bottom Nav Bar
             bottom: isMobile ? `calc(${bottomNavHeight}px + 88px)` : 88,
             right: 16,
           }}

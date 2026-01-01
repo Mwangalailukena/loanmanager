@@ -20,7 +20,7 @@ import {
 import { useSnackbar } from "../components/SnackbarProvider";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { useAuth } from "../contexts/AuthProvider"; // Added import for useAuth
-import { subscribeUserToPushNotifications } from "../utils/push";
+import { requestNotificationPermission } from "../utils/push";
 
 // TabPanel component for managing tab content visibility and accessibility
 function TabPanel({ children, value, index, ...other }) {
@@ -140,7 +140,7 @@ export default function SettingsPage({ onClose }) {
 
   const handleSubscribe = async () => {
     try {
-      await subscribeUserToPushNotifications();
+      await requestNotificationPermission();
       showSnackbar("Successfully subscribed to notifications!", "success");
     } catch (error) {
       showSnackbar("Failed to subscribe to notifications.", "error");

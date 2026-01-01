@@ -21,13 +21,14 @@ import { useAuth } from "./AuthProvider";
 import { useSnackbar } from "../components/SnackbarProvider";
 import localforage from "localforage";
 import useOfflineStatus from "../hooks/useOfflineStatus";
+import SplashScreen from "../components/SplashScreen";
 
 
 const FirestoreContext = createContext();
 export const useFirestore = () => useContext(FirestoreContext);
 
 export function FirestoreProvider({ children }) {
-  const { currentUser } = useAuth();
+  const { currentUser, loading: authLoading } = useAuth(); // Destructure loading as authLoading
   const showSnackbar = useSnackbar();
   const isOnline = useOfflineStatus();
 
@@ -58,8 +59,19 @@ export function FirestoreProvider({ children }) {
 
   // --- Data Fetching (Real-time Listeners) ---
   useEffect(() => {
-    if (!currentUser || !isOnline) {
+    // Wait until auth is resolved, user is logged in, and online.
+    if (authLoading || !currentUser || !isOnline) {
       setLoading(false);
+      // Clear data if user logs out or goes offline
+      if (!currentUser || !isOnline) {
+        setLoans([]);
+        setPayments([]);
+        setBorrowers([]);
+        setActivityLogs([]);
+        setComments([]);
+        setGuarantors([]);
+        setExpenses([]);
+      }
       return;
     }
 
@@ -93,15 +105,16 @@ export function FirestoreProvider({ children }) {
       unsubscribes.push(unsub);
     });
 
+    // Settings are public, but we fetch them along with user data
     const settingsUnsub = onSnapshot(doc(db, "settings", "config"), (docSnap) => {
       if (docSnap.exists()) setSettings(docSnap.data());
     });
     unsubscribes.push(settingsUnsub);
 
-    setLoading(false);
+    setLoading(false); // Set loading to false after listeners are attached
     return () => unsubscribes.forEach((unsub) => unsub());
-  }, [currentUser, isOnline]);
-
+  }, [currentUser, authLoading, isOnline]);
+  
   // --- Actions ---
   const addBorrower = async (borrower) => {
     try {
@@ -592,7 +605,7 @@ export function FirestoreProvider({ children }) {
 
   return (
     <FirestoreContext.Provider value={value}>
-      {children}
+      {authLoading ? <SplashScreen /> : children}
     </FirestoreContext.Provider>
   );
 }

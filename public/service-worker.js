@@ -1,6 +1,64 @@
+// Import Workbox and Firebase Messaging
 importScripts('https://storage.googleapis.com/workbox-cdn/releases/7.0.0/workbox-sw.js');
+importScripts('https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.22.1/firebase-messaging-compat.js');
 
-const SW_VERSION = '1.0.0';
+// --- Initialize Firebase ---
+// Replace with your app's configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBJmjOEymW5xxgbhZEpWatOjSZx8byaFSY",
+  authDomain: "ilukenas-loan-management.firebaseapp.com",
+  projectId: "ilukenas-loan-management",
+  storageBucket: "ilukenas-loan-management.appspot.com",
+  messagingSenderId: "714108438492",
+  appId: "1:714108438492:web:6036fbfc93272f2aaeb119",
+};
+
+firebase.initializeApp(firebaseConfig);
+const messaging = firebase.messaging();
+
+const SW_VERSION = '1.0.1-fcm'; // Updated version
+
+// --- Firebase Background Message Handler ---
+messaging.onBackgroundMessage((payload) => {
+  console.log('[service-worker.js] Received background message', payload);
+
+  const notificationTitle = payload.notification.title;
+  const notificationOptions = {
+    body: payload.notification.body,
+    icon: '/logo192.png',
+    badge: '/logo192.png',
+    data: {
+      url: payload.data.url || '/', // Pass URL from data payload
+    },
+  };
+
+  self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+// --- Firebase Notification Click Handler ---
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = event.notification.data.url || '/';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // If a window for the app is already open, focus it and navigate.
+      for (const client of clientList) {
+        // Check if the client URL matches the target origin
+        if (new URL(client.url).origin === self.location.origin) {
+          client.navigate(targetUrl);
+          return client.focus();
+        }
+      }
+      // Otherwise, open a new window.
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
+  );
+});
+
 
 self.addEventListener('install', () => {
   self.skipWaiting();
@@ -9,27 +67,14 @@ self.addEventListener('install', () => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
-      // Let Workbox clean up old precaches
       workbox.precaching.cleanupOutdatedCaches();
-
-      // Define current runtime caches
-      const currentRuntimeCaches = new Set([
-        'app-shell-pages',
-        'api-cache',
-        'static-assets',
-      ]);
-
-      // Get all cache keys
+      const currentRuntimeCaches = new Set(['app-shell-pages', 'api-cache', 'static-assets']);
       const cacheNames = await caches.keys();
-
-      // Delete any runtime caches that are not in the current set
       for (const cacheName of cacheNames) {
         if (!cacheName.startsWith('workbox-') && !currentRuntimeCaches.has(cacheName)) {
           await caches.delete(cacheName);
         }
       }
-
-      // Claim any currently open clients
       await clients.claim();
     })()
   );
@@ -44,50 +89,35 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// This is the service worker script that will be injected with the manifest
-// by the `injectManifest` build process.
+// Precaching routes (manifest is injected)
 workbox.precaching.precacheAndRoute([{"revision":"d39853392df80baef1a647a9b7a1d823","url":"index.html"},{"revision":"5e1a301e9b82c1cb08aea4148bd56100","url":"manifest.json"},{"revision":"9b03133961813737d54b542c430787df","url":"android/android-launchericon-96-96.png"},{"revision":"bc99234a4dd9c1e072e1f0153483bd72","url":"android/android-launchericon-72-72.png"},{"revision":"07ba8c5f5b00089222373d9c44425394","url":"android/android-launchericon-512-512.png"},{"revision":"685832cba81b7eb4e2c383eb4673a85e","url":"android/android-launchericon-48-48.png"},{"revision":"8ea05e15a927b893ca6fc8cdfd593373","url":"android/android-launchericon-192-192.png"},{"revision":"5a76c4bc8e553ceb63ba73b7280eb03b","url":"android/android-launchericon-144-144.png"}]);
 
-// Register route for navigation requests (e.g., HTML files)
-// Uses StaleWhileRevalidate strategy: serve from cache immediately, then update from network.
+// Caching strategies remain the same
 workbox.routing.registerRoute(
   ({ request }) => request.mode === 'navigate',
   new workbox.strategies.StaleWhileRevalidate({
-    cacheName: 'app-shell-pages', // Cache for HTML pages
+    cacheName: 'app-shell-pages',
     plugins: [
-      new workbox.cacheableResponse.CacheableResponsePlugin({
-        statuses: [0, 200], // Cache successful responses (0 for opaque, 200 for OK)
-      }),
-      new workbox.expiration.ExpirationPlugin({
-        maxEntries: 50, // Limit the number of pages stored
-        maxAgeSeconds: 24 * 60 * 60, // Cache pages for 1 day
-      }),
+      new workbox.cacheableResponse.CacheableResponsePlugin({ statuses: [0, 200] }),
+      new workbox.expiration.ExpirationPlugin({ maxEntries: 50, maxAgeSeconds: 24 * 60 * 60 }),
     ],
   })
 );
 
-// Example: Register route for API calls (e.g., requests starting with /api/)
-// Cache falling back to network, then cache.
 workbox.routing.registerRoute(
-  ({ url }) => url.pathname.startsWith('/api/'), // Adjust this path as needed
+  ({ url }) => url.pathname.startsWith('/api/'),
   new workbox.strategies.NetworkFirst({
     cacheName: 'api-cache',
     networkTimeoutSeconds: 3,
     plugins: [
-      new workbox.cacheableResponse.CacheableResponsePlugin({
-        statuses: [0, 200],
-      }),
-      new workbox.expiration.ExpirationPlugin({
-        maxEntries: 50,
-        maxAgeSeconds: 5 * 60, // Cache API responses for 5 minutes
-      }),
+      new workbox.cacheableResponse.CacheableResponsePlugin({ statuses: [0, 200] }),
+      new workbox.expiration.ExpirationPlugin({ maxEntries: 50, maxAgeSeconds: 5 * 60 }),
     ],
   })
 );
 
-// Background Sync for POST requests to /api/data
 const bgSyncPlugin = new workbox.backgroundSync.BackgroundSyncPlugin('sync-queue', {
-  maxRetentionTime: 24 * 60 // Retry for max of 24 Hours
+  maxRetentionTime: 24 * 60
 });
 
 workbox.routing.registerRoute(
@@ -98,110 +128,22 @@ workbox.routing.registerRoute(
   })
 );
 
-// Cache static assets like scripts, styles, and images
 workbox.routing.registerRoute(
   ({ request }) =>
-    request.destination === 'script' ||
-    request.destination === 'style' ||
-    request.destination === 'image',
+    request.destination === 'script' || request.destination === 'style' || request.destination === 'image',
   new workbox.strategies.StaleWhileRevalidate({
     cacheName: 'static-assets',
     plugins: [
-      new workbox.expiration.ExpirationPlugin({
-        maxEntries: 60,
-        maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
-      }),
+      new workbox.expiration.ExpirationPlugin({ maxEntries: 60, maxAgeSeconds: 30 * 24 * 60 * 60 }),
     ],
   })
 );
 
-// Handle push events for Firebase Messaging
-self.addEventListener('push', (event) => {
-  let notificationTitle = 'New Notification';
-  let notificationBody = 'You have a new message.';
-  let notificationData = {}; // For notificationclick event
-
-  if (event.data) {
-    try {
-      // Attempt to parse as JSON
-      const parsedData = event.data.json();
-      notificationTitle = parsedData.title || notificationTitle;
-      notificationBody = parsedData.body || notificationBody;
-      notificationData = parsedData.data || notificationData; // Pass original data for click handler
-    } catch (e) {
-      // If not JSON, treat as plain text
-      notificationBody = event.data.text() || notificationBody;
-    }
-  }
-
-  const notificationOptions = {
-    body: notificationBody,
-    icon: 'logo192.png',
-    badge: 'logo192.png',
-    data: notificationData, // Ensure data is passed
-    tag: notificationData.tag || 'default-notification-tag', // Use a tag to prevent stacking
-    renotify: true, // Re-alert user if updated
-    actions: [
-      {
-        action: 'open_app',
-        title: 'Open App',
-      },
-      {
-        action: 'close',
-        title: 'Close',
-      },
-    ],
-  };
-
-  event.waitUntil(
-    self.registration.showNotification(notificationTitle, notificationOptions)
-  );
-});
-
-// Handle notification click events
-self.addEventListener('notificationclick', (event) => {
-  const clickedNotification = event.notification;
-  clickedNotification.close(); // Always close the notification after interaction
-
-  const notificationData = clickedNotification.data;
-  const urlToOpen = notificationData?.url || '/';
-
-  // Determine the action based on event.action or default to opening the app
-  const actionToPerform = event.action || 'open_app'; // If no action button is clicked, treat as 'open_app'
-
-  if (actionToPerform === 'open_app') {
-    event.waitUntil(
-      clients.matchAll({
-        type: 'window',
-        includeUncontrolled: true,
-      }).then((clientList) => {
-        if (clientList.length > 0) {
-          let client = clientList[0]; // Prefer a focused client if available
-          for (let i = 0; i < clientList.length; i++) {
-            if (clientList[i].focused) {
-              client = clientList[i];
-            }
-          }
-          client.focus();
-          return client.navigate(urlToOpen);
-        }
-        return clients.openWindow(urlToOpen); // Open new window if no client is found
-      })
-    );
-  } else if (actionToPerform === 'close') {
-    // User clicked 'Close' button or dismissed notification, no further action needed
-  }
-  // Other actions can be added here
-});
-
-// Global catch handler for failed routes
 workbox.routing.setCatchHandler(({ event }) => {
   switch (event.request.destination) {
     case 'document':
-      // For failed navigation requests, return the precached app shell.
       return workbox.precaching.matchPrecache('/index.html');
     default:
-      // For other failed requests, return a standard error response.
       return Response.error();
   }
 });

@@ -1,62 +1,88 @@
-import { db } from '../firebase';
-import { collection, addDoc } from "firebase/firestore";
+import { getToken, onMessage } from "firebase/messaging";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { messaging, db, auth } from "../firebase";
 
-const applicationServerPublicKey = 'BGoMcbksB6mlFLTR_lYlUr8vtAH4LdC024cLaDXpzu1Ogsec_iLoR8CEzpEhp8XtlL5-HQW-YtelKYcoLfX8ZTQ';
+// IMPORTANT: Replace this with the VAPID key from your Firebase project settings.
+const VAPID_KEY = "BCSVuLFfJvnlwgba2EK1HejWcNn0M2_NvCI2WC_dmy9a-orAHWjpKVu_VtG7yKB957dJTwf4avDYxA5ZTqElXy0";
 
-function urlB64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding)
-    .replace(/-/g, '+')
-    .replace(/_/g, '/');
-
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
+/**
+ * Requests permission to show notifications and saves the token to Firestore.
+ * @returns {Promise<string|null>} The FCM token or null if permission is denied.
+ */
+export const requestNotificationPermission = async () => {
+  if (!("Notification" in window)) {
+    console.error("This browser does not support desktop notification.");
+    return null;
   }
-  return outputArray;
-}
 
-async function saveSubscription(subscription) {
-  const subscriptionObject = JSON.parse(JSON.stringify(subscription));
+  const permission = await Notification.requestPermission();
+  if (permission === "granted") {
+    console.log("Notification permission granted.");
+    return await saveTokenToFirestore();
+  }
+  
+  console.log("Notification permission denied.");
+  return null;
+};
+
+/**
+ * Retrieves the current FCM token and saves it to Firestore.
+ * @returns {Promise<string|null>} The FCM token or null on error.
+ */
+const saveTokenToFirestore = async () => {
   try {
-    const docRef = await addDoc(collection(db, "subscriptions"), subscriptionObject);
-    console.log("Document written with ID: ", docRef.id);
-  } catch (e) {
-    console.error("Error adding document: ", e);
-  }
-}
-
-export async function subscribeUserToPushNotifications() {
-  const permission = await window.Notification.requestPermission();
-  if (permission !== 'granted') {
-    console.log('Permission was not granted.');
-    return;
-  }
-
-  if ('serviceWorker' in navigator) {
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      if (!registration.pushManager) {
-        console.log('Push manager unavailable.');
-        return;
-      }
-
-      let subscription = await registration.pushManager.getSubscription();
-      if (subscription === null) {
-        console.log('No subscription detected, make a new one.');
-        subscription = await registration.pushManager.subscribe({
-          applicationServerKey: urlB64ToUint8Array(applicationServerPublicKey),
-          userVisibleOnly: true,
-        });
-        console.log('New subscription added.', subscription);
-        await saveSubscription(subscription);
-      } else {
-        console.log('Existed subscription detected.', subscription);
-      }
-    } catch (e) {
-      console.error('An error occurred during the subscription process.', e);
+    if (!('serviceWorker' in navigator)) {
+      console.error('Service Worker not supported.');
+      return null;
     }
+    const registration = await navigator.serviceWorker.ready;
+    const currentToken = await getToken(messaging, {
+      vapidKey: VAPID_KEY,
+      serviceWorkerRegistration: registration,
+    });
+
+    if (currentToken) {
+      const user = auth.currentUser;
+      if (!user) {
+        console.warn('Cannot save FCM token. User is not authenticated.');
+        return null;
+      }
+
+      console.log('FCM Token obtained:', currentToken);
+      const tokenRef = doc(db, 'fcmTokens', currentToken);
+
+      await setDoc(
+        tokenRef,
+        {
+          userId: user.uid,
+          token: currentToken,
+          createdAt: serverTimestamp(),
+          userAgent: navigator.userAgent,
+        },
+        { merge: true }
+      );
+
+      return currentToken;
+    }
+
+    console.warn(
+      'No registration token available. Request permission to generate one.'
+    );
+    return null;
+  } catch (err) {
+    console.error('An error occurred while retrieving token.', err);
+    return null;
   }
-}
+};
+
+/**
+ * Listens for messages that are received while the app is in the foreground.
+ * @param {function} callback - The function to call with the message payload.
+ * @returns {function} Unsubscribe function.
+ */
+export const onForegroundMessage = (callback) => {
+  return onMessage(messaging, (payload) => {
+    console.log("Foreground message received.", payload);
+    callback(payload);
+  });
+};

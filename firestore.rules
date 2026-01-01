@@ -8,6 +8,14 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == userId;
     }
 
+    // FCM Tokens: Securely manage device registration tokens.
+    // Users can create/update their own token document, but cannot read or delete any.
+    // Deletion of stale tokens is handled by backend Cloud Functions.
+    match /fcmTokens/{token} {
+      allow read, delete: if false; // Disallow client-side reads and deletes
+      allow create, update: if isOwner(request.resource.data.userId);
+    }
+
     // Borrowers: Users can create, read, update, delete their own borrowers
     match /borrowers/{borrowerId} {
       allow read, update, delete: if isOwner(resource.data.userId);
@@ -20,10 +28,10 @@ service cloud.firestore {
       allow create: if isOwner(request.resource.data.userId);
     }
 
-    // Payments: Users can manage payments linked to their loans
+    // Payments: Users can manage their own payments
     match /payments/{paymentId} {
-       allow read, update, delete: if isOwner(get(/databases/$(database)/documents/loans/$(resource.data.loanId)).data.userId);
-       allow create: if isOwner(get(/databases/$(database)/documents/loans/$(request.resource.data.loanId)).data.userId);
+       allow read, update, delete: if isOwner(resource.data.userId);
+       allow create: if isOwner(request.resource.data.userId);
     }
 
     // Settings: Read-only for clients, updatable via backend/console
@@ -32,11 +40,29 @@ service cloud.firestore {
       allow write: if false; // Or restrict to an admin role
     }
 
-    // Activity Logs: Read-only for clients
+    // Activity Logs: Users can read and create their own logs
     match /activityLogs/{logId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null; // Allow users to create logs
+      allow read: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
       allow update, delete: if false;
+    }
+
+    // Guarantors: Users can manage their own guarantors
+    match /guarantors/{guarantorId} {
+      allow read, update, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
+    }
+
+    // Comments: Users can manage their own comments
+    match /comments/{commentId} {
+      allow read, update, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
+    }
+
+    // Expenses: Users can manage their own expenses
+    match /expenses/{expenseId} {
+      allow read, update, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
     }
   }
 }
