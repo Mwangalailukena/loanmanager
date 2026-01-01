@@ -308,6 +308,7 @@ export function FirestoreProvider({ children }) {
           const loanData = loanSnap.data();
           const currentPrincipal = Number(loanData.principal || 0);
           const currentInterestDuration = Number(loanData.interestDuration || 1);
+          // eslint-disable-next-line no-unused-vars
           const currentRepaidAmount = Number(loanData.repaidAmount || 0);
 
           const newPrincipal = currentPrincipal + topUpAmount;
