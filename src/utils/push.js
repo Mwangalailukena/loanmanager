@@ -31,6 +31,10 @@ export const requestNotificationPermission = async () => {
  */
 const saveTokenToFirestore = async () => {
   try {
+    if (VAPID_KEY.includes('YOUR_VAPID_PUBLIC_KEY')) {
+      console.error('VAPID Key is a placeholder. Push notifications will not work.');
+      return null;
+    }
     if (!('serviceWorker' in navigator)) {
       console.error('Service Worker not supported.');
       return null;

@@ -5,9 +5,8 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 admin.initializeApp();
 const db = admin.firestore();
 
-// Securely initialize Generative AI
-const GEMINI_API_KEY = functions.config().gemini?.api_key || "YOUR_GEMINI_API_KEY";
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+// Securely initialize Generative AI with Secret Manager
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
 
@@ -102,7 +101,7 @@ exports.sendPushNotification = functions.https.onCall(async (data, context) => {
 
 
 // HTTPS Callable function for AI-powered monthly projection (Preserved)
-exports.getMonthlyProjectionAI = functions.https.onCall(async (data, context) => {
+exports.getMonthlyProjectionAI = functions.runWith({ secrets: ["GEMINI_API_KEY"] }).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError(
             "unauthenticated",
@@ -128,29 +127,36 @@ exports.getMonthlyProjectionAI = functions.https.onCall(async (data, context) =>
     
     Provide your projection in a JSON object format with the keys 'projectedRevenue', 'projectedPayments', and 'projectedNewLoans'.
     Example: { "projectedRevenue": 123456.78, "projectedPayments": 98765.43, "projectedNewLoans": 50000.00 }
-    Do not include any other text or explanation outside the JSON object.`;
+    Do not include any other text, explanation, or markdown like \`\`\`json ... \`\`\` outside the JSON object. Just the raw JSON.`;
 
     try {
         const result = await model.generateContent(prompt);
         const response = await result.response;
-        const text = response.text();
-        const projection = JSON.parse(text);
+        const rawText = response.text();
+        console.log("Raw AI Response from Gemini:", rawText); // Log for debugging
+
+        // Robustly find and parse the JSON part of the response
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+            throw new Error("No valid JSON object found in the AI's response.");
+        }
+
+        const jsonString = jsonMatch[0];
+        const projection = JSON.parse(jsonString);
 
         if (
             typeof projection.projectedRevenue !== 'number' ||
             typeof projection.projectedPayments !== 'number' ||
             typeof projection.projectedNewLoans !== 'number'
         ) {
-            throw new functions.https.HttpsError(
-                "internal",
-                "AI response did not contain expected number formats for projections."
-            );
+            throw new Error("AI response JSON is missing required numeric fields.");
         }
 
         return projection;
     } catch (error) {
-        console.error("Error calling Gemini API for projection:", error);
-        throw new functions.https.HttpsError("internal", "Failed to get projection from AI.", error.message);
+        console.error("Error processing AI projection:", error);
+        // Provide a generic but informative error to the client
+        throw new functions.https.HttpsError("internal", "Failed to get projection from AI. Check function logs for details.");
     }
 });
 
