@@ -256,6 +256,12 @@ workbox.routing.setCatchHandler(({ event }) => {
     case 'document':
       // For failed navigation requests, return the precached offline page.
       return caches.match('/offline.html');
+    case 'script': // Explicitly handle failed script requests
+      console.warn('[Service Worker] Failed to load script, returning empty JS:', event.request.url);
+      return new Response('', { headers: { 'Content-Type': 'application/javascript' } });
+    case 'style': // Explicitly handle failed style requests
+      console.warn('[Service Worker] Failed to load style, returning empty CSS:', event.request.url);
+      return new Response('', { headers: { 'Content-Type': 'text/css' } });
     default:
       // For other failed requests, return a standard error response.
       return Response.error();

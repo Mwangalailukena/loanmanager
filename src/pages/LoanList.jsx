@@ -151,7 +151,7 @@ const LoanListSkeleton = ({ isMobile }) => {
 // ... (rest of imports)
 
 export default function LoanList() {
-  const { loans, loadingLoans, deleteLoan, addPayment, updateLoan, getPaymentsByLoanId, settings, borrowers, refinanceLoan, topUpLoan } = useFirestore();
+  const { loans, loading, deleteLoan, addPayment, updateLoan, getPaymentsByLoanId, settings, borrowers, refinanceLoan, topUpLoan } = useFirestore();
   const { openLoanDetail } = useSearch();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -406,11 +406,11 @@ export default function LoanList() {
       window.innerHeight + window.scrollY + 50 >=
       document.documentElement.scrollHeight
     ) {
-      if (useInfiniteScroll && displayedLoans.length < filteredLoans.length && !loadingLoans) {
+      if (useInfiniteScroll && displayedLoans.length < filteredLoans.length && !loading) {
         setPage((p) => p + 1);
       }
     }
-  }, [displayedLoans.length, filteredLoans.length, useInfiniteScroll, loadingLoans]);
+  }, [displayedLoans.length, filteredLoans.length, useInfiniteScroll, loading]);
 
   useEffect(() => {
     if (useInfiniteScroll && isMobile) {
@@ -860,7 +860,7 @@ export default function LoanList() {
         )}
       </Stack>
 
-      {loadingLoans ? (
+      {loading ? (
         <LoanListSkeleton isMobile={isMobile} />
       ) : (
         <>
@@ -1328,7 +1328,7 @@ export default function LoanList() {
               )}
             </>
           )}
-          {!loadingLoans && filteredLoans.length === 0 && (
+          {!loading && filteredLoans.length === 0 && (
             <Box textAlign="center" mt={4} p={2} border="1px dashed" borderColor="grey.400" borderRadius={2}>
               <Typography variant="h6" color="text.secondary" gutterBottom>
                 No Loans Found

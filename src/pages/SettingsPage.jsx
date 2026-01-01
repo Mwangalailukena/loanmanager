@@ -19,6 +19,7 @@ import {
 } from "@mui/material";
 import { useSnackbar } from "../components/SnackbarProvider";
 import { useFirestore } from "../contexts/FirestoreProvider";
+import { useAuth } from "../contexts/AuthProvider"; // Added import for useAuth
 import { subscribeUserToPushNotifications } from "../utils/push";
 
 // TabPanel component for managing tab content visibility and accessibility
@@ -48,7 +49,8 @@ function a11yProps(index) {
 
 // SettingsPage component, accepts an onClose prop for when it's rendered in a Dialog
 export default function SettingsPage({ onClose }) {
-  const { settings, updateSettings, updateUser, currentUser } = useFirestore();
+  const { settings, updateSettings, updateUser } = useFirestore();
+  const { currentUser } = useAuth(); // Correctly destructure currentUser from useAuth
   const showSnackbar = useSnackbar();
 
   const [tabIndex, setTabIndex] = useState(0);
