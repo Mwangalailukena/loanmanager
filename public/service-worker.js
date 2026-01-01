@@ -1,10 +1,9 @@
-// Import Workbox and Firebase Messaging
+/* global firebase */
 importScripts('https://storage.googleapis.com/workbox-cdn/releases/7.0.0/workbox-sw.js');
 importScripts('https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/9.22.1/firebase-messaging-compat.js');
 
 // --- Initialize Firebase ---
-// Replace with your app's configuration
 const firebaseConfig = {
   apiKey: "AIzaSyBJmjOEymW5xxgbhZEpWatOjSZx8byaFSY",
   authDomain: "ilukenas-loan-management.firebaseapp.com",
@@ -17,11 +16,11 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
-const SW_VERSION = '1.0.1-fcm'; // Updated version
+const SW_VERSION = '1.0.2-wb-fix'; // Updated version
 
 // --- Firebase Background Message Handler ---
 messaging.onBackgroundMessage((payload) => {
-  console.log('[service-worker.js] Received background message', payload);
+  console.log('[custom-sw.js] Received background message', payload);
 
   const notificationTitle = payload.notification.title;
   const notificationOptions = {
@@ -36,22 +35,19 @@ messaging.onBackgroundMessage((payload) => {
   self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-// --- Firebase Notification Click Handler ---
+// --- Lifecycle Events & Message Handling ---
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const targetUrl = event.notification.data.url || '/';
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // If a window for the app is already open, focus it and navigate.
       for (const client of clientList) {
-        // Check if the client URL matches the target origin
         if (new URL(client.url).origin === self.location.origin) {
           client.navigate(targetUrl);
           return client.focus();
         }
       }
-      // Otherwise, open a new window.
       if (clients.openWindow) {
         return clients.openWindow(targetUrl);
       }
@@ -59,15 +55,14 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-
 self.addEventListener('install', () => {
-  self.skipWaiting();
+  // The install event is still useful for logging or other setup.
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
-      workbox.precaching.cleanupOutdatedCaches();
+      // This part handles the cleanup of old runtime caches.
       const currentRuntimeCaches = new Set(['app-shell-pages', 'api-cache', 'static-assets']);
       const cacheNames = await caches.keys();
       for (const cacheName of cacheNames) {
@@ -75,6 +70,7 @@ self.addEventListener('activate', (event) => {
           await caches.delete(cacheName);
         }
       }
+      // clients.claim() allows the new service worker to take control of open pages immediately.
       await clients.claim();
     })()
   );
@@ -89,10 +85,24 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// Precaching routes (manifest is injected)
-workbox.precaching.precacheAndRoute([{"revision":"d39853392df80baef1a647a9b7a1d823","url":"index.html"},{"revision":"5e1a301e9b82c1cb08aea4148bd56100","url":"manifest.json"},{"revision":"9b03133961813737d54b542c430787df","url":"android/android-launchericon-96-96.png"},{"revision":"bc99234a4dd9c1e072e1f0153483bd72","url":"android/android-launchericon-72-72.png"},{"revision":"07ba8c5f5b00089222373d9c44425394","url":"android/android-launchericon-512-512.png"},{"revision":"685832cba81b7eb4e2c383eb4673a85e","url":"android/android-launchericon-48-48.png"},{"revision":"8ea05e15a927b893ca6fc8cdfd593373","url":"android/android-launchericon-192-192.png"},{"revision":"5a76c4bc8e553ceb63ba73b7280eb03b","url":"android/android-launchericon-144-144.png"}]);
+self.addEventListener('unhandledrejection', (event) => {
+  console.error('[Service Worker] Unhandled Promise Rejection:', event.reason);
+});
 
-// Caching strategies remain the same
+
+// --- Workbox Configuration ---
+
+// This injects the file manifest for precaching.
+workbox.precaching.precacheAndRoute([{"revision":"d39853392df80baef1a647a9b7a1d823","url":"index.html"},{"revision":"5e1a301e9b82c1cb08aea4148bd56100","url":"manifest.json"},{"revision":"e5fc6ebd25e2b037b038c4e3aee6e82c","url":"offline.html"},{"revision":"9b03133961813737d54b542c430787df","url":"android/android-launchericon-96-96.png"},{"revision":"bc99234a4dd9c1e072e1f0153483bd72","url":"android/android-launchericon-72-72.png"},{"revision":"07ba8c5f5b00089222373d9c44425394","url":"android/android-launchericon-512-512.png"},{"revision":"685832cba81b7eb4e2c383eb4673a85e","url":"android/android-launchericon-48-48.png"},{"revision":"8ea05e15a927b893ca6fc8cdfd593373","url":"android/android-launchericon-192-192.png"},{"revision":"5a76c4bc8e553ceb63ba73b7280eb03b","url":"android/android-launchericon-144-144.png"}]);
+
+// This call cleans up old precaches. By placing it at the top level,
+// it automatically runs during the 'activate' phase of the service worker lifecycle.
+workbox.precaching.cleanupOutdatedCaches();
+
+const IMAGE_PLACEHOLDER_DATA_URI = 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==';
+
+// --- Routing ---
+
 workbox.routing.registerRoute(
   ({ request }) => request.mode === 'navigate',
   new workbox.strategies.StaleWhileRevalidate({
@@ -104,8 +114,19 @@ workbox.routing.registerRoute(
   })
 );
 
+const bgSyncPlugin = new workbox.backgroundSync.BackgroundSyncPlugin('loanManagerQueue', {
+  maxRetentionTime: 24 * 60,
+});
+
 workbox.routing.registerRoute(
-  ({ url }) => url.pathname.startsWith('/api/'),
+  ({ url, request }) => request.method === 'POST' && url.pathname.startsWith('/api/'),
+  new workbox.strategies.NetworkOnly({
+    plugins: [bgSyncPlugin],
+  })
+);
+
+workbox.routing.registerRoute(
+  ({ url, request }) => request.method === 'GET' && url.pathname.startsWith('/api/'),
   new workbox.strategies.NetworkFirst({
     cacheName: 'api-cache',
     networkTimeoutSeconds: 3,
@@ -116,18 +137,6 @@ workbox.routing.registerRoute(
   })
 );
 
-const bgSyncPlugin = new workbox.backgroundSync.BackgroundSyncPlugin('sync-queue', {
-  maxRetentionTime: 24 * 60
-});
-
-workbox.routing.registerRoute(
-  ({url, request}) =>
-    url.pathname === '/api/data' && request.method === 'POST',
-  new workbox.strategies.NetworkOnly({
-    plugins: [bgSyncPlugin]
-  })
-);
-
 workbox.routing.registerRoute(
   ({ request }) =>
     request.destination === 'script' || request.destination === 'style' || request.destination === 'image',
@@ -135,6 +144,15 @@ workbox.routing.registerRoute(
     cacheName: 'static-assets',
     plugins: [
       new workbox.expiration.ExpirationPlugin({ maxEntries: 60, maxAgeSeconds: 30 * 24 * 60 * 60 }),
+      {
+        handlerDidError: async ({ request }) => {
+          if (request.destination === 'image') {
+            const response = await fetch(IMAGE_PLACEHOLDER_DATA_URI);
+            return response;
+          }
+          return Response.error();
+        },
+      },
     ],
   })
 );
@@ -142,7 +160,11 @@ workbox.routing.registerRoute(
 workbox.routing.setCatchHandler(({ event }) => {
   switch (event.request.destination) {
     case 'document':
-      return workbox.precaching.matchPrecache('/index.html');
+      return caches.match('/offline.html');
+    case 'script':
+      return new Response('', { headers: { 'Content-Type': 'application/javascript' } });
+    case 'style':
+      return new Response('', { headers: { 'Content-Type': 'text/css' } });
     default:
       return Response.error();
   }
