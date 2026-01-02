@@ -8,6 +8,7 @@ import {
   Tooltip,
   LinearProgress,
   useTheme,
+  alpha,
 } from "@mui/material";
 import { motion } from "framer-motion";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
@@ -60,111 +61,131 @@ const DashboardCard = ({
         >
           <Card
             sx={{
-              p: isMobile ? 1.5 : 2,
+              p: isMobile ? 2 : 2.5,
               height: "100%",
               display: "flex",
               flexDirection: "column",
-              alignItems: "center",
-              textAlign: "center",
               backgroundColor: theme.palette.background.paper,
-              boxShadow: snapshot.isDragging ? theme.shadows[8] : undefined, // Remove base override
+              boxShadow: snapshot.isDragging ? theme.shadows[8] : "0 4px 12px rgba(0,0,0,0.03)",
               border: `1px solid ${theme.palette.divider}`,
-              transition: "box-shadow 0.3s ease-in-out, border-color 0.3s ease-in-out",
+              borderRadius: 4,
+              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
               transform: snapshot.isDragging ? 'rotate(2deg)' : 'rotate(0deg)',
               "&:hover": {
-                boxShadow: theme.shadows[4],
-                cursor: "pointer",
+                boxShadow: "0 12px 24px rgba(0,0,0,0.06)",
                 borderColor: theme.palette[card.color]?.main || theme.palette.primary.main,
+                transform: "translateY(-4px)",
               },
-              ...(card.pulse && { animation: "pulse 1.5s infinite" }),
               position: "relative",
+              overflow: "hidden",
+              "&::before": {
+                content: '""',
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "4px",
+                backgroundColor: theme.palette[card.color]?.main || theme.palette.primary.main,
+                opacity: 0.8,
+              }
             }}
           >
             <Box
               display="flex"
-              justifyContent="center"
-              alignItems="center"
-              mb={0.5}
-              gap={0.5}
+              justifyContent="space-between"
+              alignItems="flex-start"
+              mb={2}
             >
               <Box sx={{ 
-                color: theme.palette[card.color]?.main || theme.palette.text.primary,
-                backgroundColor: theme.palette[card.color]?.light + '33' || theme.palette.action.hover,
-                borderRadius: '50%',
-                width: 40,
-                height: 40,
+                color: theme.palette[card.color]?.main || theme.palette.primary.main,
+                backgroundColor: alpha(theme.palette[card.color]?.main || theme.palette.primary.main, 0.1),
+                borderRadius: 3,
+                width: 44,
+                height: 44,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}>
                 {typeof card.icon === "function" ? card.icon(card.value) : card.icon}
               </Box>
-              <Typography
-                variant="caption"
-                sx={{ color: theme.palette.text.secondary, fontWeight: 500, fontSize: isMobile ? "0.6rem" : "0.75rem" }}
-              >
-                {card.label}
-              </Typography>
+              {card.trend && (
+                <Box 
+                  sx={{ 
+                    display: "flex", 
+                    alignItems: "center", 
+                    gap: 0.2, 
+                    px: 1, 
+                    py: 0.5, 
+                    borderRadius: 10,
+                    backgroundColor: card.trend.startsWith("+") 
+                      ? alpha(theme.palette.success.main, 0.1) 
+                      : alpha(theme.palette.error.main, 0.1),
+                  }}
+                >
+                  {card.trend.startsWith("+") ? (
+                    <ArrowUpwardIcon sx={{ fontSize: 14, color: theme.palette.success.main }} />
+                  ) : (
+                    <ArrowDownwardIcon sx={{ fontSize: 14, color: theme.palette.error.main }} />
+                  )}
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: card.trend.startsWith("+")
+                        ? theme.palette.success.main
+                        : theme.palette.error.main,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {card.trend.replace('+', '').replace('-', '')}
+                  </Typography>
+                </Box>
+              )}
             </Box>
-            <Box
-              sx={{
-                flexGrow: 1,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
+            
+            <Typography
+              variant="caption"
+              sx={{ color: theme.palette.text.secondary, fontWeight: 600, mb: 0.5, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.65rem' }}
             >
+              {card.label}
+            </Typography>
+
+            <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.5 }}>
               <Typography
-                variant="h6"
+                variant="h5"
                 sx={{
                   fontWeight: 800,
-                  lineHeight: 1.1,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  fontSize: isMobile ? "1.2rem" : "1.8rem",
+                  fontSize: isMobile ? "1.4rem" : "1.75rem",
+                  color: theme.palette.text.primary,
+                  letterSpacing: '-0.02em',
                 }}
               >
                 {card.value}
               </Typography>
             </Box>
-            {card.progress !== null && (
-              <LinearProgress
-                variant="determinate"
-                value={card.progress * 100}
-                sx={{
-                  height: 5,
-                  borderRadius: 2,
-                  backgroundColor: theme.palette.grey[300],
-                  "& .MuiLinearProgress-bar": {
-                    backgroundColor: theme.palette[card.color]?.main || theme.palette.primary.main,
-                  },
-                  width: "80%",
-                  mt: 0.5,
-                  mb: 0.5,
-                }}
-              />
-            )}
-            {card.trend && (
-              <Box display="flex" alignItems="center" gap={0.5} mt={0.5}>
-                {card.trend.startsWith("+") ? (
-                  <ArrowUpwardIcon fontSize="small" sx={{ color: theme.palette.success.main }} />
-                ) : (
-                  <ArrowDownwardIcon fontSize="small" sx={{ color: theme.palette.error.main }} />
-                )}
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: card.trend.startsWith("+")
-                      ? theme.palette.success.main
-                      : theme.palette.error.main,
-                    fontWeight: 600,
-                  }}
-                >
-                  {card.trend} vs. last month
-                </Typography>
-              </Box>
-            )}
+
+            <Box sx={{ mt: 'auto', pt: 2 }}>
+              {card.progress !== null && (
+                <Box>
+                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 600, color: theme.palette.text.secondary }}>Progress</Typography>
+                      <Typography variant="caption" sx={{ fontWeight: 700, color: theme.palette.text.primary }}>{Math.round(card.progress * 100)}%</Typography>
+                   </Box>
+                  <LinearProgress
+                    variant="determinate"
+                    value={card.progress * 100}
+                    sx={{
+                      height: 6,
+                      borderRadius: 3,
+                      backgroundColor: alpha(theme.palette[card.color]?.main || theme.palette.primary.main, 0.1),
+                      "& .MuiLinearProgress-bar": {
+                        borderRadius: 3,
+                        backgroundColor: theme.palette[card.color]?.main || theme.palette.primary.main,
+                      },
+                    }}
+                  />
+                </Box>
+              )}
+            </Box>
           </Card>
         </motion.div>
       </Tooltip>

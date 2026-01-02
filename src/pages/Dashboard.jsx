@@ -17,6 +17,7 @@ import {
     DialogActions,
     Checkbox,
     FormControlLabel,
+    alpha,
 } from "@mui/material";
 import { keyframes } from "@mui/system";
 
@@ -314,19 +315,63 @@ export default function Dashboard() {
         >
             {userName && showWelcome && (
                 <Box sx={{ animation: `${popInAnimation} 0.5s ease-out forwards`, mb: 2 }}>
-                    <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.text.primary }}>
+                    <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.text.primary, letterSpacing: '-0.02em' }}>
                         Welcome back, {userName}!
-                    </Typography>
-                    <Typography variant="body1" color="text.secondary">
-                        Here's your financial overview for {dayjs(selectedMonth).format("MMMM YYYY")}.
                     </Typography>
                 </Box>
             )}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 0.5, fontSize: { xs: "1.5rem", md: "2rem" } }}>
+
+            {/* Quick Metrics Scrollable Header */}
+            <Box
+              sx={{
+                display: 'flex',
+                gap: 2,
+                overflowX: 'auto',
+                pb: 2,
+                mb: 3,
+                mx: { xs: -2, md: 0 },
+                px: { xs: 2, md: 0 },
+                '&::-webkit-scrollbar': { display: 'none' },
+                scrollbarWidth: 'none',
+              }}
+            >
+              {defaultCards.filter(c => EXECUTIVE_SUMMARY_IDS.includes(c.id)).map((card) => (
+                <Box
+                  key={card.id}
+                  sx={{
+                    minWidth: { xs: 160, md: 200 },
+                    p: 2,
+                    borderRadius: 4,
+                    background: theme.palette.mode === 'dark' 
+                      ? `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.15)} 0%, ${alpha(theme.palette.background.paper, 0.1)} 100%)`
+                      : `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${theme.palette.background.paper} 100%)`,
+                    border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 0.5,
+                  }}
+                >
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: theme.palette.text.secondary, textTransform: 'uppercase', fontSize: '0.6rem' }}>
+                    {card.label}
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 800, color: theme.palette.text.primary }}>
+                    {card.value}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h5" sx={{ fontWeight: 700, fontSize: { xs: "1.5rem", md: "1.75rem" }, letterSpacing: '-0.01em' }}>
                   Dashboard
               </Typography>
-              <Button startIcon={<TuneIcon />} onClick={() => setCustomizeOpen(true)}>Customize</Button>
+              <Button 
+                startIcon={<TuneIcon />} 
+                onClick={() => setCustomizeOpen(true)}
+                sx={{ borderRadius: 3, bgcolor: alpha(theme.palette.primary.main, 0.05) }}
+              >
+                Customize
+              </Button>
             </Box>
 
             {/* Actionable Insights Section */}
@@ -350,13 +395,45 @@ export default function Dashboard() {
                 <TextField label="Select Month" type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} size="small" fullWidth InputLabelProps={{ shrink: true }} />
             </Box>
 
-            <Box sx={{ width: "100%", boxShadow: theme.shadows[3], borderRadius: 4 }} >
-                <Box sx={{ backgroundColor: theme.palette.background.paper, borderRadius: 4, display: 'flex', alignItems: 'center', p: { xs: 0.5, sm: 1 }, flexWrap: 'wrap' }}>
-                    <Tabs value={activeTab} onChange={handleTabChange} aria-label="dashboard sections tabs" variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile >
-                        <Tab icon={<SummarizeIcon />} label="Summary" {...a11yProps(0)} />
-                        <Tab icon={<BarChartIcon />} label="Metrics" {...a11yProps(1)} />
-                        <Tab icon={<ShowChartIcon />} label="Charts" {...a11yProps(2)} />
-                        <Tab icon={<InsightsIcon />} label="Insights" {...a11yProps(3)} />
+            <Box sx={{ width: "100%", mb: 3 }} >
+                <Box sx={{ 
+                    backgroundColor: alpha(theme.palette.background.paper, 0.5), 
+                    borderRadius: 4, 
+                    p: 0.5,
+                    backdropFilter: 'blur(10px)',
+                    border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                }}>
+                    <Tabs 
+                        value={activeTab} 
+                        onChange={handleTabChange} 
+                        variant="fullWidth"
+                        sx={{
+                            minHeight: 48,
+                            '& .MuiTabs-indicator': {
+                                height: '100%',
+                                borderRadius: 3.5,
+                                backgroundColor: theme.palette.background.paper,
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                                zIndex: 0,
+                            },
+                            '& .MuiTab-root': {
+                                zIndex: 1,
+                                textTransform: 'none',
+                                fontWeight: 600,
+                                fontSize: '0.875rem',
+                                color: theme.palette.text.secondary,
+                                transition: 'color 0.2s',
+                                minHeight: 48,
+                                '&.Mui-selected': {
+                                    color: theme.palette.primary.main,
+                                },
+                            },
+                        }}
+                    >
+                        <Tab icon={<SummarizeIcon sx={{ fontSize: 20 }} />} label={!isMobile ? "Summary" : ""} {...a11yProps(0)} />
+                        <Tab icon={<BarChartIcon sx={{ fontSize: 20 }} />} label={!isMobile ? "Metrics" : ""} {...a11yProps(1)} />
+                        <Tab icon={<ShowChartIcon sx={{ fontSize: 20 }} />} label={!isMobile ? "Charts" : ""} {...a11yProps(2)} />
+                        <Tab icon={<InsightsIcon sx={{ fontSize: 20 }} />} label={!isMobile ? "Insights" : ""} {...a11yProps(3)} />
                     </Tabs>
                 </Box>
                 <DragDropContext onDragEnd={onDragEnd}>

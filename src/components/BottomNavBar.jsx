@@ -56,11 +56,11 @@ const BottomNavBar = () => {
         maxWidth: 600, margin: "0 auto",
         display: { xs: "block", sm: "none" },
         zIndex: theme.zIndex.appBar + 1,
-        borderRadius: 16, overflow: "hidden",
-        backdropFilter: "blur(12px) saturate(180%)",
-        backgroundColor: "rgba(255, 255, 255, 0.1)",
-        border: "1px solid rgba(255, 255, 255, 0.2)",
-        boxShadow: theme.shadows[3],
+        borderRadius: 20, overflow: "hidden",
+        backdropFilter: "blur(20px) saturate(180%)",
+        backgroundColor: theme.palette.mode === 'dark' ? "rgba(22, 30, 49, 0.7)" : "rgba(255, 255, 255, 0.7)",
+        border: "1px solid " + (theme.palette.mode === 'dark' ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.05)"),
+        boxShadow: theme.palette.mode === 'dark' ? "0 8px 32px rgba(0, 0, 0, 0.4)" : "0 8px 32px rgba(0, 0, 0, 0.08)",
       }}
       elevation={0}
     >
@@ -74,8 +74,13 @@ const BottomNavBar = () => {
           "& .MuiBottomNavigationAction-root": {
             position: "relative", minWidth: 0, px: 1,
             color: theme.palette.text.secondary,
+            transition: 'all 0.2s ease',
             "&.Mui-selected": {
               color: theme.palette.primary.main,
+              "& .MuiBottomNavigationAction-label": {
+                fontWeight: 700,
+                fontSize: '0.75rem',
+              },
             },
           },
         }}

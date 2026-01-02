@@ -207,14 +207,16 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
           width: "fit-content",
           maxWidth: "90%",
           borderRadius: 16,
-          backdropFilter: "blur(12px) saturate(180%)",
-          backgroundColor: alpha(theme.palette.background.paper, 0.1),
-          border: "1px solid " + alpha(theme.palette.divider, 0.2),
-          boxShadow: theme.shadows[3],
+          backdropFilter: "blur(16px) saturate(180%)",
+          backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.6 : 0.8),
+          border: "1px solid " + (theme.palette.mode === 'dark' ? alpha(theme.palette.common.white, 0.08) : alpha(theme.palette.common.black, 0.04)),
+          boxShadow: theme.palette.mode === 'dark' 
+            ? "0 8px 32px rgba(0, 0, 0, 0.4)" 
+            : "0 8px 32px rgba(0, 0, 0, 0.05)",
           zIndex: theme.zIndex.appBar + 1,
           transform: barVisible ? "translateY(0)" : "translateY(-100px)",
           opacity: barVisible ? 1 : 0,
-          transition: "transform 0.5s ease-out, opacity 0.5s ease-out",
+          transition: "transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.6s ease-out",
         }}
       >
         {/* Navigation Links */}
@@ -224,11 +226,15 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
             alignItems: "center",
             p: 0.5,
             borderRadius: 12,
-            bgcolor: alpha(theme.palette.grey[800], 0.2),
+            bgcolor: alpha(theme.palette.text.primary, 0.03),
           }}
         >
-          {navItems.map((item) => (
-            item.children ? (
+          {navItems.map((item) => {
+            const isActive = item.children 
+              ? item.children.some(child => location.pathname.startsWith(child.path))
+              : location.pathname.startsWith(item.path);
+
+            return item.children ? (
               <React.Fragment key={item.text}>
                 <Button
                   onClick={(e) => {
@@ -237,22 +243,18 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
                   }}
                   sx={{
                     textTransform: "none",
-                    color: theme.palette.text.secondary,
-                    borderRadius: 12,
+                    color: isActive ? theme.palette.primary.main : theme.palette.text.secondary,
+                    borderRadius: 10,
                     px: 2,
                     py: 1,
-                    fontWeight: 500,
+                    fontWeight: 600,
                     transition: "all 0.2s ease-in-out",
                     "&:hover": {
-                      bgcolor: alpha(theme.palette.grey[900], 0.1),
-                      transform: "scale(1.02)",
-                      boxShadow: `0 0 8px ${alpha(theme.palette.primary.main, 0.3)}`,
+                      bgcolor: alpha(theme.palette.primary.main, 0.08),
+                      color: theme.palette.primary.main,
                     },
-                    // Add active styling if any child path is active
-                    ...((item.children.some(child => location.pathname.startsWith(child.path))) && {
-                      bgcolor: theme.palette.grey[900],
-                      color: theme.palette.common.white,
-                      "&:hover": { bgcolor: theme.palette.grey[900] },
+                    ...(isActive && {
+                      bgcolor: alpha(theme.palette.primary.main, 0.1),
                     }),
                   }}
                 >
@@ -267,13 +269,14 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
                   }}
                   TransitionComponent={Fade}
                   PaperProps={{
-                    elevation: 4,
+                    elevation: 0,
                     sx: {
                       mt: 1.5,
-                      borderRadius: 2,
-                      backdropFilter: 'blur(12px) saturate(180%)',
-                      backgroundColor: alpha(theme.palette.background.paper, 0.1),
-                      border: '1px solid ' + alpha(theme.palette.divider, 0.2),
+                      borderRadius: 3,
+                      backdropFilter: 'blur(16px) saturate(180%)',
+                      backgroundColor: alpha(theme.palette.background.paper, 0.9),
+                      border: '1px solid ' + alpha(theme.palette.divider, 0.1),
+                      boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
                     },
                   }}
                   transformOrigin={{ horizontal: "left", vertical: "top" }}
@@ -287,9 +290,17 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
                         if (item.text === "Loan Management") setLoanManagementAnchor(null);
                         if (item.text === "Analytics & Reporting") setAnalyticsReportingAnchor(null);
                       }}
+                      sx={{
+                        borderRadius: 1.5,
+                        mx: 1,
+                        my: 0.5,
+                        '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.08) }
+                      }}
                     >
-                      <ListItemIcon>{child.icon}</ListItemIcon>
-                      {child.text}
+                      <ListItemIcon sx={{ color: location.pathname === child.path ? 'primary.main' : 'inherit' }}>{child.icon}</ListItemIcon>
+                      <Typography variant="body2" sx={{ fontWeight: location.pathname === child.path ? 600 : 400 }}>
+                        {child.text}
+                      </Typography>
                     </MenuItem>
                   ))}
                 </Menu>
@@ -300,28 +311,25 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
                 onClick={() => navigate(item.path)}
                 sx={{
                   textTransform: "none",
-                  color: theme.palette.text.secondary,
-                  borderRadius: 12,
+                  color: isActive ? theme.palette.primary.main : theme.palette.text.secondary,
+                  borderRadius: 10,
                   px: 2,
                   py: 1,
-                  fontWeight: 500,
+                  fontWeight: 600,
                   transition: "all 0.2s ease-in-out",
                   "&:hover": {
-                    bgcolor: alpha(theme.palette.grey[900], 0.1),
-                    transform: "scale(1.02)",
-                    boxShadow: `0 0 8px ${alpha(theme.palette.primary.main, 0.3)}`,
+                    bgcolor: alpha(theme.palette.primary.main, 0.08),
+                    color: theme.palette.primary.main,
                   },
-                  ...(location.pathname.startsWith(item.path) && {
-                    bgcolor: theme.palette.grey[900],
-                    color: theme.palette.common.white,
-                    "&:hover": { bgcolor: theme.palette.grey[900] },
+                  ...(isActive && {
+                    bgcolor: alpha(theme.palette.primary.main, 0.1),
                   }),
                 }}
               >
                 {item.text}
               </Button>
-            )
-          ))}
+            );
+          })}
         </Box>
 
         {/* Action Buttons */}
@@ -397,13 +405,15 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
         onClose={() => setAnchorEl(null)}
         TransitionComponent={Fade}
         PaperProps={{
-          elevation: 4,
+          elevation: 0,
           sx: {
             mt: 1.5,
-            borderRadius: 2,
-            backdropFilter: 'blur(12px) saturate(180%)',
-            backgroundColor: alpha(theme.palette.background.paper, 0.1),
-            border: '1px solid ' + alpha(theme.palette.divider, 0.2),
+            borderRadius: 3,
+            backdropFilter: 'blur(16px) saturate(180%)',
+            backgroundColor: alpha(theme.palette.background.paper, 0.8),
+            border: '1px solid ' + alpha(theme.palette.divider, 0.1),
+            boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
+            minWidth: 200,
           },
         }}
         transformOrigin={{ horizontal: "right", vertical: "top" }}
@@ -416,9 +426,9 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
             {currentUser?.email}
         </Typography>
         <Divider sx={{ my: 0.5 }} />
-        <MenuItem onClick={handleProfileClick}><ListItemIcon><AccountCircleIcon fontSize="small" /></ListItemIcon>Profile</MenuItem>
+        <MenuItem onClick={handleProfileClick} sx={{ mx: 1, borderRadius: 1.5 }}><ListItemIcon><AccountCircleIcon fontSize="small" /></ListItemIcon>Profile</MenuItem>
         
-        <MenuItem onClick={(e) => setAccountSettingsAnchor(e.currentTarget)}>
+        <MenuItem onClick={(e) => setAccountSettingsAnchor(e.currentTarget)} sx={{ mx: 1, borderRadius: 1.5 }}>
             <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
             Settings
         </MenuItem>
@@ -428,33 +438,34 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
           onClose={() => setAccountSettingsAnchor(null)}
           TransitionComponent={Fade}
           PaperProps={{
-            elevation: 4,
+            elevation: 0,
             sx: {
               mt: 1.5,
-              borderRadius: 2,
-              backdropFilter: 'blur(12px) saturate(180%)',
-              backgroundColor: alpha(theme.palette.background.paper, 0.1),
-              border: '1px solid ' + alpha(theme.palette.divider, 0.2),
+              borderRadius: 3,
+              backdropFilter: 'blur(16px) saturate(180%)',
+              backgroundColor: alpha(theme.palette.background.paper, 0.8),
+              border: '1px solid ' + alpha(theme.palette.divider, 0.1),
+              boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
             },
           }}
           transformOrigin={{ horizontal: "left", vertical: "top" }}
           anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
         >
-          <MenuItem onClick={handleSettingsClick}><ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>Interest Rate/ Capital</MenuItem>
-          <MenuItem onClick={handleChangePasswordClick}><ListItemIcon><LockResetIcon fontSize="small" /></ListItemIcon>Change Password</MenuItem>
-          <MenuItem onClick={openHelpDialog}><ListItemIcon><HelpOutline fontSize="small" /></ListItemIcon>Help</MenuItem>
+          <MenuItem onClick={handleSettingsClick} sx={{ mx: 1, borderRadius: 1.5 }}><ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>Interest Rate/ Capital</MenuItem>
+          <MenuItem onClick={handleChangePasswordClick} sx={{ mx: 1, borderRadius: 1.5 }}><ListItemIcon><LockResetIcon fontSize="small" /></ListItemIcon>Change Password</MenuItem>
+          <MenuItem onClick={openHelpDialog} sx={{ mx: 1, borderRadius: 1.5 }}><ListItemIcon><HelpOutline fontSize="small" /></ListItemIcon>Help</MenuItem>
         </Menu>
         
         {/* NEW: Dark Mode Toggle */}
-        <MenuItem onClick={onToggleDarkMode}>
+        <MenuItem onClick={onToggleDarkMode} sx={{ mx: 1, borderRadius: 1.5 }}>
           <ListItemIcon>
             {darkMode ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
           </ListItemIcon>
           {darkMode ? 'Light Mode' : 'Dark Mode'}
         </MenuItem>
 
-        <Divider />
-        <MenuItem onClick={handleLogout}><ListItemIcon><Logout fontSize="small" color="error" /></ListItemIcon>Logout</MenuItem>
+        <Divider sx={{ my: 1 }} />
+        <MenuItem onClick={handleLogout} sx={{ mx: 1, borderRadius: 1.5 }}><ListItemIcon><Logout fontSize="small" color="error" /></ListItemIcon>Logout</MenuItem>
       </Menu>
       
       {/* Notifications Popover */}
@@ -468,28 +479,30 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
         PaperProps={{
           sx: {
             width: 320,
-            p: 2,
-            borderRadius: 2,
-            boxShadow: theme.shadows[4],
-            backdropFilter: 'blur(12px) saturate(180%)',
-            backgroundColor: alpha(theme.palette.background.paper, 0.1),
-            border: '1px solid ' + alpha(theme.palette.divider, 0.2),
+            p: 1,
+            borderRadius: 3,
+            backdropFilter: 'blur(16px) saturate(180%)',
+            backgroundColor: alpha(theme.palette.background.paper, 0.8),
+            border: '1px solid ' + alpha(theme.palette.divider, 0.1),
+            boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
           },
         }}
       >
-        <Typography variant="h6">Notifications</Typography>
-        {unreadNotifications.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">No new notifications.</Typography>
-        ) : (
-          unreadNotifications.map(({ id, message, loanId }) => (
-            <MenuItem key={id} onClick={() => handleNotificationItemClick(id, loanId)}>
-              <Typography variant="body2">{message}</Typography>
-            </MenuItem>
-          ))
-        )}
-        <Button onClick={handleMarkAllAsRead} color="primary" sx={{ textTransform: 'none', mt: 2, width: '100%' }}>
-            Mark all as read
-        </Button>
+        <Box sx={{ p: 2 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>Notifications</Typography>
+          {unreadNotifications.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">No new notifications.</Typography>
+          ) : (
+            unreadNotifications.map(({ id, message, loanId }) => (
+              <MenuItem key={id} onClick={() => handleNotificationItemClick(id, loanId)} sx={{ borderRadius: 2, mb: 0.5, whiteSpace: 'normal' }}>
+                <Typography variant="body2">{message}</Typography>
+              </MenuItem>
+            ))
+          )}
+          <Button onClick={handleMarkAllAsRead} color="primary" variant="text" sx={{ textTransform: 'none', mt: 1, width: '100%', borderRadius: 2 }}>
+              Mark all as read
+          </Button>
+        </Box>
       </Popover>
 
       <Dialog

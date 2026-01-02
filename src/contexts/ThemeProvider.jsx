@@ -10,83 +10,98 @@ const getAppTheme = (mode) =>
     palette: {
       mode,
       primary: {
-        main: '#6200EE', // Deep Purple
-        light: '#BB86FC',
-        dark: '#3700B3',
+        main: '#10B981', // Fintech Emerald
+        light: '#34D399',
+        dark: '#059669',
         contrastText: '#FFFFFF',
       },
       secondary: {
-        main: '#03DAC6', // Vibrant Teal/Aqua
-        light: '#66FAF1',
-        dark: '#00B8AC',
-        contrastText: '#000000', // Ensure good contrast
+        main: '#3B82F6', // Modern Blue
+        light: '#60A5FA',
+        dark: '#2563EB',
+        contrastText: '#FFFFFF',
       },
       error: {
-        main: mode === 'dark' ? '#CF6679' : '#f44336', // Slightly softer red for dark mode
+        main: mode === 'dark' ? '#F87171' : '#EF4444',
       },
       background: {
-        default: mode === 'dark' ? '#121212' : '#F8F8F8', // Slightly lighter default for light mode
-        paper: mode === 'dark' ? '#1E1E1E' : '#FFFFFF',
+        default: mode === 'dark' ? '#0A0F1E' : '#F9FAFB', // Deep Navy for dark mode
+        paper: mode === 'dark' ? '#161E31' : '#FFFFFF',  // Slightly lighter surface
       },
       text: {
-        primary: mode === 'dark' ? '#ffffff' : '#212121',
-        secondary: mode === 'dark' ? '#bdbdbd' : '#757575',
-      }
+        primary: mode === 'dark' ? '#F3F4F6' : '#111827',
+        secondary: mode === 'dark' ? '#9CA3AF' : '#4B5563',
+      },
+      divider: mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
     },
     typography: {
-      fontFamily: ['Roboto', 'sans-serif'].join(','),
+      fontFamily: ['"Inter"', '"Roboto"', 'sans-serif'].join(','),
       h1: {
-        fontFamily: ['Montserrat', 'sans-serif'].join(','),
+        fontFamily: ['"Montserrat"', 'sans-serif'].join(','),
         fontSize: '2.5rem',
         fontWeight: 700,
+        letterSpacing: '-0.02em',
       },
       h2: {
-        fontFamily: ['Montserrat', 'sans-serif'].join(','),
+        fontFamily: ['"Montserrat"', 'sans-serif'].join(','),
         fontSize: '2rem',
         fontWeight: 700,
+        letterSpacing: '-0.01em',
       },
       h3: {
-        fontFamily: ['Montserrat', 'sans-serif'].join(','),
+        fontFamily: ['"Montserrat"', 'sans-serif'].join(','),
         fontSize: '1.75rem',
         fontWeight: 600,
       },
       h4: {
-        fontFamily: ['Montserrat', 'sans-serif'].join(','),
+        fontFamily: ['"Montserrat"', 'sans-serif'].join(','),
         fontSize: '1.5rem',
         fontWeight: 600,
       },
       h5: {
-        fontFamily: ['Montserrat', 'sans-serif'].join(','),
+        fontFamily: ['"Montserrat"', 'sans-serif'].join(','),
         fontSize: '1.25rem',
         fontWeight: 600,
       },
       h6: {
-        fontFamily: ['Montserrat', 'sans-serif'].join(','),
+        fontFamily: ['"Montserrat"', 'sans-serif'].join(','),
         fontSize: '1rem',
         fontWeight: 600,
       },
       button: {
         textTransform: 'none',
         fontWeight: 600,
+        letterSpacing: '0.01em',
       },
+    },
+    shape: {
+      borderRadius: 12,
     },
     components: {
       MuiAppBar: {
         styleOverrides: {
           root: {
             boxShadow: 'none',
+            backgroundColor: 'transparent',
+            backgroundImage: 'none',
           },
         },
       },
       MuiButton: {
         styleOverrides: {
           root: {
-            borderRadius: 20, // More rounded (pill-shaped)
-            boxShadow: '0 4px 10px 0 rgba(0,0,0,0.15)', // Slightly more pronounced shadow
-            transition: 'all 0.3s ease-in-out',
+            borderRadius: 10,
+            padding: '8px 20px',
+            boxShadow: 'none',
+            transition: 'all 0.2s ease-in-out',
             '&:hover': {
-              boxShadow: '0 6px 12px 0 rgba(0,0,0,0.2)', // Lift effect on hover
-              transform: 'translateY(-2px)',
+              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)',
+              transform: 'translateY(-1px)',
+            },
+          },
+          containedPrimary: {
+            '&:hover': {
+              backgroundColor: '#059669',
             },
           },
         },
@@ -94,8 +109,20 @@ const getAppTheme = (mode) =>
       MuiPaper: {
         styleOverrides: {
           root: {
-            borderRadius: 12, // Apply a consistent border radius to all Paper components
-            boxShadow: '0 4px 8px rgba(0, 0, 0, 0.08)', // More noticeable but elegant shadow
+            backgroundImage: 'none',
+            boxShadow: mode === 'dark' 
+              ? '0 4px 20px rgba(0, 0, 0, 0.4)' 
+              : '0 4px 20px rgba(0, 0, 0, 0.03)',
+            border: mode === 'dark'
+              ? '1px solid rgba(255, 255, 255, 0.05)'
+              : '1px solid rgba(0, 0, 0, 0.02)',
+          },
+        },
+      },
+      MuiCard: {
+        styleOverrides: {
+          root: {
+            borderRadius: 16,
           },
         },
       },

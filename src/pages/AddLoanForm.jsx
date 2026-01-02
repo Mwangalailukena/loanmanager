@@ -30,6 +30,7 @@ import {
   stepConnectorClasses,
   styled,
   Divider,
+  alpha,
 } from "@mui/material";
 import WarningIcon from "@mui/icons-material/Warning";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
@@ -72,50 +73,58 @@ const interestOptions = [
 
 const getTextFieldStyles = (theme) => ({
   "& .MuiOutlinedInput-root": {
-    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-      borderColor: theme.palette.secondary.main,
+    borderRadius: 3,
+    transition: 'all 0.2s',
+    backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.background.paper, 0.5) : alpha(theme.palette.background.paper, 0.8),
+    "&:hover": {
+      backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.background.paper, 0.8) : theme.palette.background.paper,
     },
-    // Smaller padding for a more compact feel
+    "&.Mui-focused": {
+      backgroundColor: theme.palette.background.paper,
+      boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
+    },
     "& .MuiInputBase-input": {
-      padding: "10px 12px",
-      fontSize: "0.875rem",
+      padding: "12px 16px",
+      fontSize: "0.95rem",
+    },
+    "& fieldset": {
+      borderColor: alpha(theme.palette.divider, 0.1),
     },
   },
-  "& .MuiInputLabel-root.Mui-focused": {
-    color: theme.palette.secondary.main,
-  },
-  // Smaller label text
   "& .MuiInputLabel-root": {
-    fontSize: "0.875rem",
-    transform: "translate(12px, 12px) scale(1)",
+    fontSize: "0.95rem",
+    transform: "translate(16px, 12px) scale(1)",
   },
   "& .MuiInputLabel-shrink": {
-    transform: "translate(12px, -9px) scale(0.75)",
-  },
-  "& .MuiFormHelperText-root": {
-    fontSize: "0.75rem",
+    transform: "translate(16px, -9px) scale(0.75)",
+    fontWeight: 600,
+    color: theme.palette.primary.main,
   },
 });
 
-const steps = ['Borrower Details', 'Loan Details', 'Review & Submit'];
+const steps = ['Borrower', 'Terms', 'Review'];
 
 // Custom stepper icon styles
 const ColorlibStepIconRoot = styled('div')(({ theme, ownerState }) => ({
-  backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[700] : '#ccc',
+  backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[800] : '#f3f4f6',
   zIndex: 1,
-  color: '#fff',
-  width: 40, // Smaller icon size
-  height: 40, // Smaller icon size
+  color: theme.palette.text.secondary,
+  width: 36,
+  height: 36,
   display: 'flex',
-  borderRadius: '50%',
+  borderRadius: '12px',
   justifyContent: 'center',
   alignItems: 'center',
+  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   ...(ownerState.active && {
-    backgroundImage: `linear-gradient(136deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
-    boxShadow: '0 4px 10px 0 rgba(0,0,0,.25)',
+    backgroundColor: theme.palette.primary.main,
+    color: '#fff',
+    boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.4)}`,
+    transform: 'scale(1.1)',
   }),
   ...(ownerState.completed && {
-    backgroundImage: `linear-gradient(136deg, ${theme.palette.primary.dark} 0%, ${theme.palette.secondary.dark} 100%)`,
+    backgroundColor: alpha(theme.palette.primary.main, 0.2),
+    color: theme.palette.primary.main,
   }),
 }));
 
