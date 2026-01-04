@@ -42,7 +42,7 @@ const DashboardCard = ({
       lg={3}
       ref={provided.innerRef}
       {...provided.draggableProps}
-      {...(!isMobile && provided.dragHandleProps)}
+      {...provided.dragHandleProps}
       style={{
         ...provided.draggableProps.style,
         userSelect: snapshot.isDragging ? "none" : "auto",

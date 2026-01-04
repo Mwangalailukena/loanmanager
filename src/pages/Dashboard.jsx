@@ -6,8 +6,6 @@ import {
     useMediaQuery,
     TextField,
     CircularProgress,
-    Tabs,
-    Tab,
     Grid,
     Skeleton,
     Button,
@@ -17,22 +15,22 @@ import {
     DialogActions,
     Checkbox,
     FormControlLabel,
-    alpha,
+    IconButton, // Added IconButton
 } from "@mui/material";
 import { keyframes } from "@mui/system";
 
-// CHANGED: Corrected the import path for SummarizeIcon
+import TuneIcon from '@mui/icons-material/Tune';
 import SummarizeIcon from '@mui/icons-material/Summarize';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import InsightsIcon from '@mui/icons-material/Insights';
-import TuneIcon from '@mui/icons-material/Tune';
 
 import { useNavigate } from "react-router-dom";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { useAuth } from "../contexts/AuthProvider.js";
 import dayjs from "dayjs";
 import { useSnackbar } from "../components/SnackbarProvider";
+import ResponsiveContentDisplay from "../components/ResponsiveContentDisplay";
 
 import { DragDropContext } from "@hello-pangea/dnd";
 import { BOTTOM_NAV_HEIGHT } from "../components/BottomNavBar";
@@ -41,7 +39,7 @@ import { useInsights } from "../hooks/useInsights";
 import DashboardSection from "../components/dashboard/DashboardSection";
 import DashboardCardSkeleton from "../components/dashboard/DashboardCardSkeleton";
 import InsightCard from "../components/dashboard/InsightCard";
-import ProjectionCard from "../components/dashboard/ProjectionCard"; // NEW: Import ProjectionCard
+
 
 const LazyCharts = lazy(() => import("../components/Charts"));
 
@@ -57,18 +55,7 @@ const EXECUTIVE_SUMMARY_IDS = [
     "investedCapital", "availableCapital", "totalDisbursed", "totalCollected", "partnerDividends",
 ];
 
-function TabPanel(props) {
-    const { children, value, index, ...other } = props;
-    return (
-        <div role="tabpanel" hidden={value !== index} id={`simple-tabpanel-${index}`} aria-labelledby={`simple-tab-${index}`} {...other} >
-            {value === index && ( <Box sx={{ p: { xs: 2, md: 3 } }}>{children}</Box> )}
-        </div>
-    );
-}
 
-function a11yProps(index) {
-    return { id: `simple-tab-${index}`, "aria-controls": `simple-tabpanel-${index}`};
-}
 
 const popInAnimation = keyframes`
   0% { opacity: 0; transform: scale(0.9) translateY(10px); }
@@ -90,7 +77,6 @@ export default function Dashboard() {
     const [cardsOrder, setCardsOrder] = useState([]);
     const [hiddenCards, setHiddenCards] = useState([]);
     const [customizeOpen, setCustomizeOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState(0);
     const [showWelcome, setShowWelcome] = useState(false);
 
     useEffect(() => {
@@ -135,9 +121,7 @@ export default function Dashboard() {
         }
     }, [loans]); // Dependency array for useEffect
 
-    const handleTabChange = (event, newValue) => {
-        setActiveTab(newValue);
-    };
+
 
     const cardsToRender = useMemo(() => {
         const allVisibleCards = defaultCards.filter(card => !hiddenCards.includes(card.id));
@@ -246,6 +230,7 @@ export default function Dashboard() {
         [cardsOrder, defaultCards, hiddenCards, showSnackbar]
     );
 
+
     const handleCardClick = (filter) => {
         const params = new URLSearchParams();
         if (filter !== "all") params.set("filter", filter);
@@ -287,6 +272,76 @@ export default function Dashboard() {
         localStorage.setItem(HIDDEN_CARDS_KEY, JSON.stringify(newHidden));
     };
 
+
+
+    const dashboardSections = [
+        {
+            id: 'summary',
+            title: 'Financial Overview',
+            icon: <SummarizeIcon />,
+            content: (
+                <Box>
+                    {cardsToRender.filter(group => group.cards.some(card => EXECUTIVE_SUMMARY_IDS.includes(card.id))).map(group => (
+                        <Box key={group.name} sx={{ mb: 4 }}>
+                            <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 1, px: 2, fontWeight: 'bold' }}>
+                                {group.name}
+                            </Typography>
+                            <DashboardSection cards={group.cards} droppableId={group.name} isMobile={isMobile} handleCardClick={handleCardClick} />
+                        </Box>
+                    ))}
+                </Box>
+            ),
+        },
+        {
+            id: 'metrics',
+            title: 'Metrics',
+            icon: <BarChartIcon />,
+            content: (
+                <Grid container spacing={2}>
+                    {cardsToRender.filter(group => group.cards.some(card => !EXECUTIVE_SUMMARY_IDS.includes(card.id))).map(group => (
+                        <Grid item xs={12} key={group.name}>
+                            <Box sx={{ mb: 4 }}>
+                                <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 1, px: 2, fontWeight: 'bold' }}>
+                                    {group.name}
+                                </Typography>
+                                <DashboardSection cards={group.cards} droppableId={group.name} isMobile={isMobile} handleCardClick={handleCardClick} />
+                            </Box>
+                        </Grid>
+                    ))}
+                </Grid>
+            ),
+        },
+        {
+            id: 'charts',
+            title: 'Charts',
+            icon: <ShowChartIcon />,
+            content: (
+                <Suspense fallback={ <Box sx={{ display: "flex", justifyContent: "center", p: 2 }}><CircularProgress color="primary" /></Box> }>
+                    <LazyCharts
+                        loans={loans}
+                        borrowers={borrowers}
+                        payments={payments}
+                        expenses={expenses}
+                    />
+                </Suspense>
+            ),
+        },
+        {
+            id: 'insights',
+            title: 'Insights',
+            icon: <InsightsIcon />,
+            content: (
+                <Grid container spacing={2}>
+                    {insights.filter(insight => !insight.action).map((insight, index) => (
+                        <Grid item xs={12} sm={6} md={4} key={index}>
+                            <InsightCard insight={insight} />
+                        </Grid>
+                    ))}
+                </Grid>
+            ),
+        },
+    ];
+
     if (loading) {
         return (
             <Box sx={{ p: { xs: 2, md: 3 } }}>
@@ -321,58 +376,27 @@ export default function Dashboard() {
                 </Box>
             )}
 
-            {/* Quick Metrics Scrollable Header */}
-            <Box
-              sx={{
-                display: 'flex',
-                gap: 2,
-                overflowX: 'auto',
-                pb: 2,
-                mb: 3,
-                mx: { xs: -2, md: 0 },
-                px: { xs: 2, md: 0 },
-                '&::-webkit-scrollbar': { display: 'none' },
-                scrollbarWidth: 'none',
-              }}
-            >
-              {defaultCards.filter(c => EXECUTIVE_SUMMARY_IDS.includes(c.id)).map((card) => (
-                <Box
-                  key={card.id}
-                  sx={{
-                    minWidth: { xs: 160, md: 200 },
-                    p: 2,
-                    borderRadius: 4,
-                    background: theme.palette.mode === 'dark' 
-                      ? `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.15)} 0%, ${alpha(theme.palette.background.paper, 0.1)} 100%)`
-                      : `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${theme.palette.background.paper} 100%)`,
-                    border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 0.5,
-                  }}
-                >
-                  <Typography variant="caption" sx={{ fontWeight: 600, color: theme.palette.text.secondary, textTransform: 'uppercase', fontSize: '0.6rem' }}>
-                    {card.label}
-                  </Typography>
-                  <Typography variant="h6" sx={{ fontWeight: 800, color: theme.palette.text.primary }}>
-                    {card.value}
-                  </Typography>
-                </Box>
-              ))}
+
+            {/* Date Selector and Customize Button for Mobile */}
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1, mb: 2, mt: userName && showWelcome ? 2 : 0 }}>
+                <TextField
+                    type="month"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    size="small"
+                    InputLabelProps={{ shrink: true }}
+                    sx={{ width: 150 }} // Make it minimal
+                />
+                <IconButton onClick={() => setCustomizeOpen(true)} color="primary" aria-label="Customize Dashboard">
+                    <TuneIcon />
+                </IconButton>
             </Box>
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="h5" sx={{ fontWeight: 700, fontSize: { xs: "1.5rem", md: "1.75rem" }, letterSpacing: '-0.01em' }}>
                   Dashboard
               </Typography>
-              <Button 
-                startIcon={<TuneIcon />} 
-                onClick={() => setCustomizeOpen(true)}
-                sx={{ borderRadius: 3, bgcolor: alpha(theme.palette.primary.main, 0.05) }}
-              >
-                Customize
-              </Button>
-            </Box>
+                          </Box>
 
             {/* Actionable Insights Section */}
             {insights.filter(insight => insight.action).map((insight, index) => (
@@ -391,100 +415,11 @@ export default function Dashboard() {
               }} />
             ))}
             
-            <Box mb={isMobile ? 1.5 : 2} maxWidth={isMobile ? "100%" : 200}>
-                <TextField label="Select Month" type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} size="small" fullWidth InputLabelProps={{ shrink: true }} />
-            </Box>
 
-            <Box sx={{ width: "100%", mb: 3 }} >
-                <Box sx={{ 
-                    backgroundColor: alpha(theme.palette.background.paper, 0.5), 
-                    borderRadius: 4, 
-                    p: 0.5,
-                    backdropFilter: 'blur(10px)',
-                    border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                }}>
-                    <Tabs 
-                        value={activeTab} 
-                        onChange={handleTabChange} 
-                        variant="fullWidth"
-                        sx={{
-                            minHeight: 48,
-                            '& .MuiTabs-indicator': {
-                                height: '100%',
-                                borderRadius: 3.5,
-                                backgroundColor: theme.palette.background.paper,
-                                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                                zIndex: 0,
-                            },
-                            '& .MuiTab-root': {
-                                zIndex: 1,
-                                textTransform: 'none',
-                                fontWeight: 600,
-                                fontSize: '0.875rem',
-                                color: theme.palette.text.secondary,
-                                transition: 'color 0.2s',
-                                minHeight: 48,
-                                '&.Mui-selected': {
-                                    color: theme.palette.primary.main,
-                                },
-                            },
-                        }}
-                    >
-                        <Tab icon={<SummarizeIcon sx={{ fontSize: 20 }} />} label={!isMobile ? "Summary" : ""} {...a11yProps(0)} />
-                        <Tab icon={<BarChartIcon sx={{ fontSize: 20 }} />} label={!isMobile ? "Metrics" : ""} {...a11yProps(1)} />
-                        <Tab icon={<ShowChartIcon sx={{ fontSize: 20 }} />} label={!isMobile ? "Charts" : ""} {...a11yProps(2)} />
-                        <Tab icon={<InsightsIcon sx={{ fontSize: 20 }} />} label={!isMobile ? "Insights" : ""} {...a11yProps(3)} />
-                    </Tabs>
-                </Box>
-                <DragDropContext onDragEnd={onDragEnd}>
-                    <TabPanel value={activeTab} index={0}>
-                        {cardsToRender.filter(group => group.cards.some(card => EXECUTIVE_SUMMARY_IDS.includes(card.id))).map(group => (
-                            <Box key={group.name} sx={{ mb: 4 }}>
-                                <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 1, px: 2, fontWeight: 'bold' }}>
-                                    {group.name}
-                                </Typography>
-                                <DashboardSection cards={group.cards} droppableId={group.name} isMobile={isMobile} handleCardClick={handleCardClick} />
-                            </Box>
-                        ))}
-                    </TabPanel>
-                    <TabPanel value={activeTab} index={1}>
-                        <Grid container spacing={2}>
-                            <Grid item xs={12} sm={6} md={4}>
-                                <ProjectionCard />
-                            </Grid>
-                            {cardsToRender.filter(group => group.cards.some(card => !EXECUTIVE_SUMMARY_IDS.includes(card.id))).map(group => (
-                                <Grid item xs={12} key={group.name}>
-                                    <Box sx={{ mb: 4 }}>
-                                        <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 1, px: 2, fontWeight: 'bold' }}>
-                                            {group.name}
-                                        </Typography>
-                                        <DashboardSection cards={group.cards} droppableId={group.name} isMobile={isMobile} handleCardClick={handleCardClick} />
-                                    </Box>
-                                </Grid>
-                            ))}
-                        </Grid>
-                    </TabPanel>
-                </DragDropContext>
-                <TabPanel value={activeTab} index={2}>
-                    <Suspense fallback={ <Box sx={{ display: "flex", justifyContent: "center", p: 2 }}><CircularProgress color="primary" /></Box> }>
-                        <LazyCharts
-                            loans={loans}
-                            borrowers={borrowers}
-                            payments={payments}
-                            expenses={expenses}
-                        />
-                    </Suspense>
-                </TabPanel>
-                <TabPanel value={activeTab} index={3}>
-                    <Grid container spacing={2}>
-                        {insights.filter(insight => !insight.action).map((insight, index) => (
-                            <Grid item xs={12} sm={6} md={4} key={index}>
-                                <InsightCard insight={insight} />
-                            </Grid>
-                        ))}
-                    </Grid>
-                </TabPanel>
-            </Box>
+
+            <DragDropContext onDragEnd={onDragEnd}>
+                <ResponsiveContentDisplay sections={dashboardSections} />
+            </DragDropContext>
             <Dialog open={customizeOpen} onClose={() => setCustomizeOpen(false)}>
                 <DialogTitle>Customize Dashboard</DialogTitle>
                 <DialogContent>
