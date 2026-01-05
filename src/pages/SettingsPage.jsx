@@ -262,7 +262,7 @@ export default function SettingsPage({ onClose }) {
       <form onSubmit={handleSubmit}>
         <TabPanel value={tabIndex} index={0}>
             <Grid container spacing={2} sx={{ mb: 2 }}>
-                <Grid item xs={6}>
+                <Grid xs={6}>
                     <FormControl fullWidth>
                         <InputLabel>Year</InputLabel>
                         <Select
@@ -276,7 +276,7 @@ export default function SettingsPage({ onClose }) {
                         </Select>
                     </FormControl>
                 </Grid>
-                <Grid item xs={6}>
+                <Grid xs={6}>
                     <FormControl fullWidth>
                         <InputLabel>Month</InputLabel>
                         <Select

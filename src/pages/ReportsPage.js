@@ -511,7 +511,7 @@ export default function ReportsPage() {
 
             {activeTab === 0 && (
                 <Grid container spacing={3}>
-                    <Grid item xs={12} md={8}>
+                    <Grid xs={12} md={8}>
                         <Card elevation={2} sx={{ height: '100%' }}>
                             <CardContent>
                                 <Typography variant="h6" gutterBottom>Key Metrics</Typography>
@@ -530,7 +530,7 @@ export default function ReportsPage() {
                             </CardContent>
                         </Card>
                     </Grid>
-                    <Grid item xs={12} md={4}>
+                    <Grid xs={12} md={4}>
                         <Card elevation={2} sx={{ height: '100%' }}>
                             <CardContent>
                                 <Typography variant="h6">Loan Status Distribution</Typography>
@@ -546,7 +546,7 @@ export default function ReportsPage() {
                             </CardContent>
                         </Card>
                     </Grid>
-                    <Grid item xs={12} md={4}>
+                    <Grid xs={12} md={4}>
                         <Card elevation={2} sx={{ height: '100%' }}>
                             <CardContent>
                                 <Typography variant="h6">Portfolio Health</Typography>
@@ -558,7 +558,7 @@ export default function ReportsPage() {
                             </CardContent>
                         </Card>
                     </Grid>
-                    <Grid item xs={12} md={4}>
+                    <Grid xs={12} md={4}>
                         <Card elevation={2} sx={{ height: '100%' }}>
                             <CardContent>
                                 <Typography variant="h6">Financial Overview</Typography>
@@ -574,7 +574,7 @@ export default function ReportsPage() {
                             </CardContent>
                         </Card>
                     </Grid>
-                    <Grid item xs={12}>
+                    <Grid xs={12}>
                         <Stack direction="row" spacing={2}>
                             <Button variant="outlined" color="secondary" onClick={exportPortfolioSummary}>Export Summary CSV</Button>
                             <Button variant="contained" color="secondary" onClick={exportPortfolioSummaryPdf}>Export Summary PDF</Button>
@@ -585,7 +585,7 @@ export default function ReportsPage() {
 
             {activeTab === 1 && (
                 <Grid container spacing={3}>
-                    <Grid item xs={12} md={7}>
+                    <Grid xs={12} md={7}>
                         <Typography variant="h6" gutterBottom>Arrears Aging Details</Typography>
                         <TableContainer component={Paper} elevation={1}>
                             <Table size="small">
@@ -608,7 +608,7 @@ export default function ReportsPage() {
                             </Table>
                         </TableContainer>
                     </Grid>
-                    <Grid item xs={12} md={5}>
+                    <Grid xs={12} md={5}>
                         <Card elevation={2}>
                             <CardContent>
                                 <Typography variant="h6">Arrears Distribution by Amount</Typography>
@@ -624,7 +624,7 @@ export default function ReportsPage() {
                             </CardContent>
                         </Card>
                     </Grid>
-                    <Grid item xs={12}>
+                    <Grid xs={12}>
                         <Typography variant="h6" gutterBottom>Overdue Loans</Typography>
                         <TableContainer component={Paper} elevation={1}>
                             <Table size="small">
@@ -653,7 +653,7 @@ export default function ReportsPage() {
                             </Table>
                         </TableContainer>
                     </Grid>
-                    <Grid item xs={12}>
+                    <Grid xs={12}>
                         <Stack direction="row" spacing={2}>
                             <Button variant="outlined" color="secondary" onClick={exportArrearsAging}>Export Arrears CSV</Button>
                             <Button variant="contained" color="secondary" onClick={exportArrearsAgingPdf}>Export Arrears PDF</Button>
@@ -804,7 +804,7 @@ export default function ReportsPage() {
 
         <Paper elevation={1} sx={{ p: 2, mb: 3 }}>
           <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={6} lg={4}>
+            <Grid xs={12} md={6} lg={4}>
               <Autocomplete
                 options={borrowers || []}
                 getOptionLabel={(option) => option.name}
@@ -815,7 +815,7 @@ export default function ReportsPage() {
                 renderInput={(params) => <TextField {...params} label="Filter by Borrower" size="small" sx={filterInputStyles} />}
               />
             </Grid>
-            <Grid item xs={12} md={6} lg={4}>
+            <Grid xs={12} md={6} lg={4}>
               <Stack direction="row" spacing={1}>
                 <DatePicker
                   label="Start Date"
@@ -831,7 +831,7 @@ export default function ReportsPage() {
                 />
               </Stack>
             </Grid>
-            <Grid item xs={12} lg={4}>
+            <Grid xs={12} lg={4}>
                 <Stack direction="row" spacing={1} justifyContent="flex-start" flexWrap="wrap">
                     <Button size="small" onClick={setThisMonth}>This Month</Button>
                     <Button size="small" onClick={() => setDateRange('month', 1)}>Last Month</Button>
@@ -839,7 +839,7 @@ export default function ReportsPage() {
                     <Button size="small" onClick={() => setDateRange('year', 0)}>This Year</Button>
                 </Stack>
             </Grid>
-            <Grid item xs={12}>
+            <Grid xs={12}>
               <Stack direction="row" spacing={0} flexWrap="wrap">
                 <FormControlLabel control={<Checkbox checked={includeActive} onChange={(e) => setIncludeActive(e.target.checked)} size="small" sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }} />} label="Active" />
                 <FormControlLabel control={<Checkbox checked={includePaid} onChange={(e) => setIncludePaid(e.target.checked)} size="small" sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }} />} label="Paid" />
@@ -848,7 +848,7 @@ export default function ReportsPage() {
                 <Button onClick={handleClearFilters}>Clear Filters</Button>
               </Stack>
             </Grid>
-            <Grid item xs={12}>
+            <Grid xs={12}>
               <Stack direction="row" spacing={2} justifyContent="flex-end">
                 <Button
                   startIcon={<CameraAltIcon />}

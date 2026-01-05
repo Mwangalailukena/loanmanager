@@ -299,7 +299,7 @@ export default function Dashboard() {
             content: (
                 <Grid container spacing={2}>
                     {cardsToRender.filter(group => group.cards.some(card => !EXECUTIVE_SUMMARY_IDS.includes(card.id))).map(group => (
-                        <Grid item xs={12} key={group.name}>
+                        <Grid xs={12} key={group.name}>
                             <Box sx={{ mb: 4 }}>
                                 <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 1, px: 2, fontWeight: 'bold' }}>
                                     {group.name}
@@ -333,7 +333,7 @@ export default function Dashboard() {
             content: (
                 <Grid container spacing={2}>
                     {insights.filter(insight => !insight.action).map((insight, index) => (
-                        <Grid item xs={12} sm={6} md={4} key={index}>
+                        <Grid xs={12} sm={6} md={4} key={index}>
                             <InsightCard insight={insight} />
                         </Grid>
                     ))}
@@ -350,7 +350,7 @@ export default function Dashboard() {
                 </Typography>
                 <Grid container spacing={2}>
                     {[...Array(8)].map((_, index) => (
-                        <Grid item xs={12} sm={6} md={3} key={index}><DashboardCardSkeleton /></Grid>
+                        <Grid xs={12} sm={6} md={3} key={index}><DashboardCardSkeleton /></Grid>
                     ))}
                 </Grid>
             </Box>

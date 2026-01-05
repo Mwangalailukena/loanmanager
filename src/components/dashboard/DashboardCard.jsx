@@ -78,16 +78,6 @@ const DashboardCard = ({
               },
               position: "relative",
               overflow: "hidden",
-              "&::before": {
-                content: '""',
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "100%",
-                height: "4px",
-                backgroundColor: theme.palette[card.color]?.main || theme.palette.primary.main,
-                opacity: 0.8,
-              }
             }}
           >
             <Box
@@ -109,42 +99,41 @@ const DashboardCard = ({
                 {typeof card.icon === "function" ? card.icon(card.value) : card.icon}
               </Box>
               {card.trend && (
-                <Box 
-                  sx={{ 
-                    display: "flex", 
-                    alignItems: "center", 
-                    gap: 0.2, 
-                    px: 1, 
-                    py: 0.5, 
-                    borderRadius: 10,
-                    backgroundColor: card.trend.startsWith("+") 
-                      ? alpha(theme.palette.success.main, 0.1) 
-                      : alpha(theme.palette.error.main, 0.1),
-                  }}
-                >
-                  {card.trend.startsWith("+") ? (
-                    <ArrowUpwardIcon sx={{ fontSize: 14, color: theme.palette.success.main }} />
-                  ) : (
-                    <ArrowDownwardIcon sx={{ fontSize: 14, color: theme.palette.error.main }} />
-                  )}
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: card.trend.startsWith("+")
-                        ? theme.palette.success.main
-                        : theme.palette.error.main,
-                      fontWeight: 700,
+                <Tooltip title="Change from previous period" arrow>
+                  <Box 
+                    sx={{ 
+                      display: "flex", 
+                      alignItems: "center", 
+                      gap: 0.2, 
+                      px: 1, 
+                      py: 0.5, 
+                      borderRadius: 10,
                     }}
                   >
-                    {card.trend.replace('+', '').replace('-', '')}
-                  </Typography>
-                </Box>
+                    {card.trend.direction === "up" ? (
+                      <ArrowUpwardIcon sx={{ fontSize: 14, color: theme.palette.success.main }} />
+                    ) : (
+                      <ArrowDownwardIcon sx={{ fontSize: 14, color: theme.palette.error.main }} />
+                    )}
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: card.trend.direction === "up"
+                          ? theme.palette.success.main
+                          : theme.palette.error.main,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {card.trend.value}
+                    </Typography>
+                  </Box>
+                </Tooltip>
               )}
             </Box>
             
             <Typography
               variant="caption"
-              sx={{ color: theme.palette.text.secondary, fontWeight: 600, mb: 0.5, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.65rem' }}
+              sx={{ color: theme.palette.text.secondary, fontWeight: 600, mb: 0.5, textTransform: 'none', letterSpacing: 'normal', fontSize: '0.75rem' }}
             >
               {card.label}
             </Typography>

@@ -38,7 +38,7 @@ const CostOfDefault = ({ loans }) => {
 
   return (
     <Grid container spacing={3}>
-      <Grid item xs={12}>
+      <Grid xs={12}>
         <Card>
           <CardContent>
             <Typography variant="h6">Total Cost of Default</Typography>
@@ -48,7 +48,7 @@ const CostOfDefault = ({ loans }) => {
           </CardContent>
         </Card>
       </Grid>
-      <Grid item xs={12}>
+      <Grid xs={12}>
         <Paper>
           <Typography variant="h6" sx={{ p: 2 }}>
             Cost of Default by Borrower
@@ -67,7 +67,7 @@ const CostOfDefault = ({ loans }) => {
           </ResponsiveContainer>
         </Paper>
       </Grid>
-      <Grid item xs={12}>
+      <Grid xs={12}>
         <Typography variant="h6" sx={{ p: 2 }}>
           Defaulted Loans
         </Typography>

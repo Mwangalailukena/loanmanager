@@ -267,13 +267,13 @@ export default function BorrowerListPage() {
     >
       {/* Summary Section (NEW) */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6}> {/* Adjusted to sm={6} for better layout with 2 items */}
+        <Grid xs={12} sm={6}> {/* Adjusted to sm={6} for better layout with 2 items */}
           <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
             <Typography variant="h6" color="text.secondary">Total Borrowers</Typography>
             <Typography variant="h4" fontWeight="bold">{summaryStats.totalBorrowers}</Typography>
           </Paper>
         </Grid>
-        <Grid item xs={12} sm={6}> {/* Adjusted to sm={6} for better layout with 2 items */}
+        <Grid xs={12} sm={6}> {/* Adjusted to sm={6} for better layout with 2 items */}
           <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
             <Typography variant="h6" color="text.secondary">Overdue Borrowers</Typography>
             <Typography variant="h4" fontWeight="bold" color="error.main">{summaryStats.borrowersWithOverdueLoansCount}</Typography>
@@ -325,7 +325,7 @@ export default function BorrowerListPage() {
       ) : filteredBorrowers.length > 0 ? (
         <Grid container spacing={2}>
           {filteredBorrowers.map((borrower) => (
-            <Grid item xs={6} sm={4} md={3} key={borrower.id}>
+            <Grid xs={6} sm={4} md={3} key={borrower.id}>
               <BorrowerCard borrower={borrower} onWhatsAppClick={handleWhatsAppClick} />
             </Grid>
           ))}

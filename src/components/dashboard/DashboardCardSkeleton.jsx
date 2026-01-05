@@ -6,10 +6,10 @@ const DashboardCardSkeleton = () => {
     <Card>
       <CardContent>
         <Grid container spacing={2} alignItems="center" justifyContent="space-between">
-          <Grid item>
+          <Grid>
             <Skeleton variant="circular" width={32} height={32} />
           </Grid>
-          <Grid item>
+          <Grid>
              <Skeleton variant="text" width={80} />
           </Grid>
         </Grid>

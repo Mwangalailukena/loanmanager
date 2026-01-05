@@ -303,29 +303,29 @@ const Charts = ({ loans, borrowers, payments, expenses }) => {
         </Box>
       
       <Grid container spacing={isMobile ? 2 : 3} sx={{ mb: isMobile ? 3 : 4 }}>
-        <Grid item xs={6} md={3}><KpiCard title="Total Outstanding" value={formatCurrency(kpiData.outstandingPrincipal)} isLoading={isLoading} tooltip="The total principal amount currently owed by all borrowers across all active loans." /></Grid>
-        <Grid item xs={6} md={3}><KpiCard title="Principal Overdue" value={formatCurrency(kpiData.overduePrincipal)} isLoading={isLoading} tooltip="The portion of the total outstanding principal that belongs to loans currently marked as 'Overdue'."/></Grid>
-        <Grid item xs={6} md={3}><KpiCard title="Active Loans" value={kpiData.activeLoanCount} isLoading={isLoading} tooltip="The total number of loans that are not fully paid off yet."/></Grid>
-        <Grid item xs={6} md={3}><KpiCard title="All-Time Net Profit" value={formatCurrency(kpiData.totalProfit)} isLoading={isLoading} tooltip="Total Collected minus Total Disbursed and Total Expenses over the lifetime of the portfolio."/></Grid>
+        <Grid xs={6} md={3}><KpiCard title="Total Outstanding" value={formatCurrency(kpiData.outstandingPrincipal)} isLoading={isLoading} tooltip="The total principal amount currently owed by all borrowers across all active loans." /></Grid>
+        <Grid xs={6} md={3}><KpiCard title="Principal Overdue" value={formatCurrency(kpiData.overduePrincipal)} isLoading={isLoading} tooltip="The portion of the total outstanding principal that belongs to loans currently marked as 'Overdue'."/></Grid>
+        <Grid xs={6} md={3}><KpiCard title="Active Loans" value={kpiData.activeLoanCount} isLoading={isLoading} tooltip="The total number of loans that are not fully paid off yet."/></Grid>
+        <Grid xs={6} md={3}><KpiCard title="All-Time Net Profit" value={formatCurrency(kpiData.totalProfit)} isLoading={isLoading} tooltip="Total Collected minus Total Disbursed and Total Expenses over the lifetime of the portfolio."/></Grid>
       </Grid>
 
       <Grid container spacing={isMobile ? 2 : 3}>
-        <Grid item xs={12} md={6}>
+        <Grid xs={12} md={6}>
             <ChartPaper title="Profitability Analysis" tooltip="Shows monthly revenue (collections), costs (disbursements + expenses), and net profit." onClick={() => handleOpenDialog({ type: 'profitability', data: profitabilityData, title: 'Profitability Analysis' })}>
                 {profitabilityData.length > 0 ? <ResponsiveBar data={profitabilityData} keys={['revenue', 'costs']} indexBy="month" margin={{ top: 80, right: 80, bottom: 50, left: 60 }} theme={nivoTheme} colors={({ id }) => id === 'costs' ? theme.palette.error.light : theme.palette.success.light} axisBottom={{ format: value => dayjs(value).format('MMM YY'), legend: 'Month', legendPosition: 'middle', legendOffset: 40 }} axisLeft={{ legend: 'Amount', legendPosition: 'middle', legendOffset: -50, format: formatLargeNumber }} tooltip={({ value }) => formatCurrency(value)} legends={[{ dataFrom: 'keys', anchor: 'top-left', direction: 'column', justify: false, translateX: 0, translateY: -70, itemWidth: 80, itemHeight: 18, itemOpacity: 0.75, symbolSize: 10, symbolShape: 'circle', effects: [{ on: 'hover', style: { itemOpacity: 1 } }] }]} enableLabel={false} /> : <NoDataMessage message="Not enough data for profitability analysis." />}
             </ChartPaper>
         </Grid>
-        <Grid item xs={12} md={6}>
+        <Grid xs={12} md={6}>
             <ChartPaper title="Portfolio Health Over Time" tooltip="Shows the total monetary value of the portfolio, split into performing (active) and overdue principal each month." onClick={() => handleOpenDialog({ type: 'health', data: portfolioHealthData, title: 'Portfolio Health Over Time' })}>
                 {portfolioHealthData[0]?.data.length > 0 ? <ResponsiveLine data={portfolioHealthData} enableArea={true} areaOpacity={0.3} useMesh={true} margin={{ top: 80, right: 80, bottom: 50, left: 60 }} theme={nivoTheme} colors={({ id }) => loanStatusColors[id]} xScale={{ type: 'time', format: '%Y-%m-%d', useUTC: false }} xFormat="time:%b %Y" axisBottom={{ format: '%b %y', tickValues: 'every 3 months', legend: 'Date', legendPosition: 'middle', legendOffset: 40 }} axisLeft={{ legend: 'Principal', legendPosition: 'middle', legendOffset: -50, format: formatLargeNumber }} tooltip={({ point }) => `${point.serieId}: ${formatCurrency(point.data.y)}`} legends={[{ anchor: 'top-left', direction: 'column', justify: false, translateX: 0, translateY: -70, itemWidth: 80, itemHeight: 18, itemOpacity: 0.75, symbolSize: 10, symbolShape: 'circle', effects: [{ on: 'hover', style: { itemOpacity: 1 } }] }]} /> : <NoDataMessage message="Not enough data to show portfolio health trend." />}
             </ChartPaper>
         </Grid>
-        <Grid item xs={12} md={6}>
+        <Grid xs={12} md={6}>
             <ChartPaper title="Active Loan Status" tooltip="The number of currently active loans, categorized by their status. Click a slice to see the loans.">
                 {activeLoanStatusData.some(d => d.value > 0) ? <ResponsivePie data={activeLoanStatusData} onClick={(datum) => navigate(`/loans?filter=${datum.id.toLowerCase()}`)} margin={{ top: 70, right: 20, bottom: 20, left: 20 }} innerRadius={0.5} padAngle={2} cornerRadius={3} activeOuterRadiusOffset={8} colors={({ id }) => loanStatusColors[id]} theme={nivoTheme} arcLinkLabelsSkipAngle={10} arcLabelsSkipAngle={10} tooltip={({ datum }) => `${datum.label}: ${datum.value} (${datum.percentage.toFixed(1)}%)`} legends={[{ anchor: 'top-left', direction: 'column', justify: false, translateX: 0, translateY: -40, itemWidth: 70, itemHeight: 16, itemOpacity: 0.75, symbolSize: 12, symbolShape: 'circle', effects: [{ on: 'hover', style: { itemOpacity: 1 } }] }]} /> : <NoDataMessage message="No active loans to display." />}
             </ChartPaper>
         </Grid>
-        <Grid item xs={12} md={6}>
+        <Grid xs={12} md={6}>
             <ChartPaper title="Top 5 Borrowers by Balance" tooltip="The top 5 borrowers with the highest outstanding principal balance. Click a bar to see the borrower's profile.">
                 {topBorrowersData.length > 0 ? <ResponsiveBar data={topBorrowersData} keys={['balance']} indexBy="borrowerName" layout="horizontal" onClick={(datum) => navigate(`/borrowers/${datum.data.id}`)} margin={{ top: 10, right: 20, bottom: 50, left: 100 }} theme={nivoTheme} colors={theme.palette.secondary.main} labelFormat={d => formatCurrency(d)} axisLeft={{ tickSize: 0, tickPadding: 10 }} axisBottom={{ legend: 'Balance', legendPosition: 'middle', legendOffset: 40, format: formatLargeNumber }} enableGridY={false} tooltipLabel={d=>d.indexValue} valueFormat={value => formatCurrency(value)} /> : <NoDataMessage message="No active borrowers with outstanding balances." />}
             </ChartPaper>

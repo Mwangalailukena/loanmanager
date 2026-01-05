@@ -21,7 +21,7 @@ const PIE_CHART_COLORS = ['#FFC107', '#FF8F00', '#E65100', '#D84315'];
 export default function ArrearsAging({ arrearsAgingReport, exportArrearsAging, exportArrearsAgingPdf }) {
   return (
     <Grid container spacing={3}>
-      <Grid item xs={12} md={7}>
+      <Grid xs={12} md={7}>
         <Typography variant="h6" gutterBottom>Arrears Aging Details</Typography>
         <TableContainer component={Paper} elevation={1}>
           <Table size="small">
@@ -44,7 +44,7 @@ export default function ArrearsAging({ arrearsAgingReport, exportArrearsAging, e
           </Table>
         </TableContainer>
       </Grid>
-      <Grid item xs={12} md={5}>
+      <Grid xs={12} md={5}>
         <Card elevation={2}>
           <CardContent>
             <Typography variant="h6">Overdue Distribution by Amount</Typography>
@@ -60,7 +60,7 @@ export default function ArrearsAging({ arrearsAgingReport, exportArrearsAging, e
           </CardContent>
         </Card>
       </Grid>
-      <Grid item xs={12}>
+      <Grid xs={12}>
         <Typography variant="h6" gutterBottom>Overdue Loans</Typography>
         <TableContainer component={Paper} elevation={1}>
           <Table size="small">
@@ -89,7 +89,7 @@ export default function ArrearsAging({ arrearsAgingReport, exportArrearsAging, e
           </Table>
         </TableContainer>
       </Grid>
-      <Grid item xs={12}>
+      <Grid xs={12}>
         <Stack direction="row" spacing={2}>
           <Button variant="outlined" color="secondary" onClick={exportArrearsAging}>Export Arrears CSV</Button>
           <Button variant="contained" color="secondary" onClick={exportArrearsAgingPdf}>Export Arrears PDF</Button>

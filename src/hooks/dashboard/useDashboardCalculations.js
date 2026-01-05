@@ -17,9 +17,15 @@ import {
 import { calcStatus } from "../../utils/loanUtils";
   
   const getTrendPercentage = (current, previous) => {
-    if (previous === 0) return current > 0 ? "New" : null;
+    if (previous === 0) {
+      return current > 0 ? { direction: 'up', value: 'New' } : null;
+    }
     const change = ((current - previous) / previous) * 100;
-    return `${change >= 0 ? "+" : ""}${change.toFixed(1)}%`;
+    if (Math.abs(change) < 0.1) return null;
+    return {
+      direction: change >= 0 ? 'up' : 'down',
+      value: `${Math.abs(change).toFixed(1)}%`,
+    };
   };
 
 export const useDashboardCalculations = (loans, selectedMonth, settings, isMobile) => {

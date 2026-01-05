@@ -194,7 +194,7 @@ export default function ExpensesPage() {
 
           <Grid container spacing={3}>
             {/* --- SIDEBAR (RIGHT COLUMN on Desktop, TOP on Mobile) --- */}
-            <Grid item xs={12} md={4} order={{ xs: 1, md: 2 }}>
+            <Grid xs={12} md={4} order={{ xs: 1, md: 2 }}>
               <Stack spacing={3}>
                 {/* --- SUMMARY CARD --- */}
                 <Card sx={{ borderRadius: 3, elevation: 2 }}>
@@ -251,7 +251,7 @@ export default function ExpensesPage() {
             </Grid>
 
             {/* --- MAIN CONTENT (LEFT COLUMN on Desktop, BOTTOM on Mobile) --- */}
-            <Grid item xs={12} md={8} order={{ xs: 2, md: 1 }}>
+            <Grid xs={12} md={8} order={{ xs: 2, md: 1 }}>
               <Card sx={{ borderRadius: 3, elevation: 2 }}>
                 <CardHeader title="Transactions" action={
                   <ToggleButtonGroup
@@ -268,10 +268,10 @@ export default function ExpensesPage() {
                 } />
                 <CardContent>
                   <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
-                    <Grid item xs={12} sm={6} md={5}><TextField label="Search..." variant="outlined" size="small" fullWidth value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></Grid>
-                    <Grid item xs={12} sm={6} md={3}><FormControl fullWidth size="small"><InputLabel>Category</InputLabel><Select value={categoryFilter} label="Category" onChange={(e) => setCategoryFilter(e.target.value)}>{uniqueCategories.map(cat => <MenuItem key={cat} value={cat}>{cat}</MenuItem>)}</Select></FormControl></Grid>
-                    <Grid item xs={6} sm={6} md={2}><DatePicker label="Start Date" value={startDate} onChange={setStartDate} slotProps={{ textField: { size: 'small' } }} /></Grid>
-                    <Grid item xs={6} sm={6} md={2}><DatePicker label="End Date" value={endDate} onChange={setEndDate} slotProps={{ textField: { size: 'small' } }} /></Grid>
+                    <Grid xs={12} sm={6} md={5}><TextField label="Search..." variant="outlined" size="small" fullWidth value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></Grid>
+                    <Grid xs={12} sm={6} md={3}><FormControl fullWidth size="small"><InputLabel>Category</InputLabel><Select value={categoryFilter} label="Category" onChange={(e) => setCategoryFilter(e.target.value)}>{uniqueCategories.map(cat => <MenuItem key={cat} value={cat}>{cat}</MenuItem>)}</Select></FormControl></Grid>
+                    <Grid xs={6} sm={6} md={2}><DatePicker label="Start Date" value={startDate} onChange={setStartDate} slotProps={{ textField: { size: 'small' } }} /></Grid>
+                    <Grid xs={6} sm={6} md={2}><DatePicker label="End Date" value={endDate} onChange={setEndDate} slotProps={{ textField: { size: 'small' } }} /></Grid>
                   </Grid>
                 </CardContent>
                 {loading ? (

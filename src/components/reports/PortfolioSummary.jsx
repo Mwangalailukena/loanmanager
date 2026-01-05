@@ -22,7 +22,7 @@ export default function PortfolioSummary({ portfolioSummary, arrearsAgingReport,
 
   return (
     <Grid container spacing={3}>
-      <Grid item xs={12} md={8}>
+      <Grid xs={12} md={8}>
         <Card elevation={2} sx={{ height: '100%' }}>
           <CardContent>
             <Typography variant="h6" gutterBottom>Key Metrics</Typography>
@@ -41,7 +41,7 @@ export default function PortfolioSummary({ portfolioSummary, arrearsAgingReport,
           </CardContent>
         </Card>
       </Grid>
-      <Grid item xs={12} md={4}>
+      <Grid xs={12} md={4}>
         <Card elevation={2} sx={{ height: '100%' }}>
           <CardContent>
             <Typography variant="h6">Risks</Typography>
@@ -58,7 +58,7 @@ export default function PortfolioSummary({ portfolioSummary, arrearsAgingReport,
           </CardContent>
         </Card>
       </Grid>
-      <Grid item xs={12} md={4}>
+      <Grid xs={12} md={4}>
         <Card elevation={2} sx={{ height: '100%' }}>
           <CardContent>
             <Typography variant="h6">Portfolio Health</Typography>
@@ -70,7 +70,7 @@ export default function PortfolioSummary({ portfolioSummary, arrearsAgingReport,
           </CardContent>
         </Card>
       </Grid>
-      <Grid item xs={12} md={4}>
+      <Grid xs={12} md={4}>
         <Card elevation={2} sx={{ height: '100%' }}>
           <CardContent>
             <Typography variant="h6">Financial Overview</Typography>
@@ -86,7 +86,7 @@ export default function PortfolioSummary({ portfolioSummary, arrearsAgingReport,
           </CardContent>
         </Card>
       </Grid>
-      <Grid item xs={12}>
+      <Grid xs={12}>
         <Stack direction="row" spacing={2}>
           <Button variant="outlined" color="secondary" onClick={exportPortfolioSummary}>Export Summary CSV</Button>
           <Button variant="contained" color="secondary" onClick={exportPortfolioSummaryPdf}>Export Summary PDF</Button>
