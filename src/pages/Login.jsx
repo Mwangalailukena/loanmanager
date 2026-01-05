@@ -5,12 +5,12 @@ import {
   TextField,
   Button,
   Alert,
-  Stack,
   Link,
   Divider,
   CircularProgress,
   InputAdornment,
   IconButton,
+  Paper,
 } from "@mui/material";
 import { useAuth } from "../contexts/AuthProvider";
 import { useNavigate, Link as RouterLink } from "react-router-dom";
@@ -25,12 +25,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [resetMessage, setResetMessage] = useState("");
-
-  // --- IMPROVEMENT 1: Granular loading state ---
-  // Tracks which specific action is loading: 'email', 'google', 'reset', or null
   const [isLoading, setIsLoading] = useState(null);
-
-  // --- IMPROVEMENT 2: Password visibility state ---
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
@@ -43,7 +38,7 @@ export default function Login() {
     e.preventDefault();
     setError("");
     setResetMessage("");
-    setIsLoading("email"); // Set specific loading state
+    setIsLoading("email");
 
     try {
       await login(email, password);
@@ -57,14 +52,14 @@ export default function Login() {
         setError("Failed to log in. Please check your internet connection and try again.");
       }
     } finally {
-      setIsLoading(null); // Reset loading state
+      setIsLoading(null);
     }
   };
 
   const handleGoogleLogin = async () => {
     setError("");
     setResetMessage("");
-    setIsLoading("google"); // Set specific loading state
+    setIsLoading("google");
 
     try {
       await loginWithGoogle();
@@ -76,7 +71,7 @@ export default function Login() {
         setError("Google sign-in failed. Please try again.");
       }
     } finally {
-      setIsLoading(null); // Reset loading state
+      setIsLoading(null);
     }
   };
 
@@ -88,7 +83,7 @@ export default function Login() {
       return;
     }
 
-    setIsLoading("reset"); // Set specific loading state
+    setIsLoading("reset");
     try {
       await resetPassword(email);
       setResetMessage("Password reset email sent. Check your inbox (and spam folder).");
@@ -99,27 +94,45 @@ export default function Login() {
         setError("Failed to send reset email. Please try again.");
       }
     } finally {
-      setIsLoading(null); // Reset loading state
+      setIsLoading(null);
     }
   };
 
   return (
-    <Box height="100vh" display="flex" justifyContent="center" alignItems="center" bgcolor="#e0f2f1" p={2}>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        bgcolor: "background.default",
+        p: 2,
+      }}
+    >
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <Box maxWidth={400} width="100%" bgcolor="white" p={4} borderRadius={2} boxShadow={3}>
-          {/* --- IMPROVEMENT 3: Added Logo --- */}
-          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-            <img src="/android/android-launchericon-512-512.png" alt="Loan Manager Logo" style={{ height: '50px' }} />
+        <Paper
+          component="section"
+          sx={{
+            p: 3,
+            width: '100%',
+            maxWidth: '400px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+            borderTop: theme => `4px solid ${theme.palette.primary.main}`, // Subtle top border for visual anchor
+          }}
+        >
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1, mb: 1 }}>
+            <img src="/android/android-launchericon-512-512.png" alt="Loan Manager Logo" style={{ height: '36px' }} />
           </Box>
-          <Typography variant="h5" component="h1" mb={3} color="primary" sx={{ textAlign: 'center', fontWeight: 'bold' }}>
+          <Typography variant="h4" component="h1" sx={{ textAlign: 'center', fontWeight: 600, color: 'text.primary', mb: 2, letterSpacing: '0.01em' }}>
             Welcome Back
           </Typography>
 
-          {/* --- IMPROVEMENT 4: Animated Alerts --- */}
           <AnimatePresence>
             {error && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
@@ -138,7 +151,7 @@ export default function Login() {
           </AnimatePresence>
 
           <form onSubmit={handleLogin}>
-            <Stack spacing={2}>
+            <Box sx={{ mb: 3 }}> {/* Grouping TextFields and Forgot Password link */}
               <TextField
                 label="Email"
                 type="email"
@@ -149,6 +162,7 @@ export default function Login() {
                 variant="outlined"
                 aria-label="Email address"
                 disabled={!!isLoading}
+                sx={{ mb: 1.5 }} // Spacing between fields
               />
               <TextField
                 label="Password"
@@ -175,49 +189,50 @@ export default function Login() {
                   ),
                 }}
               />
-              <Button
-                variant="contained"
-                type="submit"
-                fullWidth
-                disabled={!!isLoading}
-                endIcon={isLoading === 'email' && <CircularProgress size={20} color="inherit" />}
-              >
-                {isLoading === 'email' ? "Logging In..." : "Log In"}
-              </Button>
-
               <Link
                 component="button"
                 type="button"
-                variant="body2"
+                variant="caption" // Smaller variant for de-emphasis
                 onClick={handleResetPassword}
                 disabled={!!isLoading}
-                sx={{ alignSelf: 'flex-end' }}
+                sx={{ alignSelf: 'flex-end', mt: 1, color: 'text.secondary' }} // More subtle color and top margin
               >
                 {isLoading === 'reset' ? 'Sending email...' : 'Forgot password?'}
               </Link>
+            </Box>
 
-              <Divider>OR</Divider>
+            <Button
+              variant="contained"
+              type="submit"
+              fullWidth
+              disabled={!!isLoading}
+              endIcon={isLoading === 'email' && <CircularProgress size={20} color="inherit" />}
+              sx={{ height: 48, mb: 3 }} // Increased height, bottom margin for separation
+            >
+              {isLoading === 'email' ? "Logging In..." : "Log In"}
+            </Button>
 
-              <Button
-                variant="outlined"
-                startIcon={<Google />}
-                fullWidth
-                onClick={handleGoogleLogin}
-                disabled={!!isLoading}
-              >
-                {/* No spinner here for a cleaner look during other operations */}
-                {isLoading === 'google' ? "Redirecting to Google..." : "Sign in with Google"}
-              </Button>
+            <Divider sx={{ mb: 3 }}>OR</Divider> {/* Increased bottom margin for separation */}
 
-              <Typography variant="body2" align="center">
-                Don’t have an account?{" "}
-                <Link component={RouterLink} to="/register" disabled={!!isLoading}>
-                  Register
-                </Link>
-              </Typography>
-            </Stack>
+            <Button
+              variant="outlined"
+              startIcon={<Google />}
+              fullWidth
+              onClick={handleGoogleLogin}
+              disabled={!!isLoading}
+              sx={{ mb: 3 }} // Bottom margin for separation
+            >
+              {isLoading === 'google' ? "Redirecting to Google..." : "Sign in with Google"}
+            </Button>
+
+            <Typography variant="body2" align="center">
+              Don’t have an account?{" "}
+              <Link component={RouterLink} to="/register" disabled={!!isLoading}>
+                Register
+              </Link>
+            </Typography>
           </form>
-        </Box>
+        </Paper>
       </motion.div>
     </Box>
   );

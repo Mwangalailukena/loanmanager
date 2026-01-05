@@ -75,7 +75,7 @@ const getAppTheme = (mode) =>
       },
     },
     shape: {
-      borderRadius: 12,
+      borderRadius: 16,
     },
     components: {
       MuiAppBar: {
@@ -106,23 +106,59 @@ const getAppTheme = (mode) =>
           },
         },
       },
-      MuiPaper: {
+            MuiPaper: {
+              styleOverrides: {
+                root: {
+                  backgroundImage: 'none',
+                  boxShadow: mode === 'dark'
+                    ? '0px 1px 3px rgba(0, 0, 0, 0.6)'
+                    : '0px 1px 3px rgba(0, 0, 0, 0.1)',
+                  border: mode === 'dark'
+                    ? '1px solid rgba(255, 255, 255, 0.15)'
+                    : '1px solid rgba(0, 0, 0, 0.08)',
+                },
+              },
+            },
+      MuiAlert: {
         styleOverrides: {
           root: {
-            backgroundImage: 'none',
-            boxShadow: mode === 'dark' 
-              ? '0 4px 20px rgba(0, 0, 0, 0.4)' 
-              : '0 4px 20px rgba(0, 0, 0, 0.03)',
-            border: mode === 'dark'
-              ? '1px solid rgba(255, 255, 255, 0.05)'
-              : '1px solid rgba(0, 0, 0, 0.02)',
+            // Ensures the text within the Alert uses the theme's text color for consistency
+            '& .MuiAlert-message': {
+              color: 'text.primary',
+              fontWeight: 400,
+            },
+            // Reduce severity background opacity a bit
+            backgroundColor: mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
+            // Adjust border radius for consistency
+            borderRadius: 10,
           },
-        },
-      },
-      MuiCard: {
-        styleOverrides: {
-          root: {
-            borderRadius: 16,
+          filledError: {
+            backgroundColor: mode === 'dark' ? 'rgba(248, 113, 113, 0.2)' : 'rgba(239, 68, 68, 0.1)',
+            color: mode === 'dark' ? '#F87171' : '#EF4444',
+            '& .MuiAlert-icon': {
+                color: mode === 'dark' ? '#F87171' : '#EF4444',
+            },
+          },
+          filledSuccess: {
+            backgroundColor: mode === 'dark' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.1)',
+            color: mode === 'dark' ? '#10B981' : '#10B981',
+             '& .MuiAlert-icon': {
+                color: mode === 'dark' ? '#10B981' : '#10B981',
+            },
+          },
+          filledInfo: {
+            backgroundColor: mode === 'dark' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)',
+            color: mode === 'dark' ? '#3B82F6' : '#3B82F6',
+             '& .MuiAlert-icon': {
+                color: mode === 'dark' ? '#3B82F6' : '#3B82F6',
+            },
+          },
+          filledWarning: {
+            backgroundColor: mode === 'dark' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(245, 158, 11, 0.1)',
+            color: mode === 'dark' ? '#F59E0B' : '#F59E0B',
+             '& .MuiAlert-icon': {
+                color: mode === 'dark' ? '#F59E0B' : '#F59E0B',
+            },
           },
         },
       },

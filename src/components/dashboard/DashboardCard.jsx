@@ -13,12 +13,12 @@ import {
 import { motion } from "framer-motion";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
+import { usePrefersReducedMotion } from "../../hooks/usePrefersReducedMotion";
 
 const cardVariants = {
-  hidden: { opacity: 0, y: 20, scale: 0.95 },
+  hidden: { opacity: 0, scale: 0.95 },
   visible: (i) => ({
     opacity: 1,
-    y: 0,
     scale: 1,
     transition: { delay: i * 0.1, duration: 0.4, ease: "easeOut" },
   }),
@@ -33,6 +33,21 @@ const DashboardCard = ({
   snapshot,
 }) => {
   const theme = useTheme();
+  const prefersReducedMotion = usePrefersReducedMotion();
+
+  const motionProps = prefersReducedMotion ? {
+    initial: "visible",
+    animate: "visible",
+    whileHover: {},
+    whileTap: {},
+  } : {
+    variants: cardVariants,
+    initial: "hidden",
+    animate: "visible",
+    custom: index,
+    whileHover: { scale: 1.02 },
+    whileTap: { scale: 0.98 },
+  };
 
   return (
     <Grid
@@ -50,31 +65,23 @@ const DashboardCard = ({
     >
       <Tooltip title={card.tooltip} arrow placement="top">
         <motion.div
-          variants={cardVariants}
-          initial="hidden"
-          animate="visible"
-          custom={index}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => handleCardClick(card.filter)}
+          {...motionProps}
           style={{ height: "100%" }}
         >
           <Card
             sx={{
-              p: isMobile ? 2 : 2.5,
+              p: 1.5,
               height: "100%",
               display: "flex",
               flexDirection: "column",
               backgroundColor: theme.palette.background.paper,
               boxShadow: snapshot.isDragging ? theme.shadows[8] : "0 4px 12px rgba(0,0,0,0.03)",
               border: `1px solid ${theme.palette.divider}`,
-              borderRadius: 4,
-              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+              transition: prefersReducedMotion ? 'none' : "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
               transform: snapshot.isDragging ? 'rotate(2deg)' : 'rotate(0deg)',
               "&:hover": {
-                boxShadow: "0 12px 24px rgba(0,0,0,0.06)",
+                boxShadow: theme.palette.mode === 'dark' ? '0 4px 10px rgba(0,0,0,0.8)' : '0 4px 10px rgba(0,0,0,0.15)',
                 borderColor: theme.palette[card.color]?.main || theme.palette.primary.main,
-                transform: "translateY(-4px)",
               },
               position: "relative",
               overflow: "hidden",
@@ -89,14 +96,14 @@ const DashboardCard = ({
               <Box sx={{ 
                 color: theme.palette[card.color]?.main || theme.palette.primary.main,
                 backgroundColor: alpha(theme.palette[card.color]?.main || theme.palette.primary.main, 0.1),
-                borderRadius: 3,
-                width: 44,
-                height: 44,
+                borderRadius: 2.5,
+                width: 36,
+                height: 36,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}>
-                {typeof card.icon === "function" ? card.icon(card.value) : card.icon}
+                {typeof card.icon === "function" ? card.icon(card.value) : React.cloneElement(card.icon, { style: { fontSize: '1.25rem' } })}
               </Box>
               {card.trend && (
                 <Tooltip title="Change from previous period" arrow>
@@ -111,9 +118,9 @@ const DashboardCard = ({
                     }}
                   >
                     {card.trend.direction === "up" ? (
-                      <ArrowUpwardIcon sx={{ fontSize: 14, color: theme.palette.success.main }} />
+                      <ArrowUpwardIcon sx={{ fontSize: 12, color: theme.palette.success.main }} />
                     ) : (
-                      <ArrowDownwardIcon sx={{ fontSize: 14, color: theme.palette.error.main }} />
+                      <ArrowDownwardIcon sx={{ fontSize: 12, color: theme.palette.error.main }} />
                     )}
                     <Typography
                       variant="caption"
@@ -133,41 +140,42 @@ const DashboardCard = ({
             
             <Typography
               variant="caption"
-              sx={{ color: theme.palette.text.secondary, fontWeight: 600, mb: 0.5, textTransform: 'none', letterSpacing: 'normal', fontSize: '0.75rem' }}
+              sx={{ color: theme.palette.text.secondary, fontWeight: 400, mb: 0.75, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.6rem' }}
             >
               {card.label}
             </Typography>
 
-            <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.5 }}>
+            <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.4 }}>
               <Typography
                 variant="h5"
                 sx={{
-                  fontWeight: 800,
-                  fontSize: isMobile ? "1.4rem" : "1.75rem",
+                  fontWeight: 900,
+                  fontSize: isMobile ? "1.2rem" : "1.6rem",
                   color: theme.palette.text.primary,
                   letterSpacing: '-0.02em',
+                  lineHeight: 1.2,
                 }}
               >
                 {card.value}
               </Typography>
             </Box>
 
-            <Box sx={{ mt: 'auto', pt: 2 }}>
+            <Box sx={{ mt: 'auto', pt: 1.5 }}>
               {card.progress !== null && (
                 <Box>
                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                      <Typography variant="caption" sx={{ fontWeight: 600, color: theme.palette.text.secondary }}>Progress</Typography>
-                      <Typography variant="caption" sx={{ fontWeight: 700, color: theme.palette.text.primary }}>{Math.round(card.progress * 100)}%</Typography>
+                      <Typography variant="caption" sx={{ fontWeight: 600, color: theme.palette.text.secondary, fontSize: '0.6rem' }}>Progress</Typography>
+                      <Typography variant="caption" sx={{ fontWeight: 700, color: theme.palette.text.primary, fontSize: '0.6rem' }}>{Math.round(card.progress * 100)}%</Typography>
                    </Box>
                   <LinearProgress
                     variant="determinate"
                     value={card.progress * 100}
                     sx={{
-                      height: 6,
-                      borderRadius: 3,
+                      height: 5,
+                      borderRadius: 2.5,
                       backgroundColor: alpha(theme.palette[card.color]?.main || theme.palette.primary.main, 0.1),
                       "& .MuiLinearProgress-bar": {
-                        borderRadius: 3,
+                        borderRadius: 2.5,
                         backgroundColor: theme.palette[card.color]?.main || theme.palette.primary.main,
                       },
                     }}
