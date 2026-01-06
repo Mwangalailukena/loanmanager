@@ -51,16 +51,16 @@ const BottomNavBar = () => {
     <Paper
       sx={{
         position: "fixed",
-        bottom: 12, left: 0, right: 0,
-        width: "calc(100% - 24px)",
+        bottom: 16, left: 0, right: 0, // Increased bottom margin
+        width: "calc(100% - 32px)", // Increased side margins
         maxWidth: 600, margin: "0 auto",
         display: { xs: "block", sm: "none" },
         zIndex: theme.zIndex.appBar + 1,
-        borderRadius: 20, overflow: "hidden",
-        backdropFilter: "blur(20px) saturate(180%)",
-        backgroundColor: theme.palette.mode === 'dark' ? "rgba(22, 30, 49, 0.7)" : "rgba(255, 255, 255, 0.7)",
-        border: "1px solid " + (theme.palette.mode === 'dark' ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.05)"),
-        boxShadow: theme.palette.mode === 'dark' ? "0 8px 32px rgba(0, 0, 0, 0.4)" : "0 8px 32px rgba(0, 0, 0, 0.08)",
+        borderRadius: 24, overflow: "hidden", // Increased border radius
+        backdropFilter: "blur(22px) saturate(180%)", // Slightly increased blur
+        backgroundColor: theme.palette.mode === 'dark' ? "rgba(22, 30, 49, 0.6)" : "rgba(255, 255, 255, 0.6)", // Reduced opacity
+        border: "1px solid " + (theme.palette.mode === 'dark' ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.03)"), // Subtler border
+        boxShadow: theme.palette.mode === 'dark' ? "0 6px 24px rgba(0, 0, 0, 0.3)" : "0 6px 24px rgba(0, 0, 0, 0.05)", // Subtler shadow
       }}
       elevation={0}
     >
@@ -75,13 +75,19 @@ const BottomNavBar = () => {
             position: "relative", minWidth: 0, px: 1,
             color: theme.palette.text.secondary,
             transition: 'all 0.2s ease',
+            py: '8px', // Increased vertical padding for actions
             "&.Mui-selected": {
               color: theme.palette.primary.main,
               "& .MuiBottomNavigationAction-label": {
-                fontWeight: 700,
-                fontSize: '0.75rem',
+                fontWeight: 600,
+                fontSize: '0.7rem', // Slightly smaller font size
               },
             },
+            "&:not(.Mui-selected)": {
+                "& .MuiBottomNavigationAction-label": {
+                    fontSize: '0.65rem', // Smaller font size for unselected
+                }
+            }
           },
         }}
       >
@@ -96,7 +102,7 @@ const BottomNavBar = () => {
                         <motion.div
                             animate={{ 
                                 y: isSelected ? -4 : 0,
-                                scale: isSelected ? 1.1 : 1 // Reduced scale for subtlety
+                                scale: isSelected ? 1.05 : 1 // Reduced scale for subtlety
                             }}
                             // --- FIX: Remove duration/ease and use only spring properties ---
                             transition={{ 

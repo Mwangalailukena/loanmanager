@@ -206,13 +206,13 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
           alignItems: "center",
           width: "fit-content",
           maxWidth: "90%",
-          borderRadius: 16,
-          backdropFilter: "blur(16px) saturate(180%)",
-          backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.6 : 0.8),
-          border: "1px solid " + (theme.palette.mode === 'dark' ? alpha(theme.palette.common.white, 0.08) : alpha(theme.palette.common.black, 0.04)),
+          borderRadius: 20, // Increased border radius
+          backdropFilter: "blur(18px) saturate(180%)", // Slightly increased blur
+          backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.5 : 0.7), // Reduced opacity
+          border: "1px solid " + (theme.palette.mode === 'dark' ? alpha(theme.palette.common.white, 0.05) : alpha(theme.palette.common.black, 0.03)), // Subtler border
           boxShadow: theme.palette.mode === 'dark' 
-            ? "0 8px 32px rgba(0, 0, 0, 0.4)" 
-            : "0 8px 32px rgba(0, 0, 0, 0.05)",
+            ? "0 6px 24px rgba(0, 0, 0, 0.3)" 
+            : "0 6px 24px rgba(0, 0, 0, 0.03)", // Subtler shadow
           zIndex: theme.zIndex.appBar + 1,
           transform: barVisible ? "translateY(0)" : "translateY(-100px)",
           opacity: barVisible ? 1 : 0,
@@ -226,7 +226,7 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
             alignItems: "center",
             p: 0.5,
             borderRadius: 12,
-            bgcolor: alpha(theme.palette.text.primary, 0.03),
+            // Removed bgcolor for a cleaner look
           }}
         >
           {navItems.map((item) => {
@@ -245,8 +245,8 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
                     textTransform: "none",
                     color: isActive ? theme.palette.primary.main : theme.palette.text.secondary,
                     borderRadius: 10,
-                    px: 2,
-                    py: 1,
+                    px: 2.5, // Increased horizontal padding
+                    py: 1.2, // Increased vertical padding
                     fontWeight: 600,
                     transition: "all 0.2s ease-in-out",
                     "&:hover": {
@@ -272,11 +272,11 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
                     elevation: 0,
                     sx: {
                       mt: 1.5,
-                      borderRadius: 3,
-                      backdropFilter: 'blur(16px) saturate(180%)',
-                      backgroundColor: alpha(theme.palette.background.paper, 0.9),
+                      borderRadius: 4, // Increased border radius
+                      backdropFilter: 'blur(18px) saturate(180%)', // Increased blur
+                      backgroundColor: alpha(theme.palette.background.paper, 0.9), // Slightly increased opacity
                       border: '1px solid ' + alpha(theme.palette.divider, 0.1),
-                      boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.08)', // Subtler shadow
                     },
                   }}
                   transformOrigin={{ horizontal: "left", vertical: "top" }}
@@ -293,7 +293,8 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
                       sx={{
                         borderRadius: 1.5,
                         mx: 1,
-                        my: 0.5,
+                        my: 0.7, // Increased vertical margin
+                        py: 0.8, // Added vertical padding
                         '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.08) }
                       }}
                     >
@@ -306,27 +307,26 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
                 </Menu>
               </React.Fragment>
             ) : (
-              <Button
-                key={item.text}
-                onClick={() => navigate(item.path)}
-                sx={{
-                  textTransform: "none",
-                  color: isActive ? theme.palette.primary.main : theme.palette.text.secondary,
-                  borderRadius: 10,
-                  px: 2,
-                  py: 1,
-                  fontWeight: 600,
-                  transition: "all 0.2s ease-in-out",
-                  "&:hover": {
-                    bgcolor: alpha(theme.palette.primary.main, 0.08),
-                    color: theme.palette.primary.main,
-                  },
-                  ...(isActive && {
-                    bgcolor: alpha(theme.palette.primary.main, 0.1),
-                  }),
-                }}
-              >
-                {item.text}
+                              <Button
+                                key={item.text}
+                                onClick={() => navigate(item.path)}
+                                sx={{
+                                  textTransform: "none",
+                                  color: isActive ? theme.palette.primary.main : theme.palette.text.secondary,
+                                  borderRadius: 10,
+                                  px: 2.5, // Increased horizontal padding
+                                  py: 1.2, // Increased vertical padding
+                                  fontWeight: 600,
+                                  transition: "all 0.2s ease-in-out",
+                                  "&:hover": {
+                                    bgcolor: alpha(theme.palette.primary.main, 0.08),
+                                    color: theme.palette.primary.main,
+                                  },
+                                  ...(isActive && {
+                                    bgcolor: alpha(theme.palette.primary.main, 0.1),
+                                  }),
+                                }}
+                              >                {item.text}
               </Button>
             );
           })}
@@ -335,7 +335,7 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
         {/* Action Buttons */}
         <Box sx={{ display: "flex", alignItems: "center", ml: 2 }}>
           {/* Search Button */}
-          <IconButton onClick={toggleSearch} sx={{ mx: 0.5, borderRadius: "50%", p: 1, bgcolor: theme.palette.action.hover, transition: "all 0.2s ease-in-out", "&:hover": { transform: "scale(1.1)" } }}>
+          <IconButton onClick={toggleSearch} sx={{ mx: 0.5, borderRadius: "50%", p: 1, transition: "all 0.2s ease-in-out", "&:hover": { transform: "scale(1.1)" } }}>
             {isSearchOpen ? <CloseIcon sx={{ color: theme.palette.text.secondary }} /> : <SearchIcon sx={{ color: theme.palette.text.secondary }} />}          </IconButton>
           {/* Search Field (if open) */}
           <TextField
@@ -358,7 +358,7 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
 
           {/* Notifications Button */}
           <Tooltip title="Notifications">
-            <IconButton onClick={(e) => setNotificationAnchor(e.currentTarget)} sx={{ mx: 0.5, borderRadius: "50%", p: 1, bgcolor: theme.palette.action.hover, position: "relative", transition: "all 0.2s ease-in-out", "&:hover": { transform: "scale(1.1)" } }}>
+            <IconButton onClick={(e) => setNotificationAnchor(e.currentTarget)} sx={{ mx: 0.5, borderRadius: "50%", p: 1, position: "relative", transition: "all 0.2s ease-in-out", "&:hover": { transform: "scale(1.1)" } }}>
               <NotificationsIcon sx={{ color: theme.palette.text.secondary }} />
               {unreadNotifications.length > 0 && (
                 <Box
@@ -380,7 +380,7 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
 
           {/* Settings/Account Button */}
           <Tooltip title="Account">
-            <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ mx: 0.5, borderRadius: "50%", p: 1, bgcolor: theme.palette.action.hover, transition: "all 0.2s ease-in-out", "&:hover": { transform: "scale(1.1)" } }}>
+            <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ mx: 0.5, borderRadius: "50%", p: 1, transition: "all 0.2s ease-in-out", "&:hover": { transform: "scale(1.1)" } }}>
               <Avatar
                 sx={{ width: 24, height: 24, fontSize: "0.75rem", bgcolor: theme.palette.primary.main, color: theme.palette.primary.contrastText }}
                 src={currentUser?.photoURL || ''}
@@ -408,11 +408,11 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
           elevation: 0,
           sx: {
             mt: 1.5,
-            borderRadius: 3,
-            backdropFilter: 'blur(16px) saturate(180%)',
-            backgroundColor: alpha(theme.palette.background.paper, 0.8),
+            borderRadius: 4, // Increased border radius
+            backdropFilter: 'blur(18px) saturate(180%)', // Increased blur
+            backgroundColor: alpha(theme.palette.background.paper, 0.9), // Slightly increased opacity
             border: '1px solid ' + alpha(theme.palette.divider, 0.1),
-            boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.08)', // Subtler shadow
             minWidth: 200,
           },
         }}
@@ -426,9 +426,9 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
             {currentUser?.email}
         </Typography>
         <Divider sx={{ my: 0.5 }} />
-        <MenuItem onClick={handleProfileClick} sx={{ mx: 1, borderRadius: 1.5 }}><ListItemIcon><AccountCircleIcon fontSize="small" /></ListItemIcon>Profile</MenuItem>
+        <MenuItem onClick={handleProfileClick} sx={{ mx: 1, borderRadius: 1.5, my: 0.7, py: 0.8 }}><ListItemIcon><AccountCircleIcon fontSize="small" /></ListItemIcon>Profile</MenuItem>
         
-        <MenuItem onClick={(e) => setAccountSettingsAnchor(e.currentTarget)} sx={{ mx: 1, borderRadius: 1.5 }}>
+        <MenuItem onClick={(e) => setAccountSettingsAnchor(e.currentTarget)} sx={{ mx: 1, borderRadius: 1.5, my: 0.7, py: 0.8 }}>
             <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
             Settings
         </MenuItem>
@@ -441,31 +441,32 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
             elevation: 0,
             sx: {
               mt: 1.5,
-              borderRadius: 3,
-              backdropFilter: 'blur(16px) saturate(180%)',
-              backgroundColor: alpha(theme.palette.background.paper, 0.8),
+              borderRadius: 4, // Increased border radius
+              backdropFilter: 'blur(18px) saturate(180%)', // Increased blur
+              backgroundColor: alpha(theme.palette.background.paper, 0.9), // Slightly increased opacity
               border: '1px solid ' + alpha(theme.palette.divider, 0.1),
-              boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.08)', // Subtler shadow
             },
           }}
           transformOrigin={{ horizontal: "left", vertical: "top" }}
           anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
         >
-          <MenuItem onClick={handleSettingsClick} sx={{ mx: 1, borderRadius: 1.5 }}><ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>Interest Rate/ Capital</MenuItem>
-          <MenuItem onClick={handleChangePasswordClick} sx={{ mx: 1, borderRadius: 1.5 }}><ListItemIcon><LockResetIcon fontSize="small" /></ListItemIcon>Change Password</MenuItem>
-          <MenuItem onClick={openHelpDialog} sx={{ mx: 1, borderRadius: 1.5 }}><ListItemIcon><HelpOutline fontSize="small" /></ListItemIcon>Help</MenuItem>
+          <MenuItem onClick={handleSettingsClick} sx={{ mx: 1, borderRadius: 1.5, my: 0.7, py: 0.8 }}><ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>Interest Rate/ Capital</MenuItem>
+          <MenuItem onClick={handleChangePasswordClick} sx={{ mx: 1, borderRadius: 1.5, my: 0.7, py: 0.8 }}><ListItemIcon><LockResetIcon fontSize="small" /></ListItemIcon>Change Password</MenuItem>
+          <MenuItem onClick={openHelpDialog} sx={{ mx: 1, borderRadius: 1.5, my: 0.7, py: 0.8 }}><ListItemIcon><HelpOutline fontSize="small" /></ListItemIcon>Help</MenuItem>
         </Menu>
         
         {/* NEW: Dark Mode Toggle */}
-        <MenuItem onClick={onToggleDarkMode} sx={{ mx: 1, borderRadius: 1.5 }}>
-          <ListItemIcon>
-            {darkMode ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
-          </ListItemIcon>
-          {darkMode ? 'Light Mode' : 'Dark Mode'}
-        </MenuItem>
-
-        <Divider sx={{ my: 1 }} />
-        <MenuItem onClick={handleLogout} sx={{ mx: 1, borderRadius: 1.5 }}><ListItemIcon><Logout fontSize="small" color="error" /></ListItemIcon>Logout</MenuItem>
+                
+                <MenuItem onClick={onToggleDarkMode} sx={{ mx: 1, borderRadius: 1.5, my: 0.7, py: 0.8 }}>
+                  <ListItemIcon>
+                    {darkMode ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
+                  </ListItemIcon>
+                  {darkMode ? 'Light Mode' : 'Dark Mode'}
+                </MenuItem>
+        
+                <Divider sx={{ my: 1 }} />
+                <MenuItem onClick={handleLogout} sx={{ mx: 1, borderRadius: 1.5, my: 0.7, py: 0.8 }}><ListItemIcon><Logout fontSize="small" color="error" /></ListItemIcon>Logout</MenuItem>
       </Menu>
       
       {/* Notifications Popover */}
@@ -480,11 +481,11 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
           sx: {
             width: 320,
             p: 1,
-            borderRadius: 3,
-            backdropFilter: 'blur(16px) saturate(180%)',
-            backgroundColor: alpha(theme.palette.background.paper, 0.8),
+            borderRadius: 4, // Increased border radius
+            backdropFilter: 'blur(18px) saturate(180%)', // Increased blur
+            backgroundColor: alpha(theme.palette.background.paper, 0.9), // Slightly increased opacity
             border: '1px solid ' + alpha(theme.palette.divider, 0.1),
-            boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.08)', // Subtler shadow
           },
         }}
       >

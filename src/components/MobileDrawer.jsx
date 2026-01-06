@@ -110,18 +110,19 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode }) => 
 
   const listItemSx = {
     borderRadius: theme.shape.borderRadius,
-    mx: 1, my: 0.5,
+    mx: 1, my: 0.8, // Increased vertical margin
+    py: 0.5, // Added vertical padding
     transition: theme.transitions.create(['background-color', 'color', 'padding-left']),
     '& .MuiListItemIcon-root': { transition: theme.transitions.create(['transform']), },
     '&:hover': { '& .MuiListItemIcon-root': { transform: 'scale(1.1)', }, },
     '&.Mui-selected': {
-      backgroundColor: alpha(theme.palette.primary.main, theme.palette.action.selectedOpacity),
+      backgroundColor: alpha(theme.palette.primary.main, theme.palette.action.selectedOpacity - 0.04), // Subtler background
       color: theme.palette.primary.main,
-      paddingLeft: '13px',
-      borderLeft: `3px solid ${theme.palette.primary.main}`,
+      paddingLeft: '16px', // Adjusted padding after removing border
+      // Removed borderLeft
       '& .MuiListItemIcon-root': { color: theme.palette.primary.main, },
     },
-    '&.Mui-selected:hover': { backgroundColor: alpha(theme.palette.primary.main, theme.palette.action.selectedOpacity + theme.palette.action.hoverOpacity), }
+    '&.Mui-selected:hover': { backgroundColor: alpha(theme.palette.primary.main, theme.palette.action.selectedOpacity + theme.palette.action.hoverOpacity - 0.04), }
   };
 
   return (
@@ -133,18 +134,18 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode }) => 
           '& .MuiDrawer-paper': {
             boxSizing: 'border-box',
             width: 260, // Keep fixed width for consistency
-            backgroundColor: alpha(theme.palette.background.paper, 0.95), // Slightly more opaque
-            backdropFilter: 'blur(12px)', // Slightly more blur
+            backgroundColor: alpha(theme.palette.background.paper, 0.9), // Increased opacity
+            backdropFilter: 'blur(16px)', // Increased blur
             borderRadius: '0 16px 16px 0', // Rounded corners on the right side
-            borderRight: `1px solid ${alpha(theme.palette.divider, 0.2)}`, // Subtle border
+            borderRight: `1px solid ${alpha(theme.palette.divider, 0.1)}`, // Subtler border
             display: 'flex',
             flexDirection: 'column',
           },
         }}
       >
-        <Box sx={{ p: 2, pb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
-            <Avatar sx={{ width: 40, height: 40, mr: 2, flexShrink: 0 }} src={currentUser?.photoURL || ''}>
+        <Box sx={{ px: 2, py: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0, py: 1 }}>
+            <Avatar sx={{ width: 48, height: 48, mr: 2, flexShrink: 0 }} src={currentUser?.photoURL || ''}>
               {stringToInitials(currentUser?.displayName || "U")}
             </Avatar>
             <Box sx={{ minWidth: 0 }}>
@@ -156,8 +157,8 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode }) => 
                 </Box>
                 <Divider />
 
-        <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
-          <List component="nav" subheader={<ListSubheader>Main</ListSubheader>}>
+        <Box sx={{ flexGrow: 1, overflowY: 'auto', px: 1, py: 1 }}>
+          <List component="nav" subheader={<ListSubheader sx={{ fontWeight: 'bold', color: theme.palette.text.secondary, textTransform: 'uppercase', fontSize: '0.8rem' }}>Main</ListSubheader>}>
             {menuItems.map(item => (
               <motion.div variants={itemVariants} key={item.text}>
                 <ListItem
@@ -176,7 +177,7 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode }) => 
             ))}
           </List>
           <Divider />
-          <List component="nav" subheader={<ListSubheader>Analytics</ListSubheader>}>
+          <List component="nav" subheader={<ListSubheader sx={{ fontWeight: 'bold', color: theme.palette.text.secondary, textTransform: 'uppercase', fontSize: '0.8rem' }}>Analytics</ListSubheader>}>
             {analyticsItems.map(item => (
               <motion.div variants={itemVariants} key={item.text}>
                 <ListItem
@@ -195,7 +196,7 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode }) => 
             ))}
           </List>
           <Divider />
-          <List component="nav" subheader={<ListSubheader>Account</ListSubheader>}>
+          <List component="nav" subheader={<ListSubheader sx={{ fontWeight: 'bold', color: theme.palette.text.secondary, textTransform: 'uppercase', fontSize: '0.8rem' }}>Account</ListSubheader>}>
             {accountItems.map(item => (
               <motion.div variants={itemVariants} key={item.text}>
                 <ListItem
@@ -218,7 +219,7 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode }) => 
           </List>
         </Box>
 
-        <Box sx={{ mt: 'auto', p: 1, display: 'flex', justifyContent: 'space-around', alignItems: 'center', borderTop: `1px solid ${theme.palette.divider}` }}>
+        <Box sx={{ mt: 'auto', p: 2, display: 'flex', justifyContent: 'space-around', alignItems: 'center', borderTop: `1px solid ${theme.palette.divider}` }}>
           <IconButton onClick={onToggleDarkMode} color="inherit" aria-label={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}>
             {darkMode ? (
               <LightModeIcon sx={{ color: theme.palette.primary.main }} />
