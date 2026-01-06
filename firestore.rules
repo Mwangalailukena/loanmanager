@@ -39,11 +39,10 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
 
-    // Activity Logs: Users can read and create their own logs
+    // Activity Logs: Users can read, update, and delete their own logs
     match /activityLogs/{logId} {
-      allow read: if isOwner(resource.data.userId);
+      allow read, update, delete: if isOwner(resource.data.userId);
       allow create: if isOwner(request.resource.data.userId);
-      allow update, delete: if false;
     }
 
     // Guarantors: Users can manage their own guarantors

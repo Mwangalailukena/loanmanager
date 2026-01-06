@@ -37,6 +37,10 @@ import UndoIcon from "@mui/icons-material/Undo";
 import AutorenewIcon from "@mui/icons-material/Autorenew";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import InfoIcon from "@mui/icons-material/Info";
+import PeopleIcon from "@mui/icons-material/People";
+import ReceiptIcon from "@mui/icons-material/Receipt";
+import SecurityIcon from "@mui/icons-material/Security";
+import CommentIcon from "@mui/icons-material/Comment";
 import {
   Button,
   Dialog,
@@ -73,6 +77,21 @@ const actionLabels = {
   undo_refinance: "Undo: Refinance",
   undo_loan_delete: "Undo: Loan Deletion",
   undo_loan_update: "Undo: Loan Update",
+  borrower_creation: "Borrower Added",
+  expense_creation: "Expense Added",
+  guarantor_creation: "Guarantor Added",
+  comment_creation: "Comment Added",
+  expense_deletion: "Expense Deleted",
+  guarantor_deletion: "Guarantor Deleted",
+  comment_deletion: "Comment Deleted",
+  loan_deletion: "Loan Deleted",
+  undo_borrower_creation: "Undo: Borrower Add",
+  undo_expense_creation: "Undo: Expense Add",
+  undo_guarantor_creation: "Undo: Guarantor Add",
+  undo_comment_creation: "Undo: Comment Add",
+  undo_expense_delete: "Undo: Expense Del",
+  undo_guarantor_delete: "Undo: Guarantor Del",
+  undo_comment_delete: "Undo: Comment Del",
 };
 
 // Colors for Chips based on action type
@@ -92,6 +111,13 @@ const actionChipColors = {
   undo_refinance: "default",
   undo_loan_delete: "default",
   undo_loan_update: "default",
+  borrower_creation: "success",
+  expense_creation: "warning",
+  guarantor_creation: "info",
+  comment_creation: "default",
+  expense_deletion: "error",
+  guarantor_deletion: "error",
+  comment_deletion: "error",
 };
 
 const timelineDotColors = {
@@ -123,10 +149,31 @@ const actionIcons = {
   undo_refinance: <UndoIcon />,
   undo_loan_delete: <UndoIcon />,
   undo_loan_update: <UndoIcon />,
+  borrower_creation: <PeopleIcon />,
+  expense_creation: <ReceiptIcon />,
+  guarantor_creation: <SecurityIcon />,
+  comment_creation: <CommentIcon />,
+  expense_deletion: <DeleteIcon />,
+  guarantor_deletion: <DeleteIcon />,
+  comment_deletion: <DeleteIcon />,
 };
 
 export default function ActivityPage() {
-  const { activityLogs, undoLoanCreation, undoPayment, updateActivityLog, undoRefinanceLoan, undoDeleteLoan, undoUpdateLoan } = useFirestore();
+  const { 
+    activityLogs, 
+    undoLoanCreation, 
+    undoPayment, 
+    undoRefinanceLoan, 
+    undoDeleteLoan, 
+    undoUpdateLoan,
+    undoBorrowerCreation,
+    undoExpenseCreation,
+    undoGuarantorCreation,
+    undoCommentCreation,
+    undoExpenseDeletion,
+    undoGuarantorDeletion,
+    undoCommentDeletion
+  } = useFirestore();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const showSnackbar = useSnackbar();
@@ -227,26 +274,55 @@ export default function ActivityPage() {
   const handleUndo = async () => {
     if (!confirmUndo.log) return;
 
-    const { id, type, relatedId, newLoanId, amount, previousRepaidAmount, undoData } = confirmUndo.log;
+    const { id, type, relatedId, amount, undoData } = confirmUndo.log;
+
+    if (!relatedId && type !== "loan_deletion" && type !== "expense_deletion" && type !== "guarantor_deletion" && type !== "comment_deletion") {
+      showSnackbar("Cannot undo: Missing related ID.", "error");
+      setConfirmUndo({ open: false, log: null });
+      return;
+    }
 
     try {
       if (type === "loan_creation") {
-        await undoLoanCreation(relatedId);
+        await undoLoanCreation(relatedId, id);
       } else if (type === "payment_add") {
-        await undoPayment(relatedId, confirmUndo.log.loanId, amount);
+        if (!confirmUndo.log.loanId) throw new Error("Missing loan ID for payment undo");
+        await undoPayment(relatedId, confirmUndo.log.loanId, amount, id);
       } else if (type === "loan_refinanced") {
-        await undoRefinanceLoan(relatedId, newLoanId, previousRepaidAmount);
-      } else if (type === "delete") {
-        await undoDeleteLoan(relatedId, undoData);
+         if (!confirmUndo.log.oldLoanId) throw new Error("Missing old loan ID for refinance undo");
+        await undoRefinanceLoan(relatedId, confirmUndo.log.oldLoanId, id);
+      } else if (type === "loan_deletion" || type === "delete") { // Handle both just in case
+        if (!undoData || !undoData.id) throw new Error("Missing data to undo deletion");
+        await undoDeleteLoan(undoData, id);
       } else if (type === "loan_update" || type === "loan_top_up") {
-        await undoUpdateLoan(relatedId, undoData);
+         if (!undoData) throw new Error("Missing data to undo update/top-up");
+        await undoUpdateLoan(relatedId, undoData, id);
+      } else if (type === "borrower_creation") {
+        await undoBorrowerCreation(relatedId, id);
+      } else if (type === "expense_creation") {
+        await undoExpenseCreation(relatedId, id);
+      } else if (type === "guarantor_creation") {
+        await undoGuarantorCreation(relatedId, id);
+      } else if (type === "comment_creation") {
+        await undoCommentCreation(relatedId, id);
+      } else if (type === "expense_deletion") {
+         if (!undoData || !undoData.id) throw new Error("Missing data to undo expense deletion");
+        await undoExpenseDeletion(undoData, id);
+      } else if (type === "guarantor_deletion") {
+        if (!undoData || !undoData.id) throw new Error("Missing data to undo guarantor deletion");
+        await undoGuarantorDeletion(undoData, id);
+      } else if (type === "comment_deletion") {
+         if (!undoData || !undoData.id) throw new Error("Missing data to undo comment deletion");
+        await undoCommentDeletion(undoData, id);
       }
 
-      await updateActivityLog(id, { undone: true });
+      // The undo functions in the provider delete the original activity log, 
+      // so we don't need to update it here.
+      
       showSnackbar("Action undone successfully!", "success");
     } catch (error) {
       console.error("Error undoing action:", error);
-      showSnackbar("Failed to undo action.", "error");
+      showSnackbar(`Failed to undo action: ${error.message}`, "error");
     }
 
     setConfirmUndo({ open: false, log: null });
@@ -322,6 +398,14 @@ export default function ActivityPage() {
             <MenuItem value="settings_update">Settings Update</MenuItem>
             <MenuItem value="loan_defaulted">Loan Defaulted</MenuItem>
             <MenuItem value="loan_refinanced">Loan Refinanced</MenuItem>
+            <MenuItem value="loan_deletion">Loan Deleted</MenuItem>
+            <MenuItem value="borrower_creation">Borrower Added</MenuItem>
+            <MenuItem value="expense_creation">Expense Added</MenuItem>
+            <MenuItem value="guarantor_creation">Guarantor Added</MenuItem>
+            <MenuItem value="comment_creation">Comment Added</MenuItem>
+            <MenuItem value="expense_deletion">Expense Deleted</MenuItem>
+            <MenuItem value="guarantor_deletion">Guarantor Deleted</MenuItem>
+            <MenuItem value="comment_deletion">Comment Deleted</MenuItem>
           </Select>
         </FormControl>
         <FormControlLabel
