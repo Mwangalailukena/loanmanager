@@ -30,9 +30,10 @@ import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import localeData from 'dayjs/plugin/localeData';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
-import { Pie } from 'react-chartjs-2';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend as RechartsLegend, ResponsiveContainer } from 'recharts';
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, 
+  Legend as RechartsLegend, ResponsiveContainer, PieChart, Pie, Cell 
+} from 'recharts';
 
 
 import AddExpenseDialog from '../components/AddExpenseDialog';
@@ -40,7 +41,6 @@ import AddExpenseDialog from '../components/AddExpenseDialog';
 dayjs.extend(isBetween);
 dayjs.extend(localizedFormat);
 dayjs.extend(localeData);
-ChartJS.register(ArcElement, Tooltip, Legend);
 
 const getCategoryIcon = (category) => {
   switch (category) {
@@ -104,14 +104,11 @@ export default function ExpensesPage() {
       acc[expense.category] = (acc[expense.category] || 0) + expense.amount;
       return acc;
     }, {});
-    const labels = Object.keys(dataByCat);
-    const data = Object.values(dataByCat);
-    return { labels, datasets: [{
-      data,
-      backgroundColor: ['#1976d2', '#d32f2f', '#f57c00', '#388e3c', '#7b1fa2', '#0288d1'],
-      borderWidth: 0,
-    }]};
+    
+    return Object.entries(dataByCat).map(([name, value]) => ({ name, value }));
   }, [filteredExpenses]);
+
+  const COLORS = ['#1976d2', '#d32f2f', '#f57c00', '#388e3c', '#7b1fa2', '#0288d1'];
 
   const barChartData = useMemo(() => {
     const monthlyTotals = Array(12).fill(0);
@@ -231,7 +228,25 @@ export default function ExpensesPage() {
                   <Box sx={{ height: 300, display: 'flex', justifyContent: 'center', alignItems: 'center', p: 2 }}>
                      {filteredExpenses.length > 0 ? (
                        viewBy === 'month' ? (
-                        <Pie data={pieChartData} options={{ maintainAspectRatio: false, plugins: { legend: { position: 'bottom' }}}} />
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={pieChartData}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              outerRadius={80}
+                              fill="#8884d8"
+                              dataKey="value"
+                            >
+                              {pieChartData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <RechartsTooltip formatter={(value) => `K ${value.toLocaleString()}`} />
+                            <RechartsLegend />
+                          </PieChart>
+                        </ResponsiveContainer>
                        ) : (
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={barChartData}>

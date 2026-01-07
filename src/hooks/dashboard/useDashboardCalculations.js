@@ -68,15 +68,10 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
 
         const { loansForCalculations, defaultCards, rolloverAmount, hasUnsettledLoans } = useMemo(() => {
             const loansForCalculations = loans || [];
-            const loansThisMonth = loansForCalculations.filter((loan) =>
-              loan.startDate.startsWith(selectedMonth)
-            );
-            const previousMonthString = dayjs(selectedMonth).subtract(1, "month").format("YYYY-MM");
-            const loansLastMonth = loansForCalculations.filter(
-              (loan) => loan.startDate.startsWith(previousMonthString)
-            );
+            const currentMonthStr = selectedMonth;
+            const previousMonthStr = dayjs(selectedMonth).subtract(1, "month").format("YYYY-MM");
     
-            const initialStats = {
+            const initialStats = () => ({
               totalDisbursed: 0,
               totalCollected: 0,
               actualProfit: 0,
@@ -86,145 +81,80 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
               overdueLoansCount: 0,
               defaultedLoansCount: 0,
               totalOutstanding: 0,
-            };
+              totalLoansCount: 0,
+            });
     
-            // Calculate current month's stats
-            const monthlyStats = loansThisMonth.reduce((stats, loan) => {
+            const currentStats = initialStats();
+            const lastMonthStats = initialStats();
+            let hasUnsettledLoans = false;
+
+            loansForCalculations.forEach((loan) => {
               const principal = Number(loan.principal || 0);
               const repaidAmount = Number(loan.repaidAmount || 0);
               const interest = Number(loan.interest || 0);
               const status = calcStatus(loan);
-    
-              stats.totalDisbursed += principal;
-              stats.totalCollected += repaidAmount;
-              stats.totalExpectedProfit += interest;
-    
-              if (status === "Paid") {
-                stats.paidLoansCount += 1;
-                if (repaidAmount >= principal + interest) {
-                  stats.actualProfit += interest;
-                }
-              } else if (status === "Active") {
-                stats.activeLoansCount += 1;
-                stats.totalOutstanding += (principal + interest - repaidAmount);
-              } else if (status === "Overdue") {
-                stats.overdueLoansCount += 1;
-                stats.totalOutstanding += (principal + interest - repaidAmount);
-              } else if (status === "Defaulted") {
-                stats.defaultedLoansCount += 1;
-                stats.totalOutstanding += (principal + interest - repaidAmount);
-              }
-              return stats;
-            }, initialStats);
-    
-            const {
-              totalDisbursed,
-              totalCollected,
-              actualProfit,
-              totalExpectedProfit,
-              paidLoansCount,
-              activeLoansCount,
-              overdueLoansCount,
-              defaultedLoansCount,
-              totalOutstanding
-            } = monthlyStats;
-    
-            const totalLoansCount = loansThisMonth.length;
-            const monthKey = selectedMonth;
-            const investedCapital = Number(settings?.monthlySettings?.[monthKey]?.capital) || 0;
-            const availableCapital = investedCapital - totalDisbursed + totalCollected;
-            const averageLoan = totalLoansCount > 0 ? Math.round(totalDisbursed / totalLoansCount) : 0;
-    
-            // Calculate previous month's stats
-            const initialStatsLastMonth = {
-                totalDisbursed: 0,
-                totalCollected: 0,
-                actualProfit: 0,
-                totalExpectedProfit: 0,
-                paidLoansCount: 0,
-                activeLoansCount: 0,
-                overdueLoansCount: 0,
-                defaultedLoansCount: 0,
-                totalOutstanding: 0,
-            };
-    
-            const monthlyStatsLastMonth = loansLastMonth.reduce((stats, loan) => {
-                const principal = Number(loan.principal || 0);
-                const repaidAmount = Number(loan.repaidAmount || 0);
-                const interest = Number(loan.interest || 0);
-                const status = calcStatus(loan);
-    
+              const isCurrentMonth = loan.startDate.startsWith(currentMonthStr);
+              const isLastMonth = loan.startDate.startsWith(previousMonthStr);
+
+              if (isCurrentMonth || isLastMonth) {
+                const stats = isCurrentMonth ? currentStats : lastMonthStats;
+                
+                stats.totalLoansCount += 1;
                 stats.totalDisbursed += principal;
                 stats.totalCollected += repaidAmount;
                 stats.totalExpectedProfit += interest;
-    
+      
                 if (status === "Paid") {
-                    stats.paidLoansCount += 1;
-                    if (repaidAmount >= principal + interest) {
-                        stats.actualProfit += interest;
-                    }
-                } else if (status === "Active") {
-                    stats.activeLoansCount += 1;
-                    stats.totalOutstanding += (principal + interest - repaidAmount);
-                } else if (status === "Overdue") {
-                    stats.overdueLoansCount += 1;
-                    stats.totalOutstanding += (principal + interest - repaidAmount);
-                } else if (status === "Defaulted") {
-                    stats.defaultedLoansCount += 1;
-                    stats.totalOutstanding += (principal + interest - repaidAmount);
+                  stats.paidLoansCount += 1;
+                  if (repaidAmount >= principal + interest) {
+                    stats.actualProfit += interest;
+                  }
+                } else {
+                  if (status === "Active") stats.activeLoansCount += 1;
+                  else if (status === "Overdue") stats.overdueLoansCount += 1;
+                  else if (status === "Defaulted") stats.defaultedLoansCount += 1;
+                  
+                  stats.totalOutstanding += (principal + interest - repaidAmount);
+                  
+                  if (isCurrentMonth && status !== "Defaulted") {
+                    hasUnsettledLoans = true;
+                  }
                 }
-                return stats;
-            }, initialStatsLastMonth);
+              }
+            });
     
-            const {
-                totalDisbursed: totalDisbursedLastMonth,
-                totalCollected: totalCollectedLastMonth,
-                actualProfit: actualProfitLastMonth,
-                totalExpectedProfit: totalExpectedProfitLastMonth,
-                paidLoansCount: paidLoansCountLastMonth,
-                activeLoansCount: activeLoansCountLastMonth,
-                overdueLoansCount: overdueLoansCountLastMonth,
-                defaultedLoansCount: defaultedLoansCountLastMonth,
-                totalOutstanding: totalOutstandingLastMonth,
-            } = monthlyStatsLastMonth;
+            const investedCapital = Number(settings?.monthlySettings?.[currentMonthStr]?.capital) || 0;
+            const availableCapital = investedCapital - currentStats.totalDisbursed + currentStats.totalCollected;
+            const averageLoan = currentStats.totalLoansCount > 0 ? Math.round(currentStats.totalDisbursed / currentStats.totalLoansCount) : 0;
     
-            const totalLoansCountLastMonth = loansLastMonth.length;
-            const investedCapitalLastMonth = Number(settings?.monthlySettings?.[previousMonthString]?.capital) || 0;
-            const availableCapitalLastMonth = investedCapitalLastMonth - totalDisbursedLastMonth + totalCollectedLastMonth;
-            const averageLoanLastMonth = totalLoansCountLastMonth > 0 ? Math.round(totalDisbursedLastMonth / totalLoansCountLastMonth) : 0;
+            const investedCapitalLastMonth = Number(settings?.monthlySettings?.[previousMonthStr]?.capital) || 0;
+            const availableCapitalLastMonth = investedCapitalLastMonth - lastMonthStats.totalDisbursed + lastMonthStats.totalCollected;
+            const averageLoanLastMonth = lastMonthStats.totalLoansCount > 0 ? Math.round(lastMonthStats.totalDisbursed / lastMonthStats.totalLoansCount) : 0;
     
-    
-            // Calculate trends for all relevant cards
+            // Calculate trends
             const investedCapitalTrend = getTrendPercentage(investedCapital, investedCapitalLastMonth);
             const availableCapitalTrend = getTrendPercentage(availableCapital, availableCapitalLastMonth);
-            const disbursedTrend = getTrendPercentage(totalDisbursed, totalDisbursedLastMonth);
-            const collectedTrend = getTrendPercentage(totalCollected, totalCollectedLastMonth);
-            const partnerDividendsTrend = getTrendPercentage(totalExpectedProfit, totalExpectedProfitLastMonth);
-            const expectedProfitTrend = getTrendPercentage(totalExpectedProfit, totalExpectedProfitLastMonth);
-            const actualProfitTrend = getTrendPercentage(actualProfit, actualProfitLastMonth);
-            const totalLoansTrend = getTrendPercentage(totalLoansCount, totalLoansCountLastMonth);
-            const paidLoansTrend = getTrendPercentage(paidLoansCount, paidLoansCountLastMonth);
-            const activeLoansTrend = getTrendPercentage(activeLoansCount, activeLoansCountLastMonth);
-            const overdueLoansTrend = getTrendPercentage(overdueLoansCount, overdueLoansCountLastMonth);
-            const defaultedLoansTrend = getTrendPercentage(defaultedLoansCount, defaultedLoansCountLastMonth);
-            const totalOutstandingTrend = getTrendPercentage(totalOutstanding, totalOutstandingLastMonth);
+            const disbursedTrend = getTrendPercentage(currentStats.totalDisbursed, lastMonthStats.totalDisbursed);
+            const collectedTrend = getTrendPercentage(currentStats.totalCollected, lastMonthStats.totalCollected);
+            const partnerDividendsTrend = getTrendPercentage(currentStats.totalExpectedProfit, lastMonthStats.totalExpectedProfit);
+            const expectedProfitTrend = getTrendPercentage(currentStats.totalExpectedProfit, lastMonthStats.totalExpectedProfit);
+            const actualProfitTrend = getTrendPercentage(currentStats.actualProfit, lastMonthStats.actualProfit);
+            const totalLoansTrend = getTrendPercentage(currentStats.totalLoansCount, lastMonthStats.totalLoansCount);
+            const paidLoansTrend = getTrendPercentage(currentStats.paidLoansCount, lastMonthStats.paidLoansCount);
+            const activeLoansTrend = getTrendPercentage(currentStats.activeLoansCount, lastMonthStats.activeLoansCount);
+            const overdueLoansTrend = getTrendPercentage(currentStats.overdueLoansCount, lastMonthStats.overdueLoansCount);
+            const defaultedLoansTrend = getTrendPercentage(currentStats.defaultedLoansCount, lastMonthStats.defaultedLoansCount);
+            const totalOutstandingTrend = getTrendPercentage(currentStats.totalOutstanding, lastMonthStats.totalOutstanding);
             const averageLoanTrend = getTrendPercentage(averageLoan, averageLoanLastMonth);
     
+            const totalPartnerDividends = currentStats.totalExpectedProfit;
     
-            // --- FIX: Partner Dividends is now 100% of the totalExpectedProfit
-            const totalPartnerDividends = totalExpectedProfit;
-    
-            // Calculate Individual Partner Dividends
             const individualPartnerDividends = [
-                { name: "Agnes Ilukena", amount: totalExpectedProfit / 2 },
-                { name: "Jones Ilukena", amount: totalExpectedProfit / 2 },
+                { name: "Agnes Ilukena", amount: totalPartnerDividends / 2 },
+                { name: "Jones Ilukena", amount: totalPartnerDividends / 2 },
             ];
 
             const rolloverAmount = availableCapital - totalPartnerDividends;
-            const hasUnsettledLoans = loansThisMonth.some(l => {
-                const s = calcStatus(l);
-                return s !== "Paid" && s !== "Defaulted";
-            });
     
             const defaultCards = [
               {
@@ -254,7 +184,7 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
               {
                 id: "totalDisbursed",
                 label: "Total Disbursed",
-                value: `K ${totalDisbursed.toLocaleString()}`,
+                value: `K ${currentStats.totalDisbursed.toLocaleString()}`,
                 color: "primary",
                 filter: "all",
                 tooltip: "Total principal amount disbursed this month",
@@ -266,11 +196,11 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
               {
                 id: "totalCollected",
                 label: "Total Collected",
-                value: `K ${totalCollected.toLocaleString()}`,
+                value: `K ${currentStats.totalCollected.toLocaleString()}`,
                 color: "info",
                 filter: "paid",
                 tooltip: "Total amount collected from repayments this month",
-                progress: totalDisbursed > 0 ? totalCollected / totalDisbursed : null,
+                progress: currentStats.totalDisbursed > 0 ? currentStats.totalCollected / currentStats.totalDisbursed : null,
                 icon: iconMap.totalCollected,
                 trend: collectedTrend,
                 group: "Financial Overview",
@@ -287,7 +217,7 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
                           Total Dividends (100% of Expected Profit)
                       </Typography>
                       <Typography variant="caption" display="block" mb={1}>
-                          Expected Profit this month: K {totalExpectedProfit.toLocaleString()}
+                          Expected Profit this month: K {currentStats.totalExpectedProfit.toLocaleString()}
                       </Typography>
                       {individualPartnerDividends.map((p) => (
                           <Typography key={p.name} variant="caption" display="block">
@@ -304,7 +234,7 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
               {
                 id: "expectedProfit",
                 label: "Interest Expected",
-                value: `K ${totalExpectedProfit.toLocaleString()}`,
+                value: `K ${currentStats.totalExpectedProfit.toLocaleString()}`,
                 color: "secondary",
                 filter: "all",
                 tooltip: "Total expected profit from interest",
@@ -316,11 +246,11 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
               {
                 id: "actualProfit",
                 label: "Actual Interest",
-                value: `K ${actualProfit.toLocaleString()}`,
+                value: `K ${currentStats.actualProfit.toLocaleString()}`,
                 color: "success",
                 filter: "paid",
                 tooltip: "Profit earned from fully repaid loans",
-                progress: totalExpectedProfit > 0 ? actualProfit / totalExpectedProfit : null,
+                progress: currentStats.totalExpectedProfit > 0 ? currentStats.actualProfit / currentStats.totalExpectedProfit : null,
                 icon: iconMap.actualProfit,
                 trend: actualProfitTrend,
                 group: "Financial Overview",
@@ -328,7 +258,7 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
               {
                 id: "totalLoans",
                 label: "Total Loans",
-                value: totalLoansCount,
+                value: currentStats.totalLoansCount,
                 color: "primary",
                 filter: "all",
                 tooltip: "Total number of loans issued this month",
@@ -340,11 +270,11 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
               {
                 id: "paidLoans",
                 label: "Paid Loans",
-                value: paidLoansCount,
+                value: currentStats.paidLoansCount,
                 color: "success",
                 filter: "paid",
                 tooltip: "Loans fully paid back this month",
-                progress: totalLoansCount ? paidLoansCount / totalLoansCount : 0,
+                progress: currentStats.totalLoansCount ? currentStats.paidLoansCount / currentStats.totalLoansCount : 0,
                 icon: iconMap.paidLoans,
                 trend: paidLoansTrend,
                 group: "Loan Portfolio",
@@ -352,11 +282,11 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
               {
                 id: "activeLoans",
                 label: "Active Loans",
-                value: activeLoansCount,
+                value: currentStats.activeLoansCount,
                 color: "info",
                 filter: "active",
                 tooltip: "Loans currently active and being repaid",
-                progress: totalLoansCount ? activeLoansCount / totalLoansCount : 0,
+                progress: currentStats.totalLoansCount ? currentStats.activeLoansCount / currentStats.totalLoansCount : 0,
                 icon: iconMap.activeLoans,
                 trend: activeLoansTrend,
                 group: "Loan Portfolio",
@@ -364,33 +294,33 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
               {
                 id: "overdueLoans",
                 label: "Overdue Loans",
-                value: overdueLoansCount,
+                value: currentStats.overdueLoansCount,
                 color: "error",
                 filter: "overdue",
                 tooltip: "Loans overdue for repayment",
-                progress: totalLoansCount ? overdueLoansCount / totalLoansCount : 0,
-                icon: iconMap.overdueLoans(overdueLoansCount),
-                pulse: overdueLoansCount > 0,
+                progress: currentStats.totalLoansCount ? currentStats.overdueLoansCount / currentStats.totalLoansCount : 0,
+                icon: iconMap.overdueLoans(currentStats.overdueLoansCount),
+                pulse: currentStats.overdueLoansCount > 0,
                 trend: overdueLoansTrend,
                 group: "Loan Portfolio",
               },
               {
                 id: "defaultedLoans",
                 label: "Defaulted Loans",
-                value: defaultedLoansCount,
+                value: currentStats.defaultedLoansCount,
                 color: "warning",
                 filter: "defaulted",
                 tooltip: "Loans marked as defaulted",
-                progress: totalLoansCount ? defaultedLoansCount / totalLoansCount : 0,
+                progress: currentStats.totalLoansCount ? currentStats.defaultedLoansCount / currentStats.totalLoansCount : 0,
                 icon: iconMap.defaultedLoans,
-                pulse: defaultedLoansCount > 0,
+                pulse: currentStats.defaultedLoansCount > 0,
                 trend: defaultedLoansTrend,
                 group: "Loan Portfolio",
               },
               {
                 id: "totalOutstanding",
                 label: "Total Outstanding",
-                value: `K ${totalOutstanding.toLocaleString()}`,
+                value: `K ${currentStats.totalOutstanding.toLocaleString()}`,
                 color: "warning",
                 filter: "active",
                 tooltip: "Total outstanding repayments still due",

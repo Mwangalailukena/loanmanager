@@ -239,8 +239,16 @@ export default function BorrowerProfilePage() {
     comments, addComment, deleteComment,
     guarantors, deleteGuarantor,
     refinanceLoan,
+    fetchComments,
   } = useFirestore();
   const theme = useTheme();
+
+  useEffect(() => {
+    if (id) {
+        const unsub = fetchComments({ borrowerId: id });
+        return () => unsub && unsub();
+    }
+  }, [id]);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [newComment, setNewComment] = useState("");
@@ -290,7 +298,6 @@ export default function BorrowerProfilePage() {
 
   const borrower = borrowers.find((b) => b.id === id);
   const associatedLoans = loans.filter((loan) => loan.borrowerId === id);
-  const borrowerComments = comments.filter(comment => comment.borrowerId === id);
   const borrowerGuarantors = guarantors.filter(g => g.borrowerId === id);
 
   const creditScoreData = useCreditScore(associatedLoans);
@@ -757,9 +764,9 @@ export default function BorrowerProfilePage() {
 
                 <TabPanel value={activeTab} index={3}>
                   <Typography variant="h6" fontWeight="bold" gutterBottom>Internal Comments</Typography>
-                  {borrowerComments.length > 0 ? (
+                  {comments.length > 0 ? (
                     <List disablePadding>
-                      {borrowerComments.map(comment => (
+                      {comments.map(comment => (
                         <ListItem key={comment.id} disablePadding sx={{ borderBottom: '1px solid', borderColor: 'divider' }}>
                           <ListItemText 
                             primary={comment.text} 

@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useFirestore } from '../contexts/FirestoreProvider';
-import { useCreditScore } from '../hooks/useCreditScore';
 import {
   Box,  Typography,
   Paper,
@@ -48,16 +47,15 @@ import AddPaymentDialog from '../components/AddPaymentDialog';
 
 const BorrowerCard = ({ 
   borrower, 
+  associatedLoans,
+  score,
   onWhatsAppClick, 
   onPaymentClick, 
   onNoteClick,
   isSelected,
   onSelect
 }) => {
-  const { loans } = useFirestore();
   const navigate = useNavigate();
-  const associatedLoans = useMemo(() => loans.filter((loan) => loan.borrowerId === borrower.id), [loans, borrower.id]);
-  const { score } = useCreditScore(associatedLoans);
   const [anchorEl, setAnchorEl] = useState(null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -245,6 +243,15 @@ export default function BorrowerListPage() {
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteText, setNoteText] = useState("");
 
+  const loansByBorrower = useMemo(() => {
+    const map = {};
+    loans.forEach(loan => {
+      if (!map[loan.borrowerId]) map[loan.borrowerId] = [];
+      map[loan.borrowerId].push(loan);
+    });
+    return map;
+  }, [loans]);
+
   const handleWhatsAppClick = (borrower) => {
     setSelectedBorrower(borrower);
     setWhatsAppOpen(true);
@@ -300,24 +307,23 @@ export default function BorrowerListPage() {
 
   const summaryStats = useMemo(() => {
     const totalBorrowers = borrowers.length;
-    const borrowersWithOverdueLoans = new Set();
+    let overdueBorrowersCount = 0;
 
-    loans.forEach(loan => {
-      const status = calcStatus(loan);
-      if (status === 'Overdue') {
-        borrowersWithOverdueLoans.add(loan.borrowerId);
+    Object.values(loansByBorrower).forEach(bLoans => {
+      if (bLoans.some(l => calcStatus(l) === 'Overdue')) {
+        overdueBorrowersCount++;
       }
     });
 
     return {
       totalBorrowers,
-      borrowersWithOverdueLoansCount: borrowersWithOverdueLoans.size,
+      borrowersWithOverdueLoansCount: overdueBorrowersCount,
     };
-  }, [borrowers, loans]);
+  }, [borrowers.length, loansByBorrower]);
 
   const sortedAndFilteredBorrowers = useMemo(() => {
     let result = borrowers.map(b => {
-      const bLoans = loans.filter(l => l.borrowerId === b.id);
+      const bLoans = loansByBorrower[b.id] || [];
       
       const stats = bLoans.reduce((acc, loan) => {
         if (loan.status === 'Defaulted') return acc;
@@ -337,7 +343,7 @@ export default function BorrowerListPage() {
       // Mock credit score logic similar to BorrowerCard for filtering
       const score = Math.max(0, 100 - (hasOverdue ? 40 : 0)); // Simplified for sorting/filtering
 
-      return { ...b, totalDebt, priority, score };
+      return { ...b, totalDebt, priority, score, bLoans };
     });
 
     if (debouncedSearchTerm) {
@@ -361,7 +367,8 @@ export default function BorrowerListPage() {
       if (b.priority !== a.priority) return b.priority - a.priority;
       return b.totalDebt - a.totalDebt;
     });
-  }, [borrowers, loans, debouncedSearchTerm, showActiveLoans, showOverdueLoans, showHighRisk]);
+  }, [borrowers, loansByBorrower, debouncedSearchTerm, showActiveLoans, showOverdueLoans, showHighRisk]);
+
 
 
 
@@ -458,6 +465,8 @@ export default function BorrowerListPage() {
             <Grid item xs={12} sm={6} md={4} key={borrower.id}>
               <BorrowerCard 
                 borrower={borrower} 
+                associatedLoans={borrower.bLoans}
+                score={borrower.score}
                 onWhatsAppClick={handleWhatsAppClick}
                 onPaymentClick={handlePaymentClick}
                 onNoteClick={handleNoteClick}

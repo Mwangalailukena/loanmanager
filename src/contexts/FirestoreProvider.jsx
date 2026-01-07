@@ -16,6 +16,7 @@ import {
   getDocs, // Added getDocs
   getDoc, // Added getDoc
   deleteField,
+  limit, // Added limit import
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "./AuthProvider";
@@ -82,8 +83,6 @@ export function FirestoreProvider({ children }) {
       loans: { setter: setLoans, cacheKey: "loans", orderByField: "startDate" },
       payments: { setter: setPayments, cacheKey: "payments", orderByField: "date" },
       borrowers: { setter: setBorrowers, cacheKey: "borrowers", orderByField: "name" },
-      activityLogs: { setter: setActivityLogs, cacheKey: null, orderByField: "createdAt" },
-      comments: { setter: setComments, cacheKey: null, orderByField: "createdAt" },
       guarantors: { setter: setGuarantors, cacheKey: null, orderByField: "name" },
       expenses: { setter: setExpenses, cacheKey: "expenses", orderByField: "date" },
     };
@@ -116,6 +115,44 @@ export function FirestoreProvider({ children }) {
     return () => unsubscribes.forEach((unsub) => unsub());
   }, [currentUser, authLoading, isOnline]);
   
+  // --- On-Demand Fetching ---
+  const fetchActivityLogs = (limitCount = 100) => {
+    if (!currentUser) return () => {};
+    // Real-time listener for activity logs, but only when requested
+    const q = query(
+      collection(db, "activityLogs"),
+      where("userId", "==", currentUser.uid),
+      orderBy("createdAt", "desc"),
+      limit(limitCount) 
+    );
+    // Note: If you want to use 'limit', import it at the top. For now, fetching recent ones.
+    
+    const unsub = onSnapshot(q, (snap) => {
+      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setActivityLogs(data);
+    }, (err) => console.error("Error fetching activity logs:", err));
+    return unsub;
+  };
+
+  const fetchComments = (filters = {}) => {
+    if (!currentUser) return () => {};
+    const constraints = [
+      where("userId", "==", currentUser.uid),
+      orderBy("createdAt", "desc")
+    ];
+
+    if (filters.loanId) constraints.push(where("loanId", "==", filters.loanId));
+    if (filters.borrowerId) constraints.push(where("borrowerId", "==", filters.borrowerId));
+
+    const q = query(collection(db, "comments"), ...constraints);
+    
+    const unsub = onSnapshot(q, (snap) => {
+        const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setComments(data);
+    }, (err) => console.error("Error fetching comments:", err));
+    return unsub;
+  };
+
   // --- Actions ---
   const addBorrower = async (borrower) => {
     try {
@@ -214,7 +251,7 @@ export function FirestoreProvider({ children }) {
 
   const value = {
     loans, payments, borrowers, settings, activityLogs, comments, guarantors, expenses, loading,
-    addLoan, addPayment, updateSettings, addBorrower, 
+    addLoan, addPayment, updateSettings, addBorrower, fetchActivityLogs, fetchComments, 
     updateBorrower: async (id, updates) => {
       await updateDoc(doc(db, "borrowers", id), { ...updates, updatedAt: serverTimestamp() });
       showSnackbar("Borrower updated!", "success");

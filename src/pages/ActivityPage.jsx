@@ -53,8 +53,11 @@ import { useFirestore } from "../contexts/FirestoreProvider";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme, useMediaQuery, alpha } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import { formatDistanceToNow, parseISO } from "date-fns";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
 import { useSnackbar } from "../components/SnackbarProvider";
+
+dayjs.extend(relativeTime);
 
 const itemVariants = {
   hidden: { opacity: 0, y: 10 },
@@ -175,13 +178,20 @@ export default function ActivityPage() {
     undoGuarantorDeletion,
     undoCommentDeletion,
     updateActivityLog,
-    payments
+    payments,
+    fetchActivityLogs
   } = useFirestore();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const showSnackbar = useSnackbar();
 
   const [confirmUndo, setConfirmUndo] = useState({ open: false, log: null });
+
+  // Fetch activity logs on mount
+  useEffect(() => {
+    const unsub = fetchActivityLogs();
+    return () => unsub && unsub();
+  }, [fetchActivityLogs]);
 
   const ITEMS_PER_PAGE = 20;
   const [page, setPage] = useState(1);
@@ -272,11 +282,11 @@ export default function ActivityPage() {
 
   const groupedLogs = useMemo(() => {
     const groups = {};
-    filteredLogs.forEach(log => {
+    displayedLogs.forEach(log => {
       const dateISO = log.date || log.createdAt;
       if (!dateISO) return;
       const date = typeof dateISO === "string" 
-        ? parseISO(dateISO) 
+        ? dayjs(dateISO).toDate() 
         : dateISO.toDate ? dateISO.toDate() : new Date(dateISO);
       
       const today = new Date();
@@ -291,7 +301,7 @@ export default function ActivityPage() {
       groups[dateKey].push(log);
     });
     return groups;
-  }, [filteredLogs]);
+  }, [displayedLogs]);
 
   useEffect(() => {
     // Flatten grouped logs for initial display pagination if needed, 
@@ -514,14 +524,17 @@ export default function ActivityPage() {
                 let relativeTime = "";
                 if (dateISO) {
                   try {
-                    const parsedDate =
+                    const dateObj =
                       typeof dateISO === "string"
-                        ? parseISO(dateISO)
+                        ? dayjs(dateISO)
                         : dateISO.toDate
-                        ? dateISO.toDate()
-                        : dateISO;
-                    relativeTime = formatDistanceToNow(parsedDate, { addSuffix: true });
-                    dateStr = parsedDate.toLocaleString();
+                        ? dayjs(dateISO.toDate())
+                        : dayjs(dateISO);
+                    
+                    if (dateObj.isValid()) {
+                        relativeTime = dateObj.fromNow();
+                        dateStr = dateObj.toDate().toLocaleString();
+                    }
                   } catch {
                     // fallback if parsing fails
                   }
