@@ -51,7 +51,8 @@ import {
 } from "@mui/material";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { motion, AnimatePresence } from "framer-motion";
-import { useTheme, useMediaQuery } from "@mui/material";
+import { useTheme, useMediaQuery, alpha } from "@mui/material";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { useSnackbar } from "../components/SnackbarProvider";
 
@@ -172,7 +173,9 @@ export default function ActivityPage() {
     undoCommentCreation,
     undoExpenseDeletion,
     undoGuarantorDeletion,
-    undoCommentDeletion
+    undoCommentDeletion,
+    updateActivityLog,
+    payments
   } = useFirestore();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -188,6 +191,25 @@ export default function ActivityPage() {
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [useRelativeTime, setUseRelativeTime] = useState(true);
+  const [showUndoableOnly, setShowUndoableOnly] = useState(false);
+  const [showUnreviewedOnly, setShowUnreviewedOnly] = useState(false);
+
+  const handleMarkAsReviewed = async (id) => {
+    try {
+      await updateActivityLog(id, { reviewed: true });
+      showSnackbar("Activity marked as reviewed", "success");
+    } catch (error) {
+      showSnackbar("Failed to mark as reviewed", "error");
+    }
+  };
+
+  const getUndoWarning = (log) => {
+    if (log.type === 'loan_creation') {
+      const hasPayments = payments.some(p => p.loanId === log.relatedId);
+      if (hasPayments) return "Cannot undo: Payments already recorded. Reverse payments first.";
+    }
+    return null;
+  };
 
   // Reusable styles for the focused state of form fields
   const filterInputStyles = {
@@ -207,7 +229,8 @@ export default function ActivityPage() {
   };
 
   // Helper to highlight search term inside text with accent color
-  function highlightText(text, highlight) {
+  function highlightText(text = "", highlight) {
+    if (!text) return "";
     if (!highlight) return text;
     const regex = new RegExp(`(${highlight})`, "gi");
     const parts = text.split(regex);
@@ -230,10 +253,12 @@ export default function ActivityPage() {
     return activityLogs
       .filter((log) => {
         if (filterType !== "all" && log.type !== filterType) return false;
+        if (showUndoableOnly && (!log.undoable || log.undone)) return false;
+        if (showUnreviewedOnly && log.reviewed) return false;
         if (
           search &&
-          !log.description.toLowerCase().includes(search.toLowerCase()) &&
-          !(log.user?.toLowerCase().includes(search.toLowerCase()))
+          !(log.description?.toLowerCase() || "").includes(search.toLowerCase()) &&
+          !(log.user?.toLowerCase() || "").includes(search.toLowerCase())
         )
           return false;
         return true;
@@ -243,9 +268,34 @@ export default function ActivityPage() {
         const dateB = b.date || b.createdAt || 0;
         return new Date(dateB) - new Date(dateA);
       });
-  }, [activityLogs, filterType, search]);
+  }, [activityLogs, filterType, search, showUndoableOnly, showUnreviewedOnly]);
+
+  const groupedLogs = useMemo(() => {
+    const groups = {};
+    filteredLogs.forEach(log => {
+      const dateISO = log.date || log.createdAt;
+      if (!dateISO) return;
+      const date = typeof dateISO === "string" 
+        ? parseISO(dateISO) 
+        : dateISO.toDate ? dateISO.toDate() : new Date(dateISO);
+      
+      const today = new Date();
+      const yesterday = new Date();
+      yesterday.setDate(today.getDate() - 1);
+
+      let dateKey = date.toLocaleDateString();
+      if (date.toDateString() === today.toDateString()) dateKey = "Today";
+      else if (date.toDateString() === yesterday.toDateString()) dateKey = "Yesterday";
+
+      if (!groups[dateKey]) groups[dateKey] = [];
+      groups[dateKey].push(log);
+    });
+    return groups;
+  }, [filteredLogs]);
 
   useEffect(() => {
+    // Flatten grouped logs for initial display pagination if needed, 
+    // or just use filteredLogs for the 'displayed' state.
     setDisplayedLogs(filteredLogs.slice(0, page * ITEMS_PER_PAGE));
   }, [filteredLogs, page]);
 
@@ -374,7 +424,7 @@ export default function ActivityPage() {
 
       <Stack direction={{ xs: "column", sm: "row" }} spacing={2} mb={3}>
         <TextField
-          sx={filterInputStyles} // <-- Accent color on focus
+          sx={{ ...filterInputStyles, flexGrow: 2 }} // Increased flexGrow to make it wider
           label="Search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -382,7 +432,7 @@ export default function ActivityPage() {
           size="small"
           variant="outlined"
         />
-        <FormControl sx={{ minWidth: 160, ...filterInputStyles }} size="small">
+        <FormControl sx={{ minWidth: 160, ...filterInputStyles, flexGrow: 1 }} size="small">
           <InputLabel>Type</InputLabel>
           <Select
             value={filterType}
@@ -417,111 +467,173 @@ export default function ActivityPage() {
               color="primary"
             />
           }
-          label="Relative Time"
+          label="Relative"
+          labelPlacement="start"
+        />
+        <FormControlLabel
+          control={
+            <Switch
+              checked={showUndoableOnly}
+              onChange={(e) => setShowUndoableOnly(e.target.checked)}
+              color="secondary"
+            />
+          }
+          label="Undoable"
+          labelPlacement="start"
+        />
+        <FormControlLabel
+          control={
+            <Switch
+              checked={showUnreviewedOnly}
+              onChange={(e) => setShowUnreviewedOnly(e.target.checked)}
+              color="secondary"
+            />
+          }
+          label="Unreviewed"
           labelPlacement="start"
         />
       </Stack>
 
       <Timeline sx={{ p: 0 }}>
         <AnimatePresence>
-          {displayedLogs.map((log, index) => {
-            const userDisplay = log.user || "System";
-            const actionDisplay =
-              actionLabels[log.type] ??
-              (log.type ? log.type.replace(/_/g, " ") : "Unknown Action");
+          {Object.entries(groupedLogs).map(([dateKey, logs]) => (
+            <React.Fragment key={dateKey}>
+              <Box sx={{ position: 'sticky', top: 0, zIndex: 1, bgcolor: 'background.default', py: 1 }}>
+                <Typography variant="overline" color="text.secondary" fontWeight="bold" sx={{ letterSpacing: 1.5 }}>
+                  {dateKey}
+                </Typography>
+              </Box>
+              {logs.map((log, index) => {
+                const userDisplay = log.user || "System";
+                const actionDisplay =
+                  actionLabels[log.type] ??
+                  (log.type ? log.type.replace(/_/g, " ") : "Unknown Action");
 
-            const dateISO = log.date || log.createdAt;
-            let dateStr = "No valid date";
-            let relativeTime = "";
-            if (dateISO) {
-              try {
-                const parsedDate =
-                  typeof dateISO === "string"
-                    ? parseISO(dateISO)
-                    : dateISO.toDate
-                    ? dateISO.toDate()
-                    : dateISO;
-                relativeTime = formatDistanceToNow(parsedDate, { addSuffix: true });
-                dateStr = parsedDate.toLocaleString();
-              } catch {
-                // fallback if parsing fails
-              }
-            }
+                const dateISO = log.date || log.createdAt;
+                let dateStr = "No valid date";
+                let relativeTime = "";
+                if (dateISO) {
+                  try {
+                    const parsedDate =
+                      typeof dateISO === "string"
+                        ? parseISO(dateISO)
+                        : dateISO.toDate
+                        ? dateISO.toDate()
+                        : dateISO;
+                    relativeTime = formatDistanceToNow(parsedDate, { addSuffix: true });
+                    dateStr = parsedDate.toLocaleString();
+                  } catch {
+                    // fallback if parsing fails
+                  }
+                }
 
-            return (
-              <motion.div
-                key={log.id}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                variants={itemVariants}
-              >
-                <TimelineItem sx={{ '&::before': { content: 'none' } }}>
-                  <TimelineSeparator>
-                    <TimelineDot color={timelineDotColors[log.type] || "grey"} variant="outlined">
-                      {actionIcons[log.type] || null}
-                    </TimelineDot>
-                    {index < displayedLogs.length - 1 && <TimelineConnector />}
-                  </TimelineSeparator>
-                  <TimelineContent sx={{ py: '12px', px: 2 }}>
-                    <Paper elevation={2} sx={{ p: 2, borderRadius: 2, backgroundColor: index % 2 ? theme.palette.action.hover : 'transparent' }}>
-                      <ListItemText
-                        primary={
-                          <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
-                            <Typography
-                              variant="subtitle1"
-                              component="span"
-                              fontWeight="bold"
-                            >
-                              {highlightText(userDisplay, search)}
-                            </Typography>
-                            <Chip
-                              label={actionDisplay}
-                              size="small"
-                              color={actionChipColors[log.type] || "default"}
-                              sx={{ textTransform: "capitalize" }}
+                const undoWarning = getUndoWarning(log);
+
+                return (
+                  <motion.div
+                    key={log.id}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    variants={itemVariants}
+                  >
+                    <TimelineItem sx={{ '&::before': { content: 'none' } }}>
+                      <TimelineSeparator>
+                        <TimelineDot color={timelineDotColors[log.type] || "grey"} variant="outlined">
+                          {actionIcons[log.type] || null}
+                        </TimelineDot>
+                        <TimelineConnector />
+                      </TimelineSeparator>
+                      <TimelineContent sx={{ py: '12px', px: 2 }}>
+                        <Paper 
+                          elevation={2} 
+                          sx={{ 
+                            p: 2, 
+                            borderRadius: 2, 
+                            backgroundColor: log.reviewed ? alpha(theme.palette.success.light, 0.1) : (index % 2 ? theme.palette.action.hover : 'transparent'),
+                            border: log.reviewed ? `1px solid ${alpha(theme.palette.success.main, 0.2)}` : 'none'
+                          }}
+                        >
+                          <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+                            <ListItemText
+                              primary={
+                                <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
+                                  <Typography
+                                    variant="subtitle1"
+                                    component="span"
+                                    fontWeight="bold"
+                                  >
+                                    {highlightText(userDisplay, search)}
+                                  </Typography>
+                                  <Chip
+                                    label={actionDisplay}
+                                    size="small"
+                                    color={actionChipColors[log.type] || "default"}
+                                    sx={{ textTransform: "capitalize" }}
+                                  />
+                                  {log.reviewed && <Chip label="Reviewed" size="small" variant="outlined" color="success" icon={<CheckCircleIcon fontSize="small" />} />}
+                                </Box>
+                              }
+                              secondaryTypographyProps={{ component: 'div' }}
+                              secondary={
+                                <>
+                                  <Tooltip
+                                    title={dateStr}
+                                    arrow
+                                    placement="top"
+                                    TransitionComponent={Fade}
+                                  >
+                                    <Typography
+                                    component="span"
+                                    variant="caption"
+                                    color="text.secondary"
+                                    sx={{ display: "block", mb: 0.5, fontStyle: "italic" }}
+                                  >
+                                    {useRelativeTime ? relativeTime : dateStr}
+                                  </Typography>
+                                  </Tooltip>
+                                  <Typography component="span" variant="body2">
+                                    {highlightText(log.description ?? "", search)}
+                                  </Typography>
+                                  <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
+                                    {log.undoable && !log.undone && (
+                                      <Tooltip title={undoWarning || ""}>
+                                        <span>
+                                          <Button
+                                            size="small"
+                                            onClick={() => setConfirmUndo({ open: true, log })}
+                                            startIcon={<UndoIcon />}
+                                            disabled={!!undoWarning}
+                                          >
+                                            Undo
+                                          </Button>
+                                        </span>
+                                      </Tooltip>
+                                    )}
+                                    {!log.reviewed && (
+                                      <Button 
+                                        size="small" 
+                                        onClick={() => handleMarkAsReviewed(log.id)}
+                                        startIcon={<CheckCircleIcon />}
+                                        color="inherit"
+                                        sx={{ opacity: 0.6 }}
+                                      >
+                                        Mark Reviewed
+                                      </Button>
+                                    )}
+                                  </Box>
+                                </>
+                              }
                             />
                           </Box>
-                        }
-                        secondary={
-                          <>
-                            <Tooltip
-                              title={dateStr}
-                              arrow
-                              placement="top"
-                              TransitionComponent={Fade}
-                            >
-                              <Typography
-                              component="span"
-                              variant="caption"
-                              color="text.secondary"
-                              sx={{ display: "block", mb: 0.5, fontStyle: "italic" }}
-                            >
-                              {useRelativeTime ? relativeTime : dateStr}
-                            </Typography>
-                            </Tooltip>
-                            <Typography component="span" variant="body2">
-                              {highlightText(log.description ?? "", search)}
-                            </Typography>
-                            {log.undoable && !log.undone && (
-                              <Button
-                                size="small"
-                                onClick={() => setConfirmUndo({ open: true, log })}
-                                startIcon={<UndoIcon />}
-                                sx={{ mt: 1 }}
-                              >
-                                Undo
-                              </Button>
-                            )}
-                          </>
-                        }
-                      />
-                    </Paper>
-                  </TimelineContent>
-                </TimelineItem>
-              </motion.div>
-            );
-          })}
+                        </Paper>
+                      </TimelineContent>
+                    </TimelineItem>
+                  </motion.div>
+                );
+              })}
+            </React.Fragment>
+          ))}
         </AnimatePresence>
       </Timeline>
 

@@ -20,9 +20,6 @@ import { motion } from 'framer-motion';
 import {
   Logout,
   Settings as SettingsIcon,
-  LockReset as LockResetIcon,
-  HelpOutline,
-  AccountCircle as AccountCircleIcon,
   LightMode as LightModeIcon,
   DarkMode as DarkModeIcon,
   Close as CloseIcon,
@@ -39,9 +36,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useAuth } from '../contexts/AuthProvider';
-import ChangePassword from "../pages/ChangePassword.jsx";
-import HelpDialog from "./HelpDialog";
-import Profile from "../pages/Profile";
 import SettingsPage from "../pages/SettingsPage";
 
 // --- Animation Variants for Framer Motion ---
@@ -70,20 +64,14 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode }) => 
   const theme = useTheme();
   const { currentUser } = useAuth();
   
-  const [profileOpen, setProfileOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
 
   const handleLogout = () => {
     signOut(auth).then(() => navigate('/login'));
   };
 
   const closeAllDialogs = () => {
-    setProfileOpen(false);
     setSettingsOpen(false);
-    setChangePasswordOpen(false);
-    setHelpOpen(false);
   };
 
 
@@ -102,10 +90,7 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode }) => 
   ];
 
   const accountItems = [
-    { text: 'Profile', icon: <AccountCircleIcon />, onClick: () => { onClose(); setProfileOpen(true); } },
     { text: 'Settings', icon: <SettingsIcon />, onClick: () => { onClose(); setSettingsOpen(true); } },
-    { text: 'Change Password', icon: <LockResetIcon />, onClick: () => { onClose(); setChangePasswordOpen(true); } },
-    { text: 'Help', icon: <HelpOutline />, onClick: () => { onClose(); setHelpOpen(true); } },
   ];
 
   const listItemSx = {
@@ -233,10 +218,7 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode }) => 
         </Box>
       </SwipeableDrawer>
 
-      <Dialog open={profileOpen} onClose={closeAllDialogs} maxWidth="sm" fullWidth><Profile onClose={closeAllDialogs} /></Dialog>
       <Dialog open={settingsOpen} onClose={closeAllDialogs} maxWidth="sm" fullWidth><SettingsPage onClose={closeAllDialogs} /></Dialog>
-      <Dialog open={changePasswordOpen} onClose={closeAllDialogs} maxWidth="sm" fullWidth><ChangePassword onClose={closeAllDialogs} /></Dialog>
-      <Dialog open={helpOpen} onClose={closeAllDialogs} maxWidth="sm" fullWidth><HelpDialog open={helpOpen} onClose={closeAllDialogs} /></Dialog>
     </>
   );
 };

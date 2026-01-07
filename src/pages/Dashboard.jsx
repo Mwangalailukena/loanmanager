@@ -15,9 +15,16 @@ import {
     DialogActions,
     Checkbox,
     FormControlLabel,
-    IconButton, // Added IconButton
+    IconButton,
+    Chip,
+    Stack,
+    List,
+    ListItem,
+    ListItemText,
+    ListItemSecondaryAction,
+    Paper,
 } from "@mui/material";
-import { keyframes } from "@mui/system";
+import { alpha, keyframes } from "@mui/system";
 
 import TuneIcon from '@mui/icons-material/Tune';
 import SummarizeIcon from '@mui/icons-material/Summarize';
@@ -44,8 +51,6 @@ import InsightCard from "../components/dashboard/InsightCard";
 const LazyCharts = lazy(() => import("../components/Charts"));
 
 // (The rest of the initial constants and helper functions remain the same)
-const STORAGE_KEY = "dashboardCardOrder";
-const HIDDEN_CARDS_KEY = "hiddenDashboardCards";
 const DEFAULT_CARD_IDS = [
     "investedCapital", "availableCapital", "totalDisbursed", "totalCollected", "partnerDividends",
     "totalLoans", "paidLoans", "activeLoans", "overdueLoans", "totalOutstanding",
@@ -68,7 +73,7 @@ export default function Dashboard() {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
     
-    const { loans, borrowers, payments, expenses, settings, loading } = useFirestore();
+    const { loans, borrowers, payments, expenses, settings, loading, updateSettings } = useFirestore();
     
     const { currentUser } = useAuth();
     const showSnackbar = useSnackbar();
@@ -78,6 +83,60 @@ export default function Dashboard() {
     const [hiddenCards, setHiddenCards] = useState([]);
     const [customizeOpen, setCustomizeOpen] = useState(false);
     const [showWelcome, setShowWelcome] = useState(false);
+    const [peekOpen, setPeekOpen] = useState(false);
+    const [peekData, setPeekData] = useState({ title: "", loans: [], filter: "" });
+    const [dismissedInsights, setDismissedInsights] = useState([]);
+
+    useEffect(() => {
+        const welcomeMessageShown = sessionStorage.getItem('welcomeMessageShown');
+        if (!welcomeMessageShown) {
+            setShowWelcome(true);
+            const timer = setTimeout(() => {
+                setShowWelcome(false);
+                sessionStorage.setItem('welcomeMessageShown', 'true');
+            }, 5000);
+
+            return () => clearTimeout(timer);
+        }
+    }, []);
+
+    // Sync state with settings from Firestore
+    useEffect(() => {
+        if (settings) {
+            const savedOrder = settings.dashboardCardOrder || [];
+            const savedHidden = settings.hiddenDashboardCards || [];
+            const savedDismissed = settings.dismissedInsights || [];
+            
+            const validOrder = savedOrder.filter((id) => DEFAULT_CARD_IDS.includes(id));
+            const finalOrder = [...new Set([...validOrder, ...DEFAULT_CARD_IDS])];
+            
+            setCardsOrder(finalOrder);
+            setHiddenCards(savedHidden);
+            setDismissedInsights(savedDismissed);
+        }
+    }, [settings]);
+
+    // Function to update Firestore settings
+    const saveLayoutToFirestore = useCallback(async (newOrder, newHidden, newDismissed = dismissedInsights) => {
+        try {
+            await updateSettings({
+                ...settings,
+                dashboardCardOrder: newOrder,
+                hiddenDashboardCards: newHidden,
+                dismissedInsights: newDismissed
+            });
+        } catch (error) {
+            console.error("Error saving dashboard layout:", error);
+            showSnackbar("Failed to save layout.", "error");
+        }
+    }, [settings, updateSettings, showSnackbar, dismissedInsights]);
+
+    const handleDismissInsight = async (insightId) => {
+        const newDismissed = [...dismissedInsights, insightId];
+        setDismissedInsights(newDismissed);
+        await saveLayoutToFirestore(cardsOrder, hiddenCards, newDismissed);
+        showSnackbar("Insight hidden.", "info");
+    };
 
     useEffect(() => {
         const welcomeMessageShown = sessionStorage.getItem('welcomeMessageShown');
@@ -93,35 +152,44 @@ export default function Dashboard() {
     }, []);
 
     // CHANGED: Removed the unused 'loansForCalculations' variable
-    const { defaultCards } = useDashboardCalculations(
+    const { defaultCards, rolloverAmount, hasUnsettledLoans } = useDashboardCalculations(
         loans,
         selectedMonth,
         settings,
         isMobile
     );
 
+    const handleRollover = async () => {
+        if (!selectedMonth) return;
+        
+        const nextMonth = dayjs(selectedMonth).add(1, 'month').format("YYYY-MM");
+        const updatedSettings = {
+            ...settings,
+            monthlySettings: {
+                ...(settings.monthlySettings || {}),
+                [nextMonth]: {
+                    ...(settings.monthlySettings?.[nextMonth] || {}),
+                    capital: rolloverAmount
+                }
+            }
+        };
+
+        try {
+            await updateSettings(updatedSettings);
+            showSnackbar(`Successfully pushed K ${rolloverAmount.toLocaleString()} to ${dayjs(nextMonth).format("MMMM YYYY")}`, "success");
+        } catch (error) {
+            console.error("Rollover error:", error);
+            showSnackbar("Failed to perform rollover.", "error");
+        }
+    };
+
     const insights = useInsights(loans, borrowers, payments, dayjs(selectedMonth).startOf('month').format("YYYY-MM-DD"), dayjs(selectedMonth).endOf('month').format("YYYY-MM-DD"));
 
-    useEffect(() => {
-        if (!loans || loans.length === 0) return; // Ensure loans are loaded
+    const visibleInsights = useMemo(() => {
+        return insights.filter(i => !dismissedInsights.includes(i.id || i.message));
+    }, [insights, dismissedInsights]);
 
-        const savedOrder = localStorage.getItem(STORAGE_KEY);
-        const savedHidden = localStorage.getItem(HIDDEN_CARDS_KEY);
-        try {
-            const parsedOrder = savedOrder ? JSON.parse(savedOrder) : [];
-            const parsedHidden = savedHidden ? JSON.parse(savedHidden) : [];
-            const validOrder = parsedOrder.filter((id) => DEFAULT_CARD_IDS.includes(id));
-            const finalOrder = [...new Set([...validOrder, ...DEFAULT_CARD_IDS])];
-            setCardsOrder(finalOrder);
-            setHiddenCards(parsedHidden);
-        } catch (error) {
-            console.error("Error parsing saved card order from localStorage:", error);
-            setCardsOrder(DEFAULT_CARD_IDS);
-            setHiddenCards([]);
-        }
-    }, [loans]); // Dependency array for useEffect
-
-
+    // Removed the old useEffect that used localStorage
 
     const cardsToRender = useMemo(() => {
         const allVisibleCards = defaultCards.filter(card => !hiddenCards.includes(card.id));
@@ -224,24 +292,56 @@ export default function Dashboard() {
             const finalFlatOrder = Object.values(newGroupedCards).flat().map(card => card.id);
 
             setCardsOrder(finalFlatOrder);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(finalFlatOrder));
+            saveLayoutToFirestore(finalFlatOrder, hiddenCards);
             showSnackbar("Dashboard layout saved!", "success");
         },
-        [cardsOrder, defaultCards, hiddenCards, showSnackbar]
+        [cardsOrder, defaultCards, hiddenCards, showSnackbar, saveLayoutToFirestore]
     );
 
 
     const handleCardClick = (filter) => {
-        const params = new URLSearchParams();
-        if (filter !== "all") params.set("filter", filter);
-        if (selectedMonth) params.set("month", selectedMonth);
-        navigate(`/loans?${params.toString()}`);
+        let filteredPeekLoans = loans;
+
+        // Filter by month first
+        if (selectedMonth) {
+            filteredPeekLoans = filteredPeekLoans.filter(l => dayjs(l.startDate).format("YYYY-MM") === selectedMonth);
+        }
+
+        // Apply status filters
+        if (filter === "overdue") {
+            filteredPeekLoans = filteredPeekLoans.filter(l => {
+                const totalRepayable = Number(l.totalRepayable || 0);
+                const repaidAmount = Number(l.repaidAmount || 0);
+                const isPaid = repaidAmount >= totalRepayable && totalRepayable > 0;
+                return !isPaid && dayjs(l.dueDate).isBefore(dayjs(), "day");
+            });
+        } else if (filter === "active") {
+            filteredPeekLoans = filteredPeekLoans.filter(l => {
+                const totalRepayable = Number(l.totalRepayable || 0);
+                const repaidAmount = Number(l.repaidAmount || 0);
+                const isPaid = repaidAmount >= totalRepayable && totalRepayable > 0;
+                return !isPaid && !dayjs(l.dueDate).isBefore(dayjs(), "day");
+            });
+        } else if (filter === "paid") {
+            filteredPeekLoans = filteredPeekLoans.filter(l => {
+                const totalRepayable = Number(l.totalRepayable || 0);
+                const repaidAmount = Number(l.repaidAmount || 0);
+                return repaidAmount >= totalRepayable && totalRepayable > 0;
+            });
+        }
+
+        setPeekData({
+            title: `${filter.charAt(0).toUpperCase() + filter.slice(1)} Loans`,
+            loans: filteredPeekLoans,
+            filter: filter
+        });
+        setPeekOpen(true);
     };
 
     const handleHiddenChange = (cardId) => {
         const newHidden = hiddenCards.includes(cardId) ? hiddenCards.filter(id => id !== cardId) : [...hiddenCards, cardId];
         setHiddenCards(newHidden);
-        localStorage.setItem(HIDDEN_CARDS_KEY, JSON.stringify(newHidden));
+        saveLayoutToFirestore(cardsOrder, newHidden);
     };
 
     const handleGroupVisibilityChange = (groupName, show) => {
@@ -256,7 +356,7 @@ export default function Dashboard() {
             newHidden = [...new Set([...newHidden, ...cardIdsInGroup])];
         }
         setHiddenCards(newHidden);
-        localStorage.setItem(HIDDEN_CARDS_KEY, JSON.stringify(newHidden));
+        saveLayoutToFirestore(cardsOrder, newHidden);
     };
 
     const handleGlobalVisibilityChange = (show) => {
@@ -269,7 +369,7 @@ export default function Dashboard() {
             newHidden = [...new Set([...newHidden, ...allCardIds])];
         }
         setHiddenCards(newHidden);
-        localStorage.setItem(HIDDEN_CARDS_KEY, JSON.stringify(newHidden));
+        saveLayoutToFirestore(cardsOrder, newHidden);
     };
 
 
@@ -281,6 +381,44 @@ export default function Dashboard() {
             icon: <SummarizeIcon />,
             content: (
                 <Box>
+                    {selectedMonth && (
+                        <Paper 
+                            sx={{ 
+                                p: 2, 
+                                mb: 2, 
+                                bgcolor: alpha(theme.palette.primary.main, 0.05),
+                                border: `1px dashed ${theme.palette.primary.main}`,
+                                borderRadius: 2,
+                                display: 'flex',
+                                flexDirection: { xs: 'column', sm: 'row' },
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: 2
+                            }}
+                        >
+                            <Box>
+                                <Typography variant="subtitle2" fontWeight="bold" color="primary.main">
+                                    Monthly Rollover Available
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                    Push <strong>K {rolloverAmount.toLocaleString()}</strong> starting capital to {dayjs(selectedMonth).add(1, 'month').format("MMMM YYYY")}.
+                                </Typography>
+                                {hasUnsettledLoans && (
+                                    <Typography variant="caption" display="block" sx={{ fontStyle: 'italic', mt: 0.5 }}>
+                                        * Note: You can push again if remaining loans are settled later.
+                                    </Typography>
+                                )}
+                            </Box>
+                            <Button 
+                                variant="contained" 
+                                size="small" 
+                                onClick={handleRollover}
+                                startIcon={<SummarizeIcon />}
+                            >
+                                Push to {dayjs(selectedMonth).add(1, 'month').format("MMM")}
+                            </Button>
+                        </Paper>
+                    )}
                     {cardsToRender.filter(group => group.cards.some(card => EXECUTIVE_SUMMARY_IDS.includes(card.id))).map(group => (
                         <Box key={group.name} sx={{ mb: 4 }}>
                             <Typography variant="h6" gutterBottom sx={{ mt: 4, mb: 2, px: 1, fontWeight: 800, fontSize: '1.1rem' }}>
@@ -332,9 +470,9 @@ export default function Dashboard() {
             icon: <InsightsIcon />,
             content: (
                 <Grid container spacing={2}>
-                    {insights.filter(insight => !insight.action).map((insight, index) => (
-                        <Grid xs={12} sm={6} md={4} key={index}>
-                            <InsightCard insight={insight} />
+                    {visibleInsights.filter(insight => !insight.action).map((insight, index) => (
+                        <Grid item xs={12} sm={6} md={4} key={index}>
+                            <InsightCard insight={insight} onDismiss={handleDismissInsight} />
                         </Grid>
                     ))}
                 </Grid>
@@ -350,7 +488,7 @@ export default function Dashboard() {
                 </Typography>
                 <Grid container spacing={2}>
                     {[...Array(8)].map((_, index) => (
-                        <Grid xs={12} sm={6} md={3} key={index}><DashboardCardSkeleton /></Grid>
+                        <Grid item xs={12} sm={6} md={3} key={index}><DashboardCardSkeleton /></Grid>
                     ))}
                 </Grid>
             </Box>
@@ -377,19 +515,53 @@ export default function Dashboard() {
             )}
 
 
-            {/* Date Selector and Customize Button for Mobile */}
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1, mb: 2, mt: userName && showWelcome ? 2 : 0 }}>
-                <TextField
-                    type="month"
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
-                    size="small"
-                    InputLabelProps={{ shrink: true }}
-                    sx={{ width: 150 }} // Make it minimal
-                />
-                <IconButton onClick={() => setCustomizeOpen(true)} color="primary" aria-label="Customize Dashboard">
-                    <TuneIcon />
-                </IconButton>
+            {/* Date Selector and Customize Button */}
+            <Box sx={{ 
+                display: 'flex', 
+                flexDirection: { xs: 'column', sm: 'row' },
+                alignItems: { xs: 'flex-start', sm: 'center' }, 
+                justifyContent: 'space-between', 
+                gap: 2, 
+                mb: 3, 
+                mt: userName && showWelcome ? 2 : 0 
+            }}>
+                <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+                    <Chip 
+                        label="This Month" 
+                        onClick={() => setSelectedMonth(dayjs().format("YYYY-MM"))}
+                        color={selectedMonth === dayjs().format("YYYY-MM") ? "primary" : "default"}
+                        variant={selectedMonth === dayjs().format("YYYY-MM") ? "filled" : "outlined"}
+                        size="small"
+                    />
+                    <Chip 
+                        label="Last Month" 
+                        onClick={() => setSelectedMonth(dayjs().subtract(1, 'month').format("YYYY-MM"))}
+                        color={selectedMonth === dayjs().subtract(1, 'month').format("YYYY-MM") ? "primary" : "default"}
+                        variant={selectedMonth === dayjs().subtract(1, 'month').format("YYYY-MM") ? "filled" : "outlined"}
+                        size="small"
+                    />
+                    <Chip 
+                        label="All Time" 
+                        onClick={() => setSelectedMonth("")}
+                        color={selectedMonth === "" ? "primary" : "default"}
+                        variant={selectedMonth === "" ? "filled" : "outlined"}
+                        size="small"
+                    />
+                </Stack>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: { xs: '100%', sm: 'auto' }, justifyContent: 'flex-end' }}>
+                    <TextField
+                        type="month"
+                        value={selectedMonth}
+                        onChange={(e) => setSelectedMonth(e.target.value)}
+                        size="small"
+                        InputLabelProps={{ shrink: true }}
+                        sx={{ width: 150 }}
+                    />
+                    <IconButton onClick={() => setCustomizeOpen(true)} color="primary" aria-label="Customize Dashboard">
+                        <TuneIcon />
+                    </IconButton>
+                </Box>
             </Box>
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -399,7 +571,7 @@ export default function Dashboard() {
                           </Box>
 
             {/* Actionable Insights Section */}
-            {insights.filter(insight => insight.action).map((insight, index) => (
+            {visibleInsights.filter(insight => insight.action).map((insight, index) => (
               <InsightCard key={index} insight={{
                 ...insight,
                 action: {
@@ -412,7 +584,7 @@ export default function Dashboard() {
                     }
                   }
                 }
-              }} />
+              }} onDismiss={handleDismissInsight} />
             ))}
             
 
@@ -455,6 +627,52 @@ export default function Dashboard() {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setCustomizeOpen(false)}>Close</Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Peek Dialog */}
+            <Dialog open={peekOpen} onClose={() => setPeekOpen(false)} maxWidth="xs" fullWidth>
+                <DialogTitle sx={{ fontWeight: 'bold' }}>{peekData.title}</DialogTitle>
+                <DialogContent dividers>
+                    {peekData.loans.length === 0 ? (
+                        <Typography color="text.secondary" align="center">No loans found for this category.</Typography>
+                    ) : (
+                        <List>
+                            {peekData.loans.map((loan) => {
+                                const borrower = borrowers.find(b => b.id === loan.borrowerId);
+                                const outstanding = Number(loan.totalRepayable || 0) - Number(loan.repaidAmount || 0);
+                                return (
+                                    <ListItem key={loan.id} divider>
+                                        <ListItemText 
+                                            primary={borrower?.name || "Unknown Borrower"}
+                                            secondary={`Due: ${loan.dueDate}`}
+                                        />
+                                        <ListItemSecondaryAction>
+                                            <Typography variant="body2" fontWeight="bold">
+                                                ZMW {outstanding.toFixed(2)}
+                                            </Typography>
+                                        </ListItemSecondaryAction>
+                                    </ListItem>
+                                );
+                            })}
+                        </List>
+                    )}
+                </DialogContent>
+                <DialogActions sx={{ justifyContent: 'space-between', px: 2 }}>
+                    <Button onClick={() => setPeekOpen(false)}>Close</Button>
+                    <Button 
+                        color="primary" 
+                        variant="contained" 
+                        onClick={() => {
+                            const params = new URLSearchParams();
+                            if (peekData.filter !== "all") params.set("filter", peekData.filter);
+                            if (selectedMonth) params.set("month", selectedMonth);
+                            navigate(`/loans?${params.toString()}`);
+                            setPeekOpen(false);
+                        }}
+                    >
+                        View All
+                    </Button>
                 </DialogActions>
             </Dialog>
         </Box>

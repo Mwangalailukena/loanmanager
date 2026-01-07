@@ -359,6 +359,17 @@ export default function AddPaymentPage() {
             error={!!fieldErrors.amount}
             helperText={fieldErrors.amount}
             disabled={!selectedLoan || loading}
+            InputProps={{
+              endAdornment: selectedLoan && (
+                <Button 
+                  size="small" 
+                  onClick={() => setPaymentAmount(remainingBalance.toFixed(2))}
+                  sx={{ whiteSpace: 'nowrap', minWidth: 'fit-content', ml: 1 }}
+                >
+                  Full Amount
+                </Button>
+              )
+            }}
           />
 
           {selectedLoan && parseFloat(paymentAmount) > 0 && (

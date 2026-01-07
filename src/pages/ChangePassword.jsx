@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import {
   Box,
-  Typography,
   TextField,
   Button,
   Alert,
@@ -85,14 +84,9 @@ export default function ChangePassword({ onClose }) { // Ensure component is nam
   return (
     <Box
       sx={{
-        p: { xs: 3, sm: 4 }, // Add padding directly to the main content box for dialogs
+        p: { xs: 1, sm: 2 }, // Reduced padding
       }}
     >
-      {/* Title for the dialog/page */}
-      <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
-        Change Password
-      </Typography>
-
       {/* Alerts for messages */}
       {errorMsg && (
         <Alert severity="error" onClose={() => setErrorMsg("")} sx={{ mb: 2 }}>
@@ -115,7 +109,7 @@ export default function ChangePassword({ onClose }) { // Ensure component is nam
             value={currentPassword}
             onChange={(e) => { setCurrentPassword(e.target.value); setErrorMsg(""); setSuccessMsg(""); }}
             autoComplete="current-password"
-            margin="normal"
+            size="small"
           />
           <TextField
             label="New Password"
@@ -126,7 +120,7 @@ export default function ChangePassword({ onClose }) { // Ensure component is nam
             onChange={(e) => { setNewPassword(e.target.value); setErrorMsg(""); setSuccessMsg(""); }}
             autoComplete="new-password"
             helperText="At least 6 characters"
-            margin="normal"
+            size="small"
           />
           <TextField
             label="Confirm New Password"
@@ -136,9 +130,9 @@ export default function ChangePassword({ onClose }) { // Ensure component is nam
             value={confirmPassword}
             onChange={(e) => { setConfirmPassword(e.target.value); setErrorMsg(""); setSuccessMsg(""); }}
             autoComplete="new-password"
-            margin="normal"
+            size="small"
           />
-          <Button type="submit" variant="contained" fullWidth disabled={loading} size="large">
+          <Button type="submit" variant="contained" fullWidth disabled={loading}>
             {loading ? "Updating..." : "Update Password"}
           </Button>
         </Stack>

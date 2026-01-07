@@ -12,20 +12,19 @@ import {
   Typography,
   Stack,
   Alert,
+  InputAdornment, // Added InputAdornment
 } from '@mui/material';
 import { useFirestore } from '../contexts/FirestoreProvider';
-import { useSnackbar } from './SnackbarProvider';
 
 export default function AddPaymentDialog({ open, onClose, loanId }) {
   const { addPayment, loans } = useFirestore();
-  const showSnackbar = useSnackbar();
 
   const [paymentAmount, setPaymentAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const loan = loans.find(l => l.id === loanId);
-  const outstandingBalance = loan ? (loan.outstandingBalance || loan.totalRepayable) : 0;
+  const outstandingBalance = loan ? (loan.totalRepayable - (loan.repaidAmount || 0)) : 0; // Fixed balance calculation
 
   const handleSubmit = async () => {
     setError('');
@@ -36,24 +35,18 @@ export default function AddPaymentDialog({ open, onClose, loanId }) {
       return;
     }
 
-    if (amount > outstandingBalance) {
+    if (amount > outstandingBalance + 0.01) {
       setError(`Amount cannot be more than the outstanding balance of ZMW ${outstandingBalance.toLocaleString()}.`);
       return;
     }
 
     setLoading(true);
     try {
-      await addPayment({
-        loanId: loanId,
-        amount: amount,
-        loanPrincipal: loan.principal, // Pass loan principal for activity log context
-      });
-      showSnackbar('Payment added successfully!', 'success');
+      await addPayment(loanId, amount); // Fixed call signature
       onClose();
       setPaymentAmount('');
     } catch (err) {
       console.error('Failed to add payment:', err);
-      showSnackbar('Failed to add payment. Please try again.', 'error');
     } finally {
       setLoading(false);
     }
@@ -86,6 +79,19 @@ export default function AddPaymentDialog({ open, onClose, loanId }) {
             error={!!error}
             helperText={error}
             disabled={loading}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <Button 
+                    size="small" 
+                    onClick={() => setPaymentAmount(outstandingBalance.toFixed(2))}
+                    sx={{ whiteSpace: 'nowrap', minWidth: 'fit-content' }}
+                  >
+                    Full Amount
+                  </Button>
+                </InputAdornment>
+              )
+            }}
           />
         </Stack>
       </DialogContent>

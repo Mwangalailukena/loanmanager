@@ -9,6 +9,7 @@ import {
   Stack,
   Backdrop,
   Fade,
+  InputAdornment, // Added InputAdornment
 } from "@mui/material";
 import { useFirestore } from "../contexts/FirestoreProvider";
 
@@ -29,11 +30,17 @@ export default function AddPaymentModal({ open, onClose, loan }) {
   const [amount, setAmount] = useState("");
   const [error, setError] = useState("");
 
+  const remainingBalance = loan ? (loan.totalRepayable - (loan.repaidAmount || 0)) : 0;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const paymentAmount = parseFloat(amount);
     if (isNaN(paymentAmount) || paymentAmount <= 0) {
       setError("Enter a valid payment amount.");
+      return;
+    }
+    if (paymentAmount > remainingBalance + 0.01) {
+      setError(`Amount cannot exceed ZMW ${remainingBalance.toFixed(2)}`);
       return;
     }
     try {
@@ -69,6 +76,19 @@ export default function AddPaymentModal({ open, onClose, loan }) {
                 inputProps={{ min: 0.01, step: 0.01 }}
                 error={!!error}
                 helperText={error}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <Button 
+                        size="small" 
+                        onClick={() => setAmount(remainingBalance.toFixed(2))}
+                        sx={{ whiteSpace: 'nowrap', minWidth: 'fit-content' }}
+                      >
+                        Full
+                      </Button>
+                    </InputAdornment>
+                  )
+                }}
               />
               <Stack direction="row" spacing={2} justifyContent="flex-end">
                 <Button variant="outlined" onClick={onClose}>

@@ -1,8 +1,9 @@
 import React from 'react';
-import { Card, CardContent, Typography, Button, Box, useTheme } from '@mui/material';
+import { Card, CardContent, Typography, Button, Box, useTheme, IconButton } from '@mui/material';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import CloseIcon from '@mui/icons-material/Close';
 import { motion } from 'framer-motion';
 
 const iconMap = {
@@ -17,7 +18,7 @@ const cardVariant = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
 };
 
-export default function InsightCard({ insight }) {
+export default function InsightCard({ insight, onDismiss }) {
   const theme = useTheme();
   const IconComponent = iconMap[insight.type] || iconMap.default;
   const cardColor = theme.palette[insight.type]?.light || theme.palette.grey[200];
@@ -31,11 +32,24 @@ export default function InsightCard({ insight }) {
           color: textColor,
           mb: 2,
           boxShadow: theme.shadows[3],
+          position: 'relative',
           '&:hover': {
             boxShadow: theme.shadows[6],
           },
         }}
       >
+        {onDismiss && (
+          <IconButton 
+            size="small" 
+            onClick={(e) => {
+              e.stopPropagation();
+              onDismiss(insight.id || insight.message);
+            }}
+            sx={{ position: 'absolute', top: 4, right: 4, color: textColor, opacity: 0.7, '&:hover': { opacity: 1 } }}
+          >
+            <CloseIcon fontSize="inherit" />
+          </IconButton>
+        )}
         <CardContent>
           <Box display="flex" alignItems="center" mb={1}>
             {React.cloneElement(IconComponent, { sx: { mr: 1, color: textColor } })}

@@ -20,12 +20,9 @@ import { alpha, keyframes } from "@mui/material/styles";
 import {
   Logout,
   Settings as SettingsIcon,
-  LockReset as LockResetIcon,
   Notifications as NotificationsIcon,
-  HelpOutline,
   Search as SearchIcon,
   Close as CloseIcon,
-  AccountCircle as AccountCircleIcon,
   Assessment as AssessmentIcon,
   Dashboard as DashboardIcon,
   Add as AddIcon,
@@ -46,9 +43,6 @@ import { useFirestore } from "../contexts/FirestoreProvider";
 import { useSearch } from "../contexts/SearchContext"; // Add useSearch
 
 import SettingsPage from "../pages/SettingsPage";
-import ChangePassword from "../pages/ChangePassword.jsx";
-import HelpDialog from "./HelpDialog";
-import Profile from "../pages/Profile";
 import SearchResults from "./SearchResults";
 
 function stringToInitials(name = "") {
@@ -90,15 +84,9 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
     }
   });
   const [allNotifications, setAllNotifications] = useState([]);
-  const [profileOpen, setProfileOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
   const [barVisible, setBarVisible] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [loanManagementAnchor, setLoanManagementAnchor] = useState(null);
-  const [analyticsReportingAnchor, setAnalyticsReportingAnchor] = useState(null);
-  const [accountSettingsAnchor, setAccountSettingsAnchor] = useState(null);
   const searchInputRef = useRef();
 
   const openMenu = Boolean(anchorEl);
@@ -125,24 +113,12 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
   const navItems = [
     { text: "Dashboard", icon: <DashboardIcon />, path: "/dashboard" },
     { text: "Borrowers", icon: <PeopleIcon />, path: "/borrowers" },
-    {
-      text: "Loan Management",
-      icon: <ListAltIcon />,
-      children: [
-        { text: "Add Loan", icon: <AddIcon />, path: "/add-loan" },
-        { text: "Add Payment", icon: <AttachMoneyIcon />, path: "/add-payment" },
-        { text: "Loan Records", icon: <ListAltIcon />, path: "/loans" },
-        { text: "Expenses", icon: <ReceiptIcon />, path: "/expenses" },
-      ],
-    },
-    {
-      text: "Analytics & Reporting",
-      icon: <AssessmentIcon />,
-      children: [
-        { text: "Reports", icon: <AssessmentIcon />, path: "/reports" },
-        { text: "Activity", icon: <HistoryIcon />, path: "/activity" },
-      ],
-    },
+    { text: "Loans", icon: <ListAltIcon />, path: "/loans" },
+    { text: "Add Loan", icon: <AddIcon />, path: "/add-loan" },
+    { text: "Add Payment", icon: <AttachMoneyIcon />, path: "/add-payment" },
+    { text: "Expenses", icon: <ReceiptIcon />, path: "/expenses" },
+    { text: "Reports", icon: <AssessmentIcon />, path: "/reports" },
+    { text: "Activity", icon: <HistoryIcon />, path: "/activity" },
   ];
 
   useEffect(() => {
@@ -173,16 +149,10 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
   const handleLogout = () => {
     signOut(auth).then(() => navigate("/login"));
   };
-  const handleProfileClick = () => setProfileOpen(true);
   const handleSettingsClick = () => setSettingsOpen(true);
-  const handleChangePasswordClick = () => setChangePasswordOpen(true);
-  const openHelpDialog = () => setHelpOpen(true);
   const closeNotifications = () => setNotificationAnchor(null);
   const closeAllDialogs = () => {
-    setProfileOpen(false);
     setSettingsOpen(false);
-    setChangePasswordOpen(false);
-    setHelpOpen(false);
   };
   const handleNotificationItemClick = (notificationId, loanId) => {
     openLoanDetail(loanId);
@@ -230,103 +200,30 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
           }}
         >
           {navItems.map((item) => {
-            const isActive = item.children 
-              ? item.children.some(child => location.pathname.startsWith(child.path))
-              : location.pathname.startsWith(item.path);
+            const isActive = location.pathname.startsWith(item.path);
 
-            return item.children ? (
-              <React.Fragment key={item.text}>
-                <Button
-                  onClick={(e) => {
-                    if (item.text === "Loan Management") setLoanManagementAnchor(e.currentTarget);
-                    if (item.text === "Analytics & Reporting") setAnalyticsReportingAnchor(e.currentTarget);
-                  }}
-                  sx={{
-                    textTransform: "none",
-                    color: isActive ? theme.palette.primary.main : theme.palette.text.secondary,
-                    borderRadius: 10,
-                    px: 2.5, // Increased horizontal padding
-                    py: 1.2, // Increased vertical padding
-                    fontWeight: 600,
-                    transition: "all 0.2s ease-in-out",
-                    "&:hover": {
-                      bgcolor: alpha(theme.palette.primary.main, 0.08),
-                      color: theme.palette.primary.main,
-                    },
-                    ...(isActive && {
-                      bgcolor: alpha(theme.palette.primary.main, 0.1),
-                    }),
-                  }}
-                >
-                  {item.text}
-                </Button>
-                <Menu
-                  anchorEl={item.text === "Loan Management" ? loanManagementAnchor : analyticsReportingAnchor}
-                  open={item.text === "Loan Management" ? Boolean(loanManagementAnchor) : Boolean(analyticsReportingAnchor)}
-                  onClose={() => {
-                    if (item.text === "Loan Management") setLoanManagementAnchor(null);
-                    if (item.text === "Analytics & Reporting") setAnalyticsReportingAnchor(null);
-                  }}
-                  TransitionComponent={Fade}
-                  PaperProps={{
-                    elevation: 0,
-                    sx: {
-                      mt: 1.5,
-                      borderRadius: 4, // Increased border radius
-                      backdropFilter: 'blur(18px) saturate(180%)', // Increased blur
-                      backgroundColor: alpha(theme.palette.background.paper, 0.9), // Slightly increased opacity
-                      border: '1px solid ' + alpha(theme.palette.divider, 0.1),
-                      boxShadow: '0 8px 32px rgba(0,0,0,0.08)', // Subtler shadow
-                    },
-                  }}
-                  transformOrigin={{ horizontal: "left", vertical: "top" }}
-                  anchorOrigin={{ horizontal: "left", vertical: "bottom" }}
-                >
-                  {item.children.map((child) => (
-                    <MenuItem
-                      key={child.text}
-                      onClick={() => {
-                        navigate(child.path);
-                        if (item.text === "Loan Management") setLoanManagementAnchor(null);
-                        if (item.text === "Analytics & Reporting") setAnalyticsReportingAnchor(null);
-                      }}
-                      sx={{
-                        borderRadius: 1.5,
-                        mx: 1,
-                        my: 0.7, // Increased vertical margin
-                        py: 0.8, // Added vertical padding
-                        '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.08) }
-                      }}
-                    >
-                      <ListItemIcon sx={{ color: location.pathname === child.path ? 'primary.main' : 'inherit' }}>{child.icon}</ListItemIcon>
-                      <Typography variant="body2" sx={{ fontWeight: location.pathname === child.path ? 600 : 400 }}>
-                        {child.text}
-                      </Typography>
-                    </MenuItem>
-                  ))}
-                </Menu>
-              </React.Fragment>
-            ) : (
-                              <Button
-                                key={item.text}
-                                onClick={() => navigate(item.path)}
-                                sx={{
-                                  textTransform: "none",
-                                  color: isActive ? theme.palette.primary.main : theme.palette.text.secondary,
-                                  borderRadius: 10,
-                                  px: 2.5, // Increased horizontal padding
-                                  py: 1.2, // Increased vertical padding
-                                  fontWeight: 600,
-                                  transition: "all 0.2s ease-in-out",
-                                  "&:hover": {
-                                    bgcolor: alpha(theme.palette.primary.main, 0.08),
-                                    color: theme.palette.primary.main,
-                                  },
-                                  ...(isActive && {
-                                    bgcolor: alpha(theme.palette.primary.main, 0.1),
-                                  }),
-                                }}
-                              >                {item.text}
+            return (
+              <Button
+                key={item.text}
+                onClick={() => navigate(item.path)}
+                sx={{
+                  textTransform: "none",
+                  color: isActive ? theme.palette.primary.main : theme.palette.text.secondary,
+                  borderRadius: 10,
+                  px: 2.5, // Increased horizontal padding
+                  py: 1.2, // Increased vertical padding
+                  fontWeight: 600,
+                  transition: "all 0.2s ease-in-out",
+                  "&:hover": {
+                    bgcolor: alpha(theme.palette.primary.main, 0.08),
+                    color: theme.palette.primary.main,
+                  },
+                  ...(isActive && {
+                    bgcolor: alpha(theme.palette.primary.main, 0.1),
+                  }),
+                }}
+              >
+                {item.text}
               </Button>
             );
           })}
@@ -426,47 +323,21 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
             {currentUser?.email}
         </Typography>
         <Divider sx={{ my: 0.5 }} />
-        <MenuItem onClick={handleProfileClick} sx={{ mx: 1, borderRadius: 1.5, my: 0.7, py: 0.8 }}><ListItemIcon><AccountCircleIcon fontSize="small" /></ListItemIcon>Profile</MenuItem>
         
-        <MenuItem onClick={(e) => setAccountSettingsAnchor(e.currentTarget)} sx={{ mx: 1, borderRadius: 1.5, my: 0.7, py: 0.8 }}>
+        <MenuItem onClick={handleSettingsClick} sx={{ mx: 1, borderRadius: 1.5, my: 0.7, py: 0.8 }}>
             <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
             Settings
         </MenuItem>
-        <Menu
-          anchorEl={accountSettingsAnchor}
-          open={Boolean(accountSettingsAnchor)}
-          onClose={() => setAccountSettingsAnchor(null)}
-          TransitionComponent={Fade}
-          PaperProps={{
-            elevation: 0,
-            sx: {
-              mt: 1.5,
-              borderRadius: 4, // Increased border radius
-              backdropFilter: 'blur(18px) saturate(180%)', // Increased blur
-              backgroundColor: alpha(theme.palette.background.paper, 0.9), // Slightly increased opacity
-              border: '1px solid ' + alpha(theme.palette.divider, 0.1),
-              boxShadow: '0 8px 32px rgba(0,0,0,0.08)', // Subtler shadow
-            },
-          }}
-          transformOrigin={{ horizontal: "left", vertical: "top" }}
-          anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
-        >
-          <MenuItem onClick={handleSettingsClick} sx={{ mx: 1, borderRadius: 1.5, my: 0.7, py: 0.8 }}><ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>Interest Rate/ Capital</MenuItem>
-          <MenuItem onClick={handleChangePasswordClick} sx={{ mx: 1, borderRadius: 1.5, my: 0.7, py: 0.8 }}><ListItemIcon><LockResetIcon fontSize="small" /></ListItemIcon>Change Password</MenuItem>
-          <MenuItem onClick={openHelpDialog} sx={{ mx: 1, borderRadius: 1.5, my: 0.7, py: 0.8 }}><ListItemIcon><HelpOutline fontSize="small" /></ListItemIcon>Help</MenuItem>
-        </Menu>
         
-        {/* NEW: Dark Mode Toggle */}
-                
-                <MenuItem onClick={onToggleDarkMode} sx={{ mx: 1, borderRadius: 1.5, my: 0.7, py: 0.8 }}>
-                  <ListItemIcon>
-                    {darkMode ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
-                  </ListItemIcon>
-                  {darkMode ? 'Light Mode' : 'Dark Mode'}
-                </MenuItem>
-        
-                <Divider sx={{ my: 1 }} />
-                <MenuItem onClick={handleLogout} sx={{ mx: 1, borderRadius: 1.5, my: 0.7, py: 0.8 }}><ListItemIcon><Logout fontSize="small" color="error" /></ListItemIcon>Logout</MenuItem>
+        <MenuItem onClick={onToggleDarkMode} sx={{ mx: 1, borderRadius: 1.5, my: 0.7, py: 0.8 }}>
+          <ListItemIcon>
+            {darkMode ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
+          </ListItemIcon>
+          {darkMode ? 'Light Mode' : 'Dark Mode'}
+        </MenuItem>
+
+        <Divider sx={{ my: 1 }} />
+        <MenuItem onClick={handleLogout} sx={{ mx: 1, borderRadius: 1.5, my: 0.7, py: 0.8 }}><ListItemIcon><Logout fontSize="small" color="error" /></ListItemIcon>Logout</MenuItem>
       </Menu>
       
       {/* Notifications Popover */}
@@ -507,36 +378,12 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
       </Popover>
 
       <Dialog
-        open={profileOpen}
-        onClose={closeAllDialogs}
-        maxWidth="sm"
-        fullWidth
-      >
-        <Profile onClose={closeAllDialogs} />
-      </Dialog>
-      <Dialog
         open={settingsOpen}
         onClose={closeAllDialogs}
         maxWidth="sm"
         fullWidth
       >
         <SettingsPage onClose={closeAllDialogs} />
-      </Dialog>
-      <Dialog
-        open={changePasswordOpen}
-        onClose={closeAllDialogs}
-        maxWidth="sm"
-        fullWidth
-      >
-        <ChangePassword onClose={closeAllDialogs} />
-      </Dialog>
-      <Dialog
-        open={helpOpen}
-        onClose={closeAllDialogs}
-        maxWidth="sm"
-        fullWidth
-      >
-        <HelpDialog open={helpOpen} onClose={closeAllDialogs} />
       </Dialog>
     </>
   );

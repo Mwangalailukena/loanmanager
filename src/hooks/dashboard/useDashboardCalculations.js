@@ -66,7 +66,7 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
         };
       }, [isMobile]);
 
-        const { loansForCalculations, defaultCards } = useMemo(() => {
+        const { loansForCalculations, defaultCards, rolloverAmount, hasUnsettledLoans } = useMemo(() => {
             const loansForCalculations = loans || [];
             const loansThisMonth = loansForCalculations.filter((loan) =>
               loan.startDate.startsWith(selectedMonth)
@@ -214,11 +214,17 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
             // --- FIX: Partner Dividends is now 100% of the totalExpectedProfit
             const totalPartnerDividends = totalExpectedProfit;
     
-            // --- FIX: Individual partner dividends are now also based on the new total
+            // Calculate Individual Partner Dividends
             const individualPartnerDividends = [
                 { name: "Agnes Ilukena", amount: totalExpectedProfit / 2 },
                 { name: "Jones Ilukena", amount: totalExpectedProfit / 2 },
             ];
+
+            const rolloverAmount = availableCapital - totalPartnerDividends;
+            const hasUnsettledLoans = loansThisMonth.some(l => {
+                const s = calcStatus(l);
+                return s !== "Paid" && s !== "Defaulted";
+            });
     
             const defaultCards = [
               {
@@ -407,8 +413,8 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
               },
             ];
     
-            return { loansForCalculations, defaultCards };
+            return { loansForCalculations, defaultCards, rolloverAmount, hasUnsettledLoans };
           }, [loans, selectedMonth, settings, iconMap]);
-    return { loansForCalculations, defaultCards };
+    return { loansForCalculations, defaultCards, rolloverAmount, hasUnsettledLoans };
 };
 

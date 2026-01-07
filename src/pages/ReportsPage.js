@@ -24,10 +24,32 @@ import {
   Stack,
   Button,
   Autocomplete,
+  Switch,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormGroup,
+  Chip,
 } from "@mui/material";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend as RechartsLegend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  Legend as RechartsLegend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import { useFirestore } from "../contexts/FirestoreProvider";
+import { useSnackbar } from "../components/SnackbarProvider";
 import { exportToCsv } from "../utils/exportCSV";
 import { exportToPdf } from "../utils/exportPDF";
 import dayjs from "dayjs";
@@ -56,6 +78,7 @@ export default function ReportsPage() {
   const { loans, loadingLoans, payments, loadingPayments, getAllPayments, borrowers } = useFirestore();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const showSnackbar = useSnackbar();
 
   // --- Filters State ---
   const [activeTab, setActiveTab] = useState(0);
@@ -67,6 +90,16 @@ export default function ReportsPage() {
   const [includeOverdue, setIncludeOverdue] = useState(true);
   const [includeDefaulted, setIncludeDefaulted] = useState(true);
   const [screenshotMode, setScreenshotMode] = useState(false);
+  
+  // --- New State for Improvements ---
+  const [isCompareMode, setIsCompareMode] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportSelection, setExportSelection] = useState({
+    summary: true,
+    cashFlow: true,
+    arrears: true,
+    detailed: false
+  });
 
   const handleClearFilters = () => {
     setStartDate(dayjs().subtract(6, 'months').startOf('month'));
@@ -76,6 +109,16 @@ export default function ReportsPage() {
     setIncludeActive(true);
     setIncludeOverdue(true);
     setIncludeDefaulted(true);
+    setIsCompareMode(false);
+  };
+
+  const drillDown = (status) => {
+    setIncludeActive(status === 'Active' || status === 'All');
+    setIncludePaid(status === 'Paid' || status === 'All');
+    setIncludeOverdue(status === 'Overdue' || status === 'All');
+    setIncludeDefaulted(status === 'Defaulted' || status === 'All');
+    setActiveTab(3); // Switch to Detailed Loan List
+    showSnackbar(`Filtering for ${status} loans`, 'info');
   };
 
   const getDisplayBorrowerInfo = useCallback((loan) => {
@@ -181,10 +224,61 @@ export default function ReportsPage() {
     };
   }, [filteredLoansForReports, loans, loadingLoans]);
 
+  // --- REPORT 1.1: Previous Period Comparison ---
+  const prevPeriodSummary = useMemo(() => {
+    if (!isCompareMode || loadingLoans || !loans) return null;
+
+    const diff = endDate.diff(startDate, 'day');
+    const prevStart = startDate.subtract(diff + 1, 'day');
+    const prevEnd = startDate.subtract(1, 'day');
+
+    const prevLoans = loans.filter(l => {
+        const d = dayjs(l.startDate);
+        return d.isBetween(prevStart, prevEnd, 'day', '[]');
+    });
+
+    let totalPrincipalDisbursed = 0;
+    let totalRepaid = 0;
+    let totalInterestAccrued = 0;
+
+    prevLoans.forEach(loan => {
+      totalPrincipalDisbursed += Number(loan.principal || 0);
+      totalRepaid += Number(loan.repaidAmount || 0);
+      totalInterestAccrued += Number(loan.interest || 0);
+    });
+
+    return {
+      disbursed: totalPrincipalDisbursed,
+      repaid: totalRepaid,
+      interest: totalInterestAccrued,
+      count: prevLoans.length
+    };
+  }, [isCompareMode, loans, loadingLoans, startDate, endDate]);
+
+  const handleShareSummary = () => {
+    const message = `Loan Summary (${startDate.format('MMM D')} - ${endDate.format('MMM D')}):
+- Total Repaid: ZMW ${portfolioSummary.totalRepaid.toFixed(2)}
+- Total Disbursed: ZMW ${portfolioSummary.totalPrincipalDisbursed.toFixed(2)}
+- Outstanding: ZMW ${portfolioSummary.totalOutstanding.toFixed(2)}
+- Active Loans: ${portfolioSummary.activeLoans}
+- Overdue: ${portfolioSummary.overdueLoans}`;
+    
+    const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  };
 
   // --- REPORT 2: Arrears Aging Analysis ---
   const arrearsAgingReport = useMemo(() => {
     if (loadingLoans || !loans) return { buckets: {}, list: [], chartData: [] };
+
+    // Calculate overdue frequency for Risk Hotspots
+    const overdueCounts = loans.reduce((acc, l) => {
+        if (calcStatus(l) === 'Overdue') {
+            const borrowerName = getDisplayBorrowerInfo(l).name;
+            acc[borrowerName] = (acc[borrowerName] || 0) + 1;
+        }
+        return acc;
+    }, {});
 
     const now = dayjs();
     const buckets = {
@@ -216,6 +310,7 @@ export default function ReportsPage() {
           startDate: loan.startDate,
           dueDate: loan.dueDate,
           daysOverdue: daysOverdue,
+          overdueFrequency: overdueCounts[loan.borrower] || 0
         };
 
         if (daysOverdue >= 1 && daysOverdue <= 7) {
@@ -239,7 +334,7 @@ export default function ReportsPage() {
     const chartData = Object.entries(buckets).map(([name, data]) => ({ name, value: data.total }));
 
     return { buckets, list: overdueLoansList, chartData };
-  }, [filteredLoansForReports, loans, loadingLoans]);
+  }, [filteredLoansForReports, loans, loadingLoans, getDisplayBorrowerInfo]);
 
 
   // --- REPORT 3: Detailed Loan List (Export Focused) ---
@@ -467,6 +562,19 @@ export default function ReportsPage() {
     setActiveTab(newValue);
   };
 
+  const ComparisonMetric = ({ current, previous, label, isCurrency = true }) => {
+    if (!isCompareMode || previous === undefined || previous === null) return null;
+    const diff = current - previous;
+    const percent = previous > 0 ? (diff / previous) * 100 : 0;
+    const isPositive = diff >= 0;
+    
+    return (
+        <Typography variant="caption" sx={{ display: 'block', color: isPositive ? 'success.main' : 'error.main', fontWeight: 'bold' }}>
+            {isPositive ? '+' : ''}{isCurrency ? `ZMW ${diff.toFixed(2)}` : diff} ({percent.toFixed(1)}%)
+        </Typography>
+    );
+  };
+
   const renderReportContent = () => {
     if (loadingLoans || loadingPayments) {
       return (
@@ -511,32 +619,64 @@ export default function ReportsPage() {
 
             {activeTab === 0 && (
                 <Grid container spacing={3}>
-                    <Grid xs={12} md={8}>
+                    <Grid item xs={12} md={8}>
                         <Card elevation={2} sx={{ height: '100%' }}>
                             <CardContent>
                                 <Typography variant="h6" gutterBottom>Key Metrics</Typography>
                                 <Stack spacing={1}>
-                                    <Typography>Total Loans: <Typography component="span" fontWeight="bold" color="secondary.main">{portfolioSummary.totalLoans}</Typography></Typography>
-                                    <Typography>Active Loans: <Typography component="span" fontWeight="bold" color="secondary.main">{portfolioSummary.activeLoans}</Typography></Typography>
-                                    <Typography>Paid Loans: <Typography component="span" fontWeight="bold" color="secondary.main">{portfolioSummary.paidLoans}</Typography></Typography>
-                                    <Typography>Overdue Loans: <Typography component="span" fontWeight="bold" color="secondary.main">{portfolioSummary.overdueLoans}</Typography></Typography>
-                                    <Typography>Defaulted Loans: <Typography component="span" fontWeight="bold" color="secondary.main">{portfolioSummary.defaultedLoans}</Typography></Typography>
+                                    <Box>
+                                        <Typography>Total Loans: <Typography component="span" fontWeight="bold" color="secondary.main">{portfolioSummary.totalLoans}</Typography></Typography>
+                                        <ComparisonMetric current={portfolioSummary.totalLoans} previous={prevPeriodSummary?.count} isCurrency={false} />
+                                    </Box>
+                                    <Box>
+                                        <Typography>Active Loans: <Typography component="span" fontWeight="bold" color="secondary.main">{portfolioSummary.activeLoans}</Typography></Typography>
+                                    </Box>
+                                    <Box>
+                                        <Typography>Paid Loans: <Typography component="span" fontWeight="bold" color="secondary.main">{portfolioSummary.paidLoans}</Typography></Typography>
+                                    </Box>
+                                    <Box>
+                                        <Typography>Overdue Loans: <Typography component="span" fontWeight="bold" color="secondary.main">{portfolioSummary.overdueLoans}</Typography></Typography>
+                                    </Box>
+                                    <Box>
+                                        <Typography>Defaulted Loans: <Typography component="span" fontWeight="bold" color="secondary.main">{portfolioSummary.defaultedLoans}</Typography></Typography>
+                                    </Box>
                                     <Divider sx={{ my: 1 }} />
-                                    <Typography>Total Principal Disbursed: <Typography component="span" fontWeight="bold" color="secondary.main">ZMW {portfolioSummary.totalPrincipalDisbursed.toFixed(2)}</Typography></Typography>
-                                    <Typography>Total Interest Accrued: <Typography component="span" fontWeight="bold" color="secondary.main">ZMW {portfolioSummary.totalInterestAccrued.toFixed(2)}</Typography></Typography>
-                                    <Typography>Total Outstanding Balance: <Typography component="span" fontWeight="bold" color="secondary.main">ZMW {portfolioSummary.totalOutstanding.toFixed(2)}</Typography></Typography>
-                                    <Typography>Total Amount Repaid: <Typography component="span" fontWeight="bold" color="secondary.main">ZMW {portfolioSummary.totalRepaid.toFixed(2)}</Typography></Typography>
+                                    <Box>
+                                        <Typography>Total Principal Disbursed: <Typography component="span" fontWeight="bold" color="secondary.main">ZMW {portfolioSummary.totalPrincipalDisbursed.toFixed(2)}</Typography></Typography>
+                                        <ComparisonMetric current={portfolioSummary.totalPrincipalDisbursed} previous={prevPeriodSummary?.disbursed} />
+                                    </Box>
+                                    <Box>
+                                        <Typography>Total Interest Accrued: <Typography component="span" fontWeight="bold" color="secondary.main">ZMW {portfolioSummary.totalInterestAccrued.toFixed(2)}</Typography></Typography>
+                                        <ComparisonMetric current={portfolioSummary.totalInterestAccrued} previous={prevPeriodSummary?.interest} />
+                                    </Box>
+                                    <Box>
+                                        <Typography>Total Outstanding Balance: <Typography component="span" fontWeight="bold" color="secondary.main">ZMW {portfolioSummary.totalOutstanding.toFixed(2)}</Typography></Typography>
+                                    </Box>
+                                    <Box>
+                                        <Typography>Total Amount Repaid: <Typography component="span" fontWeight="bold" color="secondary.main">ZMW {portfolioSummary.totalRepaid.toFixed(2)}</Typography></Typography>
+                                        <ComparisonMetric current={portfolioSummary.totalRepaid} previous={prevPeriodSummary?.repaid} />
+                                    </Box>
                                 </Stack>
                             </CardContent>
                         </Card>
                     </Grid>
-                    <Grid xs={12} md={4}>
+                    <Grid item xs={12} md={4}>
                         <Card elevation={2} sx={{ height: '100%' }}>
                             <CardContent>
                                 <Typography variant="h6">Loan Status Distribution</Typography>
                                 <ResponsiveContainer width="100%" height={300}>
                                     <PieChart>
-                                        <Pie data={loanStatusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                                        <Pie 
+                                            data={loanStatusData} 
+                                            dataKey="value" 
+                                            nameKey="name" 
+                                            cx="50%" 
+                                            cy="50%" 
+                                            outerRadius={100} 
+                                            label
+                                            onClick={(data) => drillDown(data.name)}
+                                            style={{ cursor: 'pointer' }}
+                                        >
                                             {loanStatusData.map((entry, index) => <Cell key={`cell-${index}`} fill={LOAN_STATUS_COLORS[index % LOAN_STATUS_COLORS.length]} />)}
                                         </Pie>
                                         <RechartsTooltip />
@@ -546,7 +686,7 @@ export default function ReportsPage() {
                             </CardContent>
                         </Card>
                     </Grid>
-                    <Grid xs={12} md={4}>
+                    <Grid item xs={12} md={4}>
                         <Card elevation={2} sx={{ height: '100%' }}>
                             <CardContent>
                                 <Typography variant="h6">Portfolio Health</Typography>
@@ -558,12 +698,17 @@ export default function ReportsPage() {
                             </CardContent>
                         </Card>
                     </Grid>
-                    <Grid xs={12} md={4}>
+                    <Grid item xs={12} md={4}>
                         <Card elevation={2} sx={{ height: '100%' }}>
                             <CardContent>
                                 <Typography variant="h6">Financial Overview</Typography>
                                 <ResponsiveContainer width="100%" height={300}>
-                                    <BarChart data={summaryChartData} margin={{ top: 20, right: 20, bottom: 5, left: 20 }}>
+                                    <BarChart 
+                                        data={summaryChartData} 
+                                        margin={{ top: 20, right: 20, bottom: 5, left: 20 }}
+                                        onClick={(data) => data && data.activeLabel && drillDown('All')}
+                                        style={{ cursor: 'pointer' }}
+                                    >
                                         <CartesianGrid strokeDasharray="3 3" />
                                         <XAxis dataKey="name" />
                                         <YAxis />
@@ -574,7 +719,7 @@ export default function ReportsPage() {
                             </CardContent>
                         </Card>
                     </Grid>
-                    <Grid xs={12}>
+                    <Grid item xs={12}>
                         <Stack direction="row" spacing={2}>
                             <Button variant="outlined" color="secondary" onClick={exportPortfolioSummary}>Export Summary CSV</Button>
                             <Button variant="contained" color="secondary" onClick={exportPortfolioSummaryPdf}>Export Summary PDF</Button>
@@ -585,7 +730,7 @@ export default function ReportsPage() {
 
             {activeTab === 1 && (
                 <Grid container spacing={3}>
-                    <Grid xs={12} md={7}>
+                    <Grid item xs={12} md={7}>
                         <Typography variant="h6" gutterBottom>Arrears Aging Details</Typography>
                         <TableContainer component={Paper} elevation={1}>
                             <Table size="small">
@@ -608,7 +753,7 @@ export default function ReportsPage() {
                             </Table>
                         </TableContainer>
                     </Grid>
-                    <Grid xs={12} md={5}>
+                    <Grid item xs={12} md={5}>
                         <Card elevation={2}>
                             <CardContent>
                                 <Typography variant="h6">Arrears Distribution by Amount</Typography>
@@ -624,7 +769,7 @@ export default function ReportsPage() {
                             </CardContent>
                         </Card>
                     </Grid>
-                    <Grid xs={12}>
+                    <Grid item xs={12}>
                         <Typography variant="h6" gutterBottom>Overdue Loans</Typography>
                         <TableContainer component={Paper} elevation={1}>
                             <Table size="small">
@@ -632,6 +777,7 @@ export default function ReportsPage() {
                                     <TableRow>
                                         <TableCell>Borrower</TableCell>
                                         <TableCell>Phone</TableCell>
+                                        <TableCell align="right">Overdue Count</TableCell>
                                         <TableCell align="right">Principal</TableCell>
                                         <TableCell align="right">Outstanding</TableCell>
                                         <TableCell>Due Date</TableCell>
@@ -643,6 +789,14 @@ export default function ReportsPage() {
                                         <TableRow key={loan.id}>
                                             <TableCell>{loan.borrower}</TableCell>
                                             <TableCell>{loan.phone}</TableCell>
+                                            <TableCell align="right">
+                                                <Chip 
+                                                    label={loan.overdueFrequency} 
+                                                    size="small" 
+                                                    color={loan.overdueFrequency > 1 ? "error" : "default"}
+                                                    variant={loan.overdueFrequency > 1 ? "filled" : "outlined"}
+                                                />
+                                            </TableCell>
                                             <TableCell align="right">{loan.principal.toFixed(2)}</TableCell>
                                             <TableCell align="right">{loan.outstanding.toFixed(2)}</TableCell>
                                             <TableCell>{loan.dueDate}</TableCell>
@@ -653,7 +807,7 @@ export default function ReportsPage() {
                             </Table>
                         </TableContainer>
                     </Grid>
-                    <Grid xs={12}>
+                    <Grid item xs={12}>
                         <Stack direction="row" spacing={2}>
                             <Button variant="outlined" color="secondary" onClick={exportArrearsAging}>Export Arrears CSV</Button>
                             <Button variant="contained" color="secondary" onClick={exportArrearsAgingPdf}>Export Arrears PDF</Button>
@@ -725,7 +879,7 @@ export default function ReportsPage() {
                             </TableBody>
                         </Table>
                     </TableContainer>
-                    <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                    <Stack direction="row" spacing={2} mt={2}>
                         <Button variant="outlined" color="secondary" onClick={exportCashFlow}>Export Cash Flow CSV</Button>
                         <Button variant="contained" color="secondary" onClick={exportCashFlowPdf}>Export Cash Flow PDF</Button>
                     </Stack>
@@ -775,7 +929,7 @@ export default function ReportsPage() {
                             </Table>
                         </TableContainer>
                     )}
-                    <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                    <Stack direction="row" spacing={2} mt={2}>
                         <Button variant="outlined" color="secondary" onClick={exportDetailedLoanList}>Export Detailed List CSV</Button>
                         <Button variant="contained" color="secondary" onClick={exportDetailedLoanListPdf}>Export Detailed List PDF</Button>
                     </Stack>
@@ -785,7 +939,7 @@ export default function ReportsPage() {
             {activeTab === 4 && (
                 <Box>
                     <CostOfDefault loans={filteredLoansForReports} />
-                    <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                    <Stack direction="row" spacing={2} mt={2}>
                         <Button variant="outlined" color="secondary" onClick={exportCostOfDefault}>Export Cost of Default CSV</Button>
                         <Button variant="contained" color="secondary" onClick={exportCostOfDefaultPdf}>Export Cost of Default PDF</Button>
                     </Stack>
@@ -804,7 +958,7 @@ export default function ReportsPage() {
 
         <Paper elevation={1} sx={{ p: 2, mb: 3 }}>
           <Grid container spacing={2} alignItems="center">
-            <Grid xs={12} md={6} lg={4}>
+            <Grid item xs={12} md={6} lg={4}>
               <Autocomplete
                 options={borrowers || []}
                 getOptionLabel={(option) => option.name}
@@ -815,7 +969,7 @@ export default function ReportsPage() {
                 renderInput={(params) => <TextField {...params} label="Filter by Borrower" size="small" sx={filterInputStyles} />}
               />
             </Grid>
-            <Grid xs={12} md={6} lg={4}>
+            <Grid item xs={12} md={6} lg={4}>
               <Stack direction="row" spacing={1}>
                 <DatePicker
                   label="Start Date"
@@ -831,7 +985,7 @@ export default function ReportsPage() {
                 />
               </Stack>
             </Grid>
-            <Grid xs={12} lg={4}>
+            <Grid item xs={12} lg={4}>
                 <Stack direction="row" spacing={1} justifyContent="flex-start" flexWrap="wrap">
                     <Button size="small" onClick={setThisMonth}>This Month</Button>
                     <Button size="small" onClick={() => setDateRange('month', 1)}>Last Month</Button>
@@ -839,17 +993,39 @@ export default function ReportsPage() {
                     <Button size="small" onClick={() => setDateRange('year', 0)}>This Year</Button>
                 </Stack>
             </Grid>
-            <Grid xs={12}>
-              <Stack direction="row" spacing={0} flexWrap="wrap">
-                <FormControlLabel control={<Checkbox checked={includeActive} onChange={(e) => setIncludeActive(e.target.checked)} size="small" sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }} />} label="Active" />
-                <FormControlLabel control={<Checkbox checked={includePaid} onChange={(e) => setIncludePaid(e.target.checked)} size="small" sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }} />} label="Paid" />
-                <FormControlLabel control={<Checkbox checked={includeOverdue} onChange={(e) => setIncludeOverdue(e.target.checked)} size="small" sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }} />} label="Overdue" />
-                <FormControlLabel control={<Checkbox checked={includeDefaulted} onChange={(e) => setIncludeDefaulted(e.target.checked)} size="small" sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }} />} label="Defaulted" />
-                <Button onClick={handleClearFilters}>Clear Filters</Button>
+            <Grid item xs={12}>
+              <Stack direction="row" spacing={2} justifyContent="space-between" alignItems="center" flexWrap="wrap">
+                <Stack direction="row" spacing={0} flexWrap="wrap">
+                  <FormControlLabel control={<Checkbox checked={includeActive} onChange={(e) => setIncludeActive(e.target.checked)} size="small" sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }} />} label="Active" />
+                  <FormControlLabel control={<Checkbox checked={includePaid} onChange={(e) => setIncludePaid(e.target.checked)} size="small" sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }} />} label="Paid" />
+                  <FormControlLabel control={<Checkbox checked={includeOverdue} onChange={(e) => setIncludeOverdue(e.target.checked)} size="small" sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }} />} label="Overdue" />
+                  <FormControlLabel control={<Checkbox checked={includeDefaulted} onChange={(e) => setIncludeDefaulted(e.target.checked)} size="small" sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }} />} label="Defaulted" />
+                  <Button onClick={handleClearFilters}>Clear Filters</Button>
+                </Stack>
+                <FormControlLabel
+                    control={<Switch checked={isCompareMode} onChange={(e) => setIsCompareMode(e.target.checked)} color="secondary" />}
+                    label="Comparison Mode"
+                />
               </Stack>
             </Grid>
-            <Grid xs={12}>
-              <Stack direction="row" spacing={2} justifyContent="flex-end">
+            <Grid item xs={12}>
+              <Stack direction="row" spacing={2} justifyContent="flex-end" flexWrap="wrap">
+                <Button
+                  startIcon={<WhatsAppIcon />}
+                  onClick={handleShareSummary}
+                  variant="outlined"
+                  color="success"
+                >
+                  Share Summary
+                </Button>
+                <Button
+                  startIcon={<PictureAsPdfIcon />}
+                  onClick={() => setExportDialogOpen(true)}
+                  variant="contained"
+                  color="secondary"
+                >
+                  Generate Full Report
+                </Button>
                 <Button
                   startIcon={<CameraAltIcon />}
                   onClick={() => setScreenshotMode(!screenshotMode)}
@@ -866,6 +1042,37 @@ export default function ReportsPage() {
         <div className={screenshotMode ? "screenshot-container" : ""}>
           {renderReportContent()}
         </div>
+
+        {/* Master Export Dialog */}
+        <Dialog open={exportDialogOpen} onClose={() => setExportDialogOpen(false)}>
+            <DialogTitle>Generate Combined Report</DialogTitle>
+            <DialogContent>
+                <Typography variant="body2" sx={{ mb: 2 }}>Select sections to include in your combined PDF report.</Typography>
+                <FormGroup>
+                    <FormControlLabel control={<Checkbox checked={exportSelection.summary} onChange={(e) => setExportSelection({...exportSelection, summary: e.target.checked})} />} label="Portfolio Summary" />
+                    <FormControlLabel control={<Checkbox checked={exportSelection.cashFlow} onChange={(e) => setExportSelection({...exportSelection, cashFlow: e.target.checked})} />} label="Cash Flow Analysis" />
+                    <FormControlLabel control={<Checkbox checked={exportSelection.arrears} onChange={(e) => setExportSelection({...exportSelection, arrears: e.target.checked})} />} label="Arrears Aging" />
+                    <FormControlLabel control={<Checkbox checked={exportSelection.detailed} onChange={(e) => setExportSelection({...exportSelection, detailed: e.target.checked})} />} label="Detailed Loan List" />
+                </FormGroup>
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={() => setExportDialogOpen(false)}>Cancel</Button>
+                <Button 
+                    onClick={() => {
+                        if (exportSelection.summary) exportPortfolioSummaryPdf();
+                        if (exportSelection.cashFlow) exportCashFlowPdf();
+                        if (exportSelection.arrears) exportArrearsAgingPdf();
+                        if (exportSelection.detailed) exportDetailedLoanListPdf();
+                        setExportDialogOpen(false);
+                        showSnackbar("Report generation started", "success");
+                    }} 
+                    variant="contained" 
+                    color="primary"
+                >
+                    Generate PDF
+                </Button>
+            </DialogActions>
+        </Dialog>
       </Box>
     </LocalizationProvider>
   );

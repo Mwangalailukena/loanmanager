@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from "react";
 import {
   Box,
-  Typography,
   TextField,
   Button,
   Avatar,
@@ -88,11 +87,7 @@ export default function Profile({ onClose }) {
   };
 
   return (
-    <Box maxWidth={400} mx="auto" p={3}> {/* Add padding for dialog content */}
-      <Typography variant="h4" gutterBottom>
-        Profile
-      </Typography>
-
+    <Box maxWidth={400} mx="auto" p={1}> {/* Reduced padding */}
       {message && (
         <Alert
           severity={message.includes("successfully") ? "success" : "error"}
@@ -133,16 +128,6 @@ export default function Profile({ onClose }) {
         sx={{ mt: 2 }}
       >
         {savingDisplayName ? <CircularProgress size={24} color="inherit" /> : 'Save Profile'}
-      </Button>
-
-      {/* Optional: Add a close button if the dialog doesn't have its own */}
-      <Button
-        variant="outlined"
-        onClick={onClose} // Use the onClose prop to close the dialog
-        fullWidth
-        sx={{ mt: 2 }}
-      >
-        Close
       </Button>
     </Box>
   );

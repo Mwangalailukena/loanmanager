@@ -31,7 +31,6 @@ import {
   Alert,
   Checkbox,
   Tooltip,
-  Snackbar,
   Chip,
   TableSortLabel,
   InputAdornment,
@@ -52,6 +51,7 @@ import {
   Autorenew as AutorenewIcon,
   AttachMoney as AttachMoneyIcon,
   MoreVert as MoreVertIcon,
+  CheckCircleOutline as CheckCircleOutlineIcon,
 } from "@mui/icons-material";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { exportToCsv } from "../utils/exportCSV";
@@ -172,7 +172,6 @@ export default function LoanList() {
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentError, setPaymentError] = useState("");
   const [isAddingPayment, setIsAddingPayment] = useState(false);
-  const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   const [editModal, setEditModal] = useState({ open: false, loan: null });
   const [editData, setEditData] = useState({
@@ -199,13 +198,13 @@ export default function LoanList() {
   const [isRefinancing, setIsRefinancing] = useState(false);
   const [refinancePreview, setRefinancePreview] = useState(null);
   
-  const [sortKey, setSortKey] = useState("startDate");
-  const [sortDirection, setSortDirection] = useState("desc");
-
   const [topUpModal, setTopUpModal] = useState({ open: false, loan: null });
   const [isToppingUp, setIsToppingUp] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedLoan, setSelectedLoan] = useState(null);
+
+  const [sortKey, setSortKey] = useState("priority"); // Default to priority
+  const [sortDirection, setSortDirection] = useState("desc");
 
   const handleMenuClick = (event, loan) => {
     setAnchorEl(event.currentTarget);
@@ -372,6 +371,18 @@ export default function LoanList() {
         } else if (sortKey === "phone") {
           valA = displayInfoA.phone?.toLowerCase() || '';
           valB = displayInfoB.phone?.toLowerCase() || '';
+        } else if (sortKey === "priority") {
+          const getPriority = (l) => {
+            const status = calcStatus(l);
+            if (status === 'Overdue') return 3;
+            if (status === 'Defaulted') return -1;
+            if (status === 'Paid') return -2;
+            const due = dayjs(l.dueDate);
+            if (due.diff(dayjs(), 'day') <= 3) return 2;
+            return 1;
+          };
+          valA = getPriority(a);
+          valB = getPriority(b);
         } else if (sortKey.includes("Date")) {
           valA = dayjs(valA).unix();
           valB = dayjs(valB).unix();
@@ -574,7 +585,6 @@ export default function LoanList() {
     try {
       await addPayment(paymentModal.loanId, amountNum);
       setPaymentModal({ open: false, loanId: null });
-      setPaymentSuccess(true);
     } catch (error) {
       console.error("Error adding payment:", error);
       setPaymentError("Failed to add payment. Please try again.");
@@ -656,7 +666,6 @@ export default function LoanList() {
       try {
         await topUpLoan(topUpModal.loan.id, topUpAmount);
         setTopUpModal({ open: false, loan: null });
-        setPaymentSuccess(true); // Or a new success message for top-up
       } catch (error) {
         console.error("Error topping up loan:", error);
       } finally {
@@ -764,7 +773,6 @@ export default function LoanList() {
         refinanceInterestDuration
       );
       setRefinanceModal({ open: false, loan: null });
-      setPaymentSuccess(true);
     } catch (error) {
       console.error("Error refinancing loan:", error);
       setRefinanceError(error.message || "Failed to refinance loan. Please try again.");
@@ -975,6 +983,23 @@ export default function LoanList() {
                                   </IconButton>
                                 </span>
                               </Tooltip>
+                              <Tooltip title="Full Payment">
+                                <span>
+                                  <IconButton 
+                                    size="small" 
+                                    onClick={async () => {
+                                      const amount = loan.totalRepayable - (loan.repaidAmount || 0);
+                                      await addPayment(loan.id, amount);
+                                      setPaymentModal({ open: false, loanId: null });
+                                    }} 
+                                    aria-label="full-payment" 
+                                    disabled={isPaid} 
+                                    color="success"
+                                  >
+                                    <CheckCircleOutlineIcon fontSize="small" />
+                                  </IconButton>
+                                </span>
+                              </Tooltip>
                               <Tooltip title="Top-up">
                                 <span>
                                   <IconButton size="small" onClick={() => openTopUpModal(loan)} aria-label="top-up" disabled={isPaid || loan.repaidAmount > 0} color="secondary">
@@ -1148,7 +1173,20 @@ export default function LoanList() {
                         ) : null}
                       </TableSortLabel>
                     </TableCell>
-                    <TableCell sx={{ width: 90 }}>Status</TableCell>
+                    <TableCell sx={{ width: 90 }} sortDirection={sortKey === 'priority' ? sortDirection : false}>
+                      <TableSortLabel
+                        active={sortKey === 'priority'}
+                        direction={sortKey === 'priority' ? sortDirection : 'asc'}
+                        onClick={() => handleSort('priority')}
+                      >
+                        Status
+                        {sortKey === 'priority' ? (
+                          <Box component="span" sx={visuallyHidden}>
+                            {sortDirection === 'desc' ? 'sorted descending' : 'sorted ascending'}
+                          </Box>
+                        ) : null}
+                      </TableSortLabel>
+                    </TableCell>
                     <TableCell align="center" sx={{ width: 120 }}>
                       Actions
                     </TableCell>
@@ -1559,17 +1597,6 @@ export default function LoanList() {
           <Button onClick={() => setHistoryModal({ open: false, loanId: null, payments: [], loading: false })} size="small" color="secondary">Close</Button>
         </DialogActions>
       </Dialog>
-
-      <Snackbar
-        open={paymentSuccess}
-        autoHideDuration={4000}
-        onClose={() => setPaymentSuccess(false)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert onClose={() => setPaymentSuccess(false)} severity="success" variant="filled" sx={{ width: '100%' }}>
-          Payment added successfully!
-        </Alert>
-      </Snackbar>
 
       {/* Refinance Modal */}
       <Dialog open={refinanceModal.open} onClose={() => setRefinanceModal({ open: false, loan: null })} maxWidth="xs" fullWidth>
