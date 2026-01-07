@@ -6,7 +6,7 @@ import {
 import { Droppable, Draggable } from "@hello-pangea/dnd";
 import DashboardCard from "./DashboardCard";
 
-const DashboardSection = ({ cards, droppableId, isMobile, handleCardClick }) => {
+const DashboardSection = ({ cards, droppableId, isMobile, handleCardClick, loading }) => {
   return (
     <Droppable droppableId={droppableId} direction="horizontal">
       {(provided, snapshot) => (
@@ -31,6 +31,7 @@ const DashboardSection = ({ cards, droppableId, isMobile, handleCardClick }) => 
                   handleCardClick={handleCardClick}
                   provided={provided}
                   snapshot={snapshot}
+                  loading={loading}
                 />
               )}
             </Draggable>

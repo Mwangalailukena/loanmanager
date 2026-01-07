@@ -7,7 +7,6 @@ import {
     TextField,
     CircularProgress,
     Grid,
-    Skeleton,
     Button,
     Dialog,
     DialogTitle,
@@ -44,7 +43,6 @@ import { BOTTOM_NAV_HEIGHT } from "../components/BottomNavBar";
 import { useDashboardCalculations } from "../hooks/dashboard/useDashboardCalculations";
 import { useInsights } from "../hooks/useInsights";
 import DashboardSection from "../components/dashboard/DashboardSection";
-import DashboardCardSkeleton from "../components/dashboard/DashboardCardSkeleton";
 import InsightCard from "../components/dashboard/InsightCard";
 
 
@@ -424,7 +422,7 @@ export default function Dashboard() {
                             <Typography variant="h6" gutterBottom sx={{ mt: 4, mb: 2, px: 1, fontWeight: 800, fontSize: '1.1rem' }}>
                                 {group.name}
                             </Typography>
-                            <DashboardSection cards={group.cards} droppableId={group.name} isMobile={isMobile} handleCardClick={handleCardClick} />
+                            <DashboardSection cards={group.cards} droppableId={group.name} isMobile={isMobile} handleCardClick={handleCardClick} loading={loading} />
                         </Box>
                     ))}
                 </Box>
@@ -442,7 +440,7 @@ export default function Dashboard() {
                                 <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 1, px: 2, fontWeight: 'bold' }}>
                                     {group.name}
                                 </Typography>
-                                <DashboardSection cards={group.cards} droppableId={group.name} isMobile={isMobile} handleCardClick={handleCardClick} />
+                                <DashboardSection cards={group.cards} droppableId={group.name} isMobile={isMobile} handleCardClick={handleCardClick} loading={loading} />
                             </Box>
                         </Grid>
                     ))}
@@ -479,21 +477,6 @@ export default function Dashboard() {
             ),
         },
     ];
-
-    if (loading) {
-        return (
-            <Box sx={{ p: { xs: 2, md: 3 } }}>
-                <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
-                    <Skeleton width="200px" />
-                </Typography>
-                <Grid container spacing={2}>
-                    {[...Array(8)].map((_, index) => (
-                        <Grid item xs={12} sm={6} md={3} key={index}><DashboardCardSkeleton /></Grid>
-                    ))}
-                </Grid>
-            </Box>
-        );
-    }
 
     const userName = currentUser?.displayName?.split(' ')[0] || currentUser?.email;
 
