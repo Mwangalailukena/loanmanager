@@ -1,45 +1,30 @@
-
 import React from "react";
 import {
   Grid,
 } from "@mui/material";
-import { Droppable, Draggable } from "@hello-pangea/dnd";
 import DashboardCard from "./DashboardCard";
 
 const DashboardSection = ({ cards, droppableId, isMobile, handleCardClick, loading }) => {
   return (
-    <Droppable droppableId={droppableId} direction="horizontal">
-      {(provided, snapshot) => (
-        <Grid
-          container
-          spacing={isMobile ? 1.5 : 2}
-          {...provided.droppableProps}
-          ref={provided.innerRef}
-          sx={{
-            background: snapshot.isDraggingOver ? 'lightblue' : 'transparent',
-            borderRadius: 2,
-            transition: 'background-color 0.2s ease',
-          }}
-        >
-          {cards.map((card, index) => (
-            <Draggable key={card.id} draggableId={card.id} index={index}>
-              {(provided, snapshot) => (
-                <DashboardCard
-                  card={card}
-                  index={index}
-                  isMobile={isMobile}
-                  handleCardClick={handleCardClick}
-                  provided={provided}
-                  snapshot={snapshot}
-                  loading={loading}
-                />
-              )}
-            </Draggable>
-          ))}
-          {provided.placeholder}
-        </Grid>
-      )}
-    </Droppable>
+    <Grid
+      container
+      spacing={isMobile ? 1.5 : 2}
+      sx={{
+        borderRadius: 2,
+        transition: 'background-color 0.2s ease',
+      }}
+    >
+      {cards.map((card, index) => (
+        <DashboardCard
+          key={card.id}
+          card={card}
+          index={index}
+          isMobile={isMobile}
+          handleCardClick={handleCardClick}
+          loading={loading}
+        />
+      ))}
+    </Grid>
   );
 };
 

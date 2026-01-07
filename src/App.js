@@ -24,16 +24,18 @@ function App() {
   }
 
   return (
-    <Router>
-      <NetworkStatus />
-      <OfflineQueueProcessor />
-      <UpdateToast /> {/* Add the UpdateToast component here */}
-      <SearchProvider>
-        {/* Pass currentUser if AppRoutes needs it, otherwise it's fine as is */}
-        <AppRoutes darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} />
-      </SearchProvider>
-      <InstallPrompt />
-    </Router>
+    <FirestoreProvider>
+      <Router>
+        <NetworkStatus />
+        <OfflineQueueProcessor />
+        <UpdateToast /> {/* Add the UpdateToast component here */}
+        <SearchProvider>
+          {/* Pass currentUser if AppRoutes needs it, otherwise it's fine as is */}
+          <AppRoutes darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} />
+        </SearchProvider>
+        <InstallPrompt />
+      </Router>
+    </FirestoreProvider>
   );
 }
 
@@ -41,9 +43,7 @@ function App() {
 const AppWithProviders = () => (
   <AppThemeProvider>
     <AuthProvider>
-      <FirestoreProvider>
-        <App />
-      </FirestoreProvider>
+      <App />
     </AuthProvider>
   </AppThemeProvider>
 );

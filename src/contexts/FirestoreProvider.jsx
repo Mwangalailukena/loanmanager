@@ -23,7 +23,6 @@ import { useAuth } from "./AuthProvider";
 import { useSnackbar } from "../components/SnackbarProvider";
 import localforage from "localforage";
 import useOfflineStatus from "../hooks/useOfflineStatus";
-import SplashScreen from "../components/SplashScreen";
 
 
 const FirestoreContext = createContext();
@@ -844,7 +843,7 @@ export function FirestoreProvider({ children }) {
 
   return (
     <FirestoreContext.Provider value={value}>
-      {authLoading ? <SplashScreen /> : children}
+      {children}
     </FirestoreContext.Provider>
   );
 }

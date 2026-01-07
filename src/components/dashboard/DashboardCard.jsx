@@ -57,12 +57,12 @@ const DashboardCard = ({
       sm={6}
       md={4}
       lg={3}
-      ref={provided.innerRef}
-      {...provided.draggableProps}
-      {...provided.dragHandleProps}
+      ref={provided?.innerRef}
+      {...(provided?.draggableProps || {})}
+      {...(provided?.dragHandleProps || {})}
       style={{
-        ...provided.draggableProps.style,
-        userSelect: snapshot.isDragging ? "none" : "auto",
+        ...(provided?.draggableProps?.style || {}),
+        userSelect: snapshot?.isDragging ? "none" : "auto",
       }}
     >
       {loading ? (
@@ -80,10 +80,10 @@ const DashboardCard = ({
                 display: "flex",
                 flexDirection: "column",
                 backgroundColor: theme.palette.background.paper,
-                boxShadow: snapshot.isDragging ? theme.shadows[8] : "0 4px 12px rgba(0,0,0,0.03)",
+                boxShadow: snapshot?.isDragging ? theme.shadows[8] : "0 4px 12px rgba(0,0,0,0.03)",
                 border: `1px solid ${theme.palette.divider}`,
                 transition: prefersReducedMotion ? 'none' : "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                transform: snapshot.isDragging ? 'rotate(2deg)' : 'rotate(0deg)',
+                transform: snapshot?.isDragging ? 'rotate(2deg)' : 'rotate(0deg)',
                 "&:hover": {
                   boxShadow: theme.palette.mode === 'dark' ? '0 4px 10px rgba(0,0,0,0.8)' : '0 4px 10px rgba(0,0,0,0.15)',
                   borderColor: theme.palette[card.color]?.main || theme.palette.primary.main,

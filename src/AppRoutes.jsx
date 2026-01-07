@@ -5,10 +5,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import AppLayout from './components/AppLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 
+// Import Critical Routes Statically
+import Dashboard from './pages/Dashboard';
+import Login from './pages/Login';
+import Register from './pages/Register';
+
 // Import Material-UI components for the loader
 import { Box, LinearProgress, useTheme } from '@mui/material';
 
-const LazyDashboard = lazy(() => import('./pages/Dashboard'));
+// Lazy Load Non-Critical Routes
 const LazyLoanList = lazy(() => import('./pages/LoanList'));
 const LazyAddLoanForm = lazy(() => import('./pages/AddLoanForm'));
 const LazyAddPaymentPage = lazy(() => import('./pages/AddPaymentPage'));
@@ -16,8 +21,6 @@ const LazyActivityPage = lazy(() => import('./pages/ActivityPage'));
 const LazySettingsPage = lazy(() => import('./pages/SettingsPage'));
 const LazyProfile = lazy(() => import('./pages/Profile'));
 const LazyChangePassword = lazy(() => import('./pages/ChangePassword'));
-const LazyLogin = lazy(() => import('./pages/Login'));
-const LazyRegister = lazy(() => import('./pages/Register'));
 const LazyForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 const LazyReportsPage = lazy(() => import('./pages/ReportsPage'));
 const LazyBorrowerListPage = lazy(() => import('./pages/BorrowerListPage'));
@@ -25,7 +28,6 @@ const LazyAddBorrowerPage = lazy(() => import('./pages/AddBorrowerPage'));
 const LazyBorrowerProfilePage = lazy(() => import('./pages/BorrowerProfilePage'));
 const LazyEditBorrowerPage = lazy(() => import('./pages/EditBorrowerPage'));
 const LazyExpensesPage = lazy(() => import('./pages/ExpensesPage'));
-
 const LazyLoanSimulatorPage = lazy(() => import('./pages/LoanSimulatorPage'));
 
 function AppRoutes({ darkMode, onToggleDarkMode }) {
@@ -59,12 +61,13 @@ function AppRoutes({ darkMode, onToggleDarkMode }) {
             }
           >
             <Routes location={location}>
-              <Route path="/login" element={<LazyLogin />} />
-              <Route path="/register" element={<LazyRegister />} />
+              {/* Critical Routes */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<LazyForgotPassword />} />
               
               {/* Protected Routes */}
-              <Route path="/dashboard" element={<ProtectedRoute><LazyDashboard /></ProtectedRoute>} />
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/loans" element={<ProtectedRoute><LazyLoanList /></ProtectedRoute>} />
               <Route path="/add-loan" element={<ProtectedRoute><LazyAddLoanForm /></ProtectedRoute>} />
               <Route path="/add-payment" element={<ProtectedRoute><LazyAddPaymentPage /></ProtectedRoute>} />

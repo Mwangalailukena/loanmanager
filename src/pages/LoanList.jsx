@@ -148,7 +148,307 @@ const LoanListSkeleton = ({ isMobile }) => {
   }
 };
 
-// ... (rest of imports)
+const LoanMobileCard = React.memo(({ 
+  loan, 
+  displayInfo, 
+  outstanding, 
+  expandedRow, 
+  toggleRow, 
+  getStatusChipProps, 
+  calcStatus, 
+  openEditModal, 
+  setConfirmDelete, 
+  openPaymentModal, 
+  addPayment, 
+  openTopUpModal, 
+  openHistoryModal, 
+  openLoanDetail, 
+  openRefinanceModal,
+  theme 
+}) => {
+  const isPaid = calcStatus(loan).toLowerCase() === "paid";
+  
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      layout
+      style={{
+        marginBottom: 12,
+        boxShadow: theme.shadows[1],
+        borderRadius: theme.shape.borderRadius,
+        borderLeft: `5px solid ${theme.palette.secondary.main}`,
+        padding: 12,
+        background: theme.palette.background.paper,
+      }}
+    >
+      <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+        <Box flexGrow={1} minWidth={0}>
+          <Typography variant="subtitle2" fontWeight="bold" noWrap>
+            <Link to={`/borrowers/${loan.borrowerId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+              {displayInfo.name}
+            </Link>
+          </Typography>
+          <Typography variant="caption" color="textSecondary" noWrap>
+            {displayInfo.phone}
+          </Typography>
+          <Box sx={{ width: '100%', mt: 1 }}>
+            <LinearProgress
+              variant="determinate"
+              value={(loan.repaidAmount / loan.totalRepayable) * 100}
+              sx={{ height: 6, borderRadius: 5 }}
+            />
+            <Typography variant="caption" color="text.secondary">
+              ZMW {outstanding.toFixed(2)} outstanding
+            </Typography>
+          </Box>
+        </Box>
+        <Stack alignItems="flex-end" spacing={0.5}>
+          <Chip size="small" {...getStatusChipProps(calcStatus(loan))} />
+          <Typography variant="body2" fontWeight="bold" sx={{ color: theme.palette.secondary.main }} noWrap>
+            ZMW {(outstanding).toFixed(2)}
+          </Typography>
+        </Stack>
+        <IconButton size="small" onClick={() => toggleRow(loan.id)} aria-label="expand" color="secondary">
+          {expandedRow === loan.id ? <KeyboardArrowUp fontSize="small" /> : <KeyboardArrowDown fontSize="small" />}
+        </IconButton>
+      </Stack>
+      <Collapse in={expandedRow === loan.id} timeout="auto" unmountOnExit>
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.3, ease: 'easeInOut' }}
+        >
+          <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+            <Grid container spacing={2}>
+              <Grid xs={6}>
+                <Typography variant="caption" color="text.secondary">Principal</Typography>
+                <Typography variant="body2" fontWeight="bold">ZMW {Number(loan.principal).toFixed(2)}</Typography>
+              </Grid>
+              <Grid xs={6}>
+                <Typography variant="caption" color="text.secondary">Interest</Typography>
+                <Typography variant="body2" fontWeight="bold">ZMW {Number(loan.interest).toFixed(2)}</Typography>
+              </Grid>
+              <Grid xs={6}>
+                <Typography variant="caption" color="text.secondary">Total Repayable</Typography>
+                <Typography variant="body2" fontWeight="bold">ZMW {Number(loan.totalRepayable).toFixed(2)}</Typography>
+              </Grid>
+              <Grid xs={6}>
+                <Typography variant="caption" color="text.secondary">Outstanding</Typography>
+                <Typography variant="body2" fontWeight="bold" color="secondary.main">{outstanding.toFixed(2)}</Typography>
+              </Grid>
+              <Grid xs={6}>
+                <Typography variant="caption" color="text.secondary">Start Date</Typography>
+                <Typography variant="body2">{loan.startDate}</Typography>
+              </Grid>
+              <Grid xs={6}>
+                <Typography variant="caption" color="text.secondary">Due Date</Typography>
+                <Typography variant="body2">{loan.dueDate}</Typography>
+              </Grid>
+            </Grid>
+            <Stack direction="row" spacing={0.5} mt={2} justifyContent="flex-start" sx={{ overflowX: 'auto' }}>
+              <Tooltip title="Edit">
+                <span>
+                  <IconButton size="small" onClick={() => openEditModal(loan)} aria-label="edit" disabled={isPaid} color="secondary">
+                    <Edit fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Tooltip title="Delete">
+                <span>
+                  <IconButton size="small" color="error" onClick={() => setConfirmDelete({ open: true, loanId: loan.id })} aria-label="delete" disabled={isPaid}>
+                    <Delete fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Tooltip title="Add Payment">
+                <span>
+                  <IconButton size="small" onClick={() => openPaymentModal(loan.id)} aria-label="payment" disabled={isPaid} color="secondary">
+                    <Payment fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Tooltip title="Full Payment">
+                <span>
+                  <IconButton 
+                    size="small" 
+                    onClick={async () => {
+                      const amount = loan.totalRepayable - (loan.repaidAmount || 0);
+                      await addPayment(loan.id, amount);
+                    }} 
+                    aria-label="full-payment" 
+                    disabled={isPaid} 
+                    color="success"
+                  >
+                    <CheckCircleOutlineIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Tooltip title="Top-up">
+                <span>
+                  <IconButton size="small" onClick={() => openTopUpModal(loan)} aria-label="top-up" disabled={isPaid || loan.repaidAmount > 0} color="secondary">
+                    <AttachMoneyIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Tooltip title="View History">
+                <IconButton size="small" onClick={() => openHistoryModal(loan.id)} aria-label="history" color="secondary">
+                  <History fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Details">
+                <IconButton size="small" onClick={() => openLoanDetail(loan.id)} aria-label="details" color="secondary">
+                  <InfoIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Refinance">
+                <span>
+                  <IconButton size="small" onClick={() => openRefinanceModal(loan)} aria-label="refinance" disabled={isPaid} color="secondary">
+                    <AutorenewIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </Stack>
+          </Box>
+        </motion.div>
+      </Collapse>
+    </motion.div>
+  );
+});
+
+const LoanTableRow = React.memo(({ 
+  loan, 
+  idx, 
+  page, 
+  PAGE_SIZE, 
+  isSelected, 
+  toggleSelectLoan, 
+  displayInfo, 
+  calcStatus, 
+  getStatusChipProps, 
+  openEditModal, 
+  setConfirmDelete, 
+  openPaymentModal, 
+  handleMenuClick,
+  theme 
+}) => {
+  const outstanding = (loan.totalRepayable || 0) - (loan.repaidAmount || 0);
+  const isPaid = calcStatus(loan).toLowerCase() === "paid";
+  const status = calcStatus(loan);
+
+  return (
+    <TableRow
+      hover
+      role="checkbox"
+      aria-checked={isSelected}
+      selected={isSelected}
+      sx={{
+        cursor: "pointer",
+        py: 0.5,
+        '&:nth-of-type(odd)': {
+          backgroundColor: theme.palette.action.hover,
+        },
+        ...(status === 'Overdue' && {
+          borderLeft: `5px solid ${theme.palette.error.main}`,
+        }),
+        ...(status === 'Defaulted' && {
+          borderLeft: `5px solid ${theme.palette.warning.main}`,
+        }),
+      }}
+    >
+      <TableCell padding="checkbox" sx={{ py: 0.5 }}>
+        <Checkbox
+          checked={isSelected}
+          onChange={() => toggleSelectLoan(loan.id)}
+          inputProps={{ "aria-label": `select loan ${displayInfo.name}` }}
+          size="small"
+          sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }}
+        />
+      </TableCell>
+      <TableCell align="center" sx={{ py: 0.5 }}>
+        {(page - 1) * PAGE_SIZE + idx + 1}
+      </TableCell>
+      <TableCell sx={{ py: 0.5 }}>
+        <Link to={`/borrowers/${loan.borrowerId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+          {displayInfo.name}
+        </Link>
+      </TableCell>
+      <TableCell sx={{ py: 0.5 }}>{displayInfo.phone}</TableCell>
+      <TableCell align="right" sx={{ py: 0.5 }}>
+        {Number(loan.principal).toFixed(2)}
+      </TableCell>
+      <TableCell align="right" sx={{ py: 0.5 }}>
+        {Number(loan.interest).toFixed(2)}
+      </TableCell>
+      <TableCell align="right" sx={{ py: 0.5 }}>
+        {Number(loan.totalRepayable).toFixed(2)}
+      </TableCell>
+      <TableCell align="right" sx={{ py: 0.5 }}>
+        {outstanding.toFixed(2)}
+      </TableCell>
+      <TableCell sx={{ py: 0.5 }}>{loan.startDate}</TableCell>
+      <TableCell sx={{ py: 0.5 }}>{loan.dueDate}</TableCell>
+      <TableCell sx={{ py: 0.5 }}>
+        <Chip size="small" {...getStatusChipProps(status)} />
+      </TableCell>
+      <TableCell align="center" sx={{ py: 0.5 }}>
+        <Tooltip title="Edit">
+          <span>
+            <IconButton
+              size="small"
+              onClick={() => openEditModal(loan)}
+              aria-label="edit"
+              disabled={isPaid}
+              color="secondary"
+            >
+              <Edit fontSize="small" />
+            </IconButton>
+          </span>
+        </Tooltip>
+        <Tooltip title="Delete">
+          <span>
+            <IconButton
+              size="small"
+              color="error"
+              onClick={() => setConfirmDelete({ open: true, loanId: loan.id })}
+              aria-label="delete"
+              disabled={isPaid}
+            >
+              <Delete fontSize="small" />
+            </IconButton>
+          </span>
+        </Tooltip>
+        <Tooltip title="Add Payment">
+          <span>
+            <IconButton
+              size="small"
+              onClick={() => openPaymentModal(loan.id)}
+              aria-label="add payment"
+              disabled={isPaid}
+              color="secondary"
+            >
+              <Payment fontSize="small" />
+            </IconButton>
+          </span>
+        </Tooltip>
+        <Tooltip title="More">
+          <IconButton
+            size="small"
+            onClick={(e) => handleMenuClick(e, loan)}
+            aria-label="more"
+            color="secondary"
+          >
+            <MoreVertIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </TableCell>
+    </TableRow>
+  );
+});
+
+// ... (existing constants)
 
 export default function LoanList() {
   const { loans, loading, deleteLoan, addPayment, updateLoan, getPaymentsByLoanId, settings, borrowers, refinanceLoan, topUpLoan } = useFirestore();
@@ -216,12 +516,12 @@ export default function LoanList() {
     setSelectedLoan(null);
   };
 
-  const interestRates = settings.interestRates || {
+  const interestRates = useMemo(() => settings.interestRates || {
     1: 0.15,
     2: 0.2,
     3: 0.3,
     4: 0.3,
-  };
+  }, [settings.interestRates]);
 
   const calculateInterest = (principal, weeks) => principal * (interestRates[weeks] || 0);
 
@@ -449,25 +749,30 @@ export default function LoanList() {
     );
   }, [filteredLoans]);
 
-  const toggleSelectAll = () => {
+  const toggleSelectAll = useCallback(() => {
     if (selectedLoanIds.length === displayedLoans.length && displayedLoans.length > 0) {
       setSelectedLoanIds([]);
     } else {
       setSelectedLoanIds(displayedLoans.map((loan) => loan.id));
     }
-  };
+  }, [selectedLoanIds.length, displayedLoans]);
 
-  const toggleSelectLoan = (id) => {
+  const toggleSelectLoan = useCallback((id) => {
     setSelectedLoanIds((prev) =>
       prev.includes(id) ? prev.filter((sid) => sid !== id) : [...prev, id]
     );
-  };
+  }, []);
   
-  const handleSort = (key) => {
-    const isAsc = sortKey === key && sortDirection === 'asc';
-    setSortDirection(isAsc ? 'desc' : 'asc');
-    setSortKey(key);
-  };
+  const handleSort = useCallback((key) => {
+    setSortKey((prevKey) => {
+        if (prevKey === key) {
+            setSortDirection((prevDir) => (prevDir === 'asc' ? 'desc' : 'asc'));
+            return key;
+        }
+        setSortDirection('asc');
+        return key;
+    });
+  }, []);
 
   const handleDelete = async () => {
     if (confirmDelete.loanId) {
@@ -497,7 +802,7 @@ export default function LoanList() {
     }
   };
 
-  const openEditModal = (loan) => {
+  const openEditModal = useCallback((loan) => {
     const displayInfo = getDisplayBorrowerInfo(loan);
     setEditData({
       borrower: displayInfo.name || "",
@@ -509,7 +814,7 @@ export default function LoanList() {
     });
     setEditErrors({});
     setEditModal({ open: true, loan });
-  };
+  }, [getDisplayBorrowerInfo]);
 
   const handleEditSubmit = async () => {
     const errors = {};
@@ -560,11 +865,11 @@ export default function LoanList() {
     }
   };
 
-  const openPaymentModal = (loanId) => {
+  const openPaymentModal = useCallback((loanId) => {
     setPaymentAmount("");
     setPaymentError("");
     setPaymentModal({ open: true, loanId });
-  };
+  }, []);
 
   const handlePaymentSubmit = async () => {
     const amountNum = parseFloat(paymentAmount);
@@ -593,7 +898,7 @@ export default function LoanList() {
     }
   };
 
-  const openHistoryModal = async (loanId) => {
+  const openHistoryModal = useCallback(async (loanId) => {
     setHistoryModal({ open: true, loanId, payments: [], loading: true });
     try {
       const payments = await getPaymentsByLoanId(loanId);
@@ -602,11 +907,11 @@ export default function LoanList() {
       console.error("Error fetching payment history:", error);
       setHistoryModal((prev) => ({ ...prev, payments: [], loading: false }));
     }
-  };
+  }, [getPaymentsByLoanId]);
 
-  const toggleRow = (id) => {
-    setExpandedRow(expandedRow === id ? null : id);
-  };
+  const toggleRow = useCallback((id) => {
+    setExpandedRow(prev => prev === id ? null : id);
+  }, []);
   
   const onMonthChange = useCallback(
     (e) => {
@@ -634,7 +939,7 @@ export default function LoanList() {
     [searchParams, setSearchParams]
   );
 
-  const calculateRefinancePreview = (loan, amount, duration, startDate) => {
+  const calculateRefinancePreview = useCallback((loan, amount, duration, startDate) => {
     if (!loan || !amount || !duration || amount <= 0) {
       setRefinancePreview(null);
       return;
@@ -654,11 +959,11 @@ export default function LoanList() {
       totalRepayable: newTotalRepayable,
       dueDate: newDueDate, // Add new due date to preview
     });
-  };
+  }, [interestRates]);
 
-  const openTopUpModal = (loan) => {
+  const openTopUpModal = useCallback((loan) => {
     setTopUpModal({ open: true, loan });
-  };
+  }, []);
 
   const handleTopUpSubmit = async (topUpAmount) => {
     if (topUpModal.loan) {
@@ -674,7 +979,7 @@ export default function LoanList() {
     }
   };
 
-  const openRefinanceModal = (loan) => {
+  const openRefinanceModal = useCallback((loan) => {
     const outstanding = (loan.totalRepayable || 0) - (loan.repaidAmount || 0);
     setRefinanceOriginalLoan(loan);
     setRefinanceCurrentOutstanding(outstanding);
@@ -684,7 +989,7 @@ export default function LoanList() {
     setRefinanceError("");
     setRefinanceModal({ open: true, loan });
     calculateRefinancePreview(loan, outstanding, loan.interestDuration || 1, dayjs().format("YYYY-MM-DD"));
-  };
+  }, [calculateRefinancePreview]);
 
   const exportLoanListData = () => {
     const dataToExport = filteredLoans.map(loan => {
@@ -875,162 +1180,27 @@ export default function LoanList() {
           {isMobile ? (
             <>
               <AnimatePresence>
-                {displayedLoans.map((loan) => {
-                  const outstanding = (loan.totalRepayable || 0) - (loan.repaidAmount || 0);
-                  const isPaid = calcStatus(loan).toLowerCase() === "paid";
-                  const displayInfo = getDisplayBorrowerInfo(loan);
-
-                  return (
-                    <motion.div
-                      key={loan.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      layout
-                      style={{
-                        marginBottom: 12,
-                        boxShadow: theme.shadows[1],
-                        borderRadius: theme.shape.borderRadius,
-                        borderLeft: `5px solid ${theme.palette.secondary.main}`,
-                        padding: 12,
-                        background: theme.palette.background.paper,
-                      }}
-                    >
-                      <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
-                        <Box flexGrow={1} minWidth={0}>
-                          <Typography variant="subtitle2" fontWeight="bold" noWrap>
-                            <Link to={`/borrowers/${loan.borrowerId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                              {displayInfo.name}
-                            </Link>
-                          </Typography>
-                          <Typography variant="caption" color="textSecondary" noWrap>
-                            {displayInfo.phone}
-                          </Typography>
-                          <Box sx={{ width: '100%', mt: 1 }}>
-                            <LinearProgress
-                              variant="determinate"
-                              value={(loan.repaidAmount / loan.totalRepayable) * 100}
-                              sx={{ height: 6, borderRadius: 5 }}
-                            />
-                            <Typography variant="caption" color="text.secondary">
-                              ZMW {outstanding.toFixed(2)} outstanding
-                            </Typography>
-                          </Box>
-                        </Box>
-                        <Stack alignItems="flex-end" spacing={0.5}>
-                          <Chip size="small" {...getStatusChipProps(calcStatus(loan))} />
-                          <Typography variant="body2" fontWeight="bold" sx={{ color: theme.palette.secondary.main }} noWrap>
-                            ZMW {(outstanding).toFixed(2)}
-                          </Typography>
-                        </Stack>
-                        <IconButton size="small" onClick={() => toggleRow(loan.id)} aria-label="expand" color="secondary">
-                          {expandedRow === loan.id ? <KeyboardArrowUp fontSize="small" /> : <KeyboardArrowDown fontSize="small" />}
-                        </IconButton>
-                      </Stack>
-                      <Collapse in={expandedRow === loan.id} timeout="auto" unmountOnExit>
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.3, ease: 'easeInOut' }}
-                        >
-                          <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-                            <Grid container spacing={2}>
-                              <Grid xs={6}>
-                                <Typography variant="caption" color="text.secondary">Principal</Typography>
-                                <Typography variant="body2" fontWeight="bold">ZMW {Number(loan.principal).toFixed(2)}</Typography>
-                              </Grid>
-                              <Grid xs={6}>
-                                <Typography variant="caption" color="text.secondary">Interest</Typography>
-                                <Typography variant="body2" fontWeight="bold">ZMW {Number(loan.interest).toFixed(2)}</Typography>
-                              </Grid>
-                              <Grid xs={6}>
-                                <Typography variant="caption" color="text.secondary">Total Repayable</Typography>
-                                <Typography variant="body2" fontWeight="bold">ZMW {Number(loan.totalRepayable).toFixed(2)}</Typography>
-                              </Grid>
-                              <Grid xs={6}>
-                                <Typography variant="caption" color="text.secondary">Outstanding</Typography>
-                                <Typography variant="body2" fontWeight="bold" color="secondary.main">{outstanding.toFixed(2)}</Typography>
-                              </Grid>
-                              <Grid xs={6}>
-                                <Typography variant="caption" color="text.secondary">Start Date</Typography>
-                                <Typography variant="body2">{loan.startDate}</Typography>
-                              </Grid>
-                              <Grid xs={6}>
-                                <Typography variant="caption" color="text.secondary">Due Date</Typography>
-                                <Typography variant="body2">{loan.dueDate}</Typography>
-                              </Grid>
-                            </Grid>
-                            <Stack direction="row" spacing={0.5} mt={2} justifyContent="flex-start" sx={{ overflowX: 'auto' }}>
-                              <Tooltip title="Edit">
-                                <span>
-                                  <IconButton size="small" onClick={() => openEditModal(loan)} aria-label="edit" disabled={isPaid} color="secondary">
-                                    <Edit fontSize="small" />
-                                  </IconButton>
-                                </span>
-                              </Tooltip>
-                              <Tooltip title="Delete">
-                                <span>
-                                  <IconButton size="small" color="error" onClick={() => setConfirmDelete({ open: true, loanId: loan.id })} aria-label="delete" disabled={isPaid}>
-                                    <Delete fontSize="small" />
-                                  </IconButton>
-                                </span>
-                              </Tooltip>
-                              <Tooltip title="Add Payment">
-                                <span>
-                                  <IconButton size="small" onClick={() => openPaymentModal(loan.id)} aria-label="payment" disabled={isPaid} color="secondary">
-                                    <Payment fontSize="small" />
-                                  </IconButton>
-                                </span>
-                              </Tooltip>
-                              <Tooltip title="Full Payment">
-                                <span>
-                                  <IconButton 
-                                    size="small" 
-                                    onClick={async () => {
-                                      const amount = loan.totalRepayable - (loan.repaidAmount || 0);
-                                      await addPayment(loan.id, amount);
-                                      setPaymentModal({ open: false, loanId: null });
-                                    }} 
-                                    aria-label="full-payment" 
-                                    disabled={isPaid} 
-                                    color="success"
-                                  >
-                                    <CheckCircleOutlineIcon fontSize="small" />
-                                  </IconButton>
-                                </span>
-                              </Tooltip>
-                              <Tooltip title="Top-up">
-                                <span>
-                                  <IconButton size="small" onClick={() => openTopUpModal(loan)} aria-label="top-up" disabled={isPaid || loan.repaidAmount > 0} color="secondary">
-                                    <AttachMoneyIcon fontSize="small" />
-                                  </IconButton>
-                                </span>
-                              </Tooltip>
-                              <Tooltip title="View History">
-                                <IconButton size="small" onClick={() => openHistoryModal(loan.id)} aria-label="history" color="secondary">
-                                  <History fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title="Details">
-                                <IconButton size="small" onClick={() => openLoanDetail(loan.id)} aria-label="details" color="secondary">
-                                  <InfoIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title="Refinance">
-                                <span>
-                                  <IconButton size="small" onClick={() => openRefinanceModal(loan)} aria-label="refinance" disabled={isPaid} color="secondary">
-                                    <AutorenewIcon fontSize="small" />
-                                  </IconButton>
-                                </span>
-                              </Tooltip>
-                            </Stack>
-                          </Box>
-                        </motion.div>
-                      </Collapse>
-                    </motion.div>
-                  );
-                })}
+                {displayedLoans.map((loan) => (
+                  <LoanMobileCard
+                    key={loan.id}
+                    loan={loan}
+                    displayInfo={getDisplayBorrowerInfo(loan)}
+                    outstanding={(loan.totalRepayable || 0) - (loan.repaidAmount || 0)}
+                    expandedRow={expandedRow}
+                    toggleRow={toggleRow}
+                    getStatusChipProps={getStatusChipProps}
+                    calcStatus={calcStatus}
+                    openEditModal={openEditModal}
+                    setConfirmDelete={setConfirmDelete}
+                    openPaymentModal={openPaymentModal}
+                    addPayment={addPayment}
+                    openTopUpModal={openTopUpModal}
+                    openHistoryModal={openHistoryModal}
+                    openLoanDetail={openLoanDetail}
+                    openRefinanceModal={openRefinanceModal}
+                    theme={theme}
+                  />
+                ))}
               </AnimatePresence>
               {useInfiniteScroll && displayedLoans.length < filteredLoans.length && (
                 <Box textAlign="center" my={1}>
@@ -1193,122 +1363,25 @@ export default function LoanList() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {displayedLoans.map((loan, idx) => {
-                    const outstanding = (loan.totalRepayable || 0) - (loan.repaidAmount || 0);
-                    const isSelected = selectedLoanIds.includes(loan.id);
-                    const isPaid = calcStatus(loan).toLowerCase() === "paid";
-                    const displayInfo = getDisplayBorrowerInfo(loan);
-
-                    return (
-                      <TableRow
-                        key={loan.id}
-                        hover
-                        role="checkbox"
-                        aria-checked={isSelected}
-                        selected={isSelected}
-                        sx={{
-                          cursor: "pointer",
-                          py: 0.5,
-                          '&:nth-of-type(odd)': {
-                            backgroundColor: theme.palette.action.hover,
-                          },
-                          ...(calcStatus(loan) === 'Overdue' && {
-                            borderLeft: `5px solid ${theme.palette.error.main}`,
-                          }),
-                          ...(calcStatus(loan) === 'Defaulted' && {
-                            borderLeft: `5px solid ${theme.palette.warning.main}`,
-                          }),
-                        }}
-                      >
-                        <TableCell padding="checkbox" sx={{ py: 0.5 }}>
-                          <Checkbox
-                            checked={isSelected}
-                            onChange={() => toggleSelectLoan(loan.id)}
-                            inputProps={{ "aria-label": `select loan ${displayInfo.name}` }}
-                            size="small"
-                            sx={{ '&.Mui-checked': { color: theme.palette.secondary.main } }}
-                          />
-                        </TableCell>
-                        <TableCell align="center" sx={{ py: 0.5 }}>
-                          {(page - 1) * PAGE_SIZE + idx + 1}
-                        </TableCell>
-                        <TableCell sx={{ py: 0.5 }}>
-                          <Link to={`/borrowers/${loan.borrowerId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                            {displayInfo.name}
-                          </Link>
-                        </TableCell>
-                        <TableCell sx={{ py: 0.5 }}>{displayInfo.phone}</TableCell>
-                        <TableCell align="right" sx={{ py: 0.5 }}>
-                          {Number(loan.principal).toFixed(2)}
-                        </TableCell>
-                        <TableCell align="right" sx={{ py: 0.5 }}>
-                          {Number(loan.interest).toFixed(2)}
-                        </TableCell>
-                        <TableCell align="right" sx={{ py: 0.5 }}>
-                          {Number(loan.totalRepayable).toFixed(2)}
-                        </TableCell>
-                        <TableCell align="right" sx={{ py: 0.5 }}>
-                          {outstanding.toFixed(2)}
-                        </TableCell>
-                        <TableCell sx={{ py: 0.5 }}>{loan.startDate}</TableCell>
-                        <TableCell sx={{ py: 0.5 }}>{loan.dueDate}</TableCell>
-                        <TableCell sx={{ py: 0.5 }}>
-                          <Chip size="small" {...getStatusChipProps(calcStatus(loan))} />
-                        </TableCell>
-                        <TableCell align="center" sx={{ py: 0.5 }}>
-                          <Tooltip title="Edit">
-                            <span>
-                              <IconButton
-                                size="small"
-                                onClick={() => openEditModal(loan)}
-                                aria-label="edit"
-                                disabled={isPaid}
-                                color="secondary"
-                              >
-                                <Edit fontSize="small" />
-                              </IconButton>
-                            </span>
-                          </Tooltip>
-                          <Tooltip title="Delete">
-                            <span>
-                              <IconButton
-                                size="small"
-                                color="error"
-                                onClick={() => setConfirmDelete({ open: true, loanId: loan.id })}
-                                aria-label="delete"
-                                disabled={isPaid}
-                              >
-                                <Delete fontSize="small" />
-                              </IconButton>
-                            </span>
-                          </Tooltip>
-                          <Tooltip title="Add Payment">
-                            <span>
-                              <IconButton
-                                size="small"
-                                onClick={() => openPaymentModal(loan.id)}
-                                aria-label="add payment"
-                                disabled={isPaid}
-                                color="secondary"
-                              >
-                                <Payment fontSize="small" />
-                              </IconButton>
-                            </span>
-                          </Tooltip>
-                          <Tooltip title="More">
-                            <IconButton
-                              size="small"
-                              onClick={(e) => handleMenuClick(e, loan)}
-                              aria-label="more"
-                              color="secondary"
-                            >
-                              <MoreVertIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                  {displayedLoans.map((loan, idx) => (
+                    <LoanTableRow
+                      key={loan.id}
+                      loan={loan}
+                      idx={idx}
+                      page={page}
+                      PAGE_SIZE={PAGE_SIZE}
+                      isSelected={selectedLoanIds.includes(loan.id)}
+                      toggleSelectLoan={toggleSelectLoan}
+                      displayInfo={getDisplayBorrowerInfo(loan)}
+                      calcStatus={calcStatus}
+                      getStatusChipProps={getStatusChipProps}
+                      openEditModal={openEditModal}
+                      setConfirmDelete={setConfirmDelete}
+                      openPaymentModal={openPaymentModal}
+                      handleMenuClick={handleMenuClick}
+                      theme={theme}
+                    />
+                  ))}
                 </TableBody>
                 <TableFooter>
                   <TableRow>

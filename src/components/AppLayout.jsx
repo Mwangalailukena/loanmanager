@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   useTheme,
@@ -138,24 +138,20 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleScrollToTop = () => {
+  const handleScrollToTop = useCallback(() => {
     window.scrollTo({
       top: 0,
       behavior: 'smooth',
     });
-  };
+  }, []);
 
-  const handleDrawerOpen = () => setMobileDrawerOpen(true);
-  const handleDrawerClose = () => setMobileDrawerOpen(false);
+  const handleDrawerOpen = useCallback(() => setMobileDrawerOpen(true), []);
+  const handleDrawerClose = useCallback(() => setMobileDrawerOpen(false), []);
 
   const hideLayout = ['/login', '/register', '/forgot-password'].includes(pathname);
   const bottomNavHeight = isMobile && !hideLayout ? BOTTOM_NAV_HEIGHT : 0;
 
-  if (hideLayout) {
-    return <>{children}</>;
-  }
-
-  const renderFab = () => {
+  const fabElement = useMemo(() => {
     const fabStyles = { position: 'fixed', bottom: isMobile ? `calc(${bottomNavHeight}px + 16px)` : 16, right: 16, };
     let fabContent = null;
     switch (pathname) {
@@ -175,13 +171,17 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
       default: fabContent = null;
     }
     return ( <AnimatePresence>{fabContent && (<motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 20 }} >{fabContent}</motion.div>)}</AnimatePresence> );
-  };
+  }, [pathname, isMobile, bottomNavHeight, navigate]);
+
+  if (hideLayout) {
+    return <>{children}</>;
+  }
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <CssBaseline />
       
-      {!isMobile && ( <FloatingNavBar darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} onOpenLoanDetail={openLoanDetail} /> )}
+      {!isMobile && ( <FloatingNavBar darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} /> )}
       {isMobile && ( <Box sx={{ position: 'fixed', top: 8, left: 8, zIndex: theme.zIndex.appBar + 1, bgcolor: 'background.paper', borderRadius: '50%', boxShadow: theme.shadows[2], }} > <IconButton onClick={handleDrawerOpen} sx={{ color: theme.palette.secondary.main }}><MenuIcon /></IconButton> </Box> )}
       <MobileSearchBar onSearchChange={handleSearchChange} onClose={handleMobileSearchClose} open={isMobileSearchOpen} searchTerm={searchTerm} />
       {isMobileSearchOpen && ( <SearchResults variant="paper" onOpenLoanDetail={openLoanDetail} onClose={handleMobileSearchClose} /> )}
@@ -202,11 +202,11 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
           {children}
         </Container>
       </Box>
-      <MobileDrawer open={mobileDrawerOpen} onClose={handleDrawerClose} onOpen={handleDrawerOpen} darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} onOpenLoanDetail={openLoanDetail} searchTerm={searchTerm} handleSearchChange={handleSearchChange} />
+      <MobileDrawer open={mobileDrawerOpen} onClose={handleDrawerClose} onOpen={handleDrawerOpen} darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} />
       {!hideLayout && isMobile && <BottomNavBar />}
       <LoanDetailDialog key={selectedLoanId} open={loanDetailOpen} onClose={closeLoanDetail} loanId={selectedLoanId} />
 
-      {renderFab()}
+      {fabElement}
 
       <Zoom in={showBackToTop}>
         <Fab

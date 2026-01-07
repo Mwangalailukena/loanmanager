@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
-  CircularProgress,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -13,6 +12,7 @@ import {
   Divider,
   Stack,
   Chip,
+  Skeleton,
 } from "@mui/material";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import dayjs from "dayjs";
@@ -93,45 +93,53 @@ export default function LoanDetailDialog({ open, onClose, loanId }) {
       </DialogTitle>
       <Divider />
       <DialogContent>
-        {loading ? (
-          <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
-            <CircularProgress />
-          </Box>
-        ) : error ? (
-          <Typography variant="body1" color="error" align="center">
+        {error ? (
+          <Typography variant="body1" color="error" align="center" sx={{ py: 4 }}>
             {error}
           </Typography>
         ) : (
           <Stack spacing={2} sx={{ mt: 1 }}>
             <Box>
               <Typography variant="body2" color="text.secondary">Borrower Name</Typography>
-              <Typography variant="body1">{loan.borrower}</Typography>
+              <Typography variant="body1">
+                {loading ? <Skeleton width="60%" /> : (loan?.borrower || "Unknown")}
+              </Typography>
             </Box>
             <Box>
               <Typography variant="body2" color="text.secondary">Phone Number</Typography>
-              <Typography variant="body1">{loan.phone}</Typography>
+              <Typography variant="body1">
+                {loading ? <Skeleton width="40%" /> : (loan?.phone || "N/A")}
+              </Typography>
             </Box>
             <Box>
               <Typography variant="body2" color="text.secondary">Principal Amount</Typography>
-              <Typography variant="body1">ZMW {Number(loan.principal).toFixed(2)}</Typography>
+              <Typography variant="body1">
+                {loading ? <Skeleton width="30%" /> : `ZMW ${Number(loan?.principal || 0).toFixed(2)}`}
+              </Typography>
             </Box>
             <Box>
               <Typography variant="body2" color="text.secondary">Total Repayable</Typography>
-              <Typography variant="body1">ZMW {Number(loan.totalRepayable).toFixed(2)}</Typography>
+              <Typography variant="body1">
+                {loading ? <Skeleton width="30%" /> : `ZMW ${Number(loan?.totalRepayable || 0).toFixed(2)}`}
+              </Typography>
             </Box>
             <Box>
               <Typography variant="body2" color="text.secondary">Outstanding Amount</Typography>
               <Typography variant="body1" fontWeight="bold">
-                ZMW {(Number(loan.totalRepayable || 0) - Number(loan.repaidAmount || 0)).toFixed(2)}
+                {loading ? <Skeleton width="30%" /> : `ZMW ${(Number(loan?.totalRepayable || 0) - Number(loan?.repaidAmount || 0)).toFixed(2)}`}
               </Typography>
             </Box>
             <Box>
               <Typography variant="body2" color="text.secondary">Start Date</Typography>
-              <Typography variant="body1">{loan.startDate}</Typography>
+              <Typography variant="body1">
+                {loading ? <Skeleton width="40%" /> : (loan?.startDate || "N/A")}
+              </Typography>
             </Box>
             <Box>
               <Typography variant="body2" color="text.secondary">Due Date</Typography>
-              <Typography variant="body1">{loan.dueDate}</Typography>
+              <Typography variant="body1">
+                {loading ? <Skeleton width="40%" /> : (loan?.dueDate || "N/A")}
+              </Typography>
             </Box>
           </Stack>
         )}

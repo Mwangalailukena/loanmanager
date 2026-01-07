@@ -389,4 +389,4 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
   );
 };
 
-export default FloatingNavBar;
+export default React.memo(FloatingNavBar);

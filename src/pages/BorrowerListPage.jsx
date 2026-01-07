@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useFirestore } from '../contexts/FirestoreProvider';
 import {
@@ -45,7 +45,7 @@ import { calcStatus } from '../utils/loanUtils';
 import WhatsAppDialog from '../components/WhatsAppDialog';
 import AddPaymentDialog from '../components/AddPaymentDialog';
 
-const BorrowerCard = ({ 
+const BorrowerCard = React.memo(({ 
   borrower, 
   associatedLoans,
   score,
@@ -220,7 +220,7 @@ const BorrowerCard = ({
       </Menu>
     </Card>
   );
-};
+});
 
 export default function BorrowerListPage() {
   const { borrowers, loading, loans, addComment } = useFirestore();
@@ -252,25 +252,25 @@ export default function BorrowerListPage() {
     return map;
   }, [loans]);
 
-  const handleWhatsAppClick = (borrower) => {
+  const handleWhatsAppClick = useCallback((borrower) => {
     setSelectedBorrower(borrower);
     setWhatsAppOpen(true);
-  };
+  }, []);
 
-  const handleWhatsAppClose = () => {
+  const handleWhatsAppClose = useCallback(() => {
     setWhatsAppOpen(false);
     setSelectedBorrower(null);
-  };
+  }, []);
 
-  const handlePaymentClick = (loanId) => {
+  const handlePaymentClick = useCallback((loanId) => {
     setActiveLoanId(loanId);
     setPaymentOpen(true);
-  };
+  }, []);
 
-  const handleNoteClick = (borrower) => {
+  const handleNoteClick = useCallback((borrower) => {
     setSelectedBorrower(borrower);
     setNoteOpen(true);
-  };
+  }, []);
 
   const handleSaveNote = async () => {
     if (!noteText.trim()) return;
@@ -288,11 +288,11 @@ export default function BorrowerListPage() {
     }
   };
 
-  const toggleSelect = (id) => {
+  const toggleSelect = useCallback((id) => {
     setSelectedBorrowerIds(prev => 
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
-  };
+  }, []);
 
   // Debounce effect
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import { calcStatus } from '../utils/loanUtils';
@@ -6,9 +6,12 @@ import { calcStatus } from '../utils/loanUtils';
 dayjs.extend(isBetween);
 
 export const useInsights = (loans, borrowers, payments, filterStartDate, filterEndDate) => {
-  const insights = useMemo(() => {
+  const [insights, setInsights] = useState([]);
+
+  useEffect(() => {
     if (!loans || loans.length === 0) {
-      return [];
+      setInsights([]);
+      return;
     }
 
     const start = dayjs(filterStartDate);
@@ -157,8 +160,8 @@ export const useInsights = (loans, borrowers, payments, filterStartDate, filterE
       });
     }
 
-    return insightsList;
-  }, [loans, borrowers, payments, filterStartDate, filterEndDate]); // Added filterStartDate, filterEndDate
+    setInsights(insightsList);
+  }, [loans, borrowers, payments, filterStartDate, filterEndDate]);
 
   return insights;
 };

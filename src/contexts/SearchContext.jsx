@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 
 const SearchContext = createContext();
 
@@ -10,15 +10,15 @@ export const SearchProvider = ({ children }) => {
   const [loanDetailOpen, setLoanDetailOpen] = useState(false);
   const [selectedLoanId, setSelectedLoanId] = useState(null);
 
-  const openLoanDetail = (loanId) => {
+  const openLoanDetail = useCallback((loanId) => {
     setSelectedLoanId(loanId);
     setLoanDetailOpen(true);
-  };
+  }, []);
 
-  const closeLoanDetail = () => {
+  const closeLoanDetail = useCallback(() => {
     setLoanDetailOpen(false);
     setSelectedLoanId(null);
-  };
+  }, []);
 
 
   const handleSearchChange = useCallback((value) => {
@@ -34,7 +34,7 @@ export const SearchProvider = ({ children }) => {
     setSearchTerm(''); // Clear search when closing mobile search
   }, []);
 
-  const value = {
+  const value = useMemo(() => ({
     searchTerm,
     setSearchTerm,
     handleSearchChange,
@@ -45,7 +45,17 @@ export const SearchProvider = ({ children }) => {
     selectedLoanId,
     openLoanDetail,
     closeLoanDetail,
-  };
+  }), [
+    searchTerm,
+    isMobileSearchOpen,
+    loanDetailOpen,
+    selectedLoanId,
+    handleSearchChange,
+    handleMobileSearchOpen,
+    handleMobileSearchClose,
+    openLoanDetail,
+    closeLoanDetail
+  ]);
 
   return (
     <SearchContext.Provider value={value}>

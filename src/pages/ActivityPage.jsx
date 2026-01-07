@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -162,6 +162,148 @@ const actionIcons = {
   comment_deletion: <DeleteIcon />,
 };
 
+const LogItem = React.memo(({ 
+  log, 
+  index, 
+  search, 
+  useRelativeTime, 
+  handleMarkAsReviewed, 
+  setConfirmUndo, 
+  getUndoWarning, 
+  highlightText, 
+  theme 
+}) => {
+  const userDisplay = log.user || "System";
+  const actionDisplay =
+    actionLabels[log.type] ??
+    (log.type ? log.type.replace(/_/g, " ") : "Unknown Action");
+
+  const dateISO = log.date || log.createdAt;
+  let dateStr = "No valid date";
+  let relativeTime = "";
+  if (dateISO) {
+    try {
+      const dateObj =
+        typeof dateISO === "string"
+          ? dayjs(dateISO)
+          : dateISO.toDate
+          ? dayjs(dateISO.toDate())
+          : dayjs(dateISO);
+      
+      if (dateObj.isValid()) {
+          relativeTime = dateObj.fromNow();
+          dateStr = dateObj.toDate().toLocaleString();
+      }
+    } catch {
+      // fallback if parsing fails
+    }
+  }
+
+  const undoWarning = getUndoWarning(log);
+
+  return (
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      exit="exit"
+      variants={itemVariants}
+    >
+      <TimelineItem sx={{ '&::before': { content: 'none' } }}>
+        <TimelineSeparator>
+          <TimelineDot color={timelineDotColors[log.type] || "grey"} variant="outlined">
+            {actionIcons[log.type] || null}
+          </TimelineDot>
+          <TimelineConnector />
+        </TimelineSeparator>
+        <TimelineContent sx={{ py: '12px', px: 2 }}>
+          <Paper 
+            elevation={2} 
+            sx={{ 
+              p: 2, 
+              borderRadius: 2, 
+              backgroundColor: log.reviewed ? alpha(theme.palette.success.light, 0.1) : (index % 2 ? theme.palette.action.hover : 'transparent'),
+              border: log.reviewed ? `1px solid ${alpha(theme.palette.success.main, 0.2)}` : 'none'
+            }}
+          >
+            <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+              <ListItemText
+                primary={
+                  <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
+                    <Typography
+                      variant="subtitle1"
+                      component="span"
+                      fontWeight="bold"
+                    >
+                      {highlightText(userDisplay, search)}
+                    </Typography>
+                    <Chip
+                      label={actionDisplay}
+                      size="small"
+                      color={actionChipColors[log.type] || "default"}
+                      sx={{ textTransform: "capitalize" }}
+                    />
+                    {log.reviewed && <Chip label="Reviewed" size="small" variant="outlined" color="success" icon={<CheckCircleIcon fontSize="small" />} />}
+                  </Box>
+                }
+                secondaryTypographyProps={{ component: 'div' }}
+                secondary={
+                  <>
+                    <Tooltip
+                      title={dateStr}
+                      arrow
+                      placement="top"
+                      TransitionComponent={Fade}
+                    >
+                      <Typography
+                      component="span"
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: "block", mb: 0.5, fontStyle: "italic" }}
+                    >
+                      {useRelativeTime ? relativeTime : dateStr}
+                    </Typography>
+                    </Tooltip>
+                    <Typography component="span" variant="body2">
+                      {highlightText(log.description ?? "", search)}
+                    </Typography>
+                    <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
+                      {log.undoable && !log.undone && (
+                        <Tooltip title={undoWarning || ""}>
+                          <span>
+                            <Button
+                              size="small"
+                              onClick={() => setConfirmUndo({ open: true, log })}
+                              startIcon={<UndoIcon />}
+                              disabled={!!undoWarning}
+                            >
+                              Undo
+                            </Button>
+                          </span>
+                        </Tooltip>
+                      )}
+                      {!log.reviewed && (
+                        <Button 
+                          size="small" 
+                          onClick={() => handleMarkAsReviewed(log.id)}
+                          startIcon={<CheckCircleIcon />}
+                          color="inherit"
+                          sx={{ opacity: 0.6 }}
+                        >
+                          Mark Reviewed
+                        </Button>
+                      )}
+                    </Box>
+                  </>
+                }
+              />
+            </Box>
+          </Paper>
+        </TimelineContent>
+      </TimelineItem>
+    </motion.div>
+  );
+});
+
 export default function ActivityPage() {
   const { 
     activityLogs, 
@@ -204,22 +346,13 @@ export default function ActivityPage() {
   const [showUndoableOnly, setShowUndoableOnly] = useState(false);
   const [showUnreviewedOnly, setShowUnreviewedOnly] = useState(false);
 
-  const handleMarkAsReviewed = async (id) => {
-    try {
-      await updateActivityLog(id, { reviewed: true });
-      showSnackbar("Activity marked as reviewed", "success");
-    } catch (error) {
-      showSnackbar("Failed to mark as reviewed", "error");
-    }
-  };
-
-  const getUndoWarning = (log) => {
+  const getUndoWarning = useCallback((log) => {
     if (log.type === 'loan_creation') {
       const hasPayments = payments.some(p => p.loanId === log.relatedId);
       if (hasPayments) return "Cannot undo: Payments already recorded. Reverse payments first.";
     }
     return null;
-  };
+  }, [payments]);
 
   // Reusable styles for the focused state of form fields
   const filterInputStyles = {
@@ -238,8 +371,7 @@ export default function ActivityPage() {
     },
   };
 
-  // Helper to highlight search term inside text with accent color
-  function highlightText(text = "", highlight) {
+  const highlightText = useCallback((text = "", highlight) => {
     if (!text) return "";
     if (!highlight) return text;
     const regex = new RegExp(`(${highlight})`, "gi");
@@ -257,7 +389,16 @@ export default function ActivityPage() {
         part
       )
     );
-  }
+  }, [theme.palette.secondary.light]);
+
+  const handleMarkAsReviewed = useCallback(async (id) => {
+    try {
+      await updateActivityLog(id, { reviewed: true });
+      showSnackbar("Activity marked as reviewed", "success");
+    } catch (error) {
+      showSnackbar("Failed to mark as reviewed", "error");
+    }
+  }, [updateActivityLog, showSnackbar]);
 
   const filteredLogs = useMemo(() => {
     return activityLogs
@@ -513,138 +654,20 @@ export default function ActivityPage() {
                   {dateKey}
                 </Typography>
               </Box>
-              {logs.map((log, index) => {
-                const userDisplay = log.user || "System";
-                const actionDisplay =
-                  actionLabels[log.type] ??
-                  (log.type ? log.type.replace(/_/g, " ") : "Unknown Action");
-
-                const dateISO = log.date || log.createdAt;
-                let dateStr = "No valid date";
-                let relativeTime = "";
-                if (dateISO) {
-                  try {
-                    const dateObj =
-                      typeof dateISO === "string"
-                        ? dayjs(dateISO)
-                        : dateISO.toDate
-                        ? dayjs(dateISO.toDate())
-                        : dayjs(dateISO);
-                    
-                    if (dateObj.isValid()) {
-                        relativeTime = dateObj.fromNow();
-                        dateStr = dateObj.toDate().toLocaleString();
-                    }
-                  } catch {
-                    // fallback if parsing fails
-                  }
-                }
-
-                const undoWarning = getUndoWarning(log);
-
-                return (
-                  <motion.div
-                    key={log.id}
-                    initial="hidden"
-                    animate="visible"
-                    exit="exit"
-                    variants={itemVariants}
-                  >
-                    <TimelineItem sx={{ '&::before': { content: 'none' } }}>
-                      <TimelineSeparator>
-                        <TimelineDot color={timelineDotColors[log.type] || "grey"} variant="outlined">
-                          {actionIcons[log.type] || null}
-                        </TimelineDot>
-                        <TimelineConnector />
-                      </TimelineSeparator>
-                      <TimelineContent sx={{ py: '12px', px: 2 }}>
-                        <Paper 
-                          elevation={2} 
-                          sx={{ 
-                            p: 2, 
-                            borderRadius: 2, 
-                            backgroundColor: log.reviewed ? alpha(theme.palette.success.light, 0.1) : (index % 2 ? theme.palette.action.hover : 'transparent'),
-                            border: log.reviewed ? `1px solid ${alpha(theme.palette.success.main, 0.2)}` : 'none'
-                          }}
-                        >
-                          <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                            <ListItemText
-                              primary={
-                                <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
-                                  <Typography
-                                    variant="subtitle1"
-                                    component="span"
-                                    fontWeight="bold"
-                                  >
-                                    {highlightText(userDisplay, search)}
-                                  </Typography>
-                                  <Chip
-                                    label={actionDisplay}
-                                    size="small"
-                                    color={actionChipColors[log.type] || "default"}
-                                    sx={{ textTransform: "capitalize" }}
-                                  />
-                                  {log.reviewed && <Chip label="Reviewed" size="small" variant="outlined" color="success" icon={<CheckCircleIcon fontSize="small" />} />}
-                                </Box>
-                              }
-                              secondaryTypographyProps={{ component: 'div' }}
-                              secondary={
-                                <>
-                                  <Tooltip
-                                    title={dateStr}
-                                    arrow
-                                    placement="top"
-                                    TransitionComponent={Fade}
-                                  >
-                                    <Typography
-                                    component="span"
-                                    variant="caption"
-                                    color="text.secondary"
-                                    sx={{ display: "block", mb: 0.5, fontStyle: "italic" }}
-                                  >
-                                    {useRelativeTime ? relativeTime : dateStr}
-                                  </Typography>
-                                  </Tooltip>
-                                  <Typography component="span" variant="body2">
-                                    {highlightText(log.description ?? "", search)}
-                                  </Typography>
-                                  <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
-                                    {log.undoable && !log.undone && (
-                                      <Tooltip title={undoWarning || ""}>
-                                        <span>
-                                          <Button
-                                            size="small"
-                                            onClick={() => setConfirmUndo({ open: true, log })}
-                                            startIcon={<UndoIcon />}
-                                            disabled={!!undoWarning}
-                                          >
-                                            Undo
-                                          </Button>
-                                        </span>
-                                      </Tooltip>
-                                    )}
-                                    {!log.reviewed && (
-                                      <Button 
-                                        size="small" 
-                                        onClick={() => handleMarkAsReviewed(log.id)}
-                                        startIcon={<CheckCircleIcon />}
-                                        color="inherit"
-                                        sx={{ opacity: 0.6 }}
-                                      >
-                                        Mark Reviewed
-                                      </Button>
-                                    )}
-                                  </Box>
-                                </>
-                              }
-                            />
-                          </Box>
-                        </Paper>
-                      </TimelineContent>
-                    </TimelineItem>
-                  </motion.div>
-                );
-              })}
+              {logs.map((log, index) => (
+                <LogItem
+                  key={log.id}
+                  log={log}
+                  index={index}
+                  search={search}
+                  useRelativeTime={useRelativeTime}
+                  handleMarkAsReviewed={handleMarkAsReviewed}
+                  setConfirmUndo={setConfirmUndo}
+                  getUndoWarning={getUndoWarning}
+                  highlightText={highlightText}
+                  theme={theme}
+                />
+              ))}
             </React.Fragment>
           ))}
         </AnimatePresence>

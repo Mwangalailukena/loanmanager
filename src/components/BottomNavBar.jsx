@@ -122,4 +122,4 @@ const BottomNavBar = () => {
   );
 };
 
-export default BottomNavBar;
+export default React.memo(BottomNavBar);

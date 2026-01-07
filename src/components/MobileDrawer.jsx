@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
   SwipeableDrawer,
   Box,
@@ -223,4 +223,4 @@ const MobileDrawer = ({ open, onClose, onOpen, darkMode, onToggleDarkMode }) => 
   );
 };
 
-export default MobileDrawer;
+export default React.memo(MobileDrawer);

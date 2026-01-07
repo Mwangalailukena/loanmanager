@@ -38,7 +38,6 @@ import dayjs from "dayjs";
 import { useSnackbar } from "../components/SnackbarProvider";
 import ResponsiveContentDisplay from "../components/ResponsiveContentDisplay";
 
-import { DragDropContext } from "@hello-pangea/dnd";
 import { BOTTOM_NAV_HEIGHT } from "../components/BottomNavBar";
 import { useDashboardCalculations } from "../hooks/dashboard/useDashboardCalculations";
 import { useInsights } from "../hooks/useInsights";
@@ -220,6 +219,9 @@ export default function Dashboard() {
         }));
     }, [cardsOrder, defaultCards, hiddenCards]);
 
+    /* 
+    // DragDropContext has been removed to optimize initial load bundle size.
+    // Commenting out onDragEnd to resolve ESLint unused variable warning.
     const onDragEnd = useCallback(
         (result) => {
             const { source, destination } = result;
@@ -295,6 +297,7 @@ export default function Dashboard() {
         },
         [cardsOrder, defaultCards, hiddenCards, showSnackbar, saveLayoutToFirestore]
     );
+    */
 
 
     const handleCardClick = (filter) => {
@@ -572,9 +575,8 @@ export default function Dashboard() {
             
 
 
-            <DragDropContext onDragEnd={onDragEnd}>
-                <ResponsiveContentDisplay sections={dashboardSections} />
-            </DragDropContext>
+            {/* DragDropContext has been removed to optimize initial load bundle size. */}
+            <ResponsiveContentDisplay sections={dashboardSections} />
             <Dialog open={customizeOpen} onClose={() => setCustomizeOpen(false)}>
                 <DialogTitle>Customize Dashboard</DialogTitle>
                 <DialogContent>
