@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useFirestore } from '../contexts/FirestoreProvider';
 import { useSnackbar } from '../components/SnackbarProvider';
@@ -248,7 +248,7 @@ export default function BorrowerProfilePage() {
         const unsub = fetchComments({ borrowerId: id });
         return () => unsub && unsub();
     }
-  }, [id]);
+  }, [id, fetchComments]);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [newComment, setNewComment] = useState("");
