@@ -105,7 +105,7 @@ const IMAGE_PLACEHOLDER_DATA_URI = 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwg
 
 workbox.routing.registerRoute(
   ({ request }) => request.mode === 'navigate',
-  new workbox.strategies.StaleWhileRevalidate({
+  new workbox.strategies.CacheFirst({
     cacheName: 'app-shell-pages',
     plugins: [
       new workbox.cacheableResponse.CacheableResponsePlugin({ statuses: [0, 200] }),
@@ -127,9 +127,8 @@ workbox.routing.registerRoute(
 
 workbox.routing.registerRoute(
   ({ url, request }) => request.method === 'GET' && url.pathname.startsWith('/api/'),
-  new workbox.strategies.NetworkFirst({
+  new workbox.strategies.StaleWhileRevalidate({
     cacheName: 'api-cache',
-    networkTimeoutSeconds: 3,
     plugins: [
       new workbox.cacheableResponse.CacheableResponsePlugin({ statuses: [0, 200] }),
       new workbox.expiration.ExpirationPlugin({ maxEntries: 50, maxAgeSeconds: 5 * 60 }),
@@ -140,7 +139,7 @@ workbox.routing.registerRoute(
 workbox.routing.registerRoute(
   ({ request }) =>
     request.destination === 'script' || request.destination === 'style' || request.destination === 'image',
-  new workbox.strategies.StaleWhileRevalidate({
+  new workbox.strategies.CacheFirst({
     cacheName: 'static-assets',
     plugins: [
       new workbox.expiration.ExpirationPlugin({ maxEntries: 60, maxAgeSeconds: 30 * 24 * 60 * 60 }),

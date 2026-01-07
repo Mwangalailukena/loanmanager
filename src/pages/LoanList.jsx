@@ -148,21 +148,21 @@ const LoanListSkeleton = ({ isMobile }) => {
   }
 };
 
-const LoanMobileCard = React.memo(({ 
-  loan, 
-  displayInfo, 
-  outstanding, 
-  expandedRow, 
-  toggleRow, 
-  getStatusChipProps, 
-  calcStatus, 
-  openEditModal, 
-  setConfirmDelete, 
-  openPaymentModal, 
-  addPayment, 
-  openTopUpModal, 
-  openHistoryModal, 
-  openLoanDetail, 
+const LoanMobileCard = React.memo(({
+  loan,
+  displayInfo,
+  outstanding,
+  expandedRow,
+  toggleRow,
+  getStatusChipProps,
+  calcStatus,
+  openEditModal,
+  setConfirmDelete,
+  openPaymentModal,
+  onFullPaymentClick,
+  openTopUpModal,
+  openHistoryModal,
+  openLoanDetail,
   openRefinanceModal,
   theme 
 }) => {
@@ -270,23 +270,19 @@ const LoanMobileCard = React.memo(({
                   </IconButton>
                 </span>
               </Tooltip>
-              <Tooltip title="Full Payment">
-                <span>
-                  <IconButton 
-                    size="small" 
-                    onClick={async () => {
-                      const amount = loan.totalRepayable - (loan.repaidAmount || 0);
-                      await addPayment(loan.id, amount);
-                    }} 
-                    aria-label="full-payment" 
-                    disabled={isPaid} 
-                    color="success"
-                  >
-                    <CheckCircleOutlineIcon fontSize="small" />
-                  </IconButton>
-                </span>
-              </Tooltip>
-              <Tooltip title="Top-up">
+                              <Tooltip title="Full Payment">
+                                <span>
+                                  <IconButton 
+                                    size="small" 
+                                    onClick={() => onFullPaymentClick(loan)} 
+                                    aria-label="full-payment" 
+                                    disabled={isPaid} 
+                                    color="success"
+                                  >
+                                    <CheckCircleOutlineIcon fontSize="small" />
+                                  </IconButton>
+                                </span>
+                              </Tooltip>              <Tooltip title="Top-up">
                 <span>
                   <IconButton size="small" onClick={() => openTopUpModal(loan)} aria-label="top-up" disabled={isPaid || loan.repaidAmount > 0} color="secondary">
                     <AttachMoneyIcon fontSize="small" />
@@ -331,6 +327,7 @@ const LoanTableRow = React.memo(({
   openEditModal, 
   setConfirmDelete, 
   openPaymentModal, 
+  onFullPaymentClick,
   handleMenuClick,
   theme 
 }) => {
@@ -453,6 +450,7 @@ const LoanTableRow = React.memo(({
 export default function LoanList() {
   const { loans, loading, deleteLoan, addPayment, updateLoan, getPaymentsByLoanId, settings, borrowers, refinanceLoan, topUpLoan } = useFirestore();
   const { openLoanDetail } = useSearch();
+  const showSnackbar = useSnackbar();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [searchParams, setSearchParams] = useSearchParams();
@@ -469,6 +467,7 @@ export default function LoanList() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const [paymentModal, setPaymentModal] = useState({ open: false, loanId: null });
+  const [confirmFullPayment, setConfirmFullPayment] = useState({ open: false, loan: null });
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentError, setPaymentError] = useState("");
   const [isAddingPayment, setIsAddingPayment] = useState(false);
@@ -898,6 +897,28 @@ export default function LoanList() {
     }
   };
 
+  const handleFullPaymentClick = useCallback((loan) => {
+    setConfirmFullPayment({ open: true, loan });
+  }, []);
+
+  const handleFullPaymentConfirm = async () => {
+    if (confirmFullPayment.loan) {
+      const loan = confirmFullPayment.loan;
+      const amount = (loan.totalRepayable || 0) - (loan.repaidAmount || 0);
+      setIsAddingPayment(true);
+      try {
+        await addPayment(loan.id, amount);
+        setConfirmFullPayment({ open: false, loan: null });
+        showSnackbar("Loan fully repaid!", "success");
+      } catch (error) {
+        console.error("Error adding full payment:", error);
+        showSnackbar("Failed to record payment.", "error");
+      } finally {
+        setIsAddingPayment(false);
+      }
+    }
+  };
+
   const openHistoryModal = useCallback(async (loanId) => {
     setHistoryModal({ open: true, loanId, payments: [], loading: true });
     try {
@@ -1193,7 +1214,7 @@ export default function LoanList() {
                     openEditModal={openEditModal}
                     setConfirmDelete={setConfirmDelete}
                     openPaymentModal={openPaymentModal}
-                    addPayment={addPayment}
+                    onFullPaymentClick={handleFullPaymentClick}
                     openTopUpModal={openTopUpModal}
                     openHistoryModal={openHistoryModal}
                     openLoanDetail={openLoanDetail}
@@ -1378,6 +1399,7 @@ export default function LoanList() {
                       openEditModal={openEditModal}
                       setConfirmDelete={setConfirmDelete}
                       openPaymentModal={openPaymentModal}
+                      onFullPaymentClick={handleFullPaymentClick}
                       handleMenuClick={handleMenuClick}
                       theme={theme}
                     />
@@ -1409,6 +1431,7 @@ export default function LoanList() {
                 open={Boolean(anchorEl)}
                 onClose={handleMenuClose}
               >
+                <MenuItem onClick={() => { handleFullPaymentClick(selectedLoan); handleMenuClose(); }} disabled={selectedLoan && calcStatus(selectedLoan).toLowerCase() === 'paid'}>Full Payment</MenuItem>
                 <MenuItem onClick={() => { openTopUpModal(selectedLoan); handleMenuClose(); }}>Top-up</MenuItem>
                 <MenuItem onClick={() => { openRefinanceModal(selectedLoan); handleMenuClose(); }}>Refinance</MenuItem>
                 <MenuItem onClick={() => { openHistoryModal(selectedLoan.id); handleMenuClose(); }}>View History</MenuItem>
@@ -1768,6 +1791,20 @@ export default function LoanList() {
         onConfirm={handleTopUpSubmit}
         loading={isToppingUp}
       />
+
+      {/* Confirm Full Payment Dialog */}
+      <Dialog open={confirmFullPayment.open} onClose={() => setConfirmFullPayment({ open: false, loan: null })} maxWidth="xs" fullWidth >
+        <DialogTitle fontSize="1.1rem">Confirm Full Repayment</DialogTitle>
+        <DialogContent sx={{ pb: 1 }}>
+          Are you sure you want to mark this loan as fully repaid? This will record a payment of <strong>ZMW {confirmFullPayment.loan ? ((confirmFullPayment.loan.totalRepayable || 0) - (confirmFullPayment.loan.repaidAmount || 0)).toFixed(2) : '0.00'}</strong>.
+        </DialogContent>
+        <DialogActions sx={{ pb: 1 }}>
+          <Button size="small" onClick={() => setConfirmFullPayment({ open: false, loan: null })} disabled={isAddingPayment}> Cancel </Button>
+          <Button size="small" variant="contained" color="success" onClick={handleFullPaymentConfirm} disabled={isAddingPayment}> 
+            {isAddingPayment ? <CircularProgress size={20} color="inherit" /> : 'Confirm Repayment'} 
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

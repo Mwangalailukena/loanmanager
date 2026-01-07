@@ -13,6 +13,7 @@ import {
   Stack,
   Chip,
   Skeleton,
+  CircularProgress,
 } from "@mui/material";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import dayjs from "dayjs";
@@ -27,6 +28,8 @@ export default function LoanDetailDialog({ open, onClose, loanId }) {
   const [loan, setLoan] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [confirmDefaultOpen, setConfirmDefaultOpen] = useState(false);
+  const [isMarkingDefault, setIsMarkingDefault] = useState(false);
 
   useEffect(() => {
     // Reset state when dialog is opened with a new loanId
@@ -146,12 +149,9 @@ export default function LoanDetailDialog({ open, onClose, loanId }) {
       </DialogContent>
       <DialogActions>
         <Button 
-          onClick={async () => {
-            await markLoanAsDefaulted(loanId);
-            onClose();
-          }}
+          onClick={() => setConfirmDefaultOpen(true)}
           color="warning"
-          disabled={calcStatus(loan) === "Paid"}
+          disabled={calcStatus(loan) === "Paid" || calcStatus(loan) === "Defaulted"}
         >
           Mark as Defaulted
         </Button>
@@ -159,6 +159,43 @@ export default function LoanDetailDialog({ open, onClose, loanId }) {
           Close
         </Button>
       </DialogActions>
+
+      {/* Confirmation Dialog for Defaulting */}
+      <Dialog 
+        open={confirmDefaultOpen} 
+        onClose={() => setConfirmDefaultOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Confirm Default</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1">
+            Are you sure you want to mark this loan as <strong>Defaulted</strong>? This action will change the loan status and should only be done if the borrower is unable to repay.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDefaultOpen(false)} disabled={isMarkingDefault}>Cancel</Button>
+          <Button 
+            onClick={async () => {
+              setIsMarkingDefault(true);
+              try {
+                await markLoanAsDefaulted(loanId);
+                setConfirmDefaultOpen(false);
+                onClose();
+              } catch (err) {
+                console.error("Error marking as defaulted:", err);
+              } finally {
+                setIsMarkingDefault(false);
+              }
+            }} 
+            color="error" 
+            variant="contained"
+            disabled={isMarkingDefault}
+          >
+            {isMarkingDefault ? <CircularProgress size={20} color="inherit" /> : "Confirm Default"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Dialog>
   );
 }
