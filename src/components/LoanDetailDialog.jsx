@@ -22,7 +22,7 @@ import dayjs from "dayjs";
 export default function LoanDetailDialog({ open, onClose, loanId }) {
   // --- This is the only line that needs to change ---
   // We're removing `loadingLoans` because it's not used.
-  const { loans, markLoanAsDefaulted } = useFirestore(); 
+  const { loans, markLoanAsDefaulted, borrowers } = useFirestore(); 
   // ----------------------------------------------------
 
   const [loan, setLoan] = useState(null);
@@ -30,6 +30,10 @@ export default function LoanDetailDialog({ open, onClose, loanId }) {
   const [error, setError] = useState(null);
   const [confirmDefaultOpen, setConfirmDefaultOpen] = useState(false);
   const [isMarkingDefault, setIsMarkingDefault] = useState(false);
+
+  const foundBorrower = loan?.borrowerId ? borrowers.find(b => b.id === loan.borrowerId) : null;
+  const displayName = foundBorrower?.name || loan?.borrower || "Unknown";
+  const displayPhone = foundBorrower?.phone || loan?.phone || "N/A";
 
   useEffect(() => {
     // Reset state when dialog is opened with a new loanId
@@ -105,13 +109,13 @@ export default function LoanDetailDialog({ open, onClose, loanId }) {
             <Box>
               <Typography variant="body2" color="text.secondary">Borrower Name</Typography>
               <Typography variant="body1">
-                {loading ? <Skeleton width="60%" /> : (loan?.borrower || "Unknown")}
+                {loading ? <Skeleton width="60%" /> : displayName}
               </Typography>
             </Box>
             <Box>
               <Typography variant="body2" color="text.secondary">Phone Number</Typography>
               <Typography variant="body1">
-                {loading ? <Skeleton width="40%" /> : (loan?.phone || "N/A")}
+                {loading ? <Skeleton width="40%" /> : displayPhone}
               </Typography>
             </Box>
             <Box>

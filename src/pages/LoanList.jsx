@@ -1,3 +1,4 @@
+import RefinanceLoanDialog from "../components/RefinanceLoanDialog";
 import { useSearch } from "../contexts/SearchContext";
 
 // src/components/LoanList.jsx
@@ -52,6 +53,7 @@ import {
   AttachMoney as AttachMoneyIcon,
   MoreVert as MoreVertIcon,
   CheckCircleOutline as CheckCircleOutlineIcon,
+  Warning as WarningIcon,
 } from "@mui/icons-material";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { useSnackbar } from "../components/SnackbarProvider";
@@ -165,9 +167,11 @@ const LoanMobileCard = React.memo(({
   openHistoryModal,
   openLoanDetail,
   openRefinanceModal,
+  setConfirmDefault,
   theme 
 }) => {
   const isPaid = calcStatus(loan).toLowerCase() === "paid";
+  const isDefaulted = calcStatus(loan).toLowerCase() === "defaulted";
   
   return (
     <motion.div
@@ -266,26 +270,27 @@ const LoanMobileCard = React.memo(({
               </Tooltip>
               <Tooltip title="Add Payment">
                 <span>
-                  <IconButton size="small" onClick={() => openPaymentModal(loan.id)} aria-label="payment" disabled={isPaid} color="secondary">
+                  <IconButton size="small" onClick={() => openPaymentModal(loan.id)} aria-label="payment" disabled={isPaid || isDefaulted} color="secondary">
                     <Payment fontSize="small" />
                   </IconButton>
                 </span>
               </Tooltip>
-                              <Tooltip title="Full Payment">
-                                <span>
-                                  <IconButton 
-                                    size="small" 
-                                    onClick={() => onFullPaymentClick(loan)} 
-                                    aria-label="full-payment" 
-                                    disabled={isPaid} 
-                                    color="success"
-                                  >
-                                    <CheckCircleOutlineIcon fontSize="small" />
-                                  </IconButton>
-                                </span>
-                              </Tooltip>              <Tooltip title="Top-up">
+              <Tooltip title="Full Payment">
                 <span>
-                  <IconButton size="small" onClick={() => openTopUpModal(loan)} aria-label="top-up" disabled={isPaid || loan.repaidAmount > 0} color="secondary">
+                  <IconButton 
+                    size="small" 
+                    onClick={() => onFullPaymentClick(loan)} 
+                    aria-label="full-payment" 
+                    disabled={isPaid || isDefaulted} 
+                    color="success"
+                  >
+                    <CheckCircleOutlineIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>              
+              <Tooltip title="Top-up">
+                <span>
+                  <IconButton size="small" onClick={() => openTopUpModal(loan)} aria-label="top-up" disabled={isPaid || loan.repaidAmount > 0 || isDefaulted} color="secondary">
                     <AttachMoneyIcon fontSize="small" />
                   </IconButton>
                 </span>
@@ -302,8 +307,15 @@ const LoanMobileCard = React.memo(({
               </Tooltip>
               <Tooltip title="Refinance">
                 <span>
-                  <IconButton size="small" onClick={() => openRefinanceModal(loan)} aria-label="refinance" disabled={isPaid} color="secondary">
+                  <IconButton size="small" onClick={() => openRefinanceModal(loan)} aria-label="refinance" disabled={isPaid || isDefaulted} color="secondary">
                     <AutorenewIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Tooltip title="Mark as Default">
+                <span>
+                  <IconButton size="small" onClick={() => setConfirmDefault({ open: true, loan })} aria-label="default" disabled={isPaid || isDefaulted} color="warning">
+                    <WarningIcon fontSize="small" />
                   </IconButton>
                 </span>
               </Tooltip>
@@ -334,6 +346,7 @@ const LoanTableRow = React.memo(({
 }) => {
   const outstanding = (loan.totalRepayable || 0) - (loan.repaidAmount || 0);
   const isPaid = calcStatus(loan).toLowerCase() === "paid";
+  const isDefaulted = calcStatus(loan).toLowerCase() === "defaulted";
   const status = calcStatus(loan);
 
   return (
@@ -424,7 +437,7 @@ const LoanTableRow = React.memo(({
               size="small"
               onClick={() => openPaymentModal(loan.id)}
               aria-label="add payment"
-              disabled={isPaid}
+              disabled={isPaid || isDefaulted}
               color="secondary"
             >
               <Payment fontSize="small" />
@@ -449,7 +462,7 @@ const LoanTableRow = React.memo(({
 // ... (existing constants)
 
 export default function LoanList() {
-  const { loans, loading, deleteLoan, addPayment, updateLoan, getPaymentsByLoanId, settings, borrowers, refinanceLoan, topUpLoan } = useFirestore();
+  const { loans, loading, deleteLoan, addPayment, updateLoan, getPaymentsByLoanId, settings, borrowers, topUpLoan, markLoanAsDefaulted } = useFirestore();
   const { openLoanDetail } = useSearch();
   const showSnackbar = useSnackbar();
   const theme = useTheme();
@@ -469,6 +482,7 @@ export default function LoanList() {
 
   const [paymentModal, setPaymentModal] = useState({ open: false, loanId: null });
   const [confirmFullPayment, setConfirmFullPayment] = useState({ open: false, loan: null });
+  const [confirmDefault, setConfirmDefault] = useState({ open: false, loan: null });
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentError, setPaymentError] = useState("");
   const [isAddingPayment, setIsAddingPayment] = useState(false);
@@ -489,14 +503,6 @@ export default function LoanList() {
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [refinanceModal, setRefinanceModal] = useState({ open: false, loan: null });
-  const [refinanceStartDate, setRefinanceStartDate] = useState(dayjs().format("YYYY-MM-DD"));
-  const [refinanceAmount, setRefinanceAmount] = useState("");
-  const [refinanceInterestDuration, setRefinanceInterestDuration] = useState(1);
-  const [refinanceCurrentOutstanding, setRefinanceCurrentOutstanding] = useState(0);
-  const [refinanceOriginalLoan, setRefinanceOriginalLoan] = useState(null);
-  const [refinanceError, setRefinanceError] = useState("");
-  const [isRefinancing, setIsRefinancing] = useState(false);
-  const [refinancePreview, setRefinancePreview] = useState(null);
   
   const [topUpModal, setTopUpModal] = useState({ open: false, loan: null });
   const [isToppingUp, setIsToppingUp] = useState(false);
@@ -528,10 +534,10 @@ export default function LoanList() {
   const getDisplayBorrowerInfo = useCallback((loan) => {
     if (loan.borrowerId) {
       const borrower = borrowers.find(b => b.id === loan.borrowerId);
-      return { name: borrower?.name, phone: borrower?.phone };
+      return { name: borrower?.name || "Unknown", phone: borrower?.phone || "N/A" };
     } else {
       // Old loan format
-      return { name: loan.borrower, phone: loan.phone };
+      return { name: loan.borrower || "Unknown", phone: loan.phone || "N/A" };
     }
   }, [borrowers]);
 
@@ -920,6 +926,17 @@ export default function LoanList() {
     }
   };
 
+  const handleDefaultConfirm = async () => {
+    if (confirmDefault.loan) {
+      try {
+        await markLoanAsDefaulted(confirmDefault.loan.id);
+        setConfirmDefault({ open: false, loan: null });
+      } catch (error) {
+        console.error("Error defaulting loan:", error);
+      }
+    }
+  };
+
   const openHistoryModal = useCallback(async (loanId) => {
     setHistoryModal({ open: true, loanId, payments: [], loading: true });
     try {
@@ -961,28 +978,6 @@ export default function LoanList() {
     [searchParams, setSearchParams]
   );
 
-  const calculateRefinancePreview = useCallback((loan, amount, duration, startDate) => {
-    if (!loan || !amount || !duration || amount <= 0) {
-      setRefinancePreview(null);
-      return;
-    }
-
-    const newPrincipal = Number(amount);
-    const interestRate = interestRates[duration] || 0;
-    const newInterest = newPrincipal * interestRate;
-    const newTotalRepayable = newPrincipal + newInterest;
-
-    // Calculate new due date based on new start date and duration
-    const newDueDate = dayjs(startDate).add(duration, 'week').format("YYYY-MM-DD");
-
-    setRefinancePreview({
-      principal: newPrincipal,
-      interest: newInterest,
-      totalRepayable: newTotalRepayable,
-      dueDate: newDueDate, // Add new due date to preview
-    });
-  }, [interestRates]);
-
   const openTopUpModal = useCallback((loan) => {
     setTopUpModal({ open: true, loan });
   }, []);
@@ -1002,16 +997,8 @@ export default function LoanList() {
   };
 
   const openRefinanceModal = useCallback((loan) => {
-    const outstanding = (loan.totalRepayable || 0) - (loan.repaidAmount || 0);
-    setRefinanceOriginalLoan(loan);
-    setRefinanceCurrentOutstanding(outstanding);
-    setRefinanceAmount(outstanding.toFixed(2)); // Default to full outstanding
-    setRefinanceInterestDuration(loan.interestDuration || 1); // Default to old duration
-    setRefinanceStartDate(dayjs().format("YYYY-MM-DD"));
-    setRefinanceError("");
     setRefinanceModal({ open: true, loan });
-    calculateRefinancePreview(loan, outstanding, loan.interestDuration || 1, dayjs().format("YYYY-MM-DD"));
-  }, [calculateRefinancePreview]);
+  }, []);
 
   const exportLoanListData = () => {
     const dataToExport = filteredLoans.map(loan => {
@@ -1076,38 +1063,6 @@ export default function LoanList() {
           );
         }, [filteredLoans, getDisplayBorrowerInfo]);
     
-        const handleRefinanceSubmit = async () => {
-    if (!refinanceStartDate || !refinanceAmount || refinanceAmount <= 0) {
-      setRefinanceError("Refinance amount and start date are required.");
-      return;
-    }
-    if (parseFloat(refinanceAmount) > refinanceCurrentOutstanding) {
-        setRefinanceError(`Refinance amount (ZMW ${refinanceAmount}) cannot exceed outstanding balance (ZMW ${refinanceCurrentOutstanding.toFixed(2)}).`);
-        return;
-    }
-    if (!refinancePreview?.dueDate) {
-        setRefinanceError("New due date could not be calculated. Please check inputs.");
-        return;
-    }
-
-    setIsRefinancing(true);
-    try {
-      await refinanceLoan(
-        refinanceModal.loan.id,
-        refinanceStartDate,
-        refinancePreview.dueDate, // Use calculated due date
-        parseFloat(refinanceAmount),
-        refinanceInterestDuration
-      );
-      setRefinanceModal({ open: false, loan: null });
-    } catch (error) {
-      console.error("Error refinancing loan:", error);
-      setRefinanceError(error.message || "Failed to refinance loan. Please try again.");
-    } finally {
-      setIsRefinancing(false);
-    }
-  };
-
   return (
     <Box sx={{ p: isMobile ? 1 : 2 }}>
       <Typography variant="h6" component="h1" gutterBottom fontWeight="bold" sx={{ mb: 1 }}>
@@ -1432,11 +1387,12 @@ export default function LoanList() {
                 open={Boolean(anchorEl)}
                 onClose={handleMenuClose}
               >
-                <MenuItem onClick={() => { handleFullPaymentClick(selectedLoan); handleMenuClose(); }} disabled={selectedLoan && calcStatus(selectedLoan).toLowerCase() === 'paid'}>Full Payment</MenuItem>
-                <MenuItem onClick={() => { openTopUpModal(selectedLoan); handleMenuClose(); }}>Top-up</MenuItem>
-                <MenuItem onClick={() => { openRefinanceModal(selectedLoan); handleMenuClose(); }}>Refinance</MenuItem>
+                <MenuItem onClick={() => { handleFullPaymentClick(selectedLoan); handleMenuClose(); }} disabled={selectedLoan && (calcStatus(selectedLoan).toLowerCase() === 'paid' || calcStatus(selectedLoan).toLowerCase() === 'defaulted')}>Full Payment</MenuItem>
+                <MenuItem onClick={() => { openTopUpModal(selectedLoan); handleMenuClose(); }} disabled={selectedLoan && (selectedLoan.repaidAmount > 0 || calcStatus(selectedLoan).toLowerCase() === 'paid' || calcStatus(selectedLoan).toLowerCase() === 'defaulted')}>Top-up</MenuItem>
+                <MenuItem onClick={() => { openRefinanceModal(selectedLoan); handleMenuClose(); }} disabled={selectedLoan && (calcStatus(selectedLoan).toLowerCase() === 'paid' || calcStatus(selectedLoan).toLowerCase() === 'defaulted')}>Refinance</MenuItem>
                 <MenuItem onClick={() => { openHistoryModal(selectedLoan.id); handleMenuClose(); }}>View History</MenuItem>
                 <MenuItem onClick={() => { openLoanDetail(selectedLoan.id); handleMenuClose(); }}>Details</MenuItem>
+                <MenuItem onClick={() => { setConfirmDefault({ open: true, loan: selectedLoan }); handleMenuClose(); }} disabled={selectedLoan && (calcStatus(selectedLoan).toLowerCase() === 'paid' || calcStatus(selectedLoan).toLowerCase() === 'defaulted')}>Mark as Default</MenuItem>
               </Menu>
               {!useInfiniteScroll && (
                 <Stack direction="row" justifyContent="center" spacing={1} mt={1} mb={2}>
@@ -1682,7 +1638,7 @@ export default function LoanList() {
               <TableBody>
                 {historyModal.payments.map((p) => (
                   <TableRow key={p.id}>
-                    <TableCell>{dayjs(p.date).format('YYYY-MM-DD')}</TableCell>
+                    <TableCell>{p.date ? dayjs(p.date.toDate ? p.date.toDate() : p.date).format('YYYY-MM-DD') : 'No Date'}</TableCell>
                     <TableCell align="right">ZMW {Number(p.amount).toFixed(2)}</TableCell>
                   </TableRow>
                 ))}
@@ -1696,94 +1652,11 @@ export default function LoanList() {
       </Dialog>
 
       {/* Refinance Modal */}
-      <Dialog open={refinanceModal.open} onClose={() => setRefinanceModal({ open: false, loan: null })} maxWidth="xs" fullWidth>
-        <DialogTitle fontSize="1.1rem">Refinance Loan: {refinanceOriginalLoan?.borrower}</DialogTitle>
-        <DialogContent sx={{ pb: 1 }}>
-          <Stack spacing={2} mt={1}>
-            {refinanceOriginalLoan && (
-              <Alert severity="info">
-                Outstanding Balance of Old Loan: ZMW {refinanceCurrentOutstanding.toFixed(2)}
-              </Alert>
-            )}
-
-            <TextField
-              label="Refinance Amount (New Principal)"
-              type="number"
-              value={refinanceAmount}
-              onChange={(e) => {
-                const amount = parseFloat(e.target.value);
-                setRefinanceAmount(e.target.value);
-                calculateRefinancePreview(refinanceOriginalLoan, amount, refinanceInterestDuration, refinanceStartDate);
-              }}
-              size="small"
-              fullWidth
-              error={!!refinanceError}
-              helperText={refinanceError}
-              sx={filterInputStyles}
-              InputProps={{
-                startAdornment: (<InputAdornment position="start">ZMW</InputAdornment>),
-              }}
-            />
-
-            <FormControl size="small" fullWidth sx={filterInputStyles}>
-              <InputLabel>New Interest Duration</InputLabel>
-              <Select
-                value={refinanceInterestDuration}
-                label="New Interest Duration"
-                onChange={(e) => {
-                  const duration = e.target.value;
-                  setRefinanceInterestDuration(duration);
-                  calculateRefinancePreview(refinanceOriginalLoan, parseFloat(refinanceAmount), duration, refinanceStartDate);
-                }}
-              >
-                {interestOptions.map((option) => {
-                  const rate = (settings.interestRates[option.value] || 0) * 100;
-                  return (
-                    <MenuItem key={option.value} value={option.value}>
-                      {option.label} ({rate.toFixed(0)}%)
-                    </MenuItem>
-                  );
-                })}
-              </Select>
-            </FormControl>
-
-            <TextField
-              label="New Start Date"
-              type="date"
-              value={refinanceStartDate}
-              onChange={(e) => {
-                setRefinanceStartDate(e.target.value)
-                calculateRefinancePreview(refinanceOriginalLoan, parseFloat(refinanceAmount), refinanceInterestDuration, e.target.value)
-              }}
-              size="small"
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-              error={!!refinanceError}
-              helperText={refinanceError}
-              sx={filterInputStyles}
-            />
-            {/* The due date will be calculated automatically based on duration */}
-            <Typography variant="body2" color="text.secondary">
-              Est. New Due Date: {refinancePreview?.dueDate || "N/A"}
-            </Typography>
-
-            {refinancePreview && (
-              <Box sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-                <Typography variant="subtitle2" gutterBottom>Refinance Preview</Typography>
-                <Typography variant="body2">New Principal: ZMW {refinancePreview.principal.toFixed(2)}</Typography>
-                <Typography variant="body2">New Interest: ZMW {refinancePreview.interest.toFixed(2)}</Typography>
-                <Typography variant="body2">New Total Repayable: ZMW {refinancePreview.totalRepayable.toFixed(2)}</Typography>
-              </Box>
-            )}
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ pb: 1 }}>
-          <Button size="small" onClick={() => setRefinanceModal({ open: false, loan: null })} disabled={isRefinancing}> Cancel </Button>
-          <Button size="small" variant="contained" onClick={handleRefinanceSubmit} disabled={isRefinancing || !refinancePreview} color="secondary">
-            {isRefinancing ? <CircularProgress size={20} color="inherit" /> : 'Refinance'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <RefinanceLoanDialog
+        open={refinanceModal.open}
+        onClose={() => setRefinanceModal({ open: false, loan: null })}
+        loan={refinanceModal.loan}
+      />
 
       {/* Top-up Modal */}
       <TopUpLoanDialog
@@ -1804,6 +1677,18 @@ export default function LoanList() {
           <Button size="small" variant="contained" color="success" onClick={handleFullPaymentConfirm} disabled={isAddingPayment}> 
             {isAddingPayment ? <CircularProgress size={20} color="inherit" /> : 'Confirm Repayment'} 
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirm Default Dialog */}
+      <Dialog open={confirmDefault.open} onClose={() => setConfirmDefault({ open: false, loan: null })} maxWidth="xs" fullWidth>
+        <DialogTitle fontSize="1.1rem">Confirm Default</DialogTitle>
+        <DialogContent sx={{ pb: 1 }}>
+          Are you sure you want to mark this loan as Defaulted? This indicates the borrower has failed to repay.
+        </DialogContent>
+        <DialogActions sx={{ pb: 1 }}>
+          <Button size="small" onClick={() => setConfirmDefault({ open: false, loan: null })}>Cancel</Button>
+          <Button size="small" variant="contained" color="warning" onClick={handleDefaultConfirm}>Mark Defaulted</Button>
         </DialogActions>
       </Dialog>
     </Box>

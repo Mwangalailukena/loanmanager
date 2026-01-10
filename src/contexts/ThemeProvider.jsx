@@ -10,15 +10,15 @@ const getAppTheme = (mode) =>
     palette: {
       mode,
       primary: {
-        main: '#10B981', // Fintech Emerald
-        light: '#34D399',
-        dark: '#059669',
+        main: '#047857', // Accessible Fintech Emerald (Emerald 700)
+        light: '#10B981',
+        dark: '#064E3B',
         contrastText: '#FFFFFF',
       },
       secondary: {
-        main: '#3B82F6', // Modern Blue
+        main: '#2563EB', // Accessible Modern Blue (Blue 600)
         light: '#60A5FA',
-        dark: '#2563EB',
+        dark: '#1E40AF',
         contrastText: '#FFFFFF',
       },
       error: {
@@ -95,13 +95,13 @@ const getAppTheme = (mode) =>
             boxShadow: 'none',
             transition: 'all 0.2s ease-in-out',
             '&:hover': {
-              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)',
+              boxShadow: '0 4px 12px rgba(4, 120, 87, 0.2)',
               transform: 'translateY(-1px)',
             },
           },
           containedPrimary: {
             '&:hover': {
-              backgroundColor: '#059669',
+              backgroundColor: '#064E3B',
             },
           },
         },
@@ -140,17 +140,17 @@ const getAppTheme = (mode) =>
             },
           },
           filledSuccess: {
-            backgroundColor: mode === 'dark' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.1)',
-            color: mode === 'dark' ? '#10B981' : '#10B981',
+            backgroundColor: mode === 'dark' ? 'rgba(4, 120, 87, 0.2)' : 'rgba(4, 120, 87, 0.1)',
+            color: mode === 'dark' ? '#047857' : '#047857',
              '& .MuiAlert-icon': {
-                color: mode === 'dark' ? '#10B981' : '#10B981',
+                color: mode === 'dark' ? '#047857' : '#047857',
             },
           },
           filledInfo: {
-            backgroundColor: mode === 'dark' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)',
-            color: mode === 'dark' ? '#3B82F6' : '#3B82F6',
+            backgroundColor: mode === 'dark' ? 'rgba(37, 99, 235, 0.2)' : 'rgba(37, 99, 235, 0.1)',
+            color: mode === 'dark' ? '#2563EB' : '#2563EB',
              '& .MuiAlert-icon': {
-                color: mode === 'dark' ? '#3B82F6' : '#3B82F6',
+                color: mode === 'dark' ? '#2563EB' : '#2563EB',
             },
           },
           filledWarning: {

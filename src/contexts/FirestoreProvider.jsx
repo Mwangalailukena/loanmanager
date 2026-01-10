@@ -303,18 +303,23 @@ export function FirestoreProvider({ children }) {
         const q = query(
           collection(db, "payments"),
           where("userId", "==", currentUser.uid),
-          where("loanId", "==", loanId),
-          orderBy("date", "asc")
+          where("loanId", "==", loanId)
         );
-        const querySnapshot = await getDocs(q); // getDocs is needed for one-time fetch
-        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const querySnapshot = await getDocs(q);
+        const payments = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Client-side sort by date ascending
+        return payments.sort((a, b) => {
+            const dateA = a.date?.seconds || 0;
+            const dateB = b.date?.seconds || 0;
+            return dateA - dateB;
+        });
       } catch (error) {
         console.error("Error fetching payments by loan ID:", error);
         showSnackbar("Failed to fetch payment history.", "error");
         return [];
       }
     },
-    refinanceLoan: async (oldLoanId, newStartDate, newDueDate, newPrincipalAmount, newInterestDuration) => {
+    refinanceLoan: async (oldLoanId, newStartDate, newDueDate, newPrincipalAmount, newInterestDuration, manualInterestRate) => {
       if (!currentUser) return;
       const oldLoanRef = doc(db, "loans", oldLoanId);
       let newLoanRefId = "";
@@ -327,7 +332,10 @@ export function FirestoreProvider({ children }) {
           }
 
           const oldLoanData = oldLoanSnap.data();
-          const interestRate = settings.interestRates[newInterestDuration] || 0;
+          const interestRate = (manualInterestRate !== undefined && manualInterestRate !== null)
+            ? manualInterestRate
+            : (settings.interestRates[newInterestDuration] || 0);
+          
           const newInterest = newPrincipalAmount * interestRate;
           const newTotalRepayable = newPrincipalAmount + newInterest;
 
@@ -343,7 +351,8 @@ export function FirestoreProvider({ children }) {
             repaidAmount: 0,
             startDate: newStartDate,
             dueDate: newDueDate,
-            interestDuration: newInterestDuration,
+            interestDuration: newInterestDuration || null,
+            manualInterestRate: manualInterestRate || null,
             status: "Active",
             refinancedFromId: oldLoanId, // Link to old loan
             userId: currentUser.uid,

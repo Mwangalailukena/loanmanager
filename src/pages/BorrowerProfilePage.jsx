@@ -36,14 +36,29 @@ import {
   MenuItem,
   InputLabel,
   FormControl,
+  InputAdornment, // Added
+  Table,          // Added
+  TableHead,      // Added
+  TableBody,      // Added
+  TableRow,       // Added
+  TableCell,      // Added
+  Alert,          // Added
 } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
 import PhoneIcon from '@mui/icons-material/Phone';
 import EmailIcon from '@mui/icons-material/Email';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
+import RefinanceLoanDialog from '../components/RefinanceLoanDialog';
+import TopUpLoanDialog from '../components/TopUpLoanDialog';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import PaymentIcon from '@mui/icons-material/Payment';
+import HistoryIcon from '@mui/icons-material/History';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import AutorenewIcon from '@mui/icons-material/Autorenew';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import WarningIcon from '@mui/icons-material/Warning';
 import Fingerprint from '@mui/icons-material/Fingerprint';
 import HomeIcon from '@mui/icons-material/Home';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
@@ -62,6 +77,13 @@ import { ResponsiveLine } from '@nivo/line';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { calcStatus } from '../utils/loanUtils';
 import WhatsAppDialog from '../components/WhatsAppDialog';
+
+const interestOptions = [
+  { label: "1 Week", value: 1 },
+  { label: "2 Weeks", value: 2 },
+  { label: "3 Weeks", value: 3 },
+  { label: "4 Weeks", value: 4 },
+];
 
 const CreditScoreHistoryChart = ({ history }) => {
   const theme = useTheme();
@@ -238,8 +260,8 @@ export default function BorrowerProfilePage() {
     borrowers, loans, loading, deleteBorrower,
     comments, addComment, deleteComment,
     guarantors, deleteGuarantor,
-    refinanceLoan,
     fetchComments,
+    deleteLoan, addPayment, updateLoan, getPaymentsByLoanId, settings, topUpLoan, markLoanAsDefaulted, // Added markLoanAsDefaulted
   } = useFirestore();
   const theme = useTheme();
 
@@ -257,15 +279,34 @@ export default function BorrowerProfilePage() {
   const [deleteGuarantorConfirmOpen, setDeleteGuarantorConfirmOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
   const [refinanceModal, setRefinanceModal] = useState({ open: false, loan: null });
-  const [refinanceStartDate, setRefinanceStartDate] = useState(dayjs().format("YYYY-MM-DD"));
-  const [refinanceDueDate, setRefinanceDueDate] = useState(dayjs().add(1, "week").format("YYYY-MM-DD"));
-  const [refinanceError, setRefinanceError] = useState("");
-  const [isRefinancing, setIsRefinancing] = useState(false);
   const [loanSortKey, setLoanSortKey] = useState('dueDate'); // Default sort
   const [loanSortDirection, setLoanSortDirection] = useState('asc'); // 'asc' or 'desc'
   const [expandedLoanId, setExpandedLoanId] = useState(null); // NEW
   const [whatsAppOpen, setWhatsAppOpen] = useState(false);
   const [whatsAppPerson, setWhatsAppPerson] = useState(null);
+
+  // --- Loan Action States ---
+  const [confirmDeleteLoan, setConfirmDeleteLoan] = useState({ open: false, loanId: null });
+  const [confirmDefaultLoan, setConfirmDefaultLoan] = useState({ open: false, loanId: null });
+  const [isDeletingLoan, setIsDeletingLoan] = useState(false);
+  const [paymentModal, setPaymentModal] = useState({ open: false, loanId: null });
+  const [confirmFullPayment, setConfirmFullPayment] = useState({ open: false, loan: null });
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentError, setPaymentError] = useState("");
+  const [isAddingPayment, setIsAddingPayment] = useState(false);
+  const [topUpModal, setTopUpModal] = useState({ open: false, loan: null });
+  const [isToppingUp, setIsToppingUp] = useState(false);
+  const [historyModal, setHistoryModal] = useState({ open: false, loanId: null, payments: [], loading: false });
+  const [editModal, setEditModal] = useState({ open: false, loan: null });
+  const [editData, setEditData] = useState({ principal: "", interestDuration: 1, startDate: "", dueDate: "" });
+  const [editErrors, setEditErrors] = useState({});
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  const interestRates = useMemo(() => settings.interestRates || {
+    1: 0.15, 2: 0.2, 3: 0.3, 4: 0.3,
+  }, [settings.interestRates]);
+
+  const calculateInterest = (principal, weeks) => principal * (interestRates[weeks] || 0);
 
   const handleWhatsAppClick = (person) => {
     setWhatsAppPerson(person);
@@ -369,6 +410,165 @@ export default function BorrowerProfilePage() {
 
   const COLORS = [theme.palette.success.main, theme.palette.error.main];
 
+  // --- Loan Action Handlers ---
+  const handleDeleteLoan = async () => {
+    if (confirmDeleteLoan.loanId) {
+      setIsDeletingLoan(true);
+      try {
+        await deleteLoan(confirmDeleteLoan.loanId);
+        setConfirmDeleteLoan({ open: false, loanId: null });
+        showSnackbar('Loan deleted successfully', 'success');
+      } catch (error) {
+        console.error("Error deleting loan:", error);
+        showSnackbar('Failed to delete loan', 'error');
+      } finally {
+        setIsDeletingLoan(false);
+      }
+    }
+  };
+
+  const handleDefaultLoanConfirm = async () => {
+    if (confirmDefaultLoan.loanId) {
+      try {
+        await markLoanAsDefaulted(confirmDefaultLoan.loanId);
+        setConfirmDefaultLoan({ open: false, loanId: null });
+      } catch (error) {
+        console.error("Error defaulting loan:", error);
+      }
+    }
+  };
+
+  const openPaymentModal = (loanId) => {
+    setPaymentAmount("");
+    setPaymentError("");
+    setPaymentModal({ open: true, loanId });
+  };
+
+  const handlePaymentSubmit = async () => {
+    const amountNum = parseFloat(paymentAmount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      setPaymentError("Payment amount must be a positive number.");
+      return;
+    }
+    const loan = loans.find(l => l.id === paymentModal.loanId);
+    const outstanding = (loan?.totalRepayable || 0) - (loan?.repaidAmount || 0);
+
+    if (amountNum > outstanding) {
+      setPaymentError(`Payment cannot exceed outstanding amount (ZMW ${outstanding.toFixed(2)}).`);
+      return;
+    }
+
+    setIsAddingPayment(true);
+    try {
+      await addPayment(paymentModal.loanId, amountNum);
+      setPaymentModal({ open: false, loanId: null });
+      showSnackbar('Payment added successfully', 'success');
+    } catch (error) {
+      console.error("Error adding payment:", error);
+      setPaymentError("Failed to add payment.");
+    } finally {
+      setIsAddingPayment(false);
+    }
+  };
+
+  const handleFullPaymentClick = (loan) => {
+    setConfirmFullPayment({ open: true, loan });
+  };
+
+  const handleFullPaymentConfirm = async () => {
+    if (confirmFullPayment.loan) {
+      const loan = confirmFullPayment.loan;
+      const amount = (loan.totalRepayable || 0) - (loan.repaidAmount || 0);
+      setIsAddingPayment(true);
+      try {
+        await addPayment(loan.id, amount);
+        setConfirmFullPayment({ open: false, loan: null });
+        showSnackbar("Loan fully repaid!", "success");
+      } catch (error) {
+        console.error("Error adding full payment:", error);
+        showSnackbar("Failed to record payment.", "error");
+      } finally {
+        setIsAddingPayment(false);
+      }
+    }
+  };
+
+  const openTopUpModal = (loan) => {
+    setTopUpModal({ open: true, loan });
+  };
+
+  const handleTopUpSubmit = async (topUpAmount) => {
+    if (topUpModal.loan) {
+      setIsToppingUp(true);
+      try {
+        await topUpLoan(topUpModal.loan.id, topUpAmount);
+        setTopUpModal({ open: false, loan: null });
+      } catch (error) {
+        console.error("Error topping up loan:", error);
+      } finally {
+        setIsToppingUp(false);
+      }
+    }
+  };
+
+  const openHistoryModal = async (loanId) => {
+    setHistoryModal({ open: true, loanId, payments: [], loading: true });
+    try {
+      const payments = await getPaymentsByLoanId(loanId);
+      setHistoryModal((prev) => ({ ...prev, payments, loading: false }));
+    } catch (error) {
+      console.error("Error fetching payment history:", error);
+      setHistoryModal((prev) => ({ ...prev, payments: [], loading: false }));
+    }
+  };
+
+  const openEditModal = (loan) => {
+    setEditData({
+      principal: loan.principal,
+      interestDuration: loan.interestDuration || 1,
+      startDate: loan.startDate,
+      dueDate: loan.dueDate,
+    });
+    setEditErrors({});
+    setEditModal({ open: true, loan });
+  };
+
+  const handleEditSubmit = async () => {
+    const errors = {};
+    if (isNaN(parseFloat(editData.principal)) || parseFloat(editData.principal) < 0) errors.principal = "Valid principal required.";
+    if (!editData.startDate) errors.startDate = "Start date is required.";
+
+    setEditErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    const principalAmount = parseFloat(editData.principal);
+    const selectedDuration = editData.interestDuration;
+    const calculatedInterestAmount = calculateInterest(principalAmount, selectedDuration);
+    const calculatedTotalRepayable = principalAmount + calculatedInterestAmount;
+
+    const updatedLoan = {
+      ...editModal.loan,
+      principal: principalAmount,
+      interest: calculatedInterestAmount,
+      totalRepayable: calculatedTotalRepayable,
+      startDate: editData.startDate,
+      dueDate: editData.dueDate,
+      interestDuration: selectedDuration,
+    };
+
+    setIsSavingEdit(true);
+    try {
+      await updateLoan(editModal.loan.id, updatedLoan);
+      setEditModal({ open: false, loan: null });
+      showSnackbar('Loan updated successfully', 'success');
+    } catch (error) {
+      console.error("Error updating loan:", error);
+      setEditErrors({ form: "Failed to update loan. Please try again." });
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
   // --- Handlers ---
   const handleOpenDeleteDialog = () => setDeleteDialogOpen(true);
   const handleCloseDeleteDialog = () => setDeleteDialogOpen(false);
@@ -418,32 +618,7 @@ export default function BorrowerProfilePage() {
   };
 
   const openRefinanceModal = (loan) => {
-    setRefinanceStartDate(dayjs().format("YYYY-MM-DD"));
-    setRefinanceDueDate(dayjs().add(1, "week").format("YYYY-MM-DD"));
-    setRefinanceError("");
     setRefinanceModal({ open: true, loan });
-  };
-
-  const handleRefinanceSubmit = async () => {
-    if (!refinanceStartDate || !refinanceDueDate) {
-      setRefinanceError("Both start and due dates are required.");
-      return;
-    }
-    if (dayjs(refinanceDueDate).isBefore(dayjs(refinanceStartDate))) {
-      setRefinanceError("Due date must be after the start date.");
-      return;
-    }
-
-    setIsRefinancing(true);
-    try {
-      await refinanceLoan(refinanceModal.loan.id, refinanceStartDate, refinanceDueDate);
-      setRefinanceModal({ open: false, loan: null });
-      showSnackbar('Loan refinanced successfully', 'success');
-    } catch (error) {
-      setRefinanceError("Failed to refinance loan. Please try again.");
-    } finally {
-      setIsRefinancing(false);
-    }
   };
 
   if (loading) {
@@ -639,14 +814,37 @@ export default function BorrowerProfilePage() {
                                     <Typography variant="subtitle2" fontWeight="bold">Loan Details:</Typography>
                                     <List dense disablePadding>
                                         <ListItem disableGutters><ListItemText primary="Loan ID" /><Typography variant="body2">{loan.id}</Typography></ListItem>
-                                        <ListItem disableGutters><ListItemText primary="Term" /><Typography variant="body2">{loan.term} {loan.termUnit}</Typography></ListItem>
-                                        <ListItem disableGutters><ListItemText primary="Interest Rate" /><Typography variant="body2">{loan.interestRate}%</Typography></ListItem>
-                                        <ListItem disableGutters><ListItemText primary="Installment Amount" /><Typography variant="body2">ZMW {Number(loan.installmentAmount).toLocaleString()}</Typography></ListItem>
+                                        <ListItem disableGutters><ListItemText primary="Term" /><Typography variant="body2">{loan.interestDuration ? `${loan.interestDuration} Weeks` : 'Custom'}</Typography></ListItem>
+                                        <ListItem disableGutters><ListItemText primary="Interest Rate" /><Typography variant="body2">{loan.interestRate ? loan.interestRate : (loan.manualInterestRate * 100).toFixed(2)}%</Typography></ListItem>
+                                        <ListItem disableGutters><ListItemText primary="Total Interest" /><Typography variant="body2">ZMW {Number(loan.interest).toLocaleString()}</Typography></ListItem>
                                         {/* Add more detailed info here, e.g., repayment schedule breakdown */}
                                     </List>
                                     <Divider sx={{ my: 1 }} />
-                                    <Stack direction="row" spacing={1} mt={1}>
-                                      <Button size="small" variant="outlined" onClick={() => openRefinanceModal(loan)}>Refinance</Button>
+                                    <Stack direction="row" spacing={0.5} mt={1} justifyContent="flex-start" sx={{ overflowX: 'auto' }}>
+                                      <MuiTooltip title="Edit">
+                                        <IconButton size="small" onClick={() => openEditModal(loan)} disabled={calcStatus(loan).toLowerCase() === 'paid'} color="secondary"><EditIcon fontSize="small" /></IconButton>
+                                      </MuiTooltip>
+                                      <MuiTooltip title="Delete">
+                                        <IconButton size="small" color="error" onClick={() => setConfirmDeleteLoan({ open: true, loanId: loan.id })} disabled={calcStatus(loan).toLowerCase() === 'paid'}><DeleteIcon fontSize="small" /></IconButton>
+                                      </MuiTooltip>
+                                      <MuiTooltip title="Add Payment">
+                                        <IconButton size="small" onClick={() => openPaymentModal(loan.id)} disabled={calcStatus(loan).toLowerCase() === 'paid' || calcStatus(loan).toLowerCase() === 'defaulted'} color="secondary"><PaymentIcon fontSize="small" /></IconButton>
+                                      </MuiTooltip>
+                                      <MuiTooltip title="Full Payment">
+                                        <IconButton size="small" onClick={() => handleFullPaymentClick(loan)} disabled={calcStatus(loan).toLowerCase() === 'paid' || calcStatus(loan).toLowerCase() === 'defaulted'} color="success"><CheckCircleOutlineIcon fontSize="small" /></IconButton>
+                                      </MuiTooltip>
+                                      <MuiTooltip title="Top-up">
+                                        <IconButton size="small" onClick={() => openTopUpModal(loan)} disabled={loan.repaidAmount > 0 || calcStatus(loan).toLowerCase() === 'paid' || calcStatus(loan).toLowerCase() === 'defaulted'} color="secondary"><AttachMoneyIcon fontSize="small" /></IconButton>
+                                      </MuiTooltip>
+                                      <MuiTooltip title="View History">
+                                        <IconButton size="small" onClick={() => openHistoryModal(loan.id)} color="secondary"><HistoryIcon fontSize="small" /></IconButton>
+                                      </MuiTooltip>
+                                      <MuiTooltip title="Refinance">
+                                        <IconButton size="small" onClick={() => openRefinanceModal(loan)} disabled={calcStatus(loan).toLowerCase() === 'paid' || calcStatus(loan).toLowerCase() === 'defaulted'} color="secondary"><AutorenewIcon fontSize="small" /></IconButton>
+                                      </MuiTooltip>
+                                      <MuiTooltip title="Mark as Default">
+                                        <IconButton size="small" onClick={() => setConfirmDefaultLoan({ open: true, loanId: loan.id })} disabled={calcStatus(loan).toLowerCase() === 'paid' || calcStatus(loan).toLowerCase() === 'defaulted'} color="warning"><WarningIcon fontSize="small" /></IconButton>
+                                      </MuiTooltip>
                                     </Stack>
                                 </Box>
                             </Collapse>
@@ -675,8 +873,31 @@ export default function BorrowerProfilePage() {
                                     </Typography>
                                   </Box>
                                 )}
-                                <Stack direction="row" spacing={1} mt={1}>
-                                  <Button size="small" variant="outlined" onClick={() => openRefinanceModal(loan)}>Refinance</Button>
+                                <Stack direction="row" spacing={0.5} mt={1} justifyContent="flex-start" sx={{ overflowX: 'auto' }}>
+                                  <MuiTooltip title="Edit">
+                                    <IconButton size="small" onClick={() => openEditModal(loan)} disabled={calcStatus(loan).toLowerCase() === 'paid'} color="secondary"><EditIcon fontSize="small" /></IconButton>
+                                  </MuiTooltip>
+                                  <MuiTooltip title="Delete">
+                                    <IconButton size="small" color="error" onClick={() => setConfirmDeleteLoan({ open: true, loanId: loan.id })} disabled={calcStatus(loan).toLowerCase() === 'paid'}><DeleteIcon fontSize="small" /></IconButton>
+                                  </MuiTooltip>
+                                  <MuiTooltip title="Add Payment">
+                                    <IconButton size="small" onClick={() => openPaymentModal(loan.id)} disabled={calcStatus(loan).toLowerCase() === 'paid' || calcStatus(loan).toLowerCase() === 'defaulted'} color="secondary"><PaymentIcon fontSize="small" /></IconButton>
+                                  </MuiTooltip>
+                                  <MuiTooltip title="Full Payment">
+                                    <IconButton size="small" onClick={() => handleFullPaymentClick(loan)} disabled={calcStatus(loan).toLowerCase() === 'paid' || calcStatus(loan).toLowerCase() === 'defaulted'} color="success"><CheckCircleOutlineIcon fontSize="small" /></IconButton>
+                                  </MuiTooltip>
+                                  <MuiTooltip title="Top-up">
+                                    <IconButton size="small" onClick={() => openTopUpModal(loan)} disabled={loan.repaidAmount > 0 || calcStatus(loan).toLowerCase() === 'paid' || calcStatus(loan).toLowerCase() === 'defaulted'} color="secondary"><AttachMoneyIcon fontSize="small" /></IconButton>
+                                  </MuiTooltip>
+                                  <MuiTooltip title="View History">
+                                    <IconButton size="small" onClick={() => openHistoryModal(loan.id)} color="secondary"><HistoryIcon fontSize="small" /></IconButton>
+                                  </MuiTooltip>
+                                  <MuiTooltip title="Refinance">
+                                    <IconButton size="small" onClick={() => openRefinanceModal(loan)} disabled={calcStatus(loan).toLowerCase() === 'paid' || calcStatus(loan).toLowerCase() === 'defaulted'} color="secondary"><AutorenewIcon fontSize="small" /></IconButton>
+                                  </MuiTooltip>
+                                  <MuiTooltip title="Mark as Default">
+                                    <IconButton size="small" onClick={() => setConfirmDefaultLoan({ open: true, loanId: loan.id })} disabled={calcStatus(loan).toLowerCase() === 'paid' || calcStatus(loan).toLowerCase() === 'defaulted'} color="warning"><WarningIcon fontSize="small" /></IconButton>
+                                  </MuiTooltip>
                                 </Stack>
                               </>
                             )}
@@ -826,41 +1047,213 @@ export default function BorrowerProfilePage() {
       </Dialog>
 
       {/* Refinance Modal */}
-      <Dialog open={refinanceModal.open} onClose={() => setRefinanceModal({ open: false, loan: null })} maxWidth="xs" fullWidth>
-        <DialogTitle fontSize="1.1rem">Refinance Loan</DialogTitle>
+      <RefinanceLoanDialog
+        open={refinanceModal.open}
+        onClose={() => setRefinanceModal({ open: false, loan: null })}
+        loan={refinanceModal.loan}
+      />
+
+      {/* --- New Loan Action Dialogs --- */}
+      
+      {/* Confirm Delete Loan Dialog */}
+      <Dialog open={confirmDeleteLoan.open} onClose={() => setConfirmDeleteLoan({ open: false, loanId: null })} maxWidth="xs" fullWidth >
+        <DialogTitle fontSize="1.1rem">Confirm Loan Deletion</DialogTitle>
         <DialogContent sx={{ pb: 1 }}>
+          <DialogContentText>Are you sure you want to delete this loan? This action cannot be undone.</DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ pb: 1 }}>
+          <Button size="small" onClick={() => setConfirmDeleteLoan({ open: false, loanId: null })} disabled={isDeletingLoan}> Cancel </Button>
+          <Button size="small" color="error" onClick={handleDeleteLoan} disabled={isDeletingLoan}> {isDeletingLoan ? <CircularProgress size={20} color="inherit" /> : 'Delete'} </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirm Default Loan Dialog */}
+      <Dialog open={confirmDefaultLoan.open} onClose={() => setConfirmDefaultLoan({ open: false, loanId: null })} maxWidth="xs" fullWidth>
+        <DialogTitle fontSize="1.1rem">Confirm Default</DialogTitle>
+        <DialogContent sx={{ pb: 1 }}>
+          <DialogContentText>Are you sure you want to mark this loan as Defaulted? This indicates the borrower has failed to repay.</DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ pb: 1 }}>
+          <Button size="small" onClick={() => setConfirmDefaultLoan({ open: false, loanId: null })}>Cancel</Button>
+          <Button size="small" variant="contained" color="warning" onClick={handleDefaultLoanConfirm}>Mark Defaulted</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Payment Modal */}
+      <Dialog open={paymentModal.open} onClose={() => setPaymentModal({ open: false, loanId: null })} maxWidth="xs" fullWidth >
+        <DialogTitle fontSize="1.1rem">Add Payment</DialogTitle>
+        <DialogContent sx={{ pb: 1 }}>
+          <TextField
+            label="Amount"
+            type="number"
+            value={paymentAmount}
+            onChange={(e) => {
+              setPaymentAmount(e.target.value);
+              setPaymentError("");
+            }}
+            size="small"
+            autoFocus
+            fullWidth
+            error={!!paymentError}
+            helperText={paymentError}
+            sx={textFieldStyles}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">ZMW</InputAdornment>
+              ),
+            }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ pb: 1 }}>
+          <Button size="small" onClick={() => setPaymentModal({ open: false, loanId: null })} disabled={isAddingPayment}> Cancel </Button>
+          <Button size="small" variant="contained" onClick={handlePaymentSubmit} disabled={isAddingPayment} color="secondary">
+            {isAddingPayment ? <CircularProgress size={20} color="inherit" /> : 'Add Payment'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Confirm Full Payment Dialog */}
+      <Dialog open={confirmFullPayment.open} onClose={() => setConfirmFullPayment({ open: false, loan: null })} maxWidth="xs" fullWidth >
+        <DialogTitle fontSize="1.1rem">Confirm Full Repayment</DialogTitle>
+        <DialogContent sx={{ pb: 1 }}>
+          <DialogContentText>
+            Are you sure you want to mark this loan as fully repaid? This will record a payment of <strong>ZMW {confirmFullPayment.loan ? ((confirmFullPayment.loan.totalRepayable || 0) - (confirmFullPayment.loan.repaidAmount || 0)).toFixed(2) : '0.00'}</strong>.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ pb: 1 }}>
+          <Button size="small" onClick={() => setConfirmFullPayment({ open: false, loan: null })} disabled={isAddingPayment}> Cancel </Button>
+          <Button size="small" variant="contained" color="success" onClick={handleFullPaymentConfirm} disabled={isAddingPayment}> 
+            {isAddingPayment ? <CircularProgress size={20} color="inherit" /> : 'Confirm Repayment'} 
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Top-up Modal */}
+      <TopUpLoanDialog
+        open={topUpModal.open}
+        onClose={() => setTopUpModal({ open: false, loan: null })}
+        onConfirm={handleTopUpSubmit}
+        loading={isToppingUp}
+      />
+
+      {/* Payment History Modal */}
+      <Dialog open={historyModal.open} onClose={() => setHistoryModal({ open: false, loanId: null, payments: [], loading: false })} maxWidth="xs" fullWidth>
+        <DialogTitle fontSize="1.1rem">Payment History</DialogTitle>
+        <DialogContent dividers>
+          {historyModal.loading ? (
+            <Box display="flex" justifyContent="center" alignItems="center" minHeight="100px">
+              <CircularProgress size={24} />
+            </Box>
+          ) : historyModal.payments.length === 0 ? (
+            <Typography variant="body2" color="text.secondary" align="center">
+              No payments recorded for this loan.
+            </Typography>
+          ) : (
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Date</TableCell>
+                  <TableCell align="right">Amount</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {historyModal.payments.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell>{p.date ? dayjs(p.date.toDate ? p.date.toDate() : p.date).format('YYYY-MM-DD') : 'No Date'}</TableCell>
+                    <TableCell align="right">ZMW {Number(p.amount).toFixed(2)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setHistoryModal({ open: false, loanId: null, payments: [], loading: false })} size="small" color="secondary">Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Loan Modal */}
+      <Dialog open={editModal.open} onClose={() => setEditModal({ open: false, loan: null })} maxWidth="xs" fullWidth>
+        <DialogTitle fontSize="1.1rem">Edit Loan</DialogTitle>
+        <DialogContent sx={{ pb: 1 }}>
+          {editErrors.form && <Alert severity="error" sx={{ mb: 2 }}>{editErrors.form}</Alert>}
           <Stack spacing={2} mt={1}>
             <TextField
-              label="New Start Date"
+              label="Principal Amount"
+              size="small"
+              type="number"
+              fullWidth
+              value={editData.principal}
+              onChange={(e) => {
+                setEditData({ ...editData, principal: e.target.value });
+              }}
+              error={!!editErrors.principal}
+              helperText={editErrors.principal}
+              sx={textFieldStyles}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">ZMW</InputAdornment>
+                ),
+              }}
+            />
+            <FormControl size="small" fullWidth sx={textFieldStyles}>
+              <InputLabel>Interest Duration</InputLabel>
+              <Select
+                value={editData.interestDuration}
+                label="Interest Duration"
+                onChange={(e) => {
+                  const duration = e.target.value;
+                  setEditData({ ...editData, interestDuration: duration });
+                }}
+              >
+                {interestOptions.map((option) => {
+                  const rate = (interestRates[option.value] || 0) * 100;
+                  return (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label} ({rate.toFixed(0)}%)
+                    </MenuItem>
+                  );
+                })}
+              </Select>
+            </FormControl>
+            <TextField
+              label="Start Date"
               type="date"
-              value={refinanceStartDate}
-              onChange={(e) => setRefinanceStartDate(e.target.value)}
               size="small"
               fullWidth
               InputLabelProps={{ shrink: true }}
-              error={!!refinanceError}
-              helperText={refinanceError}
+              value={editData.startDate}
+              onChange={(e) => {
+                const startDate = e.target.value;
+                setEditData({ ...editData, startDate });
+              }}
+              error={!!editErrors.startDate}
+              helperText={editErrors.startDate}
               sx={textFieldStyles}
             />
             <TextField
-              label="New Due Date"
+              label="Due Date"
               type="date"
-              value={refinanceDueDate}
-              onChange={(e) => setRefinanceDueDate(e.target.value)}
               size="small"
               fullWidth
               InputLabelProps={{ shrink: true }}
+              value={editData.dueDate}
+              onChange={(e) => {
+                const dueDate = e.target.value;
+                setEditData({ ...editData, dueDate });
+              }}
               sx={textFieldStyles}
             />
           </Stack>
         </DialogContent>
         <DialogActions sx={{ pb: 1 }}>
-          <Button size="small" onClick={() => setRefinanceModal({ open: false, loan: null })} disabled={isRefinancing}> Cancel </Button>
-          <Button size="small" variant="contained" onClick={handleRefinanceSubmit} disabled={isRefinancing} color="secondary">
-            {isRefinancing ? <CircularProgress size={20} color="inherit" /> : 'Refinance'}
+          <Button size="small" onClick={() => setEditModal({ open: false, loan: null })} disabled={isSavingEdit}>Cancel</Button>
+          <Button size="small" variant="contained" onClick={handleEditSubmit} disabled={isSavingEdit} color="secondary">
+            {isSavingEdit ? <CircularProgress size={20} color="inherit" /> : 'Save Changes'}
           </Button>
         </DialogActions>
       </Dialog>
+
       {whatsAppPerson && (
         <WhatsAppDialog
           open={whatsAppOpen}
