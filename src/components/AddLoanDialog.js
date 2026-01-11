@@ -25,10 +25,12 @@ import {
   StepConnector,
   stepConnectorClasses,
   styled,
+  alpha,
+  Autocomplete,
 } from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
-import PaidIcon from '@mui/icons-material/Paid';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CloseIcon from "@mui/icons-material/CloseRounded";
+import PaidIcon from '@mui/icons-material/PaymentsRounded';
+import CheckCircleIcon from '@mui/icons-material/TaskAltRounded';
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
@@ -82,7 +84,7 @@ function ColorlibStepIcon(props) {
     2: <CheckCircleIcon sx={{ fontSize: 20 }} />,
   };
   return (
-  ColorlibStepIconRoot ownerState={{ completed, active }} className={className}>
+    <ColorlibStepIconRoot ownerState={{ completed, active }} className={className}>
       {icons[String(icon)]}
     </ColorlibStepIconRoot>
   );
@@ -101,7 +103,7 @@ const CustomStepConnector = styled(StepConnector)(({ theme }) => ({
   },
 }));
 
-function AutoLoanForm({ borrowerId, onClose }) {
+function AutoLoanForm({ borrowerId, onClose, selectedBorrower: passedBorrower }) {
   const theme = useTheme();
   const { addLoan, addActivityLog, settings, borrowers } = useFirestore();
   const showSnackbar = useSnackbar();
@@ -113,7 +115,7 @@ function AutoLoanForm({ borrowerId, onClose }) {
   const [amountError, setAmountError] = useState("");
   const isOffline = useOfflineStatus();
 
-  const selectedBorrower = borrowers.find(b => b.id === borrowerId);
+  const selectedBorrower = passedBorrower || borrowers.find(b => b.id === borrowerId);
 
   const interestRates = settings?.interestRates || { 1: 0.15, 2: 0.2, 3: 0.3, 4: 0.3 };
   const calculateInterest = (principal, weeks) => principal * (interestRates[weeks] || 0);
@@ -157,7 +159,7 @@ function AutoLoanForm({ borrowerId, onClose }) {
     const dueDate = dayjs().add(interestDuration * 7, "day").format("YYYY-MM-DD");
 
     const loanData = {
-      borrowerId: borrowerId,
+      borrowerId: selectedBorrower.id,
       principal, interest, totalRepayable, startDate, dueDate,
       status: "Active", repaidAmount: 0, interestDuration,
       borrower: selectedBorrower.name,
@@ -211,6 +213,10 @@ function AutoLoanForm({ borrowerId, onClose }) {
       case 0:
         return (
           <Stack spacing={1.5} sx={{ py: 1.5 }}>
+            <Box sx={{ mb: 1, p: 1.5, bgcolor: alpha(theme.palette.primary.main, 0.05), borderRadius: 2, border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}` }}>
+                <Typography variant="caption" color="text.secondary" display="block">Lending to:</Typography>
+                <Typography variant="subtitle2" fontWeight="bold">{selectedBorrower?.name}</Typography>
+            </Box>
             <TextField
               label="Loan Amount (ZMW)"
               value={amount}
@@ -293,7 +299,7 @@ function AutoLoanForm({ borrowerId, onClose }) {
   );
 }
 
-function ManualLoanForm({ borrowerId, onClose }) {
+function ManualLoanForm({ borrowerId, onClose, selectedBorrower: passedBorrower }) {
   const theme = useTheme();
   const { addLoan, addActivityLog, borrowers } = useFirestore();
   const showSnackbar = useSnackbar();
@@ -309,7 +315,8 @@ function ManualLoanForm({ borrowerId, onClose }) {
   const [dueDateError, setDueDateError] = useState("");
   const [manualInterestRateError, setManualInterestRateError] = useState("");
   const isOffline = useOfflineStatus();
-  const selectedBorrower = borrowers.find(b => b.id === borrowerId);
+  
+  const selectedBorrower = passedBorrower || borrowers.find(b => b.id === borrowerId);
 
   const calculateInterest = (principal, rate) => principal * (rate / 100);
   const handleAmountBlur = () => {
@@ -358,7 +365,7 @@ function ManualLoanForm({ borrowerId, onClose }) {
     const formattedDueDate = dueDate.format("YYYY-MM-DD");
 
     const loanData = {
-      borrowerId: borrowerId, principal, interest, totalRepayable,
+      borrowerId: selectedBorrower.id, principal, interest, totalRepayable,
       startDate: formattedStartDate, dueDate: formattedDueDate,
       status: "Active", repaidAmount: 0, manualInterestRate: interestRateDecimal,
       borrower: selectedBorrower.name,
@@ -412,16 +419,22 @@ function ManualLoanForm({ borrowerId, onClose }) {
       case 0:
         return (
           <Stack spacing={1.5} sx={{ py: 1.5 }}>
+            <Box sx={{ mb: 1, p: 1.5, bgcolor: alpha(theme.palette.primary.main, 0.05), borderRadius: 2, border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}` }}>
+                <Typography variant="caption" color="text.secondary" display="block">Lending to:</Typography>
+                <Typography variant="subtitle2" fontWeight="bold">{selectedBorrower?.name}</Typography>
+            </Box>
             <TextField
               label="Loan Amount (ZMW)" value={amount} onChange={(e) => setAmount(e.target.value)} onBlur={handleAmountBlur}
               type="number" inputProps={{ min: 1 }} fullWidth required error={!!amountError} helperText={amountError} sx={textFieldStyles}
             />
             <DatePicker
               label="Start Date" value={startDate} onChange={(newValue) => setStartDate(newValue)}
+              enableAccessibleFieldDOMStructure={false}
               slots={{ textField: TextField }} slotProps={{ textField: { fullWidth: true, required: true, error: !!startDateError, helperText: startDateError, sx: textFieldStyles } }}
             />
             <DatePicker
               label="Due Date" value={dueDate} onChange={(newValue) => setDueDate(newValue)}
+              enableAccessibleFieldDOMStructure={false}
               slots={{ textField: TextField }} slotProps={{ textField: { fullWidth: true, required: true, error: !!dueDateError, helperText: dueDateError, sx: textFieldStyles } }}
               minDate={startDate || dayjs()}
               disablePast
@@ -491,45 +504,86 @@ function ManualLoanForm({ borrowerId, onClose }) {
 }
 
 export default function AddLoanDialog({ open, onClose, borrowerId }) {
+  const { borrowers } = useFirestore();
   const [selectedTab, setSelectedTab] = useState(0);
+  const [selectedBorrower, setSelectedBorrower] = useState(null);
+  
   const handleChangeTab = (event, newValue) => {
     setSelectedTab(newValue);
   };
+
+  // Skip selection if borrowerId is provided
+  const initialBorrower = borrowers.find(b => b.id === borrowerId);
+  const showSelection = !borrowerId;
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
         <DialogTitle fontWeight="bold" sx={{ pb: 1, pt: 2 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h6" fontWeight="bold">Add Loan</Typography>
+            <Typography variant="h6" fontWeight="bold">Create New Loan</Typography>
             <IconButton onClick={onClose} aria-label="close">
               <CloseIcon />
             </IconButton>
           </Box>
         </DialogTitle>
         <DialogContent sx={{ p: 2 }}>
-          <Box sx={{ width: "100%", borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs
-              value={selectedTab}
-              onChange={handleChangeTab}
-              aria-label="loan type tabs"
-              centered
-              sx={{
-                "& .MuiTabs-indicator": { backgroundColor: (theme) => theme.palette.secondary.main },
-                "& .MuiTab-root": {
-                  color: (theme) => theme.palette.text.secondary,
-                  "&.Mui-selected": { color: (theme) => theme.palette.secondary.main },
-                },
-              }}
-            >
-              <Tab label="Auto Loan" />
-              <Tab label="Manual Loan" />
-            </Tabs>
-          </Box>
-          <Box sx={{ pt: 2 }}>
-            {selectedTab === 0 && <AutoLoanForm borrowerId={borrowerId} onClose={onClose} />}
-            {selectedTab === 1 && <ManualLoanForm borrowerId={borrowerId} onClose={onClose} />}
-          </Box>
+          {showSelection && !selectedBorrower ? (
+            <Box sx={{ py: 2 }}>
+                <Typography variant="subtitle2" sx={{ mb: 2 }}>Search for a Borrower to continue:</Typography>
+                <Autocomplete
+                    options={borrowers}
+                    getOptionLabel={(option) => `${option.name} (${option.phone})`}
+                    onChange={(event, newValue) => {
+                        setSelectedBorrower(newValue);
+                    }}
+                    renderInput={(params) => (
+                        <TextField 
+                            {...params} 
+                            label="Start typing borrower name..." 
+                            variant="outlined"
+                            fullWidth
+                        />
+                    )}
+                    noOptionsText="No borrowers found"
+                />
+            </Box>
+          ) : (
+            <>
+                <Box sx={{ width: "100%", borderBottom: 1, borderColor: 'divider' }}>
+                    <Tabs
+                    value={selectedTab}
+                    onChange={handleChangeTab}
+                    aria-label="loan type tabs"
+                    centered
+                    sx={{
+                        "& .MuiTabs-indicator": { backgroundColor: (theme) => theme.palette.secondary.main },
+                        "& .MuiTab-root": {
+                        color: (theme) => theme.palette.text.secondary,
+                        "&.Mui-selected": { color: (theme) => theme.palette.secondary.main },
+                        },
+                    }}
+                    >
+                    <Tab label="Auto Loan" />
+                    <Tab label="Manual Loan" />
+                    </Tabs>
+                </Box>
+                <Box sx={{ pt: 2 }}>
+                    {selectedTab === 0 && <AutoLoanForm borrowerId={borrowerId} selectedBorrower={selectedBorrower || initialBorrower} onClose={onClose} />}
+                    {selectedTab === 1 && <ManualLoanForm borrowerId={borrowerId} selectedBorrower={selectedBorrower || initialBorrower} onClose={onClose} />}
+                </Box>
+                {showSelection && (
+                    <Button 
+                        size="small" 
+                        onClick={() => setSelectedBorrower(null)} 
+                        sx={{ mt: 2 }}
+                        color="inherit"
+                    >
+                        Change Borrower
+                    </Button>
+                )}
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </LocalizationProvider>

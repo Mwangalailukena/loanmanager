@@ -20,16 +20,15 @@ import {
     List,
     ListItem,
     ListItemText,
-    ListItemSecondaryAction,
     Paper,
 } from "@mui/material";
 import { alpha, keyframes } from "@mui/system";
 
-import TuneIcon from '@mui/icons-material/Tune';
-import SummarizeIcon from '@mui/icons-material/Summarize';
-import BarChartIcon from '@mui/icons-material/BarChart';
-import ShowChartIcon from '@mui/icons-material/ShowChart';
-import InsightsIcon from '@mui/icons-material/Insights';
+import TuneIcon from '@mui/icons-material/TuneRounded';
+import SummarizeIcon from '@mui/icons-material/SummarizeRounded';
+import BarChartIcon from '@mui/icons-material/BarChartRounded';
+import ShowChartIcon from '@mui/icons-material/ShowChartRounded';
+import InsightsIcon from '@mui/icons-material/InsightsRounded';
 
 import { useNavigate } from "react-router-dom";
 import { useFirestore } from "../contexts/FirestoreProvider";
@@ -49,7 +48,7 @@ const LazyCharts = lazy(() => import("../components/Charts"));
 
 // (The rest of the initial constants and helper functions remain the same)
 const DEFAULT_CARD_IDS = [
-    "investedCapital", "availableCapital", "totalDisbursed", "totalCollected", "partnerDividends",
+    "investedCapital", "monthlyYield", "expectedNext7Days", "availableCapital", "totalDisbursed", "totalCollected", "partnerDividends",
     "totalLoans", "paidLoans", "activeLoans", "overdueLoans", "totalOutstanding",
     "expectedProfit", "actualProfit",
 ];
@@ -329,12 +328,64 @@ export default function Dashboard() {
                 const repaidAmount = Number(l.repaidAmount || 0);
                 return repaidAmount >= totalRepayable && totalRepayable > 0;
             });
+        } else if (filter === "collected") {
+            filteredPeekLoans = filteredPeekLoans.filter(l => Number(l.repaidAmount || 0) > 0);
+        } else if (filter === "dividends") {
+            // Dividends logic is based on current selected month's profit
+            // The loans are already filtered by month if selectedMonth exists
+            // But we specifically want the profit from 'paid' loans or expected interest
+            // For consistency with the card, we'll use the calculated totalValue
         }
 
+        // Custom handling for Forecast
+        let forecastList = [];
+        if (filter === "forecast") {
+            const today = dayjs().startOf('day');
+            const sevenDaysFromNow = today.add(7, 'day').endOf('day');
+            loans.forEach(loan => {
+                if (loan.repaymentSchedule) {
+                    loan.repaymentSchedule.forEach(item => {
+                        const dueDate = dayjs(item.date);
+                        if (dueDate.isBetween(today, sevenDaysFromNow, 'day', '[]')) {
+                            const unpaid = Math.max(0, Number(item.amount || 0) - Number(item.repaidAmount || 0));
+                            if (unpaid > 0) {
+                                forecastList.push({
+                                    ...loan,
+                                    forecastAmount: unpaid,
+                                    forecastDate: item.date
+                                });
+                            }
+                        }
+                    });
+                }
+            });
+            filteredPeekLoans = forecastList;
+        }
+
+        const totalValue = filteredPeekLoans.reduce((sum, l) => {
+            if (filter === "forecast") return sum + l.forecastAmount;
+            if (filter === "collected") return sum + Number(l.repaidAmount || 0);
+            if (filter === "dividends" || filter === "yield") return sum + Number(l.interest || 0);
+            // Default to Outstanding balance
+            return sum + (Number(l.totalRepayable || 0) - Number(l.repaidAmount || 0));
+        }, 0);
+
+        // Custom data for Dividends split
+        const partnerPayouts = filter === "dividends" ? [
+            { name: "Agness Ilukena", amount: totalValue / 2, share: "50%" },
+            { name: "Jones Ilukena", amount: totalValue / 2, share: "50%" }
+        ] : null;
+
         setPeekData({
-            title: `${filter.charAt(0).toUpperCase() + filter.slice(1)} Loans`,
+            title: filter === "dividends" ? "Partner Dividend Split" : 
+                   filter === "forecast" ? "7-Day Collection Forecast" :
+                   filter === "yield" ? "Monthly Interest Earned" :
+                   `${filter.charAt(0).toUpperCase() + filter.slice(1)} Loans`,
             loans: filteredPeekLoans,
-            filter: filter
+            filter: filter,
+            totalValue: totalValue,
+            count: filteredPeekLoans.length,
+            partners: partnerPayouts
         });
         setPeekOpen(true);
     };
@@ -461,6 +512,7 @@ export default function Dashboard() {
                         borrowers={borrowers}
                         payments={payments}
                         expenses={expenses}
+                        selectedMonth={selectedMonth}
                     />
                 </Suspense>
             ),
@@ -617,8 +669,58 @@ export default function Dashboard() {
 
             {/* Peek Dialog */}
             <Dialog open={peekOpen} onClose={() => setPeekOpen(false)} maxWidth="xs" fullWidth>
-                <DialogTitle sx={{ fontWeight: 'bold' }}>{peekData.title}</DialogTitle>
+                <DialogTitle sx={{ pb: 1 }}>
+                    <Typography variant="h6" fontWeight="bold">{peekData.title}</Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+                        <Typography variant="caption" color="text.secondary">
+                            {peekData.count} {peekData.count === 1 ? 'loan' : 'loans'}
+                        </Typography>
+                        <Typography variant="caption" fontWeight="bold" color="primary">
+                            Total: ZMW {peekData.totalValue?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </Typography>
+                    </Box>
+                </DialogTitle>
                 <DialogContent dividers>
+                    {peekData.filter === "dividends" && peekData.partners && (
+                        <Box sx={{ mb: 3 }}>
+                            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                                Monthly Dividend Payout (50/50 Split)
+                            </Typography>
+                            <Stack spacing={2}>
+                                {peekData.partners.map((partner) => (
+                                    <Paper 
+                                        key={partner.name} 
+                                        elevation={0} 
+                                        sx={{ 
+                                            p: 2, 
+                                            bgcolor: alpha(theme.palette.secondary.main, 0.05),
+                                            border: `1px solid ${alpha(theme.palette.secondary.main, 0.2)}`,
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            borderRadius: 2
+                                        }}
+                                    >
+                                        <Box>
+                                            <Typography variant="subtitle1" fontWeight="bold">
+                                                {partner.name}
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary">
+                                                Equity Share: {partner.share}
+                                            </Typography>
+                                        </Box>
+                                        <Typography variant="h6" color="secondary.main" fontWeight="bold">
+                                            ZMW {partner.amount?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        </Typography>
+                                    </Paper>
+                                ))}
+                            </Stack>
+                            <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block', fontStyle: 'italic' }}>
+                                * Dividends are calculated based on 100% of interest from settled loans for this period.
+                            </Typography>
+                        </Box>
+                    )}
+
                     {peekData.loans.length === 0 ? (
                         <Typography color="text.secondary" align="center">No loans found for this category.</Typography>
                     ) : (
@@ -630,13 +732,37 @@ export default function Dashboard() {
                                     <ListItem key={loan.id} divider>
                                         <ListItemText 
                                             primary={borrower?.name || "Unknown Borrower"}
-                                            secondary={`Due: ${loan.dueDate}`}
+                                            secondary={peekData.filter === 'forecast' ? `Due: ${loan.forecastDate}` : `Due: ${loan.dueDate}`}
                                         />
-                                        <ListItemSecondaryAction>
-                                            <Typography variant="body2" fontWeight="bold">
-                                                ZMW {outstanding.toFixed(2)}
-                                            </Typography>
-                                        </ListItemSecondaryAction>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <Box sx={{ textAlign: 'right' }}>
+                                                <Typography variant="caption" display="block" color="text.secondary" sx={{ lineHeight: 1 }}>
+                                                    {peekData.filter === 'collected' ? 'Collected' : 
+                                                     (peekData.filter === 'dividends' || peekData.filter === 'yield') ? 'Profit' : 
+                                                     peekData.filter === 'forecast' ? 'Due' : 'Outstanding'}
+                                                </Typography>
+                                                <Typography variant="body2" fontWeight="bold">
+                                                    ZMW {peekData.filter === 'collected' 
+                                                        ? Number(loan.repaidAmount || 0).toFixed(2) 
+                                                        : (peekData.filter === 'dividends' || peekData.filter === 'yield')
+                                                        ? Number(loan.interest || 0).toFixed(2)
+                                                        : peekData.filter === 'forecast'
+                                                        ? Number(loan.forecastAmount || 0).toFixed(2)
+                                                        : outstanding.toFixed(2)}
+                                                </Typography>
+                                            </Box>
+                                            <IconButton 
+                                                size="small" 
+                                                color="primary"
+                                                onClick={() => {
+                                                    navigate(`/borrowers/${loan.borrowerId}`);
+                                                    setPeekOpen(false);
+                                                }}
+                                                title="View Profile"
+                                            >
+                                                <InsightsIcon fontSize="small" />
+                                            </IconButton>
+                                        </Box>
                                     </ListItem>
                                 );
                             })}

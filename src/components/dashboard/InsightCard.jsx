@@ -1,16 +1,17 @@
 import React from 'react';
 import { Card, CardContent, Typography, Button, Box, useTheme, IconButton } from '@mui/material';
-import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
-import CloseIcon from '@mui/icons-material/Close';
+import PsychologyAltRoundedIcon from '@mui/icons-material/PsychologyAltRounded';
+import BoltRoundedIcon from '@mui/icons-material/BoltRounded';
+import EmojiEventsRoundedIcon from '@mui/icons-material/EmojiEventsRounded';
+import TipsAndUpdatesRoundedIcon from '@mui/icons-material/TipsAndUpdatesRounded';
+import CloseIcon from '@mui/icons-material/CloseRounded';
 import { motion } from 'framer-motion';
 
 const iconMap = {
-  warning: <WarningAmberIcon fontSize="small" />,
-  info: <InfoOutlinedIcon fontSize="small" />,
-  success: <CheckCircleOutlineIcon fontSize="small" />,
-  default: <InfoOutlinedIcon fontSize="small" />,
+  warning: <PsychologyAltRoundedIcon fontSize="small" />,
+  info: <BoltRoundedIcon fontSize="small" />,
+  success: <EmojiEventsRoundedIcon fontSize="small" />,
+  default: <TipsAndUpdatesRoundedIcon fontSize="small" />,
 };
 
 const cardVariant = {

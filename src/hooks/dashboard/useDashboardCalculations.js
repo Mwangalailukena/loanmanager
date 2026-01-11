@@ -5,14 +5,18 @@ import {
     Typography,
     Badge
   } from "@mui/material";
-  import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-  import PendingIcon from "@mui/icons-material/Pending";
-  import WarningIcon from "@mui/icons-material/Warning";
-  import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
-  import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
-  import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
-  import BarChartIcon from "@mui/icons-material/BarChart";
-  import PaidIcon from "@mui/icons-material/Payments";
+  import TaskAltIcon from "@mui/icons-material/TaskAltRounded";
+  import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutlineRounded";
+  import GppMaybeIcon from "@mui/icons-material/GppMaybeRounded";
+  import MonetizationOnIcon from "@mui/icons-material/MonetizationOnRounded";
+  import AccountBalanceIcon from "@mui/icons-material/AccountBalanceRounded";
+  import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWalletRounded";
+  import TrendingUpIcon from "@mui/icons-material/TrendingUpRounded";
+  import PriceCheckIcon from "@mui/icons-material/PriceCheckRounded";
+  import PaymentsIcon from "@mui/icons-material/PaymentsRounded";
+  import BlockIcon from "@mui/icons-material/BlockRounded";
+  import SavingsIcon from "@mui/icons-material/SavingsRounded";
+  import RunningWithErrorsIcon from "@mui/icons-material/RunningWithErrorsRounded";
 
 import { calcStatus } from "../../utils/loanUtils";
   
@@ -39,16 +43,20 @@ import { calcStatus } from "../../utils/loanUtils";
     defaultedLoansCount: 0,
     totalOutstanding: 0,
     totalLoansCount: 0,
+    expectedNext7Days: 0,
   });
 
   const generateCards = (currentStats, lastMonthStats, settings, currentMonthStr, previousMonthStr, iconMap) => {
       const investedCapital = Number(settings?.monthlySettings?.[currentMonthStr]?.capital) || 0;
       const availableCapital = investedCapital - currentStats.totalDisbursed + currentStats.totalCollected;
       const averageLoan = currentStats.totalLoansCount > 0 ? Math.round(currentStats.totalDisbursed / currentStats.totalLoansCount) : 0;
+      
+      const monthlyYield = investedCapital > 0 ? (currentStats.actualProfit / investedCapital) * 100 : 0;
 
       const investedCapitalLastMonth = Number(settings?.monthlySettings?.[previousMonthStr]?.capital) || 0;
       const availableCapitalLastMonth = investedCapitalLastMonth - lastMonthStats.totalDisbursed + lastMonthStats.totalCollected;
       const averageLoanLastMonth = lastMonthStats.totalLoansCount > 0 ? Math.round(lastMonthStats.totalDisbursed / lastMonthStats.totalLoansCount) : 0;
+      const monthlyYieldLastMonth = investedCapitalLastMonth > 0 ? (lastMonthStats.actualProfit / investedCapitalLastMonth) * 100 : 0;
 
       // Calculate trends
       const investedCapitalTrend = getTrendPercentage(investedCapital, investedCapitalLastMonth);
@@ -65,6 +73,7 @@ import { calcStatus } from "../../utils/loanUtils";
       const defaultedLoansTrend = getTrendPercentage(currentStats.defaultedLoansCount, lastMonthStats.defaultedLoansCount);
       const totalOutstandingTrend = getTrendPercentage(currentStats.totalOutstanding, lastMonthStats.totalOutstanding);
       const averageLoanTrend = getTrendPercentage(averageLoan, averageLoanLastMonth);
+      const yieldTrend = getTrendPercentage(monthlyYield, monthlyYieldLastMonth);
 
       const totalPartnerDividends = currentStats.totalExpectedProfit;
 
@@ -87,6 +96,30 @@ import { calcStatus } from "../../utils/loanUtils";
           icon: iconMap.investedCapital,
           trend: investedCapitalTrend,
           group: "Financial Overview",
+        },
+        {
+          id: "monthlyYield",
+          label: "Monthly Yield",
+          value: `${monthlyYield.toFixed(1)}%`,
+          color: "success",
+          filter: "yield",
+          tooltip: "Actual Profit earned vs. Invested Capital. Shows the return on your investment for this month.",
+          progress: null,
+          icon: iconMap.actualProfit,
+          trend: yieldTrend,
+          group: "Loan Portfolio",
+        },
+        {
+          id: "expectedNext7Days",
+          label: "7-Day Forecast",
+          value: `K ${currentStats.expectedNext7Days.toLocaleString()}`,
+          color: "info",
+          filter: "forecast",
+          tooltip: "Total cash expected from scheduled repayments over the next 7 days.",
+          progress: null,
+          icon: iconMap.totalCollected,
+          trend: null,
+          group: "Loan Portfolio",
         },
         {
           id: "availableCapital",
@@ -117,7 +150,7 @@ import { calcStatus } from "../../utils/loanUtils";
           label: "Total Collected",
           value: `K ${currentStats.totalCollected.toLocaleString()}`,
           color: "info",
-          filter: "paid",
+          filter: "collected",
           tooltip: "Total amount collected from repayments this month",
           progress: currentStats.totalDisbursed > 0 ? currentStats.totalCollected / currentStats.totalDisbursed : null,
           icon: iconMap.totalCollected,
@@ -129,7 +162,7 @@ import { calcStatus } from "../../utils/loanUtils";
           label: "Partner Dividends",
           value: `K ${totalPartnerDividends.toLocaleString()}`,
           color: "secondary",
-          filter: "paid",
+          filter: "dividends",
           tooltip: (
             <Box>
                 <Typography variant="body2" fontWeight="bold">
@@ -221,6 +254,7 @@ import { calcStatus } from "../../utils/loanUtils";
           icon: iconMap.overdueLoans(currentStats.overdueLoansCount),
           pulse: currentStats.overdueLoansCount > 0,
           trend: overdueLoansTrend,
+          isInverse: true,
           group: "Loan Portfolio",
         },
         {
@@ -234,6 +268,7 @@ import { calcStatus } from "../../utils/loanUtils";
           icon: iconMap.defaultedLoans,
           pulse: currentStats.defaultedLoansCount > 0,
           trend: defaultedLoansTrend,
+          isInverse: true,
           group: "Loan Portfolio",
         },
         {
@@ -246,6 +281,7 @@ import { calcStatus } from "../../utils/loanUtils";
           progress: null,
           icon: iconMap.totalOutstanding,
           trend: totalOutstandingTrend,
+          isInverse: true,
           group: "Loan Portfolio",
         },
         {
@@ -267,12 +303,12 @@ import { calcStatus } from "../../utils/loanUtils";
 
 export const useDashboardCalculations = (loans, selectedMonth, settings, isMobile) => {
     const iconMap = useMemo(() => {
-        const iconSize = { fontSize: isMobile ? 20 : 24 }; // MODIFIED: Reduced mobile icon size to 20
+        const iconSize = { fontSize: isMobile ? 20 : 24 };
         return {
           totalLoans: <MonetizationOnIcon sx={iconSize} />,
-          paidLoans: <CheckCircleIcon sx={iconSize} />,
-          activeLoans: <PendingIcon sx={iconSize} />,
-          defaultedLoans: <WarningIcon sx={iconSize} />,
+          paidLoans: <TaskAltIcon sx={iconSize} />,
+          activeLoans: <PlayCircleOutlineIcon sx={iconSize} />,
+          defaultedLoans: <BlockIcon sx={iconSize} />,
           overdueLoans: (overdueCount) => (
             <Badge
               badgeContent={overdueCount > 0 ? overdueCount : null}
@@ -280,26 +316,23 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
               overlap="circular"
               anchorOrigin={{ vertical: "top", horizontal: "right" }}
               sx={{
-                "& .MuiBadge-badge": {
-                  height: "18px",
-                  minWidth: "18px",
-                  padding: "0 4px",
-                  fontSize: "12px",
-                },
+                "& .MuiBadge-badge": { height: "18px", minWidth: "18px", padding: "0 4px", fontSize: "12px" },
               }}
             >
-              <WarningIcon sx={iconSize} />
+              <GppMaybeIcon sx={iconSize} />
             </Badge>
           ),
-          totalDisbursed: <MonetizationOnIcon sx={iconSize} />,
+          totalDisbursed: <PaymentsIcon sx={iconSize} />,
           investedCapital: <AccountBalanceWalletIcon sx={iconSize} />,
           availableCapital: <AccountBalanceWalletIcon sx={iconSize} />,
-          totalCollected: <PaidIcon sx={iconSize} />,
-          totalOutstanding: <WarningIcon sx={iconSize} />,
-          expectedProfit: <BarChartIcon sx={iconSize} />,
-          actualProfit: <CheckCircleIcon sx={iconSize} />,
+          totalCollected: <PriceCheckIcon sx={iconSize} />,
+          totalOutstanding: <RunningWithErrorsIcon sx={iconSize} />,
+          expectedProfit: <TrendingUpIcon sx={iconSize} />,
+          actualProfit: <TaskAltIcon sx={iconSize} />,
           averageLoan: <MonetizationOnIcon sx={iconSize} />,
           partnerDividends: <AccountBalanceIcon sx={iconSize} />,
+          yield: <TrendingUpIcon sx={iconSize} />,
+          forecast: <SavingsIcon sx={iconSize} />,
         };
       }, [isMobile]);
 
@@ -336,6 +369,9 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
         const lastMonthStats = initialStats();
         let hasUnsettledLoans = false;
 
+        const today = dayjs().startOf('day');
+        const sevenDaysFromNow = today.add(7, 'day').endOf('day');
+
         loansForCalculations.forEach((loan) => {
             const principal = Number(loan.principal || 0);
             const repaidAmount = Number(loan.repaidAmount || 0);
@@ -343,6 +379,17 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
             const status = calcStatus(loan);
             const isCurrentMonth = loan.startDate.startsWith(currentMonthStr);
             const isLastMonth = loan.startDate.startsWith(previousMonthStr);
+
+            // Calculate 7-day forecast (Global, not month-restricted)
+            if (loan.repaymentSchedule) {
+                loan.repaymentSchedule.forEach(item => {
+                    const dueDate = dayjs(item.date);
+                    if (dueDate.isBetween(today, sevenDaysFromNow, 'day', '[]')) {
+                        const unpaid = Math.max(0, Number(item.amount || 0) - Number(item.repaidAmount || 0));
+                        if (unpaid > 0) currentStats.expectedNext7Days += unpaid;
+                    }
+                });
+            }
 
             if (isCurrentMonth || isLastMonth) {
                 const stats = isCurrentMonth ? currentStats : lastMonthStats;

@@ -8,13 +8,20 @@ import {
   Tooltip,
   LinearProgress,
   useTheme,
-  alpha,
 } from "@mui/material";
+import { alpha, keyframes } from "@mui/system";
 import { motion } from "framer-motion";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
+import HorizontalRuleIcon from "@mui/icons-material/HorizontalRule";
 import { usePrefersReducedMotion } from "../../hooks/usePrefersReducedMotion";
 import DashboardCardSkeleton from "./DashboardCardSkeleton";
+
+const pulseAnimation = keyframes`
+  0% { box-shadow: 0 0 0 0px ${alpha('#f44336', 0.4)}; }
+  70% { box-shadow: 0 0 0 10px ${alpha('#f44336', 0)}; }
+  100% { box-shadow: 0 0 0 0px ${alpha('#f44336', 0)}; }
+`;
 
 const cardVariants = {
   hidden: { opacity: 0, scale: 0.95 },
@@ -37,6 +44,18 @@ const DashboardCard = ({
   const theme = useTheme();
   const prefersReducedMotion = usePrefersReducedMotion();
 
+  const getTrendColor = () => {
+    if (!card.trend) return theme.palette.text.secondary;
+    if (card.trend.value === "New") return theme.palette[card.color]?.main || theme.palette.primary.main;
+    
+    const isUp = card.trend.direction === "up";
+    const isGood = card.isInverse ? !isUp : isUp;
+    
+    return isGood ? theme.palette.success.main : theme.palette.error.main;
+  };
+
+  const trendColor = getTrendColor();
+
   const motionProps = prefersReducedMotion ? {
     initial: "visible",
     animate: "visible",
@@ -53,17 +72,16 @@ const DashboardCard = ({
 
   return (
     <Grid
-      xs={isMobile ? 4 : 6}
+      item
+      xs={isMobile ? 6 : 6}
       sm={6}
       md={4}
       lg={3}
+      onClick={() => handleCardClick && handleCardClick(card.filter)}
+      sx={{ cursor: 'pointer' }}
       ref={provided?.innerRef}
       {...(provided?.draggableProps || {})}
       {...(provided?.dragHandleProps || {})}
-      style={{
-        ...(provided?.draggableProps?.style || {}),
-        userSelect: snapshot?.isDragging ? "none" : "auto",
-      }}
     >
       {loading ? (
         <DashboardCardSkeleton />
@@ -75,18 +93,21 @@ const DashboardCard = ({
           >
             <Card
               sx={{
-                p: 1.5,
+                p: 2,
                 height: "100%",
                 display: "flex",
                 flexDirection: "column",
                 backgroundColor: theme.palette.background.paper,
                 boxShadow: snapshot?.isDragging ? theme.shadows[8] : "0 4px 12px rgba(0,0,0,0.03)",
-                border: `1px solid ${theme.palette.divider}`,
+                border: card.pulse 
+                  ? `2px solid ${theme.palette.error.main}` 
+                  : `1px solid ${theme.palette.divider}`,
+                animation: card.pulse && !prefersReducedMotion ? `${pulseAnimation} 2s infinite` : "none",
                 transition: prefersReducedMotion ? 'none' : "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                transform: snapshot?.isDragging ? 'rotate(2deg)' : 'rotate(0deg)',
                 "&:hover": {
-                  boxShadow: theme.palette.mode === 'dark' ? '0 4px 10px rgba(0,0,0,0.8)' : '0 4px 10px rgba(0,0,0,0.15)',
+                  boxShadow: theme.palette.mode === 'dark' ? '0 8px 16px rgba(0,0,0,0.8)' : '0 8px 16px rgba(0,0,0,0.1)',
                   borderColor: theme.palette[card.color]?.main || theme.palette.primary.main,
+                  transform: 'translateY(-2px)'
                 },
                 position: "relative",
                 overflow: "hidden",
@@ -101,45 +122,45 @@ const DashboardCard = ({
                 <Box sx={{ 
                   color: theme.palette[card.color]?.main || theme.palette.primary.main,
                   backgroundColor: alpha(theme.palette[card.color]?.main || theme.palette.primary.main, 0.1),
-                  borderRadius: 2.5,
-                  width: 36,
-                  height: 36,
+                  borderRadius: '12px',
+                  width: 40,
+                  height: 40,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}>
-                  {typeof card.icon === "function" ? card.icon(card.value) : React.cloneElement(card.icon, { style: { fontSize: '1.25rem' } })}
+                  {typeof card.icon === "function" ? card.icon(card.value) : React.cloneElement(card.icon, { style: { fontSize: '1.4rem' } })}
                 </Box>
                 {card.trend && (
-                  <Tooltip title="Change from previous period" arrow>
-                    <Box 
-                      sx={{ 
-                        display: "flex", 
-                        alignItems: "center", 
-                        gap: 0.2, 
-                        px: 1, 
-                        py: 0.5, 
-                        borderRadius: 10,
+                  <Box 
+                    sx={{ 
+                      display: "flex", 
+                      alignItems: "center", 
+                      gap: 0.5, 
+                      px: 1.2, 
+                      py: 0.4, 
+                      borderRadius: '20px',
+                      backgroundColor: alpha(trendColor, 0.1),
+                    }}
+                  >
+                    {card.trend.value === "New" ? (
+                      <HorizontalRuleIcon sx={{ fontSize: 12, color: trendColor }} />
+                    ) : card.trend.direction === "up" ? (
+                      <ArrowUpwardIcon sx={{ fontSize: 12, color: trendColor }} />
+                    ) : (
+                      <ArrowDownwardIcon sx={{ fontSize: 12, color: trendColor }} />
+                    )}
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: trendColor,
+                        fontWeight: 800,
+                        fontSize: '0.7rem'
                       }}
                     >
-                      {card.trend.direction === "up" ? (
-                        <ArrowUpwardIcon sx={{ fontSize: 12, color: theme.palette.success.main }} />
-                      ) : (
-                        <ArrowDownwardIcon sx={{ fontSize: 12, color: theme.palette.error.main }} />
-                      )}
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: card.trend.direction === "up"
-                            ? theme.palette.success.main
-                            : theme.palette.error.main,
-                          fontWeight: 700,
-                        }}
-                      >
-                        {card.trend.value}
-                      </Typography>
-                    </Box>
-                  </Tooltip>
+                      {card.trend.value}
+                    </Typography>
+                  </Box>
                 )}
               </Box>
               
