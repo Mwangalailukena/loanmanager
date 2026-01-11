@@ -46,7 +46,12 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const loginWithGoogle = () => signInWithPopup(auth, new GoogleAuthProvider());
+  const loginWithGoogle = () => {
+    const provider = new GoogleAuthProvider();
+    // Adding custom parameters can sometimes help with popup behavior
+    provider.setCustomParameters({ prompt: 'select_account' });
+    return signInWithPopup(auth, provider);
+  };
 
   const resetPassword = (email) => sendPasswordResetEmail(auth, email);
 

@@ -313,14 +313,16 @@ export default function Dashboard() {
                 const totalRepayable = Number(l.totalRepayable || 0);
                 const repaidAmount = Number(l.repaidAmount || 0);
                 const isPaid = repaidAmount >= totalRepayable && totalRepayable > 0;
-                return !isPaid && dayjs(l.dueDate).isBefore(dayjs(), "day");
+                const isDefaulted = l.status === "Defaulted";
+                return !isPaid && !isDefaulted && dayjs(l.dueDate).isBefore(dayjs(), "day");
             });
         } else if (filter === "active") {
             filteredPeekLoans = filteredPeekLoans.filter(l => {
                 const totalRepayable = Number(l.totalRepayable || 0);
                 const repaidAmount = Number(l.repaidAmount || 0);
                 const isPaid = repaidAmount >= totalRepayable && totalRepayable > 0;
-                return !isPaid && !dayjs(l.dueDate).isBefore(dayjs(), "day");
+                const isDefaulted = l.status === "Defaulted";
+                return !isPaid && !isDefaulted && !dayjs(l.dueDate).isBefore(dayjs(), "day");
             });
         } else if (filter === "paid") {
             filteredPeekLoans = filteredPeekLoans.filter(l => {

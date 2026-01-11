@@ -106,21 +106,28 @@ const getAppTheme = (mode) =>
           },
         },
       },
-            MuiPaper: {
-              styleOverrides: {
-                root: {
-                  backgroundImage: 'none',
-                  boxShadow: mode === 'dark'
-                    ? '0px 1px 3px rgba(0, 0, 0, 0.6)'
-                    : '0px 1px 3px rgba(0, 0, 0, 0.1)',
-                  border: mode === 'dark'
-                    ? '1px solid rgba(255, 255, 255, 0.15)'
-                    : '1px solid rgba(0, 0, 0, 0.08)',
-                },
-              },
-            },
-      MuiAlert: {
-        styleOverrides: {
+                  MuiPaper: {
+                    styleOverrides: {
+                      root: {
+                        backgroundImage: 'none',
+                        boxShadow: mode === 'dark'
+                          ? '0px 1px 3px rgba(0, 0, 0, 0.6)'
+                          : '0px 1px 3px rgba(0, 0, 0, 0.1)',
+                        border: mode === 'dark'
+                          ? '1px solid rgba(255, 255, 255, 0.15)'
+                          : '1px solid rgba(0, 0, 0, 0.08)',
+                      },
+                    },
+                  },
+                  MuiBackdrop: {
+                    styleOverrides: {
+                      root: {
+                        backgroundColor: mode === 'dark' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.3)',
+                        backdropFilter: 'blur(8px)', // Global blur for all modals
+                      },
+                    },
+                  },
+                  MuiAlert: {        styleOverrides: {
           root: {
             // Ensures the text within the Alert uses the theme's text color for consistency
             '& .MuiAlert-message': {

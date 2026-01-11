@@ -25,9 +25,7 @@ import {
   Close as CloseIcon,
   Assessment as AssessmentIcon,
   Dashboard as DashboardIcon,
-  Add as AddIcon,
   ListAlt as ListAltIcon,
-  AttachMoney as AttachMoneyIcon,
   History as HistoryIcon,
   LightMode as LightModeIcon,
   DarkMode as DarkModeIcon,
@@ -59,7 +57,7 @@ const pulse = keyframes`
   100% { transform: scale(1); }
 `;
 
-const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
+const FloatingNavBar = ({ darkMode, onToggleDarkMode, onOpenAddLoan, onOpenAddPayment, onOpenAddBorrower }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -114,8 +112,6 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
     { text: "Dashboard", icon: <DashboardIcon />, path: "/dashboard" },
     { text: "Borrowers", icon: <PeopleIcon />, path: "/borrowers" },
     { text: "Loans", icon: <ListAltIcon />, path: "/loans" },
-    { text: "Add Loan", icon: <AddIcon />, path: "/add-loan" },
-    { text: "Add Payment", icon: <AttachMoneyIcon />, path: "/add-payment" },
     { text: "Expenses", icon: <ReceiptIcon />, path: "/expenses" },
     { text: "Reports", icon: <AssessmentIcon />, path: "/reports" },
     { text: "Activity", icon: <HistoryIcon />, path: "/activity" },
@@ -205,7 +201,7 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode }) => {
             return (
               <Button
                 key={item.text}
-                onClick={() => navigate(item.path)}
+                onClick={item.onClick ? item.onClick : () => navigate(item.path)}
                 sx={{
                   textTransform: "none",
                   color: isActive ? theme.palette.primary.main : theme.palette.text.secondary,

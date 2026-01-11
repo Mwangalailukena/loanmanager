@@ -409,7 +409,9 @@ export const useDashboardCalculations = (loans, selectedMonth, settings, isMobil
                     else if (status === "Overdue") stats.overdueLoansCount += 1;
                     else if (status === "Defaulted") stats.defaultedLoansCount += 1;
                     
-                    stats.totalOutstanding += (principal + interest - repaidAmount);
+                    if (status !== "Defaulted") {
+                        stats.totalOutstanding += (principal + interest - repaidAmount);
+                    }
                     
                     if (isCurrentMonth && status !== "Defaulted") {
                     hasUnsettledLoans = true;
