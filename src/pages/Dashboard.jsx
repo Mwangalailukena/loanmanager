@@ -5,7 +5,6 @@ import {
     useTheme,
     useMediaQuery,
     TextField,
-    CircularProgress,
     Grid,
     Button,
     Dialog,
@@ -21,6 +20,7 @@ import {
     ListItem,
     ListItemText,
     Paper,
+    Skeleton,
 } from "@mui/material";
 import { alpha, keyframes } from "@mui/system";
 
@@ -42,6 +42,9 @@ import { useDashboardCalculations } from "../hooks/dashboard/useDashboardCalcula
 import { useInsights } from "../hooks/useInsights";
 import DashboardSection from "../components/dashboard/DashboardSection";
 import InsightCard from "../components/dashboard/InsightCard";
+import RolloverSkeleton from "../components/dashboard/RolloverSkeleton";
+import InsightsSkeleton from "../components/dashboard/InsightsSkeleton";
+import ChartsSkeleton from "../components/dashboard/ChartsSkeleton";
 
 
 const LazyCharts = lazy(() => import("../components/Charts"));
@@ -435,52 +438,72 @@ export default function Dashboard() {
             icon: <SummarizeIcon />,
             content: (
                 <Box>
-                    {selectedMonth && (
-                        <Paper 
-                            sx={{ 
-                                p: 2, 
-                                mb: 2, 
-                                bgcolor: alpha(theme.palette.primary.main, 0.05),
-                                border: `1px dashed ${theme.palette.primary.main}`,
-                                borderRadius: 2,
-                                display: 'flex',
-                                flexDirection: { xs: 'column', sm: 'row' },
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                gap: 2
-                            }}
-                        >
-                            <Box>
-                                <Typography variant="subtitle2" fontWeight="bold" color="primary.main">
-                                    Monthly Rollover Available
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                    Push <strong>K {rolloverAmount.toLocaleString()}</strong> starting capital to {dayjs(selectedMonth).add(1, 'month').format("MMMM YYYY")}.
-                                </Typography>
-                                {hasUnsettledLoans && (
-                                    <Typography variant="caption" display="block" sx={{ fontStyle: 'italic', mt: 0.5 }}>
-                                        * Note: You can push again if remaining loans are settled later.
-                                    </Typography>
-                                )}
-                            </Box>
-                            <Button 
-                                variant="contained" 
-                                size="small" 
-                                onClick={handleRollover}
-                                startIcon={<SummarizeIcon />}
-                            >
-                                Push to {dayjs(selectedMonth).add(1, 'month').format("MMM")}
-                            </Button>
-                        </Paper>
-                    )}
-                    {cardsToRender.filter(group => group.cards.some(card => EXECUTIVE_SUMMARY_IDS.includes(card.id))).map(group => (
-                        <Box key={group.name} sx={{ mb: 4 }}>
-                            <Typography variant="h6" gutterBottom sx={{ mt: 4, mb: 2, px: 1, fontWeight: 800, fontSize: '1.1rem' }}>
-                                {group.name}
-                            </Typography>
-                            <DashboardSection cards={group.cards} droppableId={group.name} isMobile={isMobile} handleCardClick={handleCardClick} loading={loading} />
+                    {loading ? (
+                        <Box>
+                            <RolloverSkeleton />
+                            {[1, 2].map(i => (
+                                <Box key={i} sx={{ mb: 4 }}>
+                                    <Skeleton variant="text" width="150px" height={32} sx={{ mb: 2, ml: 1 }} />
+                                    <Grid container spacing={2}>
+                                        {[1, 2, 3, 4].map(j => (
+                                            <Grid item xs={6} md={3} key={j}>
+                                                <Skeleton variant="rectangular" height={140} sx={{ borderRadius: 2 }} />
+                                            </Grid>
+                                        ))}
+                                    </Grid>
+                                </Box>
+                            ))}
                         </Box>
-                    ))}
+                    ) : (
+                        <>
+                            {selectedMonth && (
+                                <Paper 
+                                    sx={{ 
+                                        p: 2, 
+                                        mb: 2, 
+                                        bgcolor: alpha(theme.palette.primary.main, 0.05),
+                                        border: `1px dashed ${theme.palette.primary.main}`,
+                                        borderRadius: 2,
+                                        display: 'flex',
+                                        flexDirection: { xs: 'column', sm: 'row' },
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        gap: 2
+                                    }}
+                                >
+                                    <Box>
+                                        <Typography variant="subtitle2" fontWeight="bold" color="primary.main">
+                                            Monthly Rollover Available
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                            Push <strong>K {rolloverAmount.toLocaleString()}</strong> starting capital to {dayjs(selectedMonth).add(1, 'month').format("MMMM YYYY")}.
+                                        </Typography>
+                                        {hasUnsettledLoans && (
+                                            <Typography variant="caption" display="block" sx={{ fontStyle: 'italic', mt: 0.5 }}>
+                                                * Note: You can push again if remaining loans are settled later.
+                                            </Typography>
+                                        )}
+                                    </Box>
+                                    <Button 
+                                        variant="contained" 
+                                        size="small" 
+                                        onClick={handleRollover}
+                                        startIcon={<SummarizeIcon />}
+                                    >
+                                        Push to {dayjs(selectedMonth).add(1, 'month').format("MMM")}
+                                    </Button>
+                                </Paper>
+                            )}
+                            {cardsToRender.filter(group => group.cards.some(card => EXECUTIVE_SUMMARY_IDS.includes(card.id))).map(group => (
+                                <Box key={group.name} sx={{ mb: 4 }}>
+                                    <Typography variant="h6" gutterBottom sx={{ mt: 4, mb: 2, px: 1, fontWeight: 800, fontSize: '1.1rem' }}>
+                                        {group.name}
+                                    </Typography>
+                                    <DashboardSection cards={group.cards} droppableId={group.name} isMobile={isMobile} handleCardClick={handleCardClick} loading={loading} />
+                                </Box>
+                            ))}
+                        </>
+                    )}
                 </Box>
             ),
         },
@@ -490,16 +513,31 @@ export default function Dashboard() {
             icon: <BarChartIcon />,
             content: (
                 <Grid container spacing={2}>
-                    {cardsToRender.filter(group => group.cards.some(card => !EXECUTIVE_SUMMARY_IDS.includes(card.id))).map(group => (
-                        <Grid xs={12} key={group.name}>
-                            <Box sx={{ mb: 4 }}>
-                                <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 1, px: 2, fontWeight: 'bold' }}>
-                                    {group.name}
-                                </Typography>
-                                <DashboardSection cards={group.cards} droppableId={group.name} isMobile={isMobile} handleCardClick={handleCardClick} loading={loading} />
-                            </Box>
-                        </Grid>
-                    ))}
+                    {loading ? (
+                        [1, 2].map(i => (
+                            <Grid item xs={12} key={i} sx={{ mb: 4 }}>
+                                <Skeleton variant="text" width="150px" height={32} sx={{ mb: 1, ml: 2 }} />
+                                <Grid container spacing={2}>
+                                    {[1, 2, 3, 4].map(j => (
+                                        <Grid item xs={6} md={3} key={j}>
+                                            <Skeleton variant="rectangular" height={140} sx={{ borderRadius: 2 }} />
+                                        </Grid>
+                                    ))}
+                                </Grid>
+                            </Grid>
+                        ))
+                    ) : (
+                        cardsToRender.filter(group => group.cards.some(card => !EXECUTIVE_SUMMARY_IDS.includes(card.id))).map(group => (
+                            <Grid item xs={12} key={group.name}>
+                                <Box sx={{ mb: 4 }}>
+                                    <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 1, px: 2, fontWeight: 'bold' }}>
+                                        {group.name}
+                                    </Typography>
+                                    <DashboardSection cards={group.cards} droppableId={group.name} isMobile={isMobile} handleCardClick={handleCardClick} loading={loading} />
+                                </Box>
+                            </Grid>
+                        ))
+                    )}
                 </Grid>
             ),
         },
@@ -508,15 +546,17 @@ export default function Dashboard() {
             title: 'Charts',
             icon: <ShowChartIcon />,
             content: (
-                <Suspense fallback={ <Box sx={{ display: "flex", justifyContent: "center", p: 2 }}><CircularProgress color="primary" /></Box> }>
-                    <LazyCharts
-                        loans={loans}
-                        borrowers={borrowers}
-                        payments={payments}
-                        expenses={expenses}
-                        selectedMonth={selectedMonth}
-                    />
-                </Suspense>
+                loading ? <ChartsSkeleton /> : (
+                    <Suspense fallback={<ChartsSkeleton />}>
+                        <LazyCharts
+                            loans={loans}
+                            borrowers={borrowers}
+                            payments={payments}
+                            expenses={expenses}
+                            selectedMonth={selectedMonth}
+                        />
+                    </Suspense>
+                )
             ),
         },
         {
@@ -524,13 +564,15 @@ export default function Dashboard() {
             title: 'Insights',
             icon: <InsightsIcon />,
             content: (
-                <Grid container spacing={2}>
-                    {visibleInsights.filter(insight => !insight.action).map((insight, index) => (
-                        <Grid item xs={12} sm={6} md={4} key={index}>
-                            <InsightCard insight={insight} onDismiss={handleDismissInsight} />
-                        </Grid>
-                    ))}
-                </Grid>
+                loading ? <InsightsSkeleton /> : (
+                    <Grid container spacing={2}>
+                        {visibleInsights.filter(insight => !insight.action).map((insight, index) => (
+                            <Grid item xs={12} sm={6} md={4} key={index}>
+                                <InsightCard insight={insight} onDismiss={handleDismissInsight} />
+                            </Grid>
+                        ))}
+                    </Grid>
+                )
             ),
         },
     ];
@@ -611,21 +653,27 @@ export default function Dashboard() {
                           </Box>
 
             {/* Actionable Insights Section */}
-            {visibleInsights.filter(insight => insight.action).map((insight, index) => (
-              <InsightCard key={index} insight={{
-                ...insight,
-                action: {
-                  ...insight.action,
-                  onClick: () => {
-                    if (insight.action.label === 'View Overdue Loans') {
-                      navigate('/loans?filter=overdue');
-                    } else if (insight.action.label === 'View Upcoming Loans') {
-                      navigate('/loans?filter=upcoming');
-                    }
-                  }
-                }
-              }} onDismiss={handleDismissInsight} />
-            ))}
+            {loading ? (
+                <Box sx={{ mb: 2 }}>
+                    <Skeleton variant="rectangular" height={100} sx={{ borderRadius: 2 }} />
+                </Box>
+            ) : (
+                visibleInsights.filter(insight => insight.action).map((insight, index) => (
+                    <InsightCard key={index} insight={{
+                        ...insight,
+                        action: {
+                            ...insight.action,
+                            onClick: () => {
+                                if (insight.action.label === 'View Overdue Loans') {
+                                    navigate('/loans?filter=overdue');
+                                } else if (insight.action.label === 'View Upcoming Loans') {
+                                    navigate('/loans?filter=upcoming');
+                                }
+                            }
+                        }
+                    }} onDismiss={handleDismissInsight} />
+                ))
+            )}
             
 
 

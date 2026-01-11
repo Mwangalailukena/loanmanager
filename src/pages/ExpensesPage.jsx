@@ -3,10 +3,11 @@ import { useFirestore } from '../contexts/FirestoreProvider';
 import { useSnackbar } from '../components/SnackbarProvider';
 import {
   Box, Typography, Button, List, ListItem, ListItemText, Paper,
-  CircularProgress, IconButton, Stack, Grid, Card, CardContent, CardHeader,
+  IconButton, Stack, Grid, Card, CardContent, CardHeader,
   TextField, Select, MenuItem, FormControl, InputLabel, ListSubheader,
   Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle,
-  Avatar, ListItemAvatar, useMediaQuery, useTheme, Menu, ListItemIcon, ToggleButtonGroup, ToggleButton
+  Avatar, ListItemAvatar, useMediaQuery, useTheme, Menu, ListItemIcon, ToggleButtonGroup, ToggleButton,
+  Skeleton,
 } from '@mui/material';
 
 // Import MUI Icons
@@ -53,6 +54,23 @@ const getCategoryIcon = (category) => {
   }
 };
 
+const ExpenseSkeleton = () => (
+  <List sx={{ width: '100%', p: 0 }}>
+    {[1, 2, 3, 4, 5].map((i) => (
+      <ListItem key={i} sx={{ py: 2 }}>
+        <ListItemAvatar>
+          <Skeleton variant="circular" width={40} height={40} />
+        </ListItemAvatar>
+        <ListItemText 
+          primary={<Skeleton variant="text" width="60%" />} 
+          secondary={<Skeleton variant="text" width="30%" />} 
+        />
+        <Skeleton variant="text" width="80px" height={24} />
+      </ListItem>
+    ))}
+  </List>
+);
+
 export default function ExpensesPage() {
   const { expenses, loading, deleteExpense } = useFirestore();
   const showSnackbar = useSnackbar();
@@ -78,7 +96,8 @@ export default function ExpensesPage() {
 
   const filteredExpenses = useMemo(() => {
     return expenses.filter(expense => {
-      const expenseDate = dayjs(expense.date.toDate());
+      const dateVal = expense.date?.toDate ? expense.date.toDate() : expense.date;
+      const expenseDate = dayjs(dateVal);
       const isAfterStartDate = startDate ? expenseDate.isAfter(startDate.startOf('day')) : true;
       const isBeforeEndDate = endDate ? expenseDate.isBefore(endDate.endOf('day')) : true;
       const inDateRange = isAfterStartDate && isBeforeEndDate;
@@ -91,10 +110,16 @@ export default function ExpensesPage() {
   const summaryData = useMemo(() => {
     const total = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
     const thisMonthTotal = filteredExpenses
-      .filter(e => dayjs(e.date.toDate()).isSame(dayjs(), 'month'))
+      .filter(e => {
+        const dateVal = e.date?.toDate ? e.date.toDate() : e.date;
+        return dayjs(dateVal).isSame(dayjs(), 'month');
+      })
       .reduce((sum, e) => sum + e.amount, 0);
     const thisYearTotal = filteredExpenses
-      .filter(e => dayjs(e.date.toDate()).isSame(dayjs(), 'year'))
+      .filter(e => {
+        const dateVal = e.date?.toDate ? e.date.toDate() : e.date;
+        return dayjs(dateVal).isSame(dayjs(), 'year');
+      })
       .reduce((sum, e) => sum + e.amount, 0);
     return { total, thisMonthTotal, thisYearTotal, count: filteredExpenses.length };
   }, [filteredExpenses]);
@@ -113,7 +138,8 @@ export default function ExpensesPage() {
   const barChartData = useMemo(() => {
     const monthlyTotals = Array(12).fill(0);
     filteredExpenses.forEach(expense => {
-      const month = dayjs(expense.date.toDate()).month();
+      const dateVal = expense.date?.toDate ? expense.date.toDate() : expense.date;
+      const month = dayjs(dateVal).month();
       monthlyTotals[month] += expense.amount;
     });
     return dayjs.monthsShort().map((month, index) => ({
@@ -125,7 +151,8 @@ export default function ExpensesPage() {
   const groupedExpenses = useMemo(() => {
     const groups = {};
     filteredExpenses.forEach(expense => {
-      const date = dayjs(expense.date.toDate());
+      const dateVal = expense.date?.toDate ? expense.date.toDate() : expense.date;
+      const date = dayjs(dateVal);
       let groupTitle;
       if (date.isSame(dayjs(), 'day')) groupTitle = 'Today';
       else if (date.isSame(dayjs().subtract(1, 'day'), 'day')) groupTitle = 'Yesterday';
@@ -191,34 +218,38 @@ export default function ExpensesPage() {
 
           <Grid container spacing={3}>
             {/* --- SIDEBAR (RIGHT COLUMN on Desktop, TOP on Mobile) --- */}
-            <Grid xs={12} md={4} order={{ xs: 1, md: 2 }}>
+            <Grid item xs={12} md={4} order={{ xs: 1, md: 2 }}>
               <Stack spacing={3}>
                 {/* --- SUMMARY CARD --- */}
                 <Card sx={{ borderRadius: 3, elevation: 2 }}>
                   <CardHeader title="Summary" />
                   <CardContent>
                     <Stack spacing={2}>
-                       <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, borderRadius: 2 }}>
-                        <Avatar sx={{ bgcolor: 'primary.light', color: 'primary.dark' }}><CalendarMonthIcon /></Avatar>
-                        <Box>
-                          <Typography variant="h6" fontWeight="bold">K {viewBy === 'month' ? summaryData.thisMonthTotal.toLocaleString() : summaryData.thisYearTotal.toLocaleString()}</Typography>
-                          <Typography variant="body2" color="text.secondary">Total (This {viewBy === 'month' ? 'Month' : 'Year'})</Typography>
-                        </Box>
-                      </Paper>
-                      <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, borderRadius: 2 }}>
-                        <Avatar sx={{ bgcolor: 'success.light', color: 'success.dark' }}><PaidIcon /></Avatar>
-                        <Box>
-                          <Typography variant="h6" fontWeight="bold">K {summaryData.total.toLocaleString()}</Typography>
-                          <Typography variant="body2" color="text.secondary">Total (Filtered)</Typography>
-                        </Box>
-                      </Paper>
-                      <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, borderRadius: 2 }}>
-                        <Avatar sx={{ bgcolor: 'warning.light', color: 'warning.dark' }}><ReceiptLongIcon /></Avatar>
-                        <Box>
-                          <Typography variant="h6" fontWeight="bold">{summaryData.count}</Typography>
-                          <Typography variant="body2" color="text.secondary">Transactions</Typography>
-                        </Box>
-                      </Paper>
+                       {loading ? <Skeleton variant="rectangular" height={250} sx={{ borderRadius: 2 }} /> : (
+                         <>
+                            <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, borderRadius: 2 }}>
+                              <Avatar sx={{ bgcolor: 'primary.light', color: 'primary.dark' }}><CalendarMonthIcon /></Avatar>
+                              <Box>
+                                <Typography variant="h6" fontWeight="bold">K {viewBy === 'month' ? summaryData.thisMonthTotal.toLocaleString() : summaryData.thisYearTotal.toLocaleString()}</Typography>
+                                <Typography variant="body2" color="text.secondary">Total (This {viewBy === 'month' ? 'Month' : 'Year'})</Typography>
+                              </Box>
+                            </Paper>
+                            <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, borderRadius: 2 }}>
+                              <Avatar sx={{ bgcolor: 'success.light', color: 'success.dark' }}><PaidIcon /></Avatar>
+                              <Box>
+                                <Typography variant="h6" fontWeight="bold">K {summaryData.total.toLocaleString()}</Typography>
+                                <Typography variant="body2" color="text.secondary">Total (Filtered)</Typography>
+                              </Box>
+                            </Paper>
+                            <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, borderRadius: 2 }}>
+                              <Avatar sx={{ bgcolor: 'warning.light', color: 'warning.dark' }}><ReceiptLongIcon /></Avatar>
+                              <Box>
+                                <Typography variant="h6" fontWeight="bold">{summaryData.count}</Typography>
+                                <Typography variant="body2" color="text.secondary">Transactions</Typography>
+                              </Box>
+                            </Paper>
+                         </>
+                       )}
                     </Stack>
                   </CardContent>
                 </Card>
@@ -226,47 +257,49 @@ export default function ExpensesPage() {
                 <Card sx={{ borderRadius: 3, elevation: 2 }}>
                   <CardHeader title={viewBy === 'month' ? "Category Breakdown" : "Monthly Trends"} />
                   <Box sx={{ height: 300, display: 'flex', justifyContent: 'center', alignItems: 'center', p: 2 }}>
-                     {filteredExpenses.length > 0 ? (
-                       viewBy === 'month' ? (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={pieChartData}
-                              cx="50%"
-                              cy="50%"
-                              labelLine={false}
-                              outerRadius={80}
-                              fill="#8884d8"
-                              dataKey="value"
-                            >
-                              {pieChartData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                              ))}
-                            </Pie>
-                            <RechartsTooltip formatter={(value) => `K ${value.toLocaleString()}`} />
-                            <RechartsLegend />
-                          </PieChart>
-                        </ResponsiveContainer>
-                       ) : (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={barChartData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis />
-                            <RechartsTooltip />
-                            <RechartsLegend />
-                            <Bar dataKey="Expenses" fill={theme.palette.secondary.main} />
-                          </BarChart>
-                        </ResponsiveContainer>
-                       )
-                     ) : <Typography color="text.secondary">No data for chart</Typography>}
+                     {loading ? <Skeleton variant="rectangular" width="100%" height="100%" sx={{ borderRadius: 2 }} /> : (
+                       filteredExpenses.length > 0 ? (
+                        viewBy === 'month' ? (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={pieChartData}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                outerRadius={80}
+                                fill="#8884d8"
+                                dataKey="value"
+                              >
+                                {pieChartData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                              </Pie>
+                              <RechartsTooltip formatter={(value) => `K ${value.toLocaleString()}`} />
+                              <RechartsLegend />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={barChartData}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="name" />
+                              <YAxis />
+                              <RechartsTooltip />
+                              <RechartsLegend />
+                              <Bar dataKey="Expenses" fill={theme.palette.secondary.main} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        )
+                      ) : <Typography color="text.secondary">No data for chart</Typography>
+                     )}
                   </Box>
                 </Card>
               </Stack>
             </Grid>
 
             {/* --- MAIN CONTENT (LEFT COLUMN on Desktop, BOTTOM on Mobile) --- */}
-            <Grid xs={12} md={8} order={{ xs: 2, md: 1 }}>
+            <Grid item xs={12} md={8} order={{ xs: 2, md: 1 }}>
               <Card sx={{ borderRadius: 3, elevation: 2 }}>
                 <CardHeader title="Transactions" action={
                   <ToggleButtonGroup
@@ -283,14 +316,14 @@ export default function ExpensesPage() {
                 } />
                 <CardContent>
                   <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
-                    <Grid xs={12} sm={6} md={5}><TextField label="Search..." variant="outlined" size="small" fullWidth value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></Grid>
-                    <Grid xs={12} sm={6} md={3}><FormControl fullWidth size="small"><InputLabel>Category</InputLabel><Select value={categoryFilter} label="Category" onChange={(e) => setCategoryFilter(e.target.value)}>{uniqueCategories.map(cat => <MenuItem key={cat} value={cat}>{cat}</MenuItem>)}</Select></FormControl></Grid>
-                    <Grid xs={6} sm={6} md={2}><DatePicker label="Start Date" value={startDate} onChange={setStartDate} slotProps={{ textField: { size: 'small' } }} /></Grid>
-                    <Grid xs={6} sm={6} md={2}><DatePicker label="End Date" value={endDate} onChange={setEndDate} slotProps={{ textField: { size: 'small' } }} /></Grid>
+                    <Grid item xs={12} sm={6} md={5}><TextField label="Search..." variant="outlined" size="small" fullWidth value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></Grid>
+                    <Grid item xs={12} sm={6} md={3}><FormControl fullWidth size="small"><InputLabel>Category</InputLabel><Select value={categoryFilter} label="Category" onChange={(e) => setCategoryFilter(e.target.value)}>{uniqueCategories.map(cat => <MenuItem key={cat} value={cat}>{cat}</MenuItem>)}</Select></FormControl></Grid>
+                    <Grid item xs={6} sm={6} md={2}><DatePicker label="Start Date" value={startDate} onChange={setStartDate} slotProps={{ textField: { size: 'small' } }} /></Grid>
+                    <Grid item xs={6} sm={6} md={2}><DatePicker label="End Date" value={endDate} onChange={setEndDate} slotProps={{ textField: { size: 'small' } }} /></Grid>
                   </Grid>
                 </CardContent>
                 {loading ? (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', my: 10 }}><CircularProgress color="secondary" /></Box>
+                  <ExpenseSkeleton />
                 ) : filteredExpenses.length > 0 ? (
                   <List sx={{ width: '100%', p: 0 }} dense={isMobile}>
                     {Object.entries(groupedExpenses).map(([groupTitle, expensesInGroup]) => (
@@ -301,7 +334,7 @@ export default function ExpensesPage() {
                             <IconButton size="small" onClick={(e) => handleMenuClick(e, expense)}><MoreVertIcon /></IconButton>
                           }>
                             <ListItemAvatar><Avatar sx={{ bgcolor: 'secondary.light' }}>{getCategoryIcon(expense.category)}</Avatar></ListItemAvatar>
-                            <ListItemText primary={expense.description} secondary={dayjs(expense.date.toDate()).format('YYYY-MM-DD')} />
+                            <ListItemText primary={expense.description} secondary={dayjs(expense.date?.toDate ? expense.date.toDate() : expense.date).format('YYYY-MM-DD')} />
                             <Typography variant="body1" fontWeight={500}>K {Number(expense.amount).toLocaleString()}</Typography>
                           </ListItem>
                         ))}

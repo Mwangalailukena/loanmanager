@@ -1,6 +1,6 @@
 // src/components/AddLoanDialog.js
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Box,
   TextField,
@@ -27,9 +27,12 @@ import {
   styled,
   alpha,
   Autocomplete,
+  Grid,
+  Divider,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/CloseRounded";
-import PaidIcon from '@mui/icons-material/PaymentsRounded';
+import PersonIcon from '@mui/icons-material/PersonRounded';
+import SettingsIcon from '@mui/icons-material/SettingsRounded';
 import CheckCircleIcon from '@mui/icons-material/TaskAltRounded';
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -60,7 +63,7 @@ const getTextFieldStyles = (theme) => ({
   "& .MuiFormHelperText-root": { fontSize: "0.75rem" },
 });
 
-const steps = ['Loan Details', 'Review & Submit'];
+const steps = ['Select Borrower', 'Loan Details', 'Confirm'];
 
 const ColorlibStepIconRoot = styled('div')(({ theme, ownerState }) => ({
   backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[700] : '#ccc',
@@ -80,8 +83,9 @@ const ColorlibStepIconRoot = styled('div')(({ theme, ownerState }) => ({
 function ColorlibStepIcon(props) {
   const { active, completed, className, icon } = props;
   const icons = {
-    1: <PaidIcon sx={{ fontSize: 20 }} />,
-    2: <CheckCircleIcon sx={{ fontSize: 20 }} />,
+    1: <PersonIcon sx={{ fontSize: 20 }} />,
+    2: <SettingsIcon sx={{ fontSize: 20 }} />,
+    3: <CheckCircleIcon sx={{ fontSize: 20 }} />,
   };
   return (
     <ColorlibStepIconRoot ownerState={{ completed, active }} className={className}>
@@ -103,65 +107,147 @@ const CustomStepConnector = styled(StepConnector)(({ theme }) => ({
   },
 }));
 
-function AutoLoanForm({ borrowerId, onClose, selectedBorrower: passedBorrower }) {
+export default function AddLoanDialog({ open, onClose, borrowerId }) {
   const theme = useTheme();
-  const { addLoan, addActivityLog, settings, borrowers } = useFirestore();
+  const { borrowers, addLoan, addActivityLog, settings } = useFirestore();
   const showSnackbar = useSnackbar();
+  const isOffline = useOfflineStatus();
+  const textFieldStyles = getTextFieldStyles(theme);
+
+  // --- Unified State ---
   const [activeStep, setActiveStep] = useState(0);
-  const [amount, setAmount] = useState("");
-  const [interestDuration, setInterestDuration] = useState(1);
+  const [selectedTab, setSelectedTab] = useState(0); // 0: Auto, 1: Manual
+  const [selectedBorrower, setSelectedBorrower] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [amountError, setAmountError] = useState("");
-  const isOffline = useOfflineStatus();
 
-  const selectedBorrower = passedBorrower || borrowers.find(b => b.id === borrowerId);
+  // Form Fields
+  const [amount, setAmount] = useState("");
+  const [interestDuration, setInterestDuration] = useState(1);
+  const [startDate, setStartDate] = useState(dayjs());
+  const [dueDate, setDueDate] = useState(dayjs().add(1, 'week'));
+  const [manualInterestRate, setManualInterestRate] = useState("");
+
+  // Validation States
+  const [amountError, setAmountError] = useState("");
+  const [startDateError, setStartDateError] = useState("");
+  const [dueDateError, setDueDateError] = useState("");
+  const [manualInterestRateError, setManualInterestRateError] = useState("");
 
   const interestRates = settings?.interestRates || { 1: 0.15, 2: 0.2, 3: 0.3, 4: 0.3 };
-  const calculateInterest = (principal, weeks) => principal * (interestRates[weeks] || 0);
-  const handleAmountBlur = () => {
-    const numAmount = Number(amount);
-    if (isNaN(numAmount) || numAmount <= 0) {
-      setAmountError("Loan amount must be a valid positive number.");
-    } else {
-      setAmountError("");
-    }
-  };
 
-  const validateStep = (step) => {
-    let isValid = true;
-    if (step === 0) {
-      handleAmountBlur();
-      if (amountError || !amount.trim()) isValid = false;
+  // Reset logic when dialog opens
+  useMemo(() => {
+    if (open) {
+      setActiveStep(0);
+      setSelectedTab(0);
+      setAmount("");
+      setInterestDuration(1);
+      setStartDate(dayjs());
+      setDueDate(dayjs().add(1, 'week'));
+      setManualInterestRate("");
+      setAmountError("");
+      setStartDateError("");
+      setDueDateError("");
+      setManualInterestRateError("");
+      setError("");
+      
+      if (borrowerId) {
+        const b = borrowers.find(b => b.id === borrowerId);
+        setSelectedBorrower(b || null);
+        setActiveStep(1); // Skip selection if ID provided
+      } else {
+        setSelectedBorrower(null);
+      }
     }
-    return isValid;
+  }, [open, borrowerId, borrowers]);
+
+  const calculateInterest = (principal, durationVal) => {
+    if (selectedTab === 0) {
+      return principal * (interestRates[durationVal] || 0);
+    }
+    return principal * (Number(durationVal) / 100);
   };
 
   const handleNext = () => {
-    if (validateStep(activeStep)) setActiveStep(prev => prev + 1);
-    else showSnackbar("Please correct the errors before proceeding.", "error");
+    if (activeStep === 0) {
+      if (!selectedBorrower) {
+        showSnackbar("Please select a borrower first.", "error");
+        return;
+      }
+      setActiveStep(1);
+    } else if (activeStep === 1) {
+      // Validate Step 1
+      const numAmount = Number(amount);
+      let isValid = true;
+
+      if (isNaN(numAmount) || numAmount <= 0) {
+        setAmountError("Please enter a valid loan amount.");
+        isValid = false;
+      } else {
+        setAmountError("");
+      }
+
+      if (selectedTab === 1) {
+        if (!startDate || !startDate.isValid()) {
+          setStartDateError("Invalid start date.");
+          isValid = false;
+        } else {
+          setStartDateError("");
+        }
+
+        if (!dueDate || !dueDate.isValid()) {
+          setDueDateError("Invalid due date.");
+          isValid = false;
+        } else if (startDate && dueDate && dueDate.isBefore(startDate, 'day')) {
+          setDueDateError("Due date cannot be before the start date.");
+          isValid = false;
+        } else {
+          setDueDateError("");
+        }
+
+        const numRate = Number(manualInterestRate);
+        if (manualInterestRate === "" || isNaN(numRate) || numRate < 0) {
+          setManualInterestRateError("Please enter a valid interest rate.");
+          isValid = false;
+        } else {
+          setManualInterestRateError("");
+        }
+      }
+
+      if (isValid) setActiveStep(2);
+    }
   };
 
-  const handleBack = () => setActiveStep(prev => prev - 1);
+  const handleBack = () => {
+    if (activeStep === 1 && borrowerId) {
+        onClose(); // Can't go back to selection if it was fixed
+        return;
+    }
+    setActiveStep(prev => prev - 1);
+  };
 
   const handleSubmit = async () => {
-    setError("");
-    if (!validateStep(0)) {
-      showSnackbar("Please correct the errors before submitting.", "error");
-      return;
-    }
     setLoading(true);
+    setError("");
 
     const principal = Number(amount);
-    const interest = calculateInterest(principal, interestDuration);
+    const finalInterestDuration = selectedTab === 0 ? interestDuration : null;
+    const finalManualRate = selectedTab === 1 ? Number(manualInterestRate) : null;
+    const interest = calculateInterest(principal, selectedTab === 0 ? interestDuration : manualInterestRate);
     const totalRepayable = principal + interest;
-    const startDate = dayjs().format("YYYY-MM-DD");
-    const dueDate = dayjs().add(interestDuration * 7, "day").format("YYYY-MM-DD");
+    
+    const finalStartDate = selectedTab === 0 ? dayjs().format("YYYY-MM-DD") : startDate.format("YYYY-MM-DD");
+    const finalDueDate = selectedTab === 0 ? dayjs().add(interestDuration * 7, "day").format("YYYY-MM-DD") : dueDate.format("YYYY-MM-DD");
 
     const loanData = {
       borrowerId: selectedBorrower.id,
-      principal, interest, totalRepayable, startDate, dueDate,
-      status: "Active", repaidAmount: 0, interestDuration,
+      principal, interest, totalRepayable,
+      startDate: finalStartDate,
+      dueDate: finalDueDate,
+      status: "Active", repaidAmount: 0,
+      interestDuration: finalInterestDuration,
+      manualInterestRate: finalManualRate,
       borrower: selectedBorrower.name,
       phone: selectedBorrower.phone,
       outstandingBalance: totalRepayable
@@ -170,16 +256,15 @@ function AutoLoanForm({ borrowerId, onClose, selectedBorrower: passedBorrower })
     if (isOffline) {
       try {
         await enqueueRequest({ type: 'addLoan', data: loanData });
-        await enqueueRequest({ type: 'addActivityLog', data: {
+        await addActivityLog({
           action: "Loan Created",
-          details: `Auto loan created for ${selectedBorrower?.name || 'Unknown'} (ZMW ${principal.toLocaleString()})`,
+          details: `Loan created for ${selectedBorrower?.name} (ZMW ${principal.toLocaleString()})`,
           timestamp: new Date().toISOString(),
-        }});
-        showSnackbar("You are offline. Loan will be added when you're back online.", "info");
+        });
+        showSnackbar("Offline: Loan queued successfully!", "info");
         onClose();
       } catch (err) {
-        console.error("Failed to enqueue loan:", err);
-        setError("Failed to save loan for offline use. Please try again.");
+        setError("Failed to queue loan offline.");
       } finally {
         setLoading(false);
       }
@@ -190,400 +275,179 @@ function AutoLoanForm({ borrowerId, onClose, selectedBorrower: passedBorrower })
       await addLoan(loanData);
       await addActivityLog({
         action: "Loan Created",
-        details: `Auto loan created for ${selectedBorrower?.name || 'Unknown'} (ZMW ${principal.toLocaleString()})`,
+        details: `Loan added for ${selectedBorrower?.name} (ZMW ${principal.toLocaleString()})`,
         timestamp: new Date().toISOString(),
       });
-      showSnackbar(`Loan added successfully!`, "success");
+      showSnackbar("Loan created successfully!", "success");
       onClose();
     } catch (err) {
-      console.error("Loan creation failed:", err);
-      setError("Failed to add loan. Please try again.");
+      console.error(err);
+      setError("Failed to create loan. Check connection.");
     } finally {
       setLoading(false);
     }
   };
 
   const displayPrincipal = Number(amount);
-  const displayInterest = calculateInterest(displayPrincipal, interestDuration);
+  const displayInterest = calculateInterest(displayPrincipal, selectedTab === 0 ? interestDuration : manualInterestRate);
   const displayTotalRepayable = displayPrincipal + displayInterest;
-  const textFieldStyles = getTextFieldStyles(theme);
-
-  const getStepContent = (step) => {
-    switch (step) {
-      case 0:
-        return (
-          <Stack spacing={1.5} sx={{ py: 1.5 }}>
-            <Box sx={{ mb: 1, p: 1.5, bgcolor: alpha(theme.palette.primary.main, 0.05), borderRadius: 2, border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}` }}>
-                <Typography variant="caption" color="text.secondary" display="block">Lending to:</Typography>
-                <Typography variant="subtitle2" fontWeight="bold">{selectedBorrower?.name}</Typography>
-            </Box>
-            <TextField
-              label="Loan Amount (ZMW)"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              onBlur={handleAmountBlur}
-              type="number"
-              inputProps={{ min: 1 }}
-              fullWidth required
-              error={!!amountError}
-              helperText={amountError}
-              sx={textFieldStyles}
-            />
-            <TextField
-              select
-              label="Interest Duration"
-              value={interestDuration}
-              onChange={(e) => setInterestDuration(Number(e.target.value))}
-              fullWidth required
-              sx={textFieldStyles}
-            >
-              {interestOptions.map(({ label, value }) => (
-                <MenuItem key={value} value={value}>{label}</MenuItem>
-              ))}
-            </TextField>
-            <Fade in={displayPrincipal > 0}>
-              <Box sx={{
-                p: 1.5, bgcolor: theme.palette.mode === 'light' ? theme.palette.secondary.light : theme.palette.secondary.dark,
-                borderRadius: 2, borderLeft: `5px solid ${theme.palette.secondary.main}`,
-              }}>
-                <Typography variant="caption" color="text.secondary">
-                  Calculated Interest: ZMW {displayInterest.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </Typography>
-                <Typography variant="body1" fontWeight="bold">
-                  Total Repayable: ZMW {displayTotalRepayable.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </Typography>
-              </Box>
-            </Fade>
-          </Stack>
-        );
-      case 1:
-        return (
-          <Stack spacing={1.5} sx={{ py: 1.5 }}>
-            <Paper variant="outlined" sx={{ p: 1.5, width: '100%' }}>
-              <Typography variant="subtitle2" gutterBottom>Review Details</Typography>
-              <Typography variant="caption" display="block"><strong>Borrower:</strong> {selectedBorrower?.name}</Typography>
-              <Typography variant="caption" display="block"><strong>Phone:</strong> {selectedBorrower?.phone}</Typography>
-              <Typography variant="caption" display="block"><strong>Principal:</strong> ZMW {displayPrincipal.toLocaleString()}</Typography>
-              <Typography variant="caption" display="block"><strong>Interest Duration:</strong> {interestDuration} week{interestDuration > 1 ? 's' : ''}</Typography>
-              <Typography variant="caption" display="block"><strong>Calculated Interest:</strong> ZMW {displayInterest.toLocaleString()}</Typography>
-              <Typography variant="body2" fontWeight="bold" display="block"><strong>Total Repayable:</strong> ZMW {displayTotalRepayable.toLocaleString()}</Typography>
-            </Paper>
-          </Stack>
-        );
-      default: return 'Unknown step';
-    }
-  };
-
-  return (
-    <Box>
-      <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>Auto Loan</Typography>
-      <Stepper alternativeLabel activeStep={activeStep} connector={<CustomStepConnector />} sx={{ mb: 3 }}>
-        {steps.map((label) => (
-          <Step key={label}><StepLabel StepIconComponent={ColorlibStepIcon}>{label}</StepLabel></Step>
-        ))}
-      </Stepper>
-      {error && <Alert severity="error" onClose={() => setError("")} sx={{ mb: 1.5, fontSize: '0.875rem' }}>{error}</Alert>}
-      {getStepContent(activeStep)}
-      <Box sx={{ display: 'flex', flexDirection: 'row', pt: 2 }}>
-        <Button color="inherit" disabled={activeStep === 0 || loading} onClick={handleBack} sx={{ mr: 1, px: 1, fontSize: '0.875rem' }}>Back</Button>
-        <Box sx={{ flex: '1 1 auto' }} />
-        {activeStep === steps.length - 1 ? (
-          <Button onClick={handleSubmit} variant="contained" color="secondary" disabled={loading} startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null} sx={{ fontSize: '0.875rem' }}>
-            {loading ? "Adding Loan..." : "Add Loan"}
-          </Button>
-        ) : (
-          <Button onClick={handleNext} variant="contained" color="secondary" disabled={loading} sx={{ fontSize: '0.875rem' }}>Next</Button>
-        )}
-      </Box>
-    </Box>
-  );
-}
-
-function ManualLoanForm({ borrowerId, onClose, selectedBorrower: passedBorrower }) {
-  const theme = useTheme();
-  const { addLoan, addActivityLog, borrowers } = useFirestore();
-  const showSnackbar = useSnackbar();
-  const [activeStep, setActiveStep] = useState(0);
-  const [amount, setAmount] = useState("");
-  const [startDate, setStartDate] = useState(dayjs());
-  const [dueDate, setDueDate] = useState(dayjs().add(1, 'week'));
-  const [manualInterestRate, setManualInterestRate] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [amountError, setAmountError] = useState("");
-  const [startDateError, setStartDateError] = useState("");
-  const [dueDateError, setDueDateError] = useState("");
-  const [manualInterestRateError, setManualInterestRateError] = useState("");
-  const isOffline = useOfflineStatus();
-  
-  const selectedBorrower = passedBorrower || borrowers.find(b => b.id === borrowerId);
-
-  const calculateInterest = (principal, rate) => principal * (rate / 100);
-  const handleAmountBlur = () => {
-    const numAmount = Number(amount);
-    if (isNaN(numAmount) || numAmount <= 0) setAmountError("Loan amount must be a valid positive number.");
-    else setAmountError("");
-  };
-  const handleManualInterestRateBlur = () => {
-    const numInterestRate = Number(manualInterestRate);
-    if (isNaN(numInterestRate) || numInterestRate < 0 || numInterestRate > 100) setManualInterestRateError("Interest rate must be a number between 0 and 100.");
-    else setManualInterestRateError("");
-  };
-
-  const validateStep = (step) => {
-    let isValid = true;
-    if (step === 0) {
-      handleAmountBlur();
-      handleManualInterestRateBlur();
-      if (!startDate || !startDate.isValid()) { setStartDateError("Invalid start date."); isValid = false; }
-      if (!dueDate || !dueDate.isValid()) { setDueDateError("Invalid due date."); isValid = false; }
-      else if (startDate && dueDate && dueDate.isBefore(startDate, 'day')) { setDueDateError("Due date cannot be before the start date."); isValid = false; }
-      if (amountError || manualInterestRateError || !amount.trim() || !manualInterestRate.trim()) isValid = false;
-    }
-    return isValid;
-  };
-
-  const handleNext = () => {
-    if (validateStep(activeStep)) setActiveStep(prev => prev + 1);
-    else showSnackbar("Please correct the errors before proceeding.", "error");
-  };
-  const handleBack = () => setActiveStep(prev => prev - 1);
-
-  const handleSubmit = async () => {
-    setError("");
-    if (!validateStep(0)) {
-      showSnackbar("Please correct the errors before submitting.", "error");
-      return;
-    }
-    setLoading(true);
-
-    const principal = Number(amount);
-    const interestRateDecimal = Number(manualInterestRate);
-    const interest = calculateInterest(principal, interestRateDecimal);
-    const totalRepayable = principal + interest;
-    const formattedStartDate = startDate.format("YYYY-MM-DD");
-    const formattedDueDate = dueDate.format("YYYY-MM-DD");
-
-    const loanData = {
-      borrowerId: selectedBorrower.id, principal, interest, totalRepayable,
-      startDate: formattedStartDate, dueDate: formattedDueDate,
-      status: "Active", repaidAmount: 0, manualInterestRate: interestRateDecimal,
-      borrower: selectedBorrower.name,
-      phone: selectedBorrower.phone,
-      outstandingBalance: totalRepayable
-    };
-
-    if (isOffline) {
-      try {
-        await enqueueRequest({ type: 'addLoan', data: loanData });
-        await enqueueRequest({ type: 'addActivityLog', data: {
-          action: "Loan Created (Manual)",
-          details: `Manual loan created for ${selectedBorrower?.name || 'Unknown'} (ZMW ${principal.toLocaleString()})`,
-          timestamp: new Date().toISOString(),
-        }});
-        showSnackbar("You are offline. Loan will be added when you're back online.", "info");
-        onClose();
-      } catch (err) {
-        console.error("Failed to enqueue manual loan:", err);
-        setError("Failed to save manual loan for offline use. Please try again.");
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
-
-    try {
-      await addLoan(loanData);
-      await addActivityLog({
-        action: "Loan Created (Manual)",
-        details: `Manual loan created for ${selectedBorrower?.name || 'Unknown'} (ZMW ${principal.toLocaleString()})`,
-        timestamp: new Date().toISOString(),
-      });
-      showSnackbar(`Manual loan added successfully!`, "success");
-      onClose();
-    } catch (err) {
-      console.error("Manual loan creation failed:", err);
-      setError("Failed to add manual loan. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const displayPrincipal = Number(amount);
-  const displayInterest = calculateInterest(displayPrincipal, Number(manualInterestRate));
-  const displayTotalRepayable = displayPrincipal + displayInterest;
-  const textFieldStyles = getTextFieldStyles(theme);
-
-  const getStepContent = (step) => {
-    switch (step) {
-      case 0:
-        return (
-          <Stack spacing={1.5} sx={{ py: 1.5 }}>
-            <Box sx={{ mb: 1, p: 1.5, bgcolor: alpha(theme.palette.primary.main, 0.05), borderRadius: 2, border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}` }}>
-                <Typography variant="caption" color="text.secondary" display="block">Lending to:</Typography>
-                <Typography variant="subtitle2" fontWeight="bold">{selectedBorrower?.name}</Typography>
-            </Box>
-            <TextField
-              label="Loan Amount (ZMW)" value={amount} onChange={(e) => setAmount(e.target.value)} onBlur={handleAmountBlur}
-              type="number" inputProps={{ min: 1 }} fullWidth required error={!!amountError} helperText={amountError} sx={textFieldStyles}
-            />
-            <DatePicker
-              label="Start Date" value={startDate} onChange={(newValue) => setStartDate(newValue)}
-              enableAccessibleFieldDOMStructure={false}
-              slots={{ textField: TextField }} slotProps={{ textField: { fullWidth: true, required: true, error: !!startDateError, helperText: startDateError, sx: textFieldStyles } }}
-            />
-            <DatePicker
-              label="Due Date" value={dueDate} onChange={(newValue) => setDueDate(newValue)}
-              enableAccessibleFieldDOMStructure={false}
-              slots={{ textField: TextField }} slotProps={{ textField: { fullWidth: true, required: true, error: !!dueDateError, helperText: dueDateError, sx: textFieldStyles } }}
-              minDate={startDate || dayjs()}
-              disablePast
-            />
-            <TextField
-              label="Interest Rate (%)" value={manualInterestRate} onChange={(e) => setManualInterestRate(e.target.value)} onBlur={handleManualInterestRateBlur}
-              type="number" inputProps={{ min: 0, max: 100, step: "0.01" }} fullWidth required error={!!manualInterestRateError} helperText={manualInterestRateError} sx={textFieldStyles}
-            />
-            <Fade in={displayPrincipal > 0 && manualInterestRate !== ""}>
-              <Box sx={{
-                p: 1.5, bgcolor: theme.palette.mode === 'light' ? theme.palette.secondary.light : theme.palette.secondary.dark,
-                borderRadius: 2, borderLeft: `5px solid ${theme.palette.secondary.main}`,
-              }}>
-                <Typography variant="caption" color="text.secondary">
-                  Calculated Interest: ZMW {displayInterest.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </Typography>
-                <Typography variant="body1" fontWeight="bold">
-                  Total Repayable: ZMW {displayTotalRepayable.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </Typography>
-              </Box>
-            </Fade>
-          </Stack>
-        );
-      case 1:
-        return (
-          <Stack spacing={1.5} sx={{ py: 1.5 }}>
-            <Paper variant="outlined" sx={{ p: 1.5, width: '100%' }}>
-              <Typography variant="subtitle2" gutterBottom>Review Details</Typography>
-              <Typography variant="caption" display="block"><strong>Borrower:</strong> {selectedBorrower?.name}</Typography>
-              <Typography variant="caption" display="block"><strong>Phone:</strong> {selectedBorrower?.phone}</Typography>
-              <Typography variant="caption" display="block"><strong>Principal:</strong> ZMW {displayPrincipal.toLocaleString()}</Typography>
-              <Typography variant="caption" display="block"><strong>Start Date:</strong> {startDate.format("YYYY-MM-DD")}</Typography>
-              <Typography variant="caption" display="block"><strong>Due Date:</strong> {dueDate.format("YYYY-MM-DD")}</Typography>
-              <Typography variant="caption" display="block"><strong>Interest Rate:</strong> {manualInterestRate}%</Typography>
-              <Typography variant="caption" display="block"><strong>Calculated Interest:</strong> ZMW {displayInterest.toLocaleString()}</Typography>
-              <Typography variant="body2" fontWeight="bold" display="block"><strong>Total Repayable:</strong> ZMW {displayTotalRepayable.toLocaleString()}</Typography>
-            </Paper>
-          </Stack>
-        );
-      default: return 'Unknown step';
-    }
-  };
-
-  return (
-    <Box>
-      <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>Manual Loan</Typography>
-      <Stepper alternativeLabel activeStep={activeStep} connector={<CustomStepConnector />} sx={{ mb: 3 }}>
-        {steps.map((label) => (
-          <Step key={label}><StepLabel StepIconComponent={ColorlibStepIcon}>{label}</StepLabel></Step>
-        ))}
-      </Stepper>
-      {error && <Alert severity="error" onClose={() => setError("")} sx={{ mb: 1.5, fontSize: '0.875rem' }}>{error}</Alert>}
-      {getStepContent(activeStep)}
-      <Box sx={{ display: 'flex', flexDirection: 'row', pt: 2 }}>
-        <Button color="inherit" disabled={activeStep === 0 || loading} onClick={handleBack} sx={{ mr: 1, px: 1, fontSize: '0.875rem' }}>Back</Button>
-        <Box sx={{ flex: '1 1 auto' }} />
-        {activeStep === steps.length - 1 ? (
-          <Button onClick={handleSubmit} variant="contained" color="secondary" disabled={loading} startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null} sx={{ fontSize: '0.875rem' }}>
-            {loading ? "Adding Loan..." : "Add Loan"}
-          </Button>
-        ) : (
-          <Button onClick={handleNext} variant="contained" color="secondary" disabled={loading} sx={{ fontSize: '0.875rem' }}>Next</Button>
-        )}
-      </Box>
-    </Box>
-  );
-}
-
-export default function AddLoanDialog({ open, onClose, borrowerId }) {
-  const { borrowers } = useFirestore();
-  const [selectedTab, setSelectedTab] = useState(0);
-  const [selectedBorrower, setSelectedBorrower] = useState(null);
-  
-  const handleChangeTab = (event, newValue) => {
-    setSelectedTab(newValue);
-  };
-
-  // Skip selection if borrowerId is provided
-  const initialBorrower = borrowers.find(b => b.id === borrowerId);
-  const showSelection = !borrowerId;
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-        <DialogTitle fontWeight="bold" sx={{ pb: 1, pt: 2 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <DialogTitle sx={{ pt: 3, pb: 1 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
             <Typography variant="h6" fontWeight="bold">Create New Loan</Typography>
-            <IconButton onClick={onClose} aria-label="close">
-              <CloseIcon />
-            </IconButton>
-          </Box>
+            <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
+          </Stack>
         </DialogTitle>
-        <DialogContent sx={{ p: 2 }}>
-          {showSelection && !selectedBorrower ? (
-            <Box sx={{ py: 2 }}>
-                <Typography variant="subtitle2" sx={{ mb: 2 }}>Search for a Borrower to continue:</Typography>
-                <Autocomplete
-                    options={borrowers}
-                    getOptionLabel={(option) => `${option.name} (${option.phone})`}
-                    onChange={(event, newValue) => {
-                        setSelectedBorrower(newValue);
-                    }}
-                    renderInput={(params) => (
-                        <TextField 
-                            {...params} 
-                            label="Start typing borrower name..." 
-                            variant="outlined"
-                            fullWidth
-                        />
-                    )}
-                    noOptionsText="No borrowers found"
-                />
-            </Box>
-          ) : (
-            <>
-                <Box sx={{ width: "100%", borderBottom: 1, borderColor: 'divider' }}>
-                    <Tabs
-                    value={selectedTab}
-                    onChange={handleChangeTab}
-                    aria-label="loan type tabs"
-                    centered
-                    sx={{
-                        "& .MuiTabs-indicator": { backgroundColor: (theme) => theme.palette.secondary.main },
-                        "& .MuiTab-root": {
-                        color: (theme) => theme.palette.text.secondary,
-                        "&.Mui-selected": { color: (theme) => theme.palette.secondary.main },
-                        },
-                    }}
-                    >
-                    <Tab label="Auto Loan" />
-                    <Tab label="Manual Loan" />
-                    </Tabs>
-                </Box>
-                <Box sx={{ pt: 2 }}>
-                    {selectedTab === 0 && <AutoLoanForm borrowerId={borrowerId} selectedBorrower={selectedBorrower || initialBorrower} onClose={onClose} />}
-                    {selectedTab === 1 && <ManualLoanForm borrowerId={borrowerId} selectedBorrower={selectedBorrower || initialBorrower} onClose={onClose} />}
-                </Box>
-                {showSelection && (
-                    <Button 
-                        size="small" 
-                        onClick={() => setSelectedBorrower(null)} 
-                        sx={{ mt: 2 }}
-                        color="inherit"
-                    >
-                        Change Borrower
-                    </Button>
+        
+        <DialogContent sx={{ px: { xs: 2, sm: 3 }, pb: 3 }}>
+          <Stepper alternativeLabel activeStep={activeStep} connector={<CustomStepConnector />} sx={{ mb: 4, mt: 1 }}>
+            {steps.map((label) => (
+              <Step key={label}><StepLabel StepIconComponent={ColorlibStepIcon}>{label}</StepLabel></Step>
+            ))}
+          </Stepper>
+
+          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+          {/* STEP 0: Select Borrower */}
+          {activeStep === 0 && (
+            <Box sx={{ py: 1 }}>
+              <Typography variant="subtitle2" gutterBottom color="text.secondary">Step 1: Choose a borrower</Typography>
+              <Autocomplete
+                options={borrowers}
+                getOptionLabel={(option) => `${option.name} (${option.phone})`}
+                value={selectedBorrower}
+                onChange={(_, val) => setSelectedBorrower(val)}
+                renderInput={(params) => (
+                  <TextField {...params} label="Search Borrower..." variant="outlined" fullWidth autoFocus />
                 )}
-            </>
+                sx={{ mt: 2 }}
+              />
+            </Box>
           )}
+
+          {/* STEP 1: Loan Details */}
+          {activeStep === 1 && (
+            <Box>
+              <Box sx={{ mb: 2, p: 1.5, bgcolor: alpha(theme.palette.primary.main, 0.05), borderRadius: 2, border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}` }}>
+                <Typography variant="caption" color="text.secondary">Lending to:</Typography>
+                <Typography variant="subtitle2" fontWeight="bold">{selectedBorrower?.name}</Typography>
+              </Box>
+
+              <Tabs
+                value={selectedTab}
+                onChange={(_, v) => setSelectedTab(v)}
+                centered
+                sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}
+              >
+                <Tab label="Auto Plan" />
+                <Tab label="Manual Entry" />
+              </Tabs>
+
+              <Stack spacing={2.5}>
+                <TextField
+                  label="Principal Amount (ZMW)"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  type="number"
+                  fullWidth required
+                  error={!!amountError}
+                  helperText={amountError}
+                  sx={textFieldStyles}
+                />
+
+                {selectedTab === 0 ? (
+                  <TextField
+                    select
+                    label="Interest Duration"
+                    value={interestDuration}
+                    onChange={(e) => setInterestDuration(Number(e.target.value))}
+                    fullWidth required
+                    sx={textFieldStyles}
+                  >
+                    {interestOptions.map(({ label, value }) => (
+                      <MenuItem key={value} value={value}>{label}</MenuItem>
+                    ))}
+                  </TextField>
+                ) : (
+                  <>
+                    <Stack direction="row" spacing={2}>
+                      <DatePicker
+                        label="Start Date"
+                        value={startDate}
+                        onChange={(val) => setStartDate(val)}
+                        slotProps={{ textField: { fullWidth: true, size: 'small', error: !!startDateError, helperText: startDateError, sx: textFieldStyles } }}
+                      />
+                      <DatePicker
+                        label="Due Date"
+                        value={dueDate}
+                        onChange={(val) => setDueDate(val)}
+                        minDate={startDate}
+                        slotProps={{ textField: { fullWidth: true, size: 'small', error: !!dueDateError, helperText: dueDateError, sx: textFieldStyles } }}
+                      />
+                    </Stack>
+                    <TextField
+                      label="Manual Interest Rate (%)"
+                      value={manualInterestRate}
+                      onChange={(e) => setManualInterestRate(e.target.value)}
+                      type="number"
+                      fullWidth required
+                      error={!!manualInterestRateError}
+                      helperText={manualInterestRateError}
+                      sx={textFieldStyles}
+                    />
+                  </>
+                )}
+
+                <Fade in={displayPrincipal > 0}>
+                  <Paper sx={{ p: 2, bgcolor: alpha(theme.palette.secondary.main, 0.05), borderLeft: `4px solid ${theme.palette.secondary.main}` }}>
+                    <Typography variant="caption" color="text.secondary">Calculated Interest: ZMW {displayInterest.toLocaleString(undefined, { minimumFractionDigits: 2 })}</Typography>
+                    <Typography variant="h6" fontWeight="bold">Total Repayable: ZMW {displayTotalRepayable.toLocaleString(undefined, { minimumFractionDigits: 2 })}</Typography>
+                  </Paper>
+                </Fade>
+              </Stack>
+            </Box>
+          )}
+
+          {/* STEP 2: Confirm */}
+          {activeStep === 2 && (
+            <Box>
+              <Typography variant="subtitle2" gutterBottom color="text.secondary">Step 3: Review and Confirm</Typography>
+              <Paper variant="outlined" sx={{ p: 2, mt: 1 }}>
+                <Grid container spacing={2}>
+                  <Grid item xs={6}><Typography variant="caption" color="text.secondary">Borrower</Typography><Typography variant="body2" fontWeight="bold">{selectedBorrower?.name}</Typography></Grid>
+                  <Grid item xs={6}><Typography variant="caption" color="text.secondary">Principal</Typography><Typography variant="body2" fontWeight="bold">ZMW {Number(amount).toLocaleString()}</Typography></Grid>
+                  <Grid item xs={6}><Typography variant="caption" color="text.secondary">Interest</Typography><Typography variant="body2" fontWeight="bold">ZMW {displayInterest.toLocaleString()}</Typography></Grid>
+                  <Grid item xs={6}><Typography variant="caption" color="text.secondary">Total Due</Typography><Typography variant="body2" fontWeight="bold" color="primary">ZMW {displayTotalRepayable.toLocaleString()}</Typography></Grid>
+                  <Grid item xs={12}><Divider /></Grid>
+                  <Grid item xs={6}><Typography variant="caption" color="text.secondary">Start Date</Typography><Typography variant="body2">{selectedTab === 0 ? dayjs().format("YYYY-MM-DD") : startDate.format("YYYY-MM-DD")}</Typography></Grid>
+                  <Grid item xs={6}><Typography variant="caption" color="text.secondary">Due Date</Typography><Typography variant="body2">{selectedTab === 0 ? dayjs().add(interestDuration * 7, "day").format("YYYY-MM-DD") : dueDate.format("YYYY-MM-DD")}</Typography></Grid>
+                </Grid>
+              </Paper>
+              <Alert severity="info" sx={{ mt: 2 }}>Click 'Confirm & Disburse' to finalize this loan record.</Alert>
+            </Box>
+          )}
+
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
+            <Button disabled={activeStep === 0 || loading} onClick={handleBack} color="inherit">Back</Button>
+            <Box>
+              {activeStep < 2 ? (
+                <Button variant="contained" color="primary" onClick={handleNext}>Next</Button>
+              ) : (
+                <Button 
+                  variant="contained" 
+                  color="success" 
+                  onClick={handleSubmit} 
+                  disabled={loading}
+                  startIcon={loading && <CircularProgress size={20} color="inherit" />}
+                >
+                  {loading ? "Processing..." : "Confirm & Disburse"}
+                </Button>
+              )}
+            </Box>
+          </Box>
         </DialogContent>
       </Dialog>
     </LocalizationProvider>

@@ -4,7 +4,6 @@ import { useFirestore } from '../contexts/FirestoreProvider';
 import {
   Box,  Typography,
   Paper,
-  CircularProgress,
   TextField,
   InputAdornment,
   Stack,
@@ -29,6 +28,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Skeleton,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import { useSnackbar } from '../components/SnackbarProvider';
@@ -222,6 +222,31 @@ const BorrowerCard = React.memo(({
   );
 });
 
+const BorrowerSkeleton = () => (
+  <Grid container spacing={2}>
+    {[1, 2, 3, 4, 5, 6].map((i) => (
+      <Grid item xs={12} sm={6} md={4} key={i}>
+        <Card sx={{ height: '100%', p: 2 }}>
+          <Stack direction="row" spacing={2} alignItems="center" mb={2}>
+            <Skeleton variant="circular" width={48} height={48} />
+            <Box sx={{ flexGrow: 1 }}>
+              <Skeleton variant="text" width="60%" height={24} />
+              <Skeleton variant="text" width="40%" height={16} />
+            </Box>
+          </Stack>
+          <Skeleton variant="text" width="30%" height={16} sx={{ mb: 0.5 }} />
+          <Skeleton variant="rectangular" width="100%" height={8} sx={{ borderRadius: 4, mb: 1 }} />
+          <Skeleton variant="text" width="50%" height={20} />
+          <Divider sx={{ my: 2 }} />
+          <Stack direction="row" justifyContent="space-around">
+            {[1, 2, 3, 4].map(j => <Skeleton key={j} variant="circular" width={32} height={32} />)}
+          </Stack>
+        </Card>
+      </Grid>
+    ))}
+  </Grid>
+);
+
 export default function BorrowerListPage() {
   const { borrowers, loading, loans, addComment } = useFirestore();
   const navigate = useNavigate();
@@ -369,10 +394,6 @@ export default function BorrowerListPage() {
     });
   }, [borrowers, loansByBorrower, debouncedSearchTerm, showActiveLoans, showOverdueLoans, showHighRisk]);
 
-
-
-
-
   return (
     <Paper
       elevation={4}
@@ -387,17 +408,21 @@ export default function BorrowerListPage() {
     >
       {/* Summary Section (NEW) */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid xs={12} sm={6}> {/* Adjusted to sm={6} for better layout with 2 items */}
-          <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
-            <Typography variant="h6" color="text.secondary">Total Borrowers</Typography>
-            <Typography variant="h4" fontWeight="bold">{summaryStats.totalBorrowers}</Typography>
-          </Paper>
+        <Grid item xs={12} sm={6}>
+          {loading ? <Skeleton variant="rectangular" height={80} sx={{ borderRadius: 2 }} /> : (
+            <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
+              <Typography variant="h6" color="text.secondary">Total Borrowers</Typography>
+              <Typography variant="h4" fontWeight="bold">{summaryStats.totalBorrowers}</Typography>
+            </Paper>
+          )}
         </Grid>
-        <Grid xs={12} sm={6}> {/* Adjusted to sm={6} for better layout with 2 items */}
-          <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
-            <Typography variant="h6" color="text.secondary">Overdue Borrowers</Typography>
-            <Typography variant="h4" fontWeight="bold" color="error.main">{summaryStats.borrowersWithOverdueLoansCount}</Typography>
-          </Paper>
+        <Grid item xs={12} sm={6}>
+          {loading ? <Skeleton variant="rectangular" height={80} sx={{ borderRadius: 2 }} /> : (
+            <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
+              <Typography variant="h6" color="text.secondary">Overdue Borrowers</Typography>
+              <Typography variant="h4" fontWeight="bold" color="error.main">{summaryStats.borrowersWithOverdueLoansCount}</Typography>
+            </Paper>
+          )}
         </Grid>
       </Grid>
       {/* End Summary Section */}
@@ -456,9 +481,7 @@ export default function BorrowerListPage() {
         </Stack>
 
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-          <CircularProgress color="secondary" />
-        </Box>
+        <BorrowerSkeleton />
       ) : sortedAndFilteredBorrowers.length > 0 ? (
         <Grid container spacing={2}>
           {sortedAndFilteredBorrowers.map((borrower) => (
