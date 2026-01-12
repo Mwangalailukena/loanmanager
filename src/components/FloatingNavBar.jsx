@@ -15,6 +15,8 @@ import {
   Dialog,
   Popover,
   Fade,
+  Badge,
+  Chip,
 } from "@mui/material";
 import { alpha, keyframes } from "@mui/material/styles";
 import {
@@ -32,6 +34,12 @@ import {
   People as PeopleIcon,
   Receipt as ReceiptIcon,
   Calculate as CalculateIcon,
+  WhatsApp as WhatsAppIcon,
+  Snooze as SnoozeIcon,
+  Payments as PaymentsIcon,
+  WarningAmber as WarningIcon,
+  ErrorOutline as ErrorIcon,
+  NotificationsNone as NotificationsNoneIcon,
 } from "@mui/icons-material";
 import { useLocation, useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
@@ -39,6 +47,8 @@ import { auth } from "../firebase";
 import { useAuth } from "../contexts/AuthProvider";
 import { useSearch } from "../contexts/SearchContext";
 import { useNotifications } from "../hooks/useNotifications";
+import { generateWhatsAppLink } from "../utils/whatsapp";
+import { motion, AnimatePresence } from "framer-motion";
 
 import SettingsPage from "../pages/SettingsPage";
 import SearchResults from "./SearchResults";
@@ -52,9 +62,9 @@ function stringToInitials(name = "") {
 }
 
 const pulse = keyframes`
-  0% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-  100% { transform: scale(1); }
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(211, 47, 47, 0.4); }
+  70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(211, 47, 47, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(211, 47, 47, 0); }
 `;
 
 const FloatingNavBar = ({ darkMode, onToggleDarkMode, onOpenAddLoan, onOpenAddPayment, onOpenAddBorrower, onOpenLoanSimulator }) => {
@@ -67,6 +77,7 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode, onOpenAddLoan, onOpenAddPa
     unreadNotifications,
     markAsRead,
     markAllAsRead,
+    snoozeNotification,
   } = useNotifications();
 
   // Consume search context
@@ -129,6 +140,8 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode, onOpenAddLoan, onOpenAddPa
     openLoanDetail(loanId);
     markAsRead(notificationId);
   };
+
+  const hasCritical = unreadNotifications.some(n => n.type === 'overdue' || n.type === 'urgent');
 
   return (
     <>
@@ -221,23 +234,23 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode, onOpenAddLoan, onOpenAddPa
 
           {/* Notifications Button */}
           <Tooltip title="Notifications">
-            <IconButton onClick={(e) => setNotificationAnchor(e.currentTarget)} sx={{ mx: 0.5, borderRadius: "50%", p: 1, position: "relative", transition: "all 0.2s ease-in-out", "&:hover": { transform: "scale(1.1)" } }}>
-              <NotificationsIcon sx={{ color: theme.palette.text.secondary }} />
-              {unreadNotifications.length > 0 && (
-                <Box
-                  component="span"
-                  sx={{
-                    position: "absolute",
-                    top: 6,
-                    right: 6,
-                    width: 8,
-                    height: 8,
-                    borderRadius: "50%",
-                    bgcolor: "error.main",
-                    animation: `${pulse} 1.5s infinite`,
-                  }}
-                />
-              )}
+            <IconButton 
+              onClick={(e) => setNotificationAnchor(e.currentTarget)} 
+              sx={{ 
+                mx: 0.5, 
+                borderRadius: "50%", 
+                p: 1, 
+                position: "relative", 
+                transition: "all 0.2s ease-in-out", 
+                "&:hover": { transform: "scale(1.1)" },
+                ...(hasCritical && {
+                  animation: `${pulse} 2s infinite ease-in-out`
+                })
+              }}
+            >
+              <Badge badgeContent={unreadNotifications.length} color="error">
+                <NotificationsIcon sx={{ color: theme.palette.text.secondary }} />
+              </Badge>
             </IconButton>
           </Tooltip>
 
@@ -321,31 +334,145 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode, onOpenAddLoan, onOpenAddPa
         TransitionComponent={Fade}
         PaperProps={{
           sx: {
-            width: 320,
-            p: 1,
+            width: 380,
+            maxHeight: 500,
+            p: 0,
             borderRadius: 4, 
             backdropFilter: 'blur(18px) saturate(180%)', 
-            backgroundColor: alpha(theme.palette.background.paper, 0.9), 
+            backgroundColor: alpha(theme.palette.background.paper, 0.95), 
             border: '1px solid ' + alpha(theme.palette.divider, 0.1),
-            boxShadow: '0 8px 32px rgba(0,0,0,0.08)', 
+            boxShadow: '0 8px 32px rgba(0,0,0,0.12)', 
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
           },
         }}
       >
-        <Box sx={{ p: 2 }}>
-          <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>Notifications</Typography>
-          {unreadNotifications.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">No new notifications.</Typography>
-          ) : (
-            unreadNotifications.map(({ id, message, loanId, severity }) => (
-              <MenuItem key={id} onClick={() => handleNotificationItemClick(id, loanId)} sx={{ borderRadius: 2, mb: 0.5, whiteSpace: 'normal', borderLeft: `4px solid ${severity === 'error' ? theme.palette.error.main : theme.palette.warning.main}` }}>
-                <Typography variant="body2">{message}</Typography>
-              </MenuItem>
-            ))
+        <Box sx={{ p: 2, pb: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
+          <Typography variant="h6" sx={{ fontWeight: 800, fontSize: '1rem' }}>Alert Center</Typography>
+          {unreadNotifications.length > 0 && (
+            <Chip 
+              label={`${unreadNotifications.length} New`} 
+              color="error" 
+              size="small" 
+              sx={{ fontWeight: 700, height: 20, fontSize: '0.65rem' }} 
+            />
           )}
-          <Button onClick={markAllAsRead} color="primary" variant="text" sx={{ textTransform: 'none', mt: 1, width: '100%', borderRadius: 2 }}>
-              Mark all as read
-          </Button>
         </Box>
+
+        <Box sx={{ overflowY: 'auto', flexGrow: 1, p: 1 }}>
+          <AnimatePresence initial={false}>
+            {unreadNotifications.length === 0 ? (
+              <Box 
+                component={motion.div}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                sx={{ py: 6, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}
+              >
+                <NotificationsNoneIcon sx={{ fontSize: 48, color: 'text.disabled', opacity: 0.5 }} />
+                <Typography variant="body2" color="text.secondary">All caught up!</Typography>
+              </Box>
+            ) : (
+              unreadNotifications.map((note) => (
+                <MenuItem 
+                  key={note.id} 
+                  component={motion.div}
+                  layout
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  onClick={() => handleNotificationItemClick(note.id, note.loanId)} 
+                  sx={{ 
+                    borderRadius: 3, 
+                    mb: 1, 
+                    p: 1.5,
+                    whiteSpace: 'normal', 
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    gap: 1,
+                    borderLeft: `4px solid ${note.severity === 'error' ? theme.palette.error.main : theme.palette.warning.main}`,
+                    bgcolor: (theme) => alpha(note.severity === 'error' ? theme.palette.error.main : theme.palette.warning.main, 0.04),
+                    '&:hover': {
+                      bgcolor: (theme) => alpha(note.severity === 'error' ? theme.palette.error.main : theme.palette.warning.main, 0.08),
+                    }
+                  }}
+                >
+                  <Box sx={{ display: 'flex', width: '100%', gap: 1.5 }}>
+                    <Avatar sx={{ bgcolor: alpha(note.severity === 'error' ? theme.palette.error.main : theme.palette.warning.main, 0.1), color: note.severity === 'error' ? 'error.main' : 'warning.main', width: 32, height: 32 }}>
+                      {note.type === 'overdue' ? <ErrorIcon fontSize="small" /> : <WarningIcon fontSize="small" />}
+                    </Avatar>
+                    <Box sx={{ flexGrow: 1 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: '0.85rem', lineHeight: 1.2 }}>
+                          {note.borrowerName}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                          {note.fullDate.fromNow()}
+                        </Typography>
+                      </Box>
+                      <Typography variant="body2" sx={{ fontSize: '0.8rem', mt: 0.5, color: 'text.primary' }}>
+                        {note.message}
+                      </Typography>
+                    </Box>
+                  </Box>
+
+                  <Box sx={{ display: 'flex', gap: 1, width: '100%', mt: 0.5 }}>
+                    <Tooltip title="Message on WhatsApp">
+                      <IconButton 
+                        size="small" 
+                        sx={{ bgcolor: alpha('#25D366', 0.1), color: '#25D366', '&:hover': { bgcolor: alpha('#25D366', 0.2) } }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(generateWhatsAppLink(note.borrowerPhone, `Hi ${note.borrowerName}, just a reminder about your loan payment of ZMW ${note.amount.toLocaleString()} due on ${note.fullDate.format('MMM DD')}.`), '_blank');
+                        }}
+                      >
+                        <WhatsAppIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Snooze 24h">
+                      <IconButton 
+                        size="small" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          snoozeNotification(note.loanId);
+                        }}
+                      >
+                        <SnoozeIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </Tooltip>
+                    <Button 
+                      size="small" 
+                      startIcon={<PaymentsIcon sx={{ fontSize: 14 }} />}
+                      sx={{ ml: 'auto', textTransform: 'none', fontSize: '0.7rem', fontWeight: 700, borderRadius: 1.5 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openLoanDetail(note.loanId);
+                        markAsRead(note.id);
+                      }}
+                    >
+                      Process Payment
+                    </Button>
+                  </Box>
+                </MenuItem>
+              ))
+            )}
+          </AnimatePresence>
+        </Box>
+
+        {unreadNotifications.length > 0 && (
+          <Box sx={{ p: 1.5, borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`, display: 'flex', gap: 1 }}>
+            <Button 
+              fullWidth 
+              size="small"
+              variant="contained" 
+              onClick={markAllAsRead}
+              sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2, boxShadow: 'none' }}
+            >
+              Mark all as read
+            </Button>
+          </Box>
+        )}
       </Popover>
 
       <Dialog

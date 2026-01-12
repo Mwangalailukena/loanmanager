@@ -18,7 +18,7 @@ import {
   Button,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   LogoutRounded as Logout,
   SettingsRounded as SettingsIcon,
@@ -37,6 +37,11 @@ import {
   ChevronRightRounded as ChevronRightIcon,
   PersonAddRounded as PersonAddIcon,
   NotificationsRounded as NotificationsIcon,
+  WhatsApp as WhatsAppIcon,
+  Snooze as SnoozeIcon,
+  Payments as PaymentsIcon,
+  ErrorOutline as ErrorIcon,
+  WarningAmber as WarningIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
@@ -46,6 +51,7 @@ import { useAuth } from '../contexts/AuthProvider';
 import SettingsPage from "../pages/SettingsPage";
 import { useNotifications } from '../hooks/useNotifications';
 import { useSearch } from '../contexts/SearchContext';
+import { generateWhatsAppLink } from "../utils/whatsapp";
 
 // --- Animation Variants for Framer Motion ---
 
@@ -87,7 +93,7 @@ const MobileDrawer = ({
   const theme = useTheme();
   const { currentUser } = useAuth();
   const { openLoanDetail } = useSearch();
-  const { unreadNotifications, markAsRead, markAllAsRead } = useNotifications();
+  const { unreadNotifications, markAsRead, markAllAsRead, snoozeNotification } = useNotifications();
   
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -301,43 +307,100 @@ const MobileDrawer = ({
             </Box>
           ) : (
             <List>
-              {unreadNotifications.map((note) => (
-                <ListItem 
-                  key={note.id} 
-                  disablePadding 
-                  sx={{ 
-                    mb: 1, 
-                    borderRadius: 2, 
-                    bgcolor: alpha(note.severity === 'error' ? theme.palette.error.main : theme.palette.warning.main, 0.05),
-                    borderLeft: `4px solid ${note.severity === 'error' ? theme.palette.error.main : theme.palette.warning.main}`
-                  }}
-                >
-                  <ListItemButton 
-                    onClick={() => {
-                      openLoanDetail(note.loanId);
-                      markAsRead(note.id);
-                      closeAllDialogs();
-                      onClose();
+              <AnimatePresence initial={false}>
+                {unreadNotifications.map((note) => (
+                  <ListItem 
+                    key={note.id} 
+                    component={motion.div}
+                    layout
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    disablePadding 
+                    sx={{ 
+                      mb: 1.5, 
+                      borderRadius: 3, 
+                      display: 'flex',
+                      flexDirection: 'column',
+                      bgcolor: alpha(note.severity === 'error' ? theme.palette.error.main : theme.palette.warning.main, 0.05),
+                      borderLeft: `4px solid ${note.severity === 'error' ? theme.palette.error.main : theme.palette.warning.main}`
                     }}
-                    sx={{ borderRadius: 2 }}
                   >
-                    <ListItemText 
-                      primary={note.message} 
-                      primaryTypographyProps={{ fontSize: '0.85rem', fontWeight: 600 }}
-                      secondary={dayjs(note.date).format('MMM DD, YYYY')}
-                      secondaryTypographyProps={{ fontSize: '0.75rem' }}
-                    />
-                  </ListItemButton>
-                </ListItem>
-              ))}
+                    <ListItemButton 
+                      onClick={() => {
+                        openLoanDetail(note.loanId);
+                        markAsRead(note.id);
+                        closeAllDialogs();
+                        onClose();
+                      }}
+                      sx={{ borderRadius: '12px 12px 0 0', alignItems: 'flex-start', pt: 2 }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 40, mt: 0.5 }}>
+                        {note.type === 'overdue' ? <ErrorIcon color="error" /> : <WarningIcon color="warning" />}
+                      </ListItemIcon>
+                      <ListItemText 
+                        primary={note.borrowerName} 
+                        primaryTypographyProps={{ fontSize: '0.9rem', fontWeight: 700 }}
+                        secondary={
+                          <Box component="span" sx={{ display: 'block', mt: 0.5 }}>
+                            <Typography variant="body2" component="span" sx={{ fontSize: '0.8rem', color: 'text.primary', display: 'block', mb: 0.5 }}>
+                              {note.message}
+                            </Typography>
+                            <Typography variant="caption" component="span" color="text.secondary">
+                              {dayjs(note.date).fromNow()}
+                            </Typography>
+                          </Box>
+                        }
+                      />
+                    </ListItemButton>
+                    
+                    <Box sx={{ p: 1, pt: 0, display: 'flex', gap: 1, width: '100%', justifyContent: 'flex-end' }}>
+                      <IconButton 
+                        size="small" 
+                        sx={{ color: '#25D366' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(generateWhatsAppLink(note.borrowerPhone, `Hi ${note.borrowerName}, reminder about your loan due on ${dayjs(note.date).format('MMM DD')}.`), '_blank');
+                        }}
+                      >
+                        <WhatsAppIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton 
+                        size="small" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          snoozeNotification(note.loanId);
+                        }}
+                      >
+                        <SnoozeIcon fontSize="small" />
+                      </IconButton>
+                      <Button 
+                        size="small" 
+                        variant="text" 
+                        startIcon={<PaymentsIcon fontSize="small" />}
+                        sx={{ textTransform: 'none', fontWeight: 700, fontSize: '0.75rem' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openLoanDetail(note.loanId);
+                          markAsRead(note.id);
+                          closeAllDialogs();
+                          onClose();
+                        }}
+                      >
+                        Payment
+                      </Button>
+                    </Box>
+                  </ListItem>
+                ))}
+              </AnimatePresence>
             </List>
           )}
           {unreadNotifications.length > 0 && (
             <Button 
               fullWidth 
-              variant="outlined" 
+              variant="contained" 
               onClick={markAllAsRead}
-              sx={{ mt: 2, borderRadius: 2, textTransform: 'none' }}
+              sx={{ mt: 2, borderRadius: 2, textTransform: 'none', fontWeight: 700, boxShadow: 'none' }}
             >
               Mark all as read
             </Button>

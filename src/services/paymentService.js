@@ -10,14 +10,22 @@ export const addPayment = async (db, loanId, amount, currentUser) => {
     const loanSnap = await transaction.get(loanRef);
     if (!loanSnap.exists()) throw new Error("Loan not found");
 
-    const newRepaidAmount = (loanSnap.data().repaidAmount || 0) + amount;
+    const loanData = loanSnap.data();
+    const newRepaidAmount = (loanData.repaidAmount || 0) + amount;
+    const isFullyPaid = newRepaidAmount >= (loanData.totalRepayable || 0);
+    
     const paymentDocRef = doc(collection(db, "payments"));
     paymentDocId = paymentDocRef.id;
 
     transaction.set(paymentDocRef, {
       loanId, amount, userId: currentUser.uid, date: serverTimestamp(), createdAt: serverTimestamp()
     });
-    transaction.update(loanRef, { repaidAmount: newRepaidAmount, updatedAt: serverTimestamp() });
+    
+    transaction.update(loanRef, { 
+      repaidAmount: newRepaidAmount, 
+      status: isFullyPaid ? 'Paid' : loanData.status,
+      updatedAt: serverTimestamp() 
+    });
   });
 
   await addActivityLog(db, {
