@@ -15,6 +15,7 @@ import {
   Dialog,
   ListSubheader,
   Tooltip,
+  Button,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import { motion } from 'framer-motion';
@@ -35,12 +36,16 @@ import {
   ChevronLeftRounded as ChevronLeftIcon,
   ChevronRightRounded as ChevronRightIcon,
   PersonAddRounded as PersonAddIcon,
+  NotificationsRounded as NotificationsIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
+import dayjs from 'dayjs';
 import { auth } from '../firebase';
 import { useAuth } from '../contexts/AuthProvider';
 import SettingsPage from "../pages/SettingsPage";
+import { useNotifications } from '../hooks/useNotifications';
+import { useSearch } from '../contexts/SearchContext';
 
 // --- Animation Variants for Framer Motion ---
 
@@ -81,8 +86,11 @@ const MobileDrawer = ({
   const { pathname } = useLocation();
   const theme = useTheme();
   const { currentUser } = useAuth();
+  const { openLoanDetail } = useSearch();
+  const { unreadNotifications, markAsRead, markAllAsRead } = useNotifications();
   
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   const handleLogout = () => {
     signOut(auth).then(() => navigate('/login'));
@@ -90,6 +98,7 @@ const MobileDrawer = ({
 
   const closeAllDialogs = () => {
     setSettingsOpen(false);
+    setNotificationsOpen(false);
   };
 
 
@@ -110,6 +119,14 @@ const MobileDrawer = ({
   ];
 
   const accountItems = [
+    { text: 'Notifications', icon: (
+      <Box sx={{ position: 'relative' }}>
+        <NotificationsIcon />
+        {unreadNotifications.length > 0 && (
+          <Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, bgcolor: 'error.main', borderRadius: '50%', border: `2px solid ${theme.palette.background.paper}` }} />
+        )}
+      </Box>
+    ), onClick: () => { setNotificationsOpen(true); } },
     { text: 'Settings', icon: <SettingsIcon />, onClick: () => { onClose(); setSettingsOpen(true); } },
   ];
 
@@ -271,6 +288,62 @@ const MobileDrawer = ({
       </Drawer>
 
       <Dialog open={settingsOpen} onClose={closeAllDialogs} maxWidth="sm" fullWidth><SettingsPage onClose={closeAllDialogs} /></Dialog>
+      <Dialog open={notificationsOpen} onClose={closeAllDialogs} maxWidth="sm" fullWidth>
+        <Box sx={{ p: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6" fontWeight="bold">Notifications</Typography>
+            <IconButton onClick={closeAllDialogs} size="small"><CloseIcon /></IconButton>
+          </Box>
+          <Divider sx={{ mb: 2 }} />
+          {unreadNotifications.length === 0 ? (
+            <Box sx={{ py: 4, textAlign: 'center' }}>
+              <Typography variant="body2" color="text.secondary">No new notifications.</Typography>
+            </Box>
+          ) : (
+            <List>
+              {unreadNotifications.map((note) => (
+                <ListItem 
+                  key={note.id} 
+                  disablePadding 
+                  sx={{ 
+                    mb: 1, 
+                    borderRadius: 2, 
+                    bgcolor: alpha(note.severity === 'error' ? theme.palette.error.main : theme.palette.warning.main, 0.05),
+                    borderLeft: `4px solid ${note.severity === 'error' ? theme.palette.error.main : theme.palette.warning.main}`
+                  }}
+                >
+                  <ListItemButton 
+                    onClick={() => {
+                      openLoanDetail(note.loanId);
+                      markAsRead(note.id);
+                      closeAllDialogs();
+                      onClose();
+                    }}
+                    sx={{ borderRadius: 2 }}
+                  >
+                    <ListItemText 
+                      primary={note.message} 
+                      primaryTypographyProps={{ fontSize: '0.85rem', fontWeight: 600 }}
+                      secondary={dayjs(note.date).format('MMM DD, YYYY')}
+                      secondaryTypographyProps={{ fontSize: '0.75rem' }}
+                    />
+                  </ListItemButton>
+                </ListItem>
+              ))}
+            </List>
+          )}
+          {unreadNotifications.length > 0 && (
+            <Button 
+              fullWidth 
+              variant="outlined" 
+              onClick={markAllAsRead}
+              sx={{ mt: 2, borderRadius: 2, textTransform: 'none' }}
+            >
+              Mark all as read
+            </Button>
+          )}
+        </Box>
+      </Dialog>
     </>
   );
 };

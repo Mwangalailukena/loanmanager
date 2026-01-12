@@ -30,16 +30,15 @@ import {
   LightMode as LightModeIcon,
   DarkMode as DarkModeIcon,
   People as PeopleIcon,
-  Receipt as ReceiptIcon, // New: Import ReceiptIcon for Expenses
+  Receipt as ReceiptIcon,
   Calculate as CalculateIcon,
 } from "@mui/icons-material";
 import { useLocation, useNavigate } from "react-router-dom";
-import dayjs from "dayjs";
 import { signOut } from "firebase/auth";
 import { auth } from "../firebase";
 import { useAuth } from "../contexts/AuthProvider";
-import { useFirestore } from "../contexts/FirestoreProvider";
-import { useSearch } from "../contexts/SearchContext"; // Add useSearch
+import { useSearch } from "../contexts/SearchContext";
+import { useNotifications } from "../hooks/useNotifications";
 
 import SettingsPage from "../pages/SettingsPage";
 import SearchResults from "./SearchResults";
@@ -63,7 +62,12 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode, onOpenAddLoan, onOpenAddPa
   const location = useLocation();
   const theme = useTheme();
   const { currentUser } = useAuth();
-  const { loans, borrowers } = useFirestore();
+
+  const {
+    unreadNotifications,
+    markAsRead,
+    markAllAsRead,
+  } = useNotifications();
 
   // Consume search context
   const {
@@ -74,15 +78,6 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode, onOpenAddLoan, onOpenAddPa
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [notificationAnchor, setNotificationAnchor] = useState(null);
-  const [readNotifications, setReadNotifications] = useState(() => {
-    try {
-      const saved = localStorage.getItem("readNotifications");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-  const [allNotifications, setAllNotifications] = useState([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [barVisible, setBarVisible] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -101,7 +96,7 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode, onOpenAddLoan, onOpenAddPa
         if (searchInputRef.current) {
           searchInputRef.current.focus();
         }
-      }, 100); // A small delay to ensure the element is in the DOM
+      }, 100); 
     }
   }, [isSearchOpen]);
 
@@ -118,31 +113,6 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode, onOpenAddLoan, onOpenAddPa
     { text: "Activity", icon: <HistoryIcon />, path: "/activity" },
   ];
 
-  useEffect(() => {
-    if (!loans || !borrowers) return;
-    const now = dayjs();
-    const notes = [];
-    
-    loans.forEach(loan => {
-      if (loan.status === "Paid") return;
-
-      // Find the borrower for the current loan
-      const borrower = borrowers.find(b => b.id === loan.borrowerId);
-      const borrowerName = borrower ? borrower.name : "A borrower";
-
-      const dueDate = dayjs(loan.dueDate);
-      const diffInDays = dueDate.diff(now, "day");
-      if (diffInDays < 3 && diffInDays >= 0) {
-        notes.push({ id: `${loan.id}-upcoming`, message: `Loan for ${borrowerName} is due on ${dueDate.format("MMM D")}.`, loanId: loan.id, isOverdue: false, });
-      } else if (dueDate.isBefore(now, "day")) {
-        notes.push({ id: `${loan.id}-overdue`, message: `Loan for ${borrowerName} is overdue!`, loanId: loan.id, isOverdue: true, });
-      }
-    });
-    setAllNotifications(notes);
-  }, [loans, borrowers]);
-
-  const unreadNotifications = allNotifications.filter((note) => !readNotifications.includes(note.id));
-
   const handleLogout = () => {
     signOut(auth).then(() => navigate("/login"));
   };
@@ -157,11 +127,7 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode, onOpenAddLoan, onOpenAddPa
   };
   const handleNotificationItemClick = (notificationId, loanId) => {
     openLoanDetail(loanId);
-    setReadNotifications((prev) => [...prev, notificationId]);
-  };
-  const handleMarkAllAsRead = () => {
-    setReadNotifications(allNotifications.map(n => n.id));
-    localStorage.setItem("readNotifications", JSON.stringify(allNotifications.map(n => n.id)));
+    markAsRead(notificationId);
   };
 
   return (
@@ -177,13 +143,13 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode, onOpenAddLoan, onOpenAddPa
           alignItems: "center",
           width: "fit-content",
           maxWidth: "90%",
-          borderRadius: 20, // Increased border radius
-          backdropFilter: "blur(18px) saturate(180%)", // Slightly increased blur
-          backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.5 : 0.7), // Reduced opacity
-          border: "1px solid " + (theme.palette.mode === 'dark' ? alpha(theme.palette.common.white, 0.05) : alpha(theme.palette.common.black, 0.03)), // Subtler border
+          borderRadius: 20, 
+          backdropFilter: "blur(18px) saturate(180%)", 
+          backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.5 : 0.7), 
+          border: "1px solid " + (theme.palette.mode === 'dark' ? alpha(theme.palette.common.white, 0.05) : alpha(theme.palette.common.black, 0.03)), 
           boxShadow: theme.palette.mode === 'dark' 
             ? "0 6px 24px rgba(0, 0, 0, 0.3)" 
-            : "0 6px 24px rgba(0, 0, 0, 0.03)", // Subtler shadow
+            : "0 6px 24px rgba(0, 0, 0, 0.03)", 
           zIndex: theme.zIndex.appBar + 1,
           transform: barVisible ? "translateY(0)" : "translateY(-100px)",
           opacity: barVisible ? 1 : 0,
@@ -197,7 +163,6 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode, onOpenAddLoan, onOpenAddPa
             alignItems: "center",
             p: 0.5,
             borderRadius: 12,
-            // Removed bgcolor for a cleaner look
           }}
         >
           {navItems.map((item) => {
@@ -211,8 +176,8 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode, onOpenAddLoan, onOpenAddPa
                   textTransform: "none",
                   color: isActive ? theme.palette.primary.main : theme.palette.text.secondary,
                   borderRadius: 10,
-                  px: 2.5, // Increased horizontal padding
-                  py: 1.2, // Increased vertical padding
+                  px: 2.5, 
+                  py: 1.2, 
                   fontWeight: 600,
                   transition: "all 0.2s ease-in-out",
                   "&:hover": {
@@ -241,14 +206,14 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode, onOpenAddLoan, onOpenAddPa
             size="small"
             variant="outlined"
             placeholder="Search loans..."
-            onChange={(e) => handleSearchChange(e.target.value)} // Use handleSearchChange from context
-            value={searchTerm} // Use searchTerm from context
+            onChange={(e) => handleSearchChange(e.target.value)} 
+            value={searchTerm} 
             autoFocus
             aria-label="Search loans, borrowers, and payments"
             sx={{
               ml: 1,
-              width: isSearchOpen ? 200 : 0, // Use isSearchOpen from context
-              opacity: isSearchOpen ? 1 : 0, // Use isSearchOpen from context
+              width: isSearchOpen ? 200 : 0, 
+              opacity: isSearchOpen ? 1 : 0, 
               transition: "width 0.3s ease-in-out, opacity 0.3s ease-in-out",
               overflow: "hidden",
             }}
@@ -306,11 +271,11 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode, onOpenAddLoan, onOpenAddPa
           elevation: 0,
           sx: {
             mt: 1.5,
-            borderRadius: 4, // Increased border radius
-            backdropFilter: 'blur(18px) saturate(180%)', // Increased blur
-            backgroundColor: alpha(theme.palette.background.paper, 0.9), // Slightly increased opacity
+            borderRadius: 4, 
+            backdropFilter: 'blur(18px) saturate(180%)', 
+            backgroundColor: alpha(theme.palette.background.paper, 0.9), 
             border: '1px solid ' + alpha(theme.palette.divider, 0.1),
-            boxShadow: '0 8px 32px rgba(0,0,0,0.08)', // Subtler shadow
+            boxShadow: '0 8px 32px rgba(0,0,0,0.08)', 
             minWidth: 200,
           },
         }}
@@ -358,11 +323,11 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode, onOpenAddLoan, onOpenAddPa
           sx: {
             width: 320,
             p: 1,
-            borderRadius: 4, // Increased border radius
-            backdropFilter: 'blur(18px) saturate(180%)', // Increased blur
-            backgroundColor: alpha(theme.palette.background.paper, 0.9), // Slightly increased opacity
+            borderRadius: 4, 
+            backdropFilter: 'blur(18px) saturate(180%)', 
+            backgroundColor: alpha(theme.palette.background.paper, 0.9), 
             border: '1px solid ' + alpha(theme.palette.divider, 0.1),
-            boxShadow: '0 8px 32px rgba(0,0,0,0.08)', // Subtler shadow
+            boxShadow: '0 8px 32px rgba(0,0,0,0.08)', 
           },
         }}
       >
@@ -371,13 +336,13 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode, onOpenAddLoan, onOpenAddPa
           {unreadNotifications.length === 0 ? (
             <Typography variant="body2" color="text.secondary">No new notifications.</Typography>
           ) : (
-            unreadNotifications.map(({ id, message, loanId }) => (
-              <MenuItem key={id} onClick={() => handleNotificationItemClick(id, loanId)} sx={{ borderRadius: 2, mb: 0.5, whiteSpace: 'normal' }}>
+            unreadNotifications.map(({ id, message, loanId, severity }) => (
+              <MenuItem key={id} onClick={() => handleNotificationItemClick(id, loanId)} sx={{ borderRadius: 2, mb: 0.5, whiteSpace: 'normal', borderLeft: `4px solid ${severity === 'error' ? theme.palette.error.main : theme.palette.warning.main}` }}>
                 <Typography variant="body2">{message}</Typography>
               </MenuItem>
             ))
           )}
-          <Button onClick={handleMarkAllAsRead} color="primary" variant="text" sx={{ textTransform: 'none', mt: 1, width: '100%', borderRadius: 2 }}>
+          <Button onClick={markAllAsRead} color="primary" variant="text" sx={{ textTransform: 'none', mt: 1, width: '100%', borderRadius: 2 }}>
               Mark all as read
           </Button>
         </Box>
