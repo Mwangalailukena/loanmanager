@@ -9,6 +9,9 @@ import {
   sendPasswordResetEmail,
   createUserWithEmailAndPassword,
   updateProfile,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
 } from 'firebase/auth';
 import app from '../firebase';
 
@@ -74,6 +77,9 @@ export const AuthProvider = ({ children }) => {
     resetPassword,
     logout,
     refreshUser,
+    setAuthPersistence: (type) => setPersistence(auth, type),
+    browserLocalPersistence,
+    browserSessionPersistence,
   };
 
   return (

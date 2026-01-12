@@ -31,6 +31,7 @@ import {
   DarkMode as DarkModeIcon,
   People as PeopleIcon,
   Receipt as ReceiptIcon, // New: Import ReceiptIcon for Expenses
+  Calculate as CalculateIcon,
 } from "@mui/icons-material";
 import { useLocation, useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
@@ -57,7 +58,7 @@ const pulse = keyframes`
   100% { transform: scale(1); }
 `;
 
-const FloatingNavBar = ({ darkMode, onToggleDarkMode, onOpenAddLoan, onOpenAddPayment, onOpenAddBorrower }) => {
+const FloatingNavBar = ({ darkMode, onToggleDarkMode, onOpenAddLoan, onOpenAddPayment, onOpenAddBorrower, onOpenLoanSimulator }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -146,6 +147,10 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode, onOpenAddLoan, onOpenAddPa
     signOut(auth).then(() => navigate("/login"));
   };
   const handleSettingsClick = () => setSettingsOpen(true);
+  const handleLoanSimulatorClick = () => {
+    onOpenLoanSimulator();
+    setAnchorEl(null);
+  }
   const closeNotifications = () => setNotificationAnchor(null);
   const closeAllDialogs = () => {
     setSettingsOpen(false);
@@ -323,6 +328,11 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode, onOpenAddLoan, onOpenAddPa
         <MenuItem onClick={handleSettingsClick} sx={{ mx: 1, borderRadius: 1.5, my: 0.7, py: 0.8 }}>
             <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
             Settings
+        </MenuItem>
+
+        <MenuItem onClick={handleLoanSimulatorClick} sx={{ mx: 1, borderRadius: 1.5, my: 0.7, py: 0.8 }}>
+            <ListItemIcon><CalculateIcon fontSize="small" /></ListItemIcon>
+            Simulator
         </MenuItem>
         
         <MenuItem onClick={onToggleDarkMode} sx={{ mx: 1, borderRadius: 1.5, my: 0.7, py: 0.8 }}>

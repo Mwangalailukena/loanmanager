@@ -25,7 +25,6 @@ const LazyBorrowerListPage = lazy(() => import('./pages/BorrowerListPage'));
 const LazyBorrowerProfilePage = lazy(() => import('./pages/BorrowerProfilePage'));
 const LazyEditBorrowerPage = lazy(() => import('./pages/EditBorrowerPage'));
 const LazyExpensesPage = lazy(() => import('./pages/ExpensesPage'));
-const LazyLoanSimulatorPage = lazy(() => import('./pages/LoanSimulatorPage'));
 
 function AppRoutes({ darkMode, onToggleDarkMode }) {
   const location = useLocation();
@@ -72,7 +71,6 @@ function AppRoutes({ darkMode, onToggleDarkMode }) {
               <Route path="/change-password" element={<ProtectedRoute><LazyChangePassword /></ProtectedRoute>} />
               <Route path="/reports" element={<ProtectedRoute><LazyReportsPage /></ProtectedRoute>} />
               <Route path="/expenses" element={<ProtectedRoute><LazyExpensesPage /></ProtectedRoute>} />
-              <Route path="/simulator" element={<ProtectedRoute><LazyLoanSimulatorPage /></ProtectedRoute>} />
 
               {/* Borrower Routes */}
               <Route path="/borrowers" element={<ProtectedRoute><LazyBorrowerListPage /></ProtectedRoute>} />

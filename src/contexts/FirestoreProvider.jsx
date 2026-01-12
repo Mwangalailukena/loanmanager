@@ -1,36 +1,35 @@
 // src/contexts/FirestoreProvider.js
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useMemo } from "react";
 import {
   collection,
   query,
   orderBy,
   onSnapshot,
-  addDoc,
-  updateDoc,
   doc,
-  deleteDoc,
   where,
-  serverTimestamp,
-  runTransaction,
-  getDocs, // Added getDocs
-  getDoc, // Added getDoc
-  deleteField,
-  limit, // Added limit import
+  limit, 
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "./AuthProvider";
 import { useSnackbar } from "../components/SnackbarProvider";
 import localforage from "localforage";
 import useOfflineStatus from "../hooks/useOfflineStatus";
-import dayjs from "dayjs";
-
+import * as loanService from "../services/loanService";
+import * as paymentService from "../services/paymentService";
+import * as borrowerService from "../services/borrowerService";
+import * as expenseService from "../services/expenseService";
+import * as guarantorService from "../services/guarantorService";
+import * as commentService from "../services/commentService";
+import * as settingsService from "../services/settingsService";
+import * as activityService from "../services/activityService";
+import * as userService from "../services/userService";
 
 const FirestoreContext = createContext();
 export const useFirestore = () => useContext(FirestoreContext);
 
 export function FirestoreProvider({ children }) {
-  const { currentUser, loading: authLoading } = useAuth(); // Destructure loading as authLoading
+  const { currentUser, loading: authLoading } = useAuth();
   const showSnackbar = useSnackbar();
   const isOnline = useOfflineStatus();
 
@@ -48,23 +47,10 @@ export function FirestoreProvider({ children }) {
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // --- Helpers ---
-  const addActivityLog = async (logEntry) => {
-    if (!currentUser) return;
-    await addDoc(collection(db, "activityLogs"), {
-      ...logEntry,
-      userId: currentUser.uid,
-      user: currentUser?.displayName || currentUser?.email || "System",
-      createdAt: serverTimestamp(),
-    });
-  };
-
   // --- Data Fetching (Real-time Listeners) ---
   useEffect(() => {
-    // Wait until auth is resolved, user is logged in, and online.
     if (authLoading || !currentUser || !isOnline) {
       setLoading(false);
-      // Clear data if user logs out or goes offline
       if (!currentUser || !isOnline) {
         setLoans([]);
         setPayments([]);
@@ -105,36 +91,33 @@ export function FirestoreProvider({ children }) {
       unsubscribes.push(unsub);
     });
 
-    // Settings are public, but we fetch them along with user data
     const settingsUnsub = onSnapshot(doc(db, "settings", "config"), (docSnap) => {
       if (docSnap.exists()) setSettings(docSnap.data());
     });
     unsubscribes.push(settingsUnsub);
 
-    setLoading(false); // Set loading to false after listeners are attached
+    setLoading(false);
     return () => unsubscribes.forEach((unsub) => unsub());
   }, [currentUser, authLoading, isOnline]);
   
   // --- On-Demand Fetching ---
-  const fetchActivityLogs = (limitCount = 100) => {
+  const fetchActivityLogs = React.useCallback((limitCount = 100) => {
     if (!currentUser) return () => {};
-    // Real-time listener for activity logs, but only when requested
     const q = query(
       collection(db, "activityLogs"),
       where("userId", "==", currentUser.uid),
       orderBy("createdAt", "desc"),
       limit(limitCount) 
     );
-    // Note: If you want to use 'limit', import it at the top. For now, fetching recent ones.
     
     const unsub = onSnapshot(q, (snap) => {
       const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setActivityLogs(data);
     }, (err) => console.error("Error fetching activity logs:", err));
     return unsub;
-  };
+  }, [currentUser]);
 
-  const fetchComments = (filters = {}) => {
+  const fetchComments = React.useCallback((filters = {}) => {
     if (!currentUser) return () => {};
     const constraints = [
       where("userId", "==", currentUser.uid),
@@ -151,126 +134,42 @@ export function FirestoreProvider({ children }) {
         setComments(data);
     }, (err) => console.error("Error fetching comments:", err));
     return unsub;
-  };
+  }, [currentUser]);
 
-  // --- Actions ---
-  const addBorrower = async (borrower) => {
-    try {
-      const docRef = await addDoc(collection(db, "borrowers"), {
-        ...borrower,
-        userId: currentUser.uid,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-      await addActivityLog({ 
-        type: "borrower_creation", 
-        description: `Borrower created: ${borrower.name}`,
-        relatedId: docRef.id,
-        undoable: true 
-      });
-      showSnackbar("Borrower added successfully!", "success");
-      return docRef;
-    } catch (error) {
-      showSnackbar("Failed to add borrower.", "error");
-      throw error;
-    }
-  };
-
-  const addLoan = async (loan) => {
-    try {
-      const docRef = await addDoc(collection(db, "loans"), { 
-        ...loan, 
-        userId: currentUser.uid, 
-        createdAt: serverTimestamp(), 
-        updatedAt: serverTimestamp() 
-      });
-      const borrowerName = borrowers.find(b => b.id === loan.borrowerId)?.name || "A borrower";
-      await addActivityLog({
-        type: "loan_creation",
-        description: `Loan added for borrower ${borrowerName}`,
-        relatedId: docRef.id,
-        undoable: true
-      });
-      showSnackbar("Loan added successfully!", "success");
-      return docRef;
-    } catch (error) {
-      showSnackbar("Failed to add loan.", "error");
-      throw error;
-    }
-  };
-
-  const addPayment = async (loanId, amount) => {
-    if (!currentUser) return;
-    const loanRef = doc(db, "loans", loanId);
-    try {
-      let paymentDocId;
-      await runTransaction(db, async (transaction) => {
-        const loanSnap = await transaction.get(loanRef);
-        if (!loanSnap.exists()) throw new Error("Loan not found");
-
-        const newRepaidAmount = (loanSnap.data().repaidAmount || 0) + amount;
-        const paymentDocRef = doc(collection(db, "payments"));
-        paymentDocId = paymentDocRef.id;
-
-        transaction.set(paymentDocRef, {
-          loanId, amount, userId: currentUser.uid, date: serverTimestamp(), createdAt: serverTimestamp()
-        });
-        transaction.update(loanRef, { repaidAmount: newRepaidAmount, updatedAt: serverTimestamp() });
-      });
-
-      await addActivityLog({
-        type: "payment_add",
-        description: `Payment of ZMW ${amount.toFixed(2)} added to loan ID ${loanId}`,
-        relatedId: paymentDocId,
-        loanId: loanId,
-        amount: amount,
-        undoable: true
-      });
-      showSnackbar("Payment added successfully!", "success");
-    } catch (error) {
-      showSnackbar("Failed to add payment.", "error");
-      throw error;
-    }
-  };
-
-  const updateSettings = async (newSettings) => {
-    if (!currentUser) return;
-    try {
-      await updateDoc(doc(db, "settings", "config"), {
-        ...newSettings,
-        updatedAt: serverTimestamp(),
-        userId: currentUser.uid,
-      });
-      await addActivityLog({ type: "settings_update", description: "Application settings updated" });
-      showSnackbar("Settings updated successfully!", "success");
-    } catch (error) {
-      showSnackbar("Failed to update settings.", "error");
-      throw error;
-    }
-  };
-
-  const value = {
+  const value = useMemo(() => ({
     loans, payments, borrowers, settings, activityLogs, comments, guarantors, expenses, loading,
-    addLoan, addPayment, updateSettings, addBorrower, fetchActivityLogs, fetchComments, 
-    updateBorrower: async (id, updates) => {
-      await updateDoc(doc(db, "borrowers", id), { ...updates, updatedAt: serverTimestamp() });
-      showSnackbar("Borrower updated!", "success");
+    fetchActivityLogs, fetchComments,
+
+    addActivityLog: async (logEntry) => {
+      try {
+        await activityService.addActivityLog(db, logEntry, currentUser);
+      } catch (error) {
+        console.error("Failed to add activity log", error);
+      }
+    },
+    updateActivityLog: async (id, updates) => {
+       try {
+         await activityService.updateActivityLog(db, id, updates, currentUser);
+       } catch (error) {
+         console.error("Error updating activity log:", error);
+         throw error;
+       }
+    },
+
+    // --- Loan Services ---
+    addLoan: async (loan) => {
+      try {
+        const res = await loanService.addLoan(db, loan, borrowers, currentUser);
+        showSnackbar("Loan added successfully!", "success");
+        return res;
+      } catch (error) {
+        showSnackbar("Failed to add loan.", "error");
+        throw error;
+      }
     },
     updateLoan: async (id, updates) => {
-      if (!currentUser) return;
       try {
-        const loanRef = doc(db, "loans", id);
-        const loanSnap = await getDoc(loanRef);
-        const previousData = loanSnap.exists() ? { ...loanSnap.data() } : null;
-
-        await updateDoc(loanRef, { ...updates, updatedAt: serverTimestamp() });
-        await addActivityLog({ 
-          type: "loan_update", 
-          description: `Loan ID ${id} updated`,
-          relatedId: id,
-          undoData: previousData,
-          undoable: !!previousData
-        });
+        await loanService.updateLoan(db, id, updates, currentUser);
         showSnackbar("Loan updated successfully!", "success");
       } catch (error) {
         showSnackbar("Failed to update loan.", "error");
@@ -278,111 +177,28 @@ export function FirestoreProvider({ children }) {
       }
     },
     deleteLoan: async (id) => {
-      if (!currentUser) return;
       try {
-        const loanRef = doc(db, "loans", id);
-        const loanSnap = await getDoc(loanRef);
-        const loanData = loanSnap.exists() ? { id: loanSnap.id, ...loanSnap.data() } : null;
-
-        await deleteDoc(loanRef);
-        await addActivityLog({ 
-          type: "loan_deletion", 
-          description: `Loan ID ${id} deleted`,
-          relatedId: id,
-          undoData: loanData,
-          undoable: !!loanData
-        });
+        await loanService.deleteLoan(db, id, currentUser);
         showSnackbar("Loan deleted successfully!", "info");
       } catch (error) {
         showSnackbar("Failed to delete loan.", "error");
         throw error;
       }
     },
-    getPaymentsByLoanId: async (loanId) => {
-      if (!currentUser) return [];
+    markLoanAsDefaulted: async (loanId) => {
       try {
-        const q = query(
-          collection(db, "payments"),
-          where("userId", "==", currentUser.uid),
-          where("loanId", "==", loanId)
-        );
-        const querySnapshot = await getDocs(q);
-        const payments = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        // Client-side sort by date ascending
-        return payments.sort((a, b) => {
-            const dateA = a.date?.seconds || 0;
-            const dateB = b.date?.seconds || 0;
-            return dateA - dateB;
-        });
+        await loanService.markLoanAsDefaulted(db, loanId, currentUser);
+        showSnackbar("Loan marked as defaulted!", "success");
       } catch (error) {
-        console.error("Error fetching payments by loan ID:", error);
-        showSnackbar("Failed to fetch payment history.", "error");
-        return [];
+        showSnackbar("Failed to mark loan as defaulted.", "error");
+        throw error;
       }
     },
     refinanceLoan: async (oldLoanId, newStartDate, newDueDate, newPrincipalAmount, newInterestDuration, manualInterestRate) => {
-      if (!currentUser) return;
-      const oldLoanRef = doc(db, "loans", oldLoanId);
-      let newLoanRefId = "";
-
       try {
-        await runTransaction(db, async (transaction) => {
-          const oldLoanSnap = await transaction.get(oldLoanRef);
-          if (!oldLoanSnap.exists()) {
-            throw new Error("Original loan not found for refinancing.");
-          }
-
-          const oldLoanData = oldLoanSnap.data();
-
-          const monthKey = newStartDate ? dayjs(newStartDate).format('YYYY-MM') : dayjs().format('YYYY-MM');
-          const monthlyRates = settings?.monthlySettings?.[monthKey]?.interestRates || settings.interestRates || { 1: 0.15, 2: 0.2, 3: 0.3, 4: 0.3 };
-
-          const interestRate = (manualInterestRate !== undefined && manualInterestRate !== null)
-            ? manualInterestRate
-            : (monthlyRates[newInterestDuration] || 0);
-          
-          const newInterest = newPrincipalAmount * interestRate;
-          const newTotalRepayable = newPrincipalAmount + newInterest;
-
-          // Create new loan document
-          const newLoanRef = doc(collection(db, "loans"));
-          newLoanRefId = newLoanRef.id;
-
-          const newLoan = {
-            borrowerId: oldLoanData.borrowerId, // Keep same borrower
-            principal: newPrincipalAmount,
-            interest: newInterest,
-            totalRepayable: newTotalRepayable,
-            repaidAmount: 0,
-            startDate: newStartDate,
-            dueDate: newDueDate,
-            interestDuration: newInterestDuration || null,
-            manualInterestRate: manualInterestRate || null,
-            status: "Active",
-            refinancedFromId: oldLoanId, // Link to old loan
-            userId: currentUser.uid,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          };
-          transaction.set(newLoanRef, newLoan);
-
-          // Update old loan to mark as refinanced
-          transaction.update(oldLoanRef, {
-            status: "Refinanced",
-            refinancedToId: newLoanRefId, // Link to new loan
-            updatedAt: serverTimestamp(),
-          });
-        });
-
-        await addActivityLog({
-          type: "loan_refinanced",
-          description: `Loan ID ${oldLoanId} refinanced to new loan ID ${newLoanRefId}`,
-          relatedId: newLoanRefId,
-          oldLoanId: oldLoanId,
-          undoable: true
-        });
+        const res = await loanService.refinanceLoan(db, oldLoanId, newStartDate, newDueDate, newPrincipalAmount, newInterestDuration, manualInterestRate, settings, currentUser);
         showSnackbar("Loan refinanced successfully!", "success");
-        return newLoanRefId;
+        return res;
       } catch (error) {
         console.error("Error refinancing loan:", error);
         showSnackbar(`Failed to refinance loan: ${error.message}`, "error");
@@ -390,45 +206,8 @@ export function FirestoreProvider({ children }) {
       }
     },
     topUpLoan: async (loanId, topUpAmount) => {
-      if (!currentUser) return;
-      const loanRef = doc(db, "loans", loanId);
-      let previousData = null;
-
       try {
-        await runTransaction(db, async (transaction) => {
-          const loanSnap = await transaction.get(loanRef);
-          if (!loanSnap.exists()) {
-            throw new Error("Loan not found for top-up.");
-          }
-
-          const loanData = loanSnap.data();
-          previousData = loanData;
-          const currentPrincipal = Number(loanData.principal || 0);
-          const currentInterest = Number(loanData.interest || 0);
-
-          // Calculate effective rate from existing loan to preserve the agreed rate
-          const effectiveRate = currentPrincipal > 0 ? (currentInterest / currentPrincipal) : 0;
-
-          const newPrincipal = currentPrincipal + topUpAmount;
-          const newInterest = newPrincipal * effectiveRate;
-          const newTotalRepayable = newPrincipal + newInterest;
-
-          transaction.update(loanRef, {
-            principal: newPrincipal,
-            interest: newInterest,
-            totalRepayable: newTotalRepayable,
-            // Keep repaidAmount the same, as top-up is not a payment
-            updatedAt: serverTimestamp(),
-          });
-        });
-
-        await addActivityLog({
-          type: "loan_top_up",
-          description: `Loan ID ${loanId} topped up by ZMW ${topUpAmount.toFixed(2)}`,
-          relatedId: loanId,
-          undoData: previousData,
-          undoable: true
-        });
+        await loanService.topUpLoan(db, loanId, topUpAmount, currentUser);
         showSnackbar("Loan topped up successfully!", "success");
       } catch (error) {
         console.error("Error topping up loan:", error);
@@ -436,195 +215,9 @@ export function FirestoreProvider({ children }) {
         throw error;
       }
     },
-    addExpense: async (expense) => {
-      if (!currentUser) return;
-      try {
-        const docRef = await addDoc(collection(db, "expenses"), {
-          ...expense,
-          userId: currentUser.uid,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-        await addActivityLog({ 
-          type: "expense_creation", 
-          description: `Expense added: ${expense.description}`,
-          relatedId: docRef.id,
-          undoable: true
-        });
-        showSnackbar("Expense added successfully!", "success");
-        return docRef.id;
-      } catch (error) {
-        showSnackbar("Failed to add expense.", "error");
-        throw error;
-      }
-    },
-    updateExpense: async (id, updates) => {
-      if (!currentUser) return;
-      try {
-        await updateDoc(doc(db, "expenses", id), { ...updates, updatedAt: serverTimestamp() });
-        await addActivityLog({ type: "expense_update", description: `Expense ID ${id} updated` });
-        showSnackbar("Expense updated successfully!", "success");
-      } catch (error) {
-        showSnackbar("Failed to update expense.", "error");
-        throw error;
-      }
-    },
-    deleteExpense: async (id) => {
-      if (!currentUser) return;
-      try {
-        const expenseRef = doc(db, "expenses", id);
-        const expenseSnap = await getDoc(expenseRef);
-        const expenseData = expenseSnap.exists() ? { id: expenseSnap.id, ...expenseSnap.data() } : null;
-
-        await deleteDoc(expenseRef);
-        await addActivityLog({ 
-          type: "expense_deletion", 
-          description: `Expense ID ${id} deleted`,
-          relatedId: id,
-          undoData: expenseData,
-          undoable: !!expenseData
-        });
-        showSnackbar("Expense deleted successfully!", "info");
-      } catch (error) {
-        showSnackbar("Failed to delete expense.", "error");
-        throw error;
-      }
-    },
-    addGuarantor: async (guarantor) => {
-      if (!currentUser) return;
-      try {
-        const docRef = await addDoc(collection(db, "guarantors"), {
-          ...guarantor,
-          userId: currentUser.uid,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-        await addActivityLog({ 
-          type: "guarantor_creation", 
-          description: `Guarantor added: ${guarantor.name}`,
-          relatedId: docRef.id,
-          undoable: true
-        });
-        showSnackbar("Guarantor added successfully!", "success");
-        return docRef.id;
-      } catch (error) {
-        showSnackbar("Failed to add guarantor.", "error");
-        throw error;
-      }
-    },
-    updateGuarantor: async (id, updates) => {
-      if (!currentUser) return;
-      try {
-        await updateDoc(doc(db, "guarantors", id), { ...updates, updatedAt: serverTimestamp() });
-        await addActivityLog({ type: "guarantor_update", description: `Guarantor ID ${id} updated` });
-        showSnackbar("Guarantor updated successfully!", "success");
-      } catch (error) {
-        showSnackbar("Failed to update guarantor.", "error");
-        throw error;
-      }
-    },
-    deleteGuarantor: async (id) => {
-      if (!currentUser) return;
-      try {
-        const guarantorRef = doc(db, "guarantors", id);
-        const guarantorSnap = await getDoc(guarantorRef);
-        const guarantorData = guarantorSnap.exists() ? { id: guarantorSnap.id, ...guarantorSnap.data() } : null;
-
-        await deleteDoc(guarantorRef);
-        await addActivityLog({ 
-          type: "guarantor_deletion", 
-          description: `Guarantor ID ${id} deleted`,
-          relatedId: id,
-          undoData: guarantorData,
-          undoable: !!guarantorData
-        });
-        showSnackbar("Guarantor deleted successfully!", "info");
-      } catch (error) {
-        showSnackbar("Failed to delete guarantor.", "error");
-        throw error;
-      }
-    },
-    addComment: async (comment) => {
-      if (!currentUser) return;
-      try {
-        const docRef = await addDoc(collection(db, "comments"), {
-          ...comment,
-          userId: currentUser.uid,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-        await addActivityLog({ 
-          type: "comment_creation", 
-          description: `Comment added by ${currentUser?.displayName || currentUser?.email}`,
-          relatedId: docRef.id,
-          undoable: true
-        });
-        showSnackbar("Comment added successfully!", "success");
-        return docRef.id;
-      } catch (error)
-      {
-        showSnackbar("Failed to add comment.", "error");
-        throw error;
-      }
-    },
-    deleteComment: async (id) => {
-      if (!currentUser) return;
-      try {
-        const commentRef = doc(db, "comments", id);
-        const commentSnap = await getDoc(commentRef);
-        const commentData = commentSnap.exists() ? { id: commentSnap.id, ...commentSnap.data() } : null;
-
-        await deleteDoc(commentRef);
-        await addActivityLog({ 
-          type: "comment_deletion", 
-          description: `Comment ID ${id} deleted`,
-          relatedId: id,
-          undoData: commentData,
-          undoable: !!commentData
-        });
-        showSnackbar("Comment deleted successfully!", "info");
-      } catch (error) {
-        showSnackbar("Failed to delete comment.", "error");
-        throw error;
-      }
-    },
-    markLoanAsDefaulted: async (loanId) => {
-      if (!currentUser) return;
-      try {
-        await updateDoc(doc(db, "loans", loanId), {
-          status: "Defaulted",
-          updatedAt: serverTimestamp(),
-        });
-        await addActivityLog({ type: "loan_defaulted", description: `Loan ID ${loanId} marked as defaulted` });
-        showSnackbar("Loan marked as defaulted!", "success");
-      } catch (error) {
-        showSnackbar("Failed to mark loan as defaulted.", "error");
-        throw error;
-      }
-    },
-    updateActivityLog: async (id, updates) => {
-      if (!currentUser) return;
-      try {
-        await updateDoc(doc(db, "activityLogs", id), { ...updates, updatedAt: serverTimestamp() });
-        // showSnackbar("Activity log updated!", "success"); // Logs usually don't need direct user feedback
-      } catch (error) {
-        console.error("Error updating activity log:", error);
-        // showSnackbar("Failed to update activity log.", "error");
-        throw error;
-      }
-    },
     undoLoanCreation: async (loanId, activityLogId) => {
-      if (!currentUser) return;
-      if (!loanId || !activityLogId) throw new Error("Invalid ID provided for undoLoanCreation");
       try {
-        await runTransaction(db, async (transaction) => {
-          const loanRef = doc(db, "loans", loanId);
-          const activityLogRef = doc(db, "activityLogs", activityLogId);
-
-          transaction.delete(loanRef);
-          transaction.delete(activityLogRef);
-        });
-        await addActivityLog({ type: "loan_creation_undo", description: `Undid creation of Loan ID ${loanId}` });
+        await loanService.undoLoanCreation(db, loanId, activityLogId, currentUser);
         showSnackbar("Loan creation undone!", "info");
       } catch (error) {
         console.error("Error undoing loan creation:", error);
@@ -632,51 +225,9 @@ export function FirestoreProvider({ children }) {
         throw error;
       }
     },
-    undoPayment: async (paymentId, loanId, paymentAmount, activityLogId) => {
-      if (!currentUser) return;
-      try {
-        await runTransaction(db, async (transaction) => {
-          const loanRef = doc(db, "loans", loanId);
-          const paymentRef = doc(db, "payments", paymentId);
-          const activityLogRef = doc(db, "activityLogs", activityLogId);
-
-          const loanSnap = await transaction.get(loanRef);
-          if (!loanSnap.exists()) throw new Error("Loan not found");
-
-          const currentRepaidAmount = (loanSnap.data().repaidAmount || 0);
-          const newRepaidAmount = Math.max(0, currentRepaidAmount - paymentAmount); // Ensure repaidAmount doesn't go below 0
-
-          transaction.update(loanRef, { repaidAmount: newRepaidAmount, updatedAt: serverTimestamp() });
-          transaction.delete(paymentRef);
-          transaction.delete(activityLogRef);
-        });
-        await addActivityLog({ type: "payment_undo", description: `Undid payment of ZMW ${paymentAmount.toFixed(2)} for Loan ID ${loanId}` });
-        showSnackbar("Payment undone successfully!", "info");
-      } catch (error) {
-        console.error("Error undoing payment:", error);
-        showSnackbar("Failed to undo payment.", "error");
-        throw error;
-      }
-    },
     undoRefinanceLoan: async (newLoanId, oldLoanId, activityLogId) => {
-      if (!currentUser) return;
       try {
-        await runTransaction(db, async (transaction) => {
-          const newLoanRef = doc(db, "loans", newLoanId);
-          const oldLoanRef = doc(db, "loans", oldLoanId);
-          const activityLogRef = doc(db, "activityLogs", activityLogId);
-
-          // Get old loan to restore its status
-          const oldLoanSnap = await transaction.get(oldLoanRef);
-          const oldLoanData = oldLoanSnap.data();
-
-          // Restore old loan's status (assuming 'Active' or previous status) and remove refinancedToId
-          // More robust would be to store original status in the log entry
-          transaction.update(oldLoanRef, { status: oldLoanData.status === "Refinanced" ? "Active" : oldLoanData.status, refinancedToId: deleteField(), updatedAt: serverTimestamp() });
-          transaction.delete(newLoanRef);
-          transaction.delete(activityLogRef);
-        });
-        await addActivityLog({ type: "loan_refinance_undo", description: `Undid refinance of Loan ID ${oldLoanId}` });
+        await loanService.undoRefinanceLoan(db, newLoanId, oldLoanId, activityLogId, currentUser);
         showSnackbar("Loan refinance undone!", "info");
       } catch (error) {
         console.error("Error undoing loan refinance:", error);
@@ -685,17 +236,8 @@ export function FirestoreProvider({ children }) {
       }
     },
     undoTopUpLoan: async (loanId, previousLoanData, activityLogId) => {
-      if (!currentUser) return;
       try {
-        await runTransaction(db, async (transaction) => {
-          const loanRef = doc(db, "loans", loanId);
-          const activityLogRef = doc(db, "activityLogs", activityLogId);
-
-          // Restore the loan to its pre-top-up state
-          transaction.set(loanRef, { ...previousLoanData, updatedAt: serverTimestamp() });
-          transaction.delete(activityLogRef);
-        });
-        await addActivityLog({ type: "loan_top_up_undo", description: `Undid top-up of Loan ID ${loanId}` });
+        await loanService.undoTopUpLoan(db, loanId, previousLoanData, activityLogId, currentUser);
         showSnackbar("Top-up undone successfully!", "info");
       } catch (error) {
         console.error("Error undoing loan top-up:", error);
@@ -704,16 +246,8 @@ export function FirestoreProvider({ children }) {
       }
     },
     undoDeleteLoan: async (loanData, activityLogId) => {
-      if (!currentUser) return;
       try {
-        await runTransaction(db, async (transaction) => {
-          const loanRef = doc(db, "loans", loanData.id); // Use loanData.id to restore the original ID
-          const activityLogRef = doc(db, "activityLogs", activityLogId);
-
-          transaction.set(loanRef, { ...loanData, updatedAt: serverTimestamp() }); // Restore the loan
-          transaction.delete(activityLogRef); // Delete the undo activity log
-        });
-        await addActivityLog({ type: "loan_delete_undo", description: `Undid deletion of Loan ID ${loanData.id}` });
+        await loanService.undoDeleteLoan(db, loanData, activityLogId, currentUser);
         showSnackbar("Loan deletion undone!", "info");
       } catch (error) {
         console.error("Error undoing loan deletion:", error);
@@ -722,17 +256,8 @@ export function FirestoreProvider({ children }) {
       }
     },
     undoUpdateLoan: async (loanId, previousLoanData, activityLogId) => {
-      if (!currentUser) return;
       try {
-        await runTransaction(db, async (transaction) => {
-          const loanRef = doc(db, "loans", loanId);
-          const activityLogRef = doc(db, "activityLogs", activityLogId);
-
-          // Restore the loan to its previous state
-          transaction.set(loanRef, { ...previousLoanData, updatedAt: serverTimestamp() }); // Use set to overwrite or update specific fields
-          transaction.delete(activityLogRef);
-        });
-        await addActivityLog({ type: "loan_update_undo", description: `Undid update of Loan ID ${loanId}` });
+        await loanService.undoUpdateLoan(db, loanId, previousLoanData, activityLogId, currentUser);
         showSnackbar("Loan update undone!", "info");
       } catch (error) {
         console.error("Error undoing loan update:", error);
@@ -740,16 +265,61 @@ export function FirestoreProvider({ children }) {
         throw error;
       }
     },
-    undoBorrowerCreation: async (borrowerId, activityLogId) => {
-      if (!currentUser) return;
+
+    // --- Payment Services ---
+    addPayment: async (loanId, amount) => {
       try {
-        await runTransaction(db, async (transaction) => {
-          const borrowerRef = doc(db, "borrowers", borrowerId);
-          const activityLogRef = doc(db, "activityLogs", activityLogId);
-          transaction.delete(borrowerRef);
-          transaction.delete(activityLogRef);
-        });
-        await addActivityLog({ type: "borrower_creation_undo", description: `Undid creation of Borrower ID ${borrowerId}` });
+        await paymentService.addPayment(db, loanId, amount, currentUser);
+        showSnackbar("Payment added successfully!", "success");
+      } catch (error) {
+        showSnackbar("Failed to add payment.", "error");
+        throw error;
+      }
+    },
+    getPaymentsByLoanId: async (loanId) => {
+      try {
+        return await paymentService.getPaymentsByLoanId(db, loanId, currentUser);
+      } catch (error) {
+        console.error("Error fetching payments by loan ID:", error);
+        showSnackbar("Failed to fetch payment history.", "error");
+        return [];
+      }
+    },
+    undoPayment: async (paymentId, loanId, paymentAmount, activityLogId) => {
+      try {
+        await paymentService.undoPayment(db, paymentId, loanId, paymentAmount, activityLogId, currentUser);
+        showSnackbar("Payment undone successfully!", "info");
+      } catch (error) {
+        console.error("Error undoing payment:", error);
+        showSnackbar("Failed to undo payment.", "error");
+        throw error;
+      }
+    },
+
+    // --- Borrower Services ---
+    addBorrower: async (borrower) => {
+      try {
+        const res = await borrowerService.addBorrower(db, borrower, currentUser);
+        showSnackbar("Borrower added successfully!", "success");
+        return res;
+      } catch (error) {
+        showSnackbar("Failed to add borrower.", "error");
+        throw error;
+      }
+    },
+    updateBorrower: async (id, updates) => {
+      try {
+        await borrowerService.updateBorrower(db, id, updates);
+        showSnackbar("Borrower updated!", "success");
+      } catch (error) {
+        console.error("Error updating borrower:", error);
+        showSnackbar("Failed to update borrower.", "error");
+        throw error;
+      }
+    },
+    undoBorrowerCreation: async (borrowerId, activityLogId) => {
+      try {
+        await borrowerService.undoBorrowerCreation(db, borrowerId, activityLogId, currentUser);
         showSnackbar("Borrower creation undone!", "info");
       } catch (error) {
         console.error("Error undoing borrower creation:", error);
@@ -757,16 +327,39 @@ export function FirestoreProvider({ children }) {
         throw error;
       }
     },
-    undoExpenseCreation: async (expenseId, activityLogId) => {
-      if (!currentUser) return;
+
+    // --- Expense Services ---
+    addExpense: async (expense) => {
       try {
-        await runTransaction(db, async (transaction) => {
-          const expenseRef = doc(db, "expenses", expenseId);
-          const activityLogRef = doc(db, "activityLogs", activityLogId);
-          transaction.delete(expenseRef);
-          transaction.delete(activityLogRef);
-        });
-        await addActivityLog({ type: "expense_creation_undo", description: `Undid creation of Expense ID ${expenseId}` });
+        const res = await expenseService.addExpense(db, expense, currentUser);
+        showSnackbar("Expense added successfully!", "success");
+        return res;
+      } catch (error) {
+        showSnackbar("Failed to add expense.", "error");
+        throw error;
+      }
+    },
+    updateExpense: async (id, updates) => {
+      try {
+        await expenseService.updateExpense(db, id, updates, currentUser);
+        showSnackbar("Expense updated successfully!", "success");
+      } catch (error) {
+        showSnackbar("Failed to update expense.", "error");
+        throw error;
+      }
+    },
+    deleteExpense: async (id) => {
+      try {
+        await expenseService.deleteExpense(db, id, currentUser);
+        showSnackbar("Expense deleted successfully!", "info");
+      } catch (error) {
+        showSnackbar("Failed to delete expense.", "error");
+        throw error;
+      }
+    },
+    undoExpenseCreation: async (expenseId, activityLogId) => {
+      try {
+        await expenseService.undoExpenseCreation(db, expenseId, activityLogId, currentUser);
         showSnackbar("Expense creation undone!", "info");
       } catch (error) {
         console.error("Error undoing expense creation:", error);
@@ -774,50 +367,9 @@ export function FirestoreProvider({ children }) {
         throw error;
       }
     },
-    undoGuarantorCreation: async (guarantorId, activityLogId) => {
-      if (!currentUser) return;
-      try {
-        await runTransaction(db, async (transaction) => {
-          const guarantorRef = doc(db, "guarantors", guarantorId);
-          const activityLogRef = doc(db, "activityLogs", activityLogId);
-          transaction.delete(guarantorRef);
-          transaction.delete(activityLogRef);
-        });
-        await addActivityLog({ type: "guarantor_creation_undo", description: `Undid creation of Guarantor ID ${guarantorId}` });
-        showSnackbar("Guarantor creation undone!", "info");
-      } catch (error) {
-        console.error("Error undoing guarantor creation:", error);
-        showSnackbar("Failed to undo guarantor creation.", "error");
-        throw error;
-      }
-    },
-    undoCommentCreation: async (commentId, activityLogId) => {
-      if (!currentUser) return;
-      try {
-        await runTransaction(db, async (transaction) => {
-          const commentRef = doc(db, "comments", commentId);
-          const activityLogRef = doc(db, "activityLogs", activityLogId);
-          transaction.delete(commentRef);
-          transaction.delete(activityLogRef);
-        });
-        await addActivityLog({ type: "comment_creation_undo", description: `Undid creation of Comment ID ${commentId}` });
-        showSnackbar("Comment creation undone!", "info");
-      } catch (error) {
-        console.error("Error undoing comment creation:", error);
-        showSnackbar("Failed to undo comment creation.", "error");
-        throw error;
-      }
-    },
     undoExpenseDeletion: async (expenseData, activityLogId) => {
-      if (!currentUser) return;
       try {
-        await runTransaction(db, async (transaction) => {
-          const expenseRef = doc(db, "expenses", expenseData.id);
-          const activityLogRef = doc(db, "activityLogs", activityLogId);
-          transaction.set(expenseRef, { ...expenseData, updatedAt: serverTimestamp() });
-          transaction.delete(activityLogRef);
-        });
-        await addActivityLog({ type: "expense_delete_undo", description: `Undid deletion of Expense ID ${expenseData.id}` });
+        await expenseService.undoExpenseDeletion(db, expenseData, activityLogId, currentUser);
         showSnackbar("Expense deletion undone!", "info");
       } catch (error) {
         console.error("Error undoing expense deletion:", error);
@@ -825,16 +377,49 @@ export function FirestoreProvider({ children }) {
         throw error;
       }
     },
-    undoGuarantorDeletion: async (guarantorData, activityLogId) => {
-      if (!currentUser) return;
+
+    // --- Guarantor Services ---
+    addGuarantor: async (guarantor) => {
       try {
-        await runTransaction(db, async (transaction) => {
-          const guarantorRef = doc(db, "guarantors", guarantorData.id);
-          const activityLogRef = doc(db, "activityLogs", activityLogId);
-          transaction.set(guarantorRef, { ...guarantorData, updatedAt: serverTimestamp() });
-          transaction.delete(activityLogRef);
-        });
-        await addActivityLog({ type: "guarantor_delete_undo", description: `Undid deletion of Guarantor ID ${guarantorData.id}` });
+        const res = await guarantorService.addGuarantor(db, guarantor, currentUser);
+        showSnackbar("Guarantor added successfully!", "success");
+        return res;
+      } catch (error) {
+        showSnackbar("Failed to add guarantor.", "error");
+        throw error;
+      }
+    },
+    updateGuarantor: async (id, updates) => {
+      try {
+        await guarantorService.updateGuarantor(db, id, updates, currentUser);
+        showSnackbar("Guarantor updated successfully!", "success");
+      } catch (error) {
+        showSnackbar("Failed to update guarantor.", "error");
+        throw error;
+      }
+    },
+    deleteGuarantor: async (id) => {
+      try {
+        await guarantorService.deleteGuarantor(db, id, currentUser);
+        showSnackbar("Guarantor deleted successfully!", "info");
+      } catch (error) {
+        showSnackbar("Failed to delete guarantor.", "error");
+        throw error;
+      }
+    },
+    undoGuarantorCreation: async (guarantorId, activityLogId) => {
+      try {
+        await guarantorService.undoGuarantorCreation(db, guarantorId, activityLogId, currentUser);
+        showSnackbar("Guarantor creation undone!", "info");
+      } catch (error) {
+        console.error("Error undoing guarantor creation:", error);
+        showSnackbar("Failed to undo guarantor creation.", "error");
+        throw error;
+      }
+    },
+    undoGuarantorDeletion: async (guarantorData, activityLogId) => {
+      try {
+        await guarantorService.undoGuarantorDeletion(db, guarantorData, activityLogId, currentUser);
         showSnackbar("Guarantor deletion undone!", "info");
       } catch (error) {
         console.error("Error undoing guarantor deletion:", error);
@@ -842,16 +427,41 @@ export function FirestoreProvider({ children }) {
         throw error;
       }
     },
-    undoCommentDeletion: async (commentData, activityLogId) => {
-      if (!currentUser) return;
+
+    // --- Comment Services ---
+    addComment: async (comment) => {
       try {
-        await runTransaction(db, async (transaction) => {
-          const commentRef = doc(db, "comments", commentData.id);
-          const activityLogRef = doc(db, "activityLogs", activityLogId);
-          transaction.set(commentRef, { ...commentData, updatedAt: serverTimestamp() });
-          transaction.delete(activityLogRef);
-        });
-        await addActivityLog({ type: "comment_delete_undo", description: `Undid deletion of Comment ID ${commentData.id}` });
+        const res = await commentService.addComment(db, comment, currentUser);
+        showSnackbar("Comment added successfully!", "success");
+        return res;
+      } catch (error)
+      {
+        showSnackbar("Failed to add comment.", "error");
+        throw error;
+      }
+    },
+    deleteComment: async (id) => {
+      try {
+        await commentService.deleteComment(db, id, currentUser);
+        showSnackbar("Comment deleted successfully!", "info");
+      } catch (error) {
+        showSnackbar("Failed to delete comment.", "error");
+        throw error;
+      }
+    },
+    undoCommentCreation: async (commentId, activityLogId) => {
+      try {
+        await commentService.undoCommentCreation(db, commentId, activityLogId, currentUser);
+        showSnackbar("Comment creation undone!", "info");
+      } catch (error) {
+        console.error("Error undoing comment creation:", error);
+        showSnackbar("Failed to undo comment creation.", "error");
+        throw error;
+      }
+    },
+    undoCommentDeletion: async (commentData, activityLogId) => {
+      try {
+        await commentService.undoCommentDeletion(db, commentData, activityLogId, currentUser);
         showSnackbar("Comment deletion undone!", "info");
       } catch (error) {
         console.error("Error undoing comment deletion:", error);
@@ -860,21 +470,32 @@ export function FirestoreProvider({ children }) {
       }
     },
 
-    updateUser: async (updates) => { // Assuming updates for the current user
-      if (!currentUser) return;
+    // --- Settings Services ---
+    updateSettings: async (newSettings) => {
       try {
-        const userRef = doc(db, "users", currentUser.uid); // Assuming 'users' collection with UID as doc ID
-        await updateDoc(userRef, { ...updates, updatedAt: serverTimestamp() });
-        await addActivityLog({ type: "user_profile_update", description: `User profile updated for ${currentUser.email}` });
+        await settingsService.updateSettings(db, newSettings, currentUser);
+        showSnackbar("Settings updated successfully!", "success");
+      } catch (error) {
+        showSnackbar("Failed to update settings.", "error");
+        throw error;
+      }
+    },
+
+    // --- User Services ---
+    updateUser: async (updates) => {
+      try {
+        await userService.updateUser(db, updates, currentUser);
         showSnackbar("User profile updated successfully!", "success");
       } catch (error) {
         console.error("Error updating user profile:", error);
         showSnackbar("Failed to update user profile.", "error");
         throw error;
       }
-    },
-    addActivityLog: addActivityLog // Expose the helper function
-  };
+    }
+  }), [
+    loans, payments, borrowers, settings, activityLogs, comments, guarantors, expenses, loading,
+    currentUser, showSnackbar, fetchActivityLogs, fetchComments
+  ]);
 
   return (
     <FirestoreContext.Provider value={value}>

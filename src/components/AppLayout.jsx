@@ -24,6 +24,7 @@ import FloatingNavBar from './FloatingNavBar';
 import BottomNavBar, { BOTTOM_NAV_HEIGHT } from './BottomNavBar';
 import MobileDrawer from './MobileDrawer';
 import LoanDetailDialog from './LoanDetailDialog';
+import LoanSimulatorDialog from './LoanSimulatorDialog';
 import AddLoanDialog from './AddLoanDialog';
 import AddPaymentDialog from './AddPaymentDialog';
 import AddBorrowerDialog from './AddBorrowerDialog';
@@ -103,11 +104,13 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   const [addPaymentOpen, setAddPaymentOpen] = useState(false);
   const [addBorrowerOpen, setAddBorrowerOpen] = useState(false);
   const [addExpenseOpen, setAddExpenseOpen] = useState(false);
+  const [loanSimulatorOpen, setLoanSimulatorOpen] = useState(false);
 
   const openAddLoan = useCallback(() => setAddLoanOpen(true), []);
   const openAddPayment = useCallback(() => setAddPaymentOpen(true), []);
   const openAddBorrower = useCallback(() => setAddBorrowerOpen(true), []);
   const openAddExpense = useCallback(() => setAddExpenseOpen(true), []);
+  const openLoanSimulator = useCallback(() => setLoanSimulatorOpen(true), []);
 
   // --- Push Notifications Effect ---
   useEffect(() => {
@@ -180,6 +183,7 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
             onOpenAddLoan={openAddLoan}
             onOpenAddPayment={openAddPayment}
             onOpenAddBorrower={openAddBorrower}
+            onOpenLoanSimulator={openLoanSimulator}
           /> 
         </Box>
       )}
@@ -199,6 +203,7 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
         onOpenAddLoan={openAddLoan}
         onOpenAddPayment={openAddPayment}
         onOpenAddBorrower={openAddBorrower}
+        onOpenLoanSimulator={openLoanSimulator}
       />
 
       <Box component="main" sx={{
@@ -236,6 +241,7 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
       <AddPaymentDialog open={addPaymentOpen} onClose={() => setAddPaymentOpen(false)} />
       <AddBorrowerDialog open={addBorrowerOpen} onClose={() => setAddBorrowerOpen(false)} />
       <AddExpenseDialog open={addExpenseOpen} onClose={() => setAddExpenseOpen(false)} />
+      <LoanSimulatorDialog open={loanSimulatorOpen} onClose={() => setLoanSimulatorOpen(false)} />
 
       <Zoom in={showBackToTop}>
         <Fab

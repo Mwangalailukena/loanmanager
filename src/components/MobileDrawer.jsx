@@ -74,7 +74,8 @@ const MobileDrawer = ({
   onToggleMini,
   onOpenAddLoan,
   onOpenAddPayment,
-  onOpenAddBorrower
+  onOpenAddBorrower,
+  onOpenLoanSimulator
 }) => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -105,7 +106,7 @@ const MobileDrawer = ({
   const analyticsItems = [
     { text: 'Reports', icon: <AssessmentIcon />, path: '/reports' },
     { text: 'Activity', icon: <HistoryIcon />, path: '/activity' },
-    { text: 'Simulator', icon: <CalculateIcon />, path: '/simulator' },
+    { text: 'Simulator', icon: <CalculateIcon />, onClick: onOpenLoanSimulator },
   ];
 
   const accountItems = [

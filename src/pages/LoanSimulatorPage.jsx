@@ -23,14 +23,16 @@ export default function LoanSimulatorPage() {
   const currentMonthYear = dayjs().format("YYYY-MM");
   const monthlySettings = settings?.monthlySettings?.[currentMonthYear];
 
-  const effectiveInterestRates = monthlySettings?.interestRates || {
+  // Fix: Use global settings.interestRates as the proper fallback
+  const effectiveInterestRates = monthlySettings?.interestRates || settings?.interestRates || {
     1: 0.15,
     2: 0.2,
     3: 0.3,
     4: 0.3,
   };
 
-  const selectedInterestRate = (effectiveInterestRates[duration] || 0) / 100;
+  // Fix: Rates are already decimals (e.g. 0.15), do not divide by 100
+  const selectedInterestRate = (effectiveInterestRates[duration] || 0);
 
   const interest = principal * selectedInterestRate;
   const totalRepayable = principal + interest;
@@ -61,7 +63,7 @@ export default function LoanSimulatorPage() {
         Loan Simulator
       </Typography>
       <Grid container spacing={3}>
-        <Grid xs={12}>
+        <Grid item xs={12}>
           <Typography gutterBottom>Loan Amount (ZMW)</Typography>
           <Slider
             value={principal}
@@ -81,7 +83,7 @@ export default function LoanSimulatorPage() {
             onChange={(e) => setPrincipal(Number(e.target.value))}
           />
         </Grid>
-        <Grid xs={12}>
+        <Grid item xs={12}>
           <FormControl fullWidth>
             <InputLabel>Loan Duration</InputLabel>
             <Select
@@ -89,10 +91,11 @@ export default function LoanSimulatorPage() {
               label="Loan Duration"
               onChange={(e) => setDuration(e.target.value)}
             >
-              <MenuItem value={1}>1 Week ({((effectiveInterestRates[1]) || 0).toFixed(0)}%)</MenuItem>
-              <MenuItem value={2}>2 Weeks ({((effectiveInterestRates[2]) || 0).toFixed(0)}%)</MenuItem>
-              <MenuItem value={3}>3 Weeks ({((effectiveInterestRates[3]) || 0).toFixed(0)}%)</MenuItem>
-              <MenuItem value={4}>4 Weeks ({((effectiveInterestRates[4]) || 0).toFixed(0)}%)</MenuItem>
+              {/* Fix: Format labels to show correct percentage (e.g. 0.15 -> 15%) */}
+              <MenuItem value={1}>1 Week ({((effectiveInterestRates[1] * 100) || 0).toFixed(0)}%)</MenuItem>
+              <MenuItem value={2}>2 Weeks ({((effectiveInterestRates[2] * 100) || 0).toFixed(0)}%)</MenuItem>
+              <MenuItem value={3}>3 Weeks ({((effectiveInterestRates[3] * 100) || 0).toFixed(0)}%)</MenuItem>
+              <MenuItem value={4}>4 Weeks ({((effectiveInterestRates[4] * 100) || 0).toFixed(0)}%)</MenuItem>
             </Select>
           </FormControl>
         </Grid>
