@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import {
   getAuth,
   onAuthStateChanged,
@@ -35,9 +35,9 @@ export const AuthProvider = ({ children }) => {
     return () => unsubscribe();
   }, [auth]);
 
-  const login = (email, password) => signInWithEmailAndPassword(auth, email, password);
+  const login = useCallback((email, password) => signInWithEmailAndPassword(auth, email, password), [auth]);
 
-  const register = async (name, email, password) => {
+  const register = useCallback(async (name, email, password) => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
@@ -47,37 +47,36 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       throw error;
     }
-  };
+  }, [auth]);
 
-  const loginWithGoogle = () => {
+  const loginWithGoogle = useCallback(() => {
     const provider = new GoogleAuthProvider();
-    // Adding custom parameters can sometimes help with popup behavior
     provider.setCustomParameters({ prompt: 'select_account' });
     return signInWithPopup(auth, provider);
-  };
+  }, [auth]);
 
-  const resetPassword = (email) => sendPasswordResetEmail(auth, email);
+  const resetPassword = useCallback((email) => sendPasswordResetEmail(auth, email), [auth]);
 
-  const logout = () => signOut(auth);
+  const logout = useCallback(() => signOut(auth), [auth]);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     if (auth.currentUser) {
       await auth.currentUser.reload();
       setCurrentUser({ ...auth.currentUser });
     }
     return Promise.resolve();
-  };
+  }, [auth]);
 
   const value = {
     currentUser,
-    loading, // Expose the loading state
+    loading,
     login,
     register,
     loginWithGoogle,
     resetPassword,
     logout,
     refreshUser,
-    setAuthPersistence: (type) => setPersistence(auth, type),
+    setAuthPersistence: useCallback((type) => setPersistence(auth, type), [auth]),
     browserLocalPersistence,
     browserSessionPersistence,
   };

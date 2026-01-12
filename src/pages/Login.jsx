@@ -62,6 +62,12 @@ export default function Login() {
     return () => clearInterval(timer);
   }, [rateLimitTimer]);
 
+  // Handle Persistence proactively when checkbox changes
+  useEffect(() => {
+    const type = rememberMe ? browserLocalPersistence : browserSessionPersistence;
+    setAuthPersistence(type).catch(err => console.error("Persistence failed", err));
+  }, [rememberMe, setAuthPersistence, browserLocalPersistence, browserSessionPersistence]);
+
   useEffect(() => {
     if (currentUser) {
       // Smart Redirect: Go to the intended page or default to dashboard
@@ -79,11 +85,7 @@ export default function Login() {
     setIsLoading("email");
 
     try {
-      // 1. Set Persistence based on "Remember Me"
-      const persistenceType = rememberMe ? browserLocalPersistence : browserSessionPersistence;
-      await setAuthPersistence(persistenceType);
-
-      // 4. Input UX: Trim whitespace
+      // Input UX: Trim whitespace
       await login(email.trim(), password);
       // Navigation handled by useEffect
     } catch (err) {
