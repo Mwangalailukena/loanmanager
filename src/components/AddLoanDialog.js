@@ -134,7 +134,16 @@ export default function AddLoanDialog({ open, onClose, borrowerId }) {
   const [dueDateError, setDueDateError] = useState("");
   const [manualInterestRateError, setManualInterestRateError] = useState("");
 
-  const interestRates = settings?.interestRates || { 1: 0.15, 2: 0.2, 3: 0.3, 4: 0.3 };
+  const currentMonthKey = useMemo(() => {
+    return startDate ? startDate.format('YYYY-MM') : dayjs().format('YYYY-MM');
+  }, [startDate]);
+
+  const interestRates = useMemo(() => {
+    if (settings?.monthlySettings?.[currentMonthKey]?.interestRates) {
+      return settings.monthlySettings[currentMonthKey].interestRates;
+    }
+    return settings?.interestRates || { 1: 0.15, 2: 0.2, 3: 0.3, 4: 0.3 };
+  }, [settings, currentMonthKey]);
 
   // Reset logic when dialog opens
   useMemo(() => {

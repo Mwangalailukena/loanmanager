@@ -23,6 +23,7 @@ import { useAuth } from "./AuthProvider";
 import { useSnackbar } from "../components/SnackbarProvider";
 import localforage from "localforage";
 import useOfflineStatus from "../hooks/useOfflineStatus";
+import dayjs from "dayjs";
 
 
 const FirestoreContext = createContext();
@@ -332,9 +333,13 @@ export function FirestoreProvider({ children }) {
           }
 
           const oldLoanData = oldLoanSnap.data();
+
+          const monthKey = newStartDate ? dayjs(newStartDate).format('YYYY-MM') : dayjs().format('YYYY-MM');
+          const monthlyRates = settings?.monthlySettings?.[monthKey]?.interestRates || settings.interestRates || { 1: 0.15, 2: 0.2, 3: 0.3, 4: 0.3 };
+
           const interestRate = (manualInterestRate !== undefined && manualInterestRate !== null)
             ? manualInterestRate
-            : (settings.interestRates[newInterestDuration] || 0);
+            : (monthlyRates[newInterestDuration] || 0);
           
           const newInterest = newPrincipalAmount * interestRate;
           const newTotalRepayable = newPrincipalAmount + newInterest;
@@ -399,11 +404,13 @@ export function FirestoreProvider({ children }) {
           const loanData = loanSnap.data();
           previousData = loanData;
           const currentPrincipal = Number(loanData.principal || 0);
-          const currentInterestDuration = Number(loanData.interestDuration || 1);
+          const currentInterest = Number(loanData.interest || 0);
+
+          // Calculate effective rate from existing loan to preserve the agreed rate
+          const effectiveRate = currentPrincipal > 0 ? (currentInterest / currentPrincipal) : 0;
 
           const newPrincipal = currentPrincipal + topUpAmount;
-          const interestRate = settings.interestRates[currentInterestDuration] || 0;
-          const newInterest = newPrincipal * interestRate; // Recalculate total interest based on new principal
+          const newInterest = newPrincipal * effectiveRate;
           const newTotalRepayable = newPrincipal + newInterest;
 
           transaction.update(loanRef, {
@@ -674,6 +681,25 @@ export function FirestoreProvider({ children }) {
       } catch (error) {
         console.error("Error undoing loan refinance:", error);
         showSnackbar("Failed to undo loan refinance.", "error");
+        throw error;
+      }
+    },
+    undoTopUpLoan: async (loanId, previousLoanData, activityLogId) => {
+      if (!currentUser) return;
+      try {
+        await runTransaction(db, async (transaction) => {
+          const loanRef = doc(db, "loans", loanId);
+          const activityLogRef = doc(db, "activityLogs", activityLogId);
+
+          // Restore the loan to its pre-top-up state
+          transaction.set(loanRef, { ...previousLoanData, updatedAt: serverTimestamp() });
+          transaction.delete(activityLogRef);
+        });
+        await addActivityLog({ type: "loan_top_up_undo", description: `Undid top-up of Loan ID ${loanId}` });
+        showSnackbar("Top-up undone successfully!", "info");
+      } catch (error) {
+        console.error("Error undoing loan top-up:", error);
+        showSnackbar("Failed to undo loan top-up.", "error");
         throw error;
       }
     },

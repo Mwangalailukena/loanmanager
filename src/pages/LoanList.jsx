@@ -38,6 +38,10 @@ import {
   Skeleton,
   LinearProgress,
   Menu,
+  Tabs,
+  Tab,
+  alpha,
+  Paper, // Ensuring Paper is imported if not already
 } from "@mui/material";
 import {
   KeyboardArrowDown,
@@ -529,7 +533,12 @@ export default function LoanList() {
     4: 0.3,
   }, [settings.interestRates]);
 
-  const calculateInterest = (principal, weeks) => principal * (interestRates[weeks] || 0);
+  const getInterestRates = useCallback((date) => {
+    const monthKey = date ? dayjs(date).format('YYYY-MM') : dayjs().format('YYYY-MM');
+    return settings?.monthlySettings?.[monthKey]?.interestRates || interestRates;
+  }, [settings.monthlySettings, interestRates]);
+
+  const calculateInterest = (principal, weeks, rates = interestRates) => principal * (rates[weeks] || 0);
 
   const getDisplayBorrowerInfo = useCallback((loan) => {
     if (loan.borrowerId) {
@@ -822,17 +831,55 @@ export default function LoanList() {
 
   const openEditModal = useCallback((loan) => {
     const displayInfo = getDisplayBorrowerInfo(loan);
+
+    let duration = loan.interestDuration;
+    let isManual = false;
+    let manualRate = "";
+
+    const localRates = getInterestRates(loan.startDate);
+    const rate = loan.principal > 0 ? loan.interest / loan.principal : 0;
+
+    if (loan.manualInterestRate != null) {
+      isManual = true;
+      manualRate = loan.manualInterestRate;
+    } else if (!duration && loan.principal > 0) {
+      const matchingDurations = Object.entries(localRates)
+        .filter(([_, val]) => Math.abs(val - rate) < 0.01)
+        .map(([key]) => Number(key));
+
+      if (matchingDurations.length === 1) {
+        duration = matchingDurations[0];
+      } else if (matchingDurations.length === 0) {
+        isManual = true;
+        manualRate = (rate * 100).toFixed(2);
+      } else if (loan.startDate && loan.dueDate) {
+        const start = dayjs(loan.startDate);
+        const due = dayjs(loan.dueDate);
+        const weeksFromDate = Math.round(due.diff(start, 'day') / 7);
+        
+        if (matchingDurations.length > 1 && matchingDurations.includes(weeksFromDate)) {
+          duration = weeksFromDate;
+        } else if (weeksFromDate >= 1 && weeksFromDate <= 4) {
+          duration = weeksFromDate;
+        }
+      }
+    }
+
     setEditData({
       borrower: displayInfo.name || "",
       phone: displayInfo.phone || "",
       principal: loan.principal,
-      interestDuration: loan.interestDuration || 1,
+      interestDuration: duration || 1,
+      manualInterestRate: manualRate,
+      isManual: isManual,
       startDate: loan.startDate,
       dueDate: loan.dueDate,
+      interest: loan.interest,
+      totalRepayable: loan.totalRepayable,
     });
     setEditErrors({});
     setEditModal({ open: true, loan });
-  }, [getDisplayBorrowerInfo]);
+  }, [getDisplayBorrowerInfo, getInterestRates]);
 
   const handleEditSubmit = async () => {
     const errors = {};
@@ -844,15 +891,31 @@ export default function LoanList() {
     if (isNaN(parseFloat(editData.principal)) || parseFloat(editData.principal) < 0) errors.principal = "Valid principal required.";
     if (!editData.startDate) errors.startDate = "Start date is required.";
 
+    if (editData.isManual) {
+        if (editData.manualInterestRate === "" || isNaN(parseFloat(editData.manualInterestRate)) || parseFloat(editData.manualInterestRate) < 0) {
+             errors.form = "Please enter a valid manual interest rate.";
+        }
+    }
+
     setEditErrors(errors);
     if (Object.keys(errors).length > 0) {
       return;
     }
 
     const principalAmount = parseFloat(editData.principal);
-    const selectedDuration = editData.interestDuration;
+    let calculatedInterestAmount = 0;
+    let selectedDuration = null;
+    let manualRate = null;
 
-    const calculatedInterestAmount = calculateInterest(principalAmount, selectedDuration);
+    if (editData.isManual) {
+        manualRate = parseFloat(editData.manualInterestRate);
+        calculatedInterestAmount = principalAmount * (manualRate / 100);
+    } else {
+        selectedDuration = editData.interestDuration;
+        const currentRates = getInterestRates(editData.startDate);
+        calculatedInterestAmount = calculateInterest(principalAmount, selectedDuration, currentRates);
+    }
+
     const calculatedTotalRepayable = principalAmount + calculatedInterestAmount;
 
     const updatedLoan = {
@@ -863,6 +926,7 @@ export default function LoanList() {
       startDate: editData.startDate,
       dueDate: editData.dueDate,
       interestDuration: selectedDuration,
+      manualInterestRate: manualRate,
     };
 
     // Only update borrower and phone if it's an old loan format
@@ -1543,6 +1607,32 @@ export default function LoanList() {
                 />
               </>
             )}
+            <Tabs
+              value={editData.isManual ? 1 : 0}
+              onChange={(_, val) => {
+                // When switching modes, recalculate interest
+                const isManual = val === 1;
+                const principal = parseFloat(editData.principal);
+                let interest = 0;
+                
+                if (isManual) {
+                   const rate = parseFloat(editData.manualInterestRate) || 0;
+                   interest = principal * (rate / 100);
+                } else {
+                   const currentRates = getInterestRates(editData.startDate);
+                   interest = calculateInterest(principal, editData.interestDuration, currentRates);
+                }
+                
+                const totalRepayable = principal + interest;
+                setEditData({ ...editData, isManual, interest, totalRepayable });
+              }}
+              variant="fullWidth"
+              sx={{ mb: 1, borderBottom: 1, borderColor: 'divider', minHeight: 36, '& .MuiTab-root': { minHeight: 36, py: 1 } }}
+            >
+              <Tab label="Auto Plan" />
+              <Tab label="Manual Entry" />
+            </Tabs>
+
             <TextField
               label="Principal Amount"
               size="small"
@@ -1551,7 +1641,16 @@ export default function LoanList() {
               value={editData.principal}
               onChange={(e) => {
                 const principal = parseFloat(e.target.value);
-                const interest = calculateInterest(principal, editData.interestDuration);
+                let interest = 0;
+                
+                if (editData.isManual) {
+                    const rate = parseFloat(editData.manualInterestRate) || 0;
+                    interest = principal * (rate / 100);
+                } else {
+                    const currentRates = getInterestRates(editData.startDate);
+                    interest = calculateInterest(principal, editData.interestDuration, currentRates);
+                }
+
                 const totalRepayable = principal + interest;
                 setEditData({ ...editData, principal: e.target.value, interest, totalRepayable });
               }}
@@ -1564,31 +1663,51 @@ export default function LoanList() {
                 ),
               }}
             />
-            <FormControl size="small" fullWidth sx={filterInputStyles}>
-              <InputLabel>Interest Duration</InputLabel>
-              <Select
-                value={editData.interestDuration}
-                label="Interest Duration"
-                onChange={(e) => {
-                  const duration = e.target.value;
-                  const principal = parseFloat(editData.principal);
-                  const interest = calculateInterest(principal, duration);
-                  const totalRepayable = principal + interest;
-                  
-                  // This fix ensures the dueDate is NOT recalculated when changing duration
-                  setEditData({ ...editData, interestDuration: duration, interest, totalRepayable });
-                }}
-              >
-                {interestOptions.map((option) => {
-                  const rate = (settings.interestRates[option.value] || 0) * 100;
-                  return (
-                    <MenuItem key={option.value} value={option.value}>
-                      {option.label} ({rate.toFixed(0)}%)
-                    </MenuItem>
-                  );
-                })}
-              </Select>
-            </FormControl>
+            
+            {editData.isManual ? (
+                <TextField
+                  label="Manual Interest Rate (%)"
+                  type="number"
+                  size="small"
+                  fullWidth
+                  value={editData.manualInterestRate}
+                  onChange={(e) => {
+                      const rate = parseFloat(e.target.value);
+                      const principal = parseFloat(editData.principal);
+                      const interest = isNaN(rate) ? 0 : principal * (rate / 100);
+                      const totalRepayable = principal + interest;
+                      setEditData({ ...editData, manualInterestRate: e.target.value, interest, totalRepayable });
+                  }}
+                  sx={filterInputStyles}
+                />
+            ) : (
+                <FormControl size="small" fullWidth sx={filterInputStyles}>
+                  <InputLabel>Interest Duration</InputLabel>
+                  <Select
+                    value={editData.interestDuration}
+                    label="Interest Duration"
+                    onChange={(e) => {
+                      const duration = e.target.value;
+                      const principal = parseFloat(editData.principal);
+                      const currentRates = getInterestRates(editData.startDate);
+                      const interest = calculateInterest(principal, duration, currentRates);
+                      const totalRepayable = principal + interest;
+                      
+                      setEditData({ ...editData, interestDuration: duration, interest, totalRepayable });
+                    }}
+                  >
+                    {interestOptions.map((option) => {
+                      const currentRates = getInterestRates(editData.startDate);
+                      const rate = (currentRates[option.value] || 0) * 100;
+                      return (
+                        <MenuItem key={option.value} value={option.value}>
+                          {option.label} ({rate.toFixed(0)}%)
+                        </MenuItem>
+                      );
+                    })}
+                  </Select>
+                </FormControl>
+            )}
             <TextField
               label="Start Date"
               type="date"
@@ -1617,6 +1736,19 @@ export default function LoanList() {
               }}
               sx={filterInputStyles}
             />
+            
+            <Paper sx={{ p: 2, mt: 1, bgcolor: alpha(theme.palette.secondary.main, 0.05), borderLeft: `4px solid ${theme.palette.secondary.main}` }}>
+               <Stack direction="row" justifyContent="space-between" alignItems="center">
+                   <Box>
+                       <Typography variant="caption" color="text.secondary">Interest</Typography>
+                       <Typography variant="body1" fontWeight="bold">ZMW {Number(editData.interest || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</Typography>
+                   </Box>
+                   <Box textAlign="right">
+                       <Typography variant="caption" color="text.secondary">Total Repayable</Typography>
+                       <Typography variant="h6" fontWeight="bold" color="secondary.main">ZMW {Number(editData.totalRepayable || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</Typography>
+                   </Box>
+               </Stack>
+            </Paper>
           </Stack>
         </DialogContent>
         <DialogActions sx={{ pb: 1 }}>
@@ -1676,6 +1808,7 @@ export default function LoanList() {
         onClose={() => setTopUpModal({ open: false, loan: null })}
         onConfirm={handleTopUpSubmit}
         loading={isToppingUp}
+        loan={topUpModal.loan}
       />
 
       {/* Confirm Full Payment Dialog */}

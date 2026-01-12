@@ -312,6 +312,7 @@ export default function ActivityPage() {
     undoRefinanceLoan, 
     undoDeleteLoan, 
     undoUpdateLoan,
+    undoTopUpLoan,
     undoBorrowerCreation,
     undoExpenseCreation,
     undoGuarantorCreation,
@@ -495,9 +496,12 @@ export default function ActivityPage() {
       } else if (type === "loan_deletion" || type === "delete") { // Handle both just in case
         if (!undoData || !undoData.id) throw new Error("Missing data to undo deletion");
         await undoDeleteLoan(undoData, id);
-      } else if (type === "loan_update" || type === "loan_top_up") {
-         if (!undoData) throw new Error("Missing data to undo update/top-up");
+      } else if (type === "loan_update") {
+         if (!undoData) throw new Error("Missing data to undo update");
         await undoUpdateLoan(relatedId, undoData, id);
+      } else if (type === "loan_top_up") {
+         if (!undoData) throw new Error("Missing data to undo top-up");
+        await undoTopUpLoan(relatedId, undoData, id);
       } else if (type === "borrower_creation") {
         await undoBorrowerCreation(relatedId, id);
       } else if (type === "expense_creation") {
