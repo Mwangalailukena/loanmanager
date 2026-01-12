@@ -169,6 +169,7 @@ export const topUpLoan = async (db, loanId, topUpAmount, currentUser) => {
     type: "loan_top_up",
     description: `Loan ID ${loanId} topped up by ZMW ${topUpAmount.toFixed(2)}`,
     relatedId: loanId,
+    amount: topUpAmount,
     undoData: previousData,
     undoable: true
   }, currentUser);

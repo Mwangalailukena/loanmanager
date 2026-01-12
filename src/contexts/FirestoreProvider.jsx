@@ -8,7 +8,8 @@ import {
   onSnapshot,
   doc,
   where,
-  limit, 
+  limit,
+  getDocs, 
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "./AuthProvider";
@@ -282,6 +283,57 @@ export function FirestoreProvider({ children }) {
       } catch (error) {
         console.error("Error fetching payments by loan ID:", error);
         showSnackbar("Failed to fetch payment history.", "error");
+        return [];
+      }
+    },
+    getLoanHistory: async (loanId) => {
+      if (!currentUser) return [];
+      try {
+        // 1. Fetch Payments
+        const paymentsQuery = query(
+          collection(db, "payments"),
+          where("userId", "==", currentUser.uid),
+          where("loanId", "==", loanId)
+        );
+        const paymentSnaps = await getDocs(paymentsQuery);
+        const payments = paymentSnaps.docs.map(d => ({ 
+          id: d.id, 
+          ...d.data(), 
+          historyType: 'payment' 
+        }));
+
+        // 2. Fetch Top-ups from Activity Logs
+        const topupsQuery = query(
+          collection(db, "activityLogs"),
+          where("userId", "==", currentUser.uid),
+          where("relatedId", "==", loanId),
+          where("type", "==", "loan_top_up")
+        );
+        const topupSnaps = await getDocs(topupsQuery);
+        const topups = topupSnaps.docs.map(d => {
+          const data = d.data();
+          // Extract amount from description if not directly in fields
+          // Note: description usually looks like "Loan ID XYZ topped up by ZMW 500.00"
+          // If we saved 'amount' in the activity log, use it.
+          return {
+            id: d.id,
+            ...data,
+            date: data.createdAt, // use createdAt as the date
+            historyType: 'topup',
+            amount: data.amount || 0 // Assuming we saved 'amount' field in topUpLoan service
+          };
+        });
+
+        // 3. Combine and Sort
+        const combined = [...payments, ...topups].sort((a, b) => {
+          const dateA = a.date?.seconds || a.createdAt?.seconds || 0;
+          const dateB = b.date?.seconds || b.createdAt?.seconds || 0;
+          return dateB - dateA; // Descending (newest first)
+        });
+
+        return combined;
+      } catch (error) {
+        console.error("Error fetching loan history:", error);
         return [];
       }
     },

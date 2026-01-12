@@ -466,7 +466,18 @@ const LoanTableRow = React.memo(({
 // ... (existing constants)
 
 export default function LoanList() {
-  const { loans, loading, deleteLoan, addPayment, updateLoan, getPaymentsByLoanId, settings, borrowers, topUpLoan, markLoanAsDefaulted } = useFirestore();
+  const { 
+    loans, 
+    borrowers,
+    settings,
+    loading,
+    deleteLoan, 
+    updateLoan,
+    addPayment, 
+    markLoanAsDefaulted, 
+    topUpLoan, 
+    getLoanHistory 
+  } = useFirestore();
   const { openLoanDetail } = useSearch();
   const showSnackbar = useSnackbar();
   const theme = useTheme();
@@ -501,7 +512,7 @@ export default function LoanList() {
   const [editErrors, setEditErrors] = useState({});
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
-  const [historyModal, setHistoryModal] = useState({ open: false, loanId: null, payments: [], loading: false });
+  const [historyModal, setHistoryModal] = useState({ open: false, loanId: null, items: [], loading: false });
 
   const [selectedLoanIds, setSelectedLoanIds] = useState([]);
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
@@ -1014,15 +1025,15 @@ export default function LoanList() {
   };
 
   const openHistoryModal = useCallback(async (loanId) => {
-    setHistoryModal({ open: true, loanId, payments: [], loading: true });
+    setHistoryModal({ open: true, loanId, items: [], loading: true });
     try {
-      const payments = await getPaymentsByLoanId(loanId);
-      setHistoryModal((prev) => ({ ...prev, payments, loading: false }));
+      const items = await getLoanHistory(loanId);
+      setHistoryModal((prev) => ({ ...prev, items, loading: false }));
     } catch (error) {
-      console.error("Error fetching payment history:", error);
-      setHistoryModal((prev) => ({ ...prev, payments: [], loading: false }));
+      console.error("Error fetching loan history:", error);
+      setHistoryModal((prev) => ({ ...prev, items: [], loading: false }));
     }
-  }, [getPaymentsByLoanId]);
+  }, [getLoanHistory]);
 
   const toggleRow = useCallback((id) => {
     setExpandedRow(prev => prev === id ? null : id);
@@ -1759,31 +1770,45 @@ export default function LoanList() {
         </DialogActions>
       </Dialog>
       
-      {/* Payment History Modal */}
-      <Dialog open={historyModal.open} onClose={() => setHistoryModal({ open: false, loanId: null, payments: [], loading: false })} maxWidth="xs" fullWidth>
-        <DialogTitle fontSize="1.1rem">Payment History</DialogTitle>
+      {/* Loan History Modal */}
+      <Dialog open={historyModal.open} onClose={() => setHistoryModal({ open: false, loanId: null, items: [], loading: false })} maxWidth="xs" fullWidth>
+        <DialogTitle fontSize="1.1rem">Loan History</DialogTitle>
         <DialogContent dividers>
           {historyModal.loading ? (
             <Box display="flex" justifyContent="center" alignItems="center" minHeight="100px">
               <CircularProgress size={24} />
             </Box>
-          ) : historyModal.payments.length === 0 ? (
+          ) : historyModal.items.length === 0 ? (
             <Typography variant="body2" color="text.secondary" align="center">
-              No payments recorded for this loan.
+              No history recorded for this loan.
             </Typography>
           ) : (
             <Table size="small">
               <TableHead>
                 <TableRow>
                   <TableCell>Date</TableCell>
+                  <TableCell>Type</TableCell>
                   <TableCell align="right">Amount</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {historyModal.payments.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell>{p.date ? dayjs(p.date.toDate ? p.date.toDate() : p.date).format('YYYY-MM-DD') : 'No Date'}</TableCell>
-                    <TableCell align="right">ZMW {Number(p.amount).toFixed(2)}</TableCell>
+                {historyModal.items.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                      {item.date ? dayjs(item.date.toDate ? item.date.toDate() : item.date).format('MMM DD, YYYY') : 'No Date'}
+                    </TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={item.historyType === 'payment' ? 'Payment' : 'Top-up'} 
+                        size="small" 
+                        color={item.historyType === 'payment' ? 'success' : 'primary'}
+                        variant="outlined"
+                        sx={{ fontSize: '0.65rem', height: 20 }}
+                      />
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700, color: item.historyType === 'payment' ? 'success.main' : 'primary.main' }}>
+                      {item.historyType === 'payment' ? '-' : '+'} ZMW {Number(item.amount).toFixed(2)}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -1791,7 +1816,7 @@ export default function LoanList() {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setHistoryModal({ open: false, loanId: null, payments: [], loading: false })} size="small" color="secondary">Close</Button>
+          <Button onClick={() => setHistoryModal({ open: false, loanId: null, items: [], loading: false })} size="small" color="secondary">Close</Button>
         </DialogActions>
       </Dialog>
 

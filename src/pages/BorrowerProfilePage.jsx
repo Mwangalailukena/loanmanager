@@ -261,7 +261,7 @@ export default function BorrowerProfilePage() {
     comments, addComment, deleteComment,
     guarantors, deleteGuarantor,
     fetchComments,
-    deleteLoan, addPayment, updateLoan, getPaymentsByLoanId, settings, topUpLoan, markLoanAsDefaulted, // Added markLoanAsDefaulted
+    deleteLoan, addPayment, updateLoan, getLoanHistory, settings, topUpLoan, markLoanAsDefaulted, // Added markLoanAsDefaulted
   } = useFirestore();
   const theme = useTheme();
 
@@ -296,7 +296,7 @@ export default function BorrowerProfilePage() {
   const [isAddingPayment, setIsAddingPayment] = useState(false);
   const [topUpModal, setTopUpModal] = useState({ open: false, loan: null });
   const [isToppingUp, setIsToppingUp] = useState(false);
-  const [historyModal, setHistoryModal] = useState({ open: false, loanId: null, payments: [], loading: false });
+  const [historyModal, setHistoryModal] = useState({ open: false, loanId: null, items: [], loading: false });
   const [editModal, setEditModal] = useState({ open: false, loan: null });
   const [editData, setEditData] = useState({ principal: "", interestDuration: 1, startDate: "", dueDate: "" });
   const [editErrors, setEditErrors] = useState({});
@@ -512,13 +512,13 @@ export default function BorrowerProfilePage() {
   };
 
   const openHistoryModal = async (loanId) => {
-    setHistoryModal({ open: true, loanId, payments: [], loading: true });
+    setHistoryModal({ open: true, loanId, items: [], loading: true });
     try {
-      const payments = await getPaymentsByLoanId(loanId);
-      setHistoryModal((prev) => ({ ...prev, payments, loading: false }));
+      const items = await getLoanHistory(loanId);
+      setHistoryModal((prev) => ({ ...prev, items, loading: false }));
     } catch (error) {
-      console.error("Error fetching payment history:", error);
-      setHistoryModal((prev) => ({ ...prev, payments: [], loading: false }));
+      console.error("Error fetching loan history:", error);
+      setHistoryModal((prev) => ({ ...prev, items: [], loading: false }));
     }
   };
 
@@ -1136,31 +1136,45 @@ export default function BorrowerProfilePage() {
         loading={isToppingUp}
       />
 
-      {/* Payment History Modal */}
-      <Dialog open={historyModal.open} onClose={() => setHistoryModal({ open: false, loanId: null, payments: [], loading: false })} maxWidth="xs" fullWidth>
-        <DialogTitle fontSize="1.1rem">Payment History</DialogTitle>
+      {/* Loan History Modal */}
+      <Dialog open={historyModal.open} onClose={() => setHistoryModal({ open: false, loanId: null, items: [], loading: false })} maxWidth="xs" fullWidth>
+        <DialogTitle fontSize="1.1rem">Loan History</DialogTitle>
         <DialogContent dividers>
           {historyModal.loading ? (
             <Box display="flex" justifyContent="center" alignItems="center" minHeight="100px">
               <CircularProgress size={24} />
             </Box>
-          ) : historyModal.payments.length === 0 ? (
+          ) : historyModal.items.length === 0 ? (
             <Typography variant="body2" color="text.secondary" align="center">
-              No payments recorded for this loan.
+              No history recorded for this loan.
             </Typography>
           ) : (
             <Table size="small">
               <TableHead>
                 <TableRow>
                   <TableCell>Date</TableCell>
+                  <TableCell>Type</TableCell>
                   <TableCell align="right">Amount</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {historyModal.payments.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell>{p.date ? dayjs(p.date.toDate ? p.date.toDate() : p.date).format('YYYY-MM-DD') : 'No Date'}</TableCell>
-                    <TableCell align="right">ZMW {Number(p.amount).toFixed(2)}</TableCell>
+                {historyModal.items.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                      {item.date ? dayjs(item.date.toDate ? item.date.toDate() : item.date).format('MMM DD, YYYY') : 'No Date'}
+                    </TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={item.historyType === 'payment' ? 'Payment' : 'Top-up'} 
+                        size="small" 
+                        color={item.historyType === 'payment' ? 'success' : 'primary'}
+                        variant="outlined"
+                        sx={{ fontSize: '0.65rem', height: 20 }}
+                      />
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700, color: item.historyType === 'payment' ? 'success.main' : 'primary.main' }}>
+                      {item.historyType === 'payment' ? '-' : '+'} ZMW {Number(item.amount).toFixed(2)}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -1168,7 +1182,7 @@ export default function BorrowerProfilePage() {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setHistoryModal({ open: false, loanId: null, payments: [], loading: false })} size="small" color="secondary">Close</Button>
+          <Button onClick={() => setHistoryModal({ open: false, loanId: null, items: [], loading: false })} size="small" color="secondary">Close</Button>
         </DialogActions>
       </Dialog>
 
