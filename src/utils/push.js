@@ -17,11 +17,9 @@ export const requestNotificationPermission = async () => {
 
   const permission = await Notification.requestPermission();
   if (permission === "granted") {
-    console.log("Notification permission granted.");
     return await saveTokenToFirestore();
   }
   
-  console.log("Notification permission denied.");
   return null;
 };
 
@@ -52,7 +50,6 @@ const saveTokenToFirestore = async () => {
         return null;
       }
 
-      console.log('FCM Token obtained:', currentToken);
       const tokenRef = doc(db, 'fcmTokens', currentToken);
 
       await setDoc(
@@ -86,7 +83,6 @@ const saveTokenToFirestore = async () => {
  */
 export const onForegroundMessage = (callback) => {
   return onMessage(messaging, (payload) => {
-    console.log("Foreground message received.", payload);
     callback(payload);
   });
 };

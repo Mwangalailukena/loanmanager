@@ -262,7 +262,6 @@ const BottomNavBar = ({ onOpenAddLoan, onOpenAddPayment, onOpenAddBorrower, onOp
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => {
-              console.log("Backdrop clicked, closing menu");
               setDashboardMenuAnchor(null);
             }}
             sx={{
