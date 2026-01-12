@@ -37,6 +37,29 @@
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#009688",
-  "orientation": "portrait-primary"
+  "orientation": "portrait-primary",
+  "shortcuts": [
+    {
+      "name": "New Loan",
+      "short_name": "Loan",
+      "description": "Create a new loan record",
+      "url": "/loans?action=add",
+      "icons": [{ "src": "/icons/add-loan.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Add Payment",
+      "short_name": "Payment",
+      "description": "Record a new payment",
+      "url": "/loans?action=payment",
+      "icons": [{ "src": "/icons/payment.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Borrowers",
+      "short_name": "Borrowers",
+      "description": "View borrower list",
+      "url": "/borrowers",
+      "icons": [{ "src": "/icons/borrowers.png", "sizes": "192x192" }]
+    }
+  ]
 }
 

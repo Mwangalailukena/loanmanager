@@ -112,6 +112,21 @@ const AppLayout = ({ children, darkMode, onToggleDarkMode }) => {
   const openAddExpense = useCallback(() => setAddExpenseOpen(true), []);
   const openLoanSimulator = useCallback(() => setLoanSimulatorOpen(true), []);
 
+  // --- Handle App Shortcuts / URL Actions ---
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const action = params.get('action');
+    if (action === 'add') {
+      setAddLoanOpen(true);
+    } else if (action === 'payment') {
+      setAddPaymentOpen(true);
+    }
+    // Clean up URL without triggering re-render/re-routing
+    if (action) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
   // --- Push Notifications Effect ---
   useEffect(() => {
     // Only run if there is a logged-in user
