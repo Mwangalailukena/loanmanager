@@ -31,11 +31,7 @@ import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import localeData from 'dayjs/plugin/localeData';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, 
-  Legend as RechartsLegend, ResponsiveContainer, PieChart, Pie, Cell 
-} from 'recharts';
-
+import { SimplePieChart, SimpleBarChart } from '../components/charts/CustomSVGCharts';
 
 import AddExpenseDialog from '../components/AddExpenseDialog';
 
@@ -260,36 +256,9 @@ export default function ExpensesPage() {
                      {loading ? <Skeleton variant="rectangular" width="100%" height="100%" sx={{ borderRadius: 2 }} /> : (
                        filteredExpenses.length > 0 ? (
                         viewBy === 'month' ? (
-                          <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                              <Pie
-                                data={pieChartData}
-                                cx="50%"
-                                cy="50%"
-                                labelLine={false}
-                                outerRadius={80}
-                                fill="#8884d8"
-                                dataKey="value"
-                              >
-                                {pieChartData.map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                ))}
-                              </Pie>
-                              <RechartsTooltip formatter={(value) => `K ${value.toLocaleString()}`} />
-                              <RechartsLegend />
-                            </PieChart>
-                          </ResponsiveContainer>
+                          <SimplePieChart data={pieChartData} colors={COLORS} size={250} />
                         ) : (
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={barChartData}>
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis dataKey="name" />
-                              <YAxis />
-                              <RechartsTooltip />
-                              <RechartsLegend />
-                              <Bar dataKey="Expenses" fill={theme.palette.secondary.main} />
-                            </BarChart>
-                          </ResponsiveContainer>
+                          <SimpleBarChart data={barChartData} color={theme.palette.secondary.main} />
                         )
                       ) : <Typography color="text.secondary">No data for chart</Typography>
                      )}

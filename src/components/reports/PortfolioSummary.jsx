@@ -18,7 +18,6 @@ import {
   Receipt,
   Assessment
 } from '@mui/icons-material';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
 import { alpha } from '@mui/material/styles';
 
 const MetricCard = ({ title, value, previousValue, icon, color, isCurrency = true }) => {
@@ -57,6 +56,67 @@ const MetricCard = ({ title, value, previousValue, icon, color, isCurrency = tru
         </Stack>
       </CardContent>
     </Card>
+  );
+};
+
+const CustomBarChart = ({ data }) => {
+  const theme = useTheme();
+  
+  const maxVal = Math.max(...data.map(d => d.value), 1) * 1.1;
+  const width = 600;
+  const height = 300;
+  const margin = { top: 20, right: 20, bottom: 40, left: 60 };
+  const innerWidth = width - margin.left - margin.right;
+  const innerHeight = height - margin.top - margin.bottom;
+  const stepX = innerWidth / data.length;
+  const barWidth = stepX * 0.6;
+
+  return (
+    <Box sx={{ width: '100%', height: '100%' }}>
+      <svg viewBox={`0 0 ${width} ${height}`} width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+        {/* Y-Axis Labels & Grid */}
+        {[0, 0.25, 0.5, 0.75, 1].map((tick, i) => {
+          const val = (maxVal * tick).toFixed(0);
+          const y = innerHeight * (1 - tick) + margin.top;
+          return (
+            <g key={i}>
+              <text x={margin.left - 10} y={y + 5} textAnchor="end" fontSize="12" fill={theme.palette.text.secondary}>
+                {val > 1000 ? `K${(val/1000).toFixed(0)}k` : val}
+              </text>
+              <line x1={margin.left} y1={y} x2={width - margin.right} y2={y} stroke={theme.palette.divider} strokeDasharray="4 4" />
+            </g>
+          );
+        })}
+
+        {/* Bars */}
+        {data.map((d, i) => {
+          const x = margin.left + i * stepX + (stepX - barWidth) / 2;
+          const barHeight = (d.value / maxVal) * innerHeight;
+          return (
+            <g key={i}>
+              <rect 
+                x={x} 
+                y={innerHeight - barHeight + margin.top} 
+                width={barWidth} 
+                height={barHeight} 
+                fill={d.color}
+                rx={8}
+              />
+              <text 
+                x={x + barWidth / 2} 
+                y={innerHeight + margin.top + 25} 
+                textAnchor="middle" 
+                fontSize="12" 
+                fill={theme.palette.text.primary}
+                fontWeight="600"
+              >
+                {d.name}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </Box>
   );
 };
 
@@ -118,23 +178,7 @@ export default function PortfolioSummary({
           <CardContent>
             <Typography variant="h6" fontWeight={700} gutterBottom>Financial Overview</Typography>
             <Box sx={{ height: 350, mt: 2 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={summaryChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                  <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `K${value/1000}k`} />
-                  <RechartsTooltip 
-                    cursor={{fill: alpha(theme.palette.divider, 0.1)}}
-                    contentStyle={{ borderRadius: 12, border: 'none', boxShadow: theme.shadows[3] }}
-                    formatter={(value) => [`ZMW ${value.toLocaleString()}`, 'Amount']}
-                  />
-                  <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={60}>
-                    {summaryChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              <CustomBarChart data={summaryChartData} />
             </Box>
           </CardContent>
         </Card>

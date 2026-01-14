@@ -6,14 +6,14 @@ import AppLayout from './components/AppLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // Import Critical Routes Statically
-import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import Register from './pages/Register';
 
 // Import Material-UI components for the loader
 import { Box, LinearProgress, useTheme } from '@mui/material';
 
-// Lazy Load Non-Critical Routes
+// Lazy Load Routes
+const LazyDashboard = lazy(() => import('./pages/Dashboard'));
 const LazyLoanList = lazy(() => import('./pages/LoanList'));
 const LazyActivityPage = lazy(() => import('./pages/ActivityPage'));
 const LazySettingsPage = lazy(() => import('./pages/SettingsPage'));
@@ -25,6 +25,7 @@ const LazyBorrowerListPage = lazy(() => import('./pages/BorrowerListPage'));
 const LazyBorrowerProfilePage = lazy(() => import('./pages/BorrowerProfilePage'));
 const LazyEditBorrowerPage = lazy(() => import('./pages/EditBorrowerPage'));
 const LazyExpensesPage = lazy(() => import('./pages/ExpensesPage'));
+const LazyLoanSimulatorPage = lazy(() => import('./pages/LoanSimulatorPage'));
 
 function AppRoutes({ darkMode, onToggleDarkMode }) {
   const location = useLocation();
@@ -63,7 +64,7 @@ function AppRoutes({ darkMode, onToggleDarkMode }) {
               <Route path="/forgot-password" element={<LazyForgotPassword />} />
               
               {/* Protected Routes */}
-              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/dashboard" element={<ProtectedRoute><LazyDashboard /></ProtectedRoute>} />
               <Route path="/loans" element={<ProtectedRoute><LazyLoanList /></ProtectedRoute>} />
               <Route path="/activity" element={<ProtectedRoute><LazyActivityPage /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><LazySettingsPage /></ProtectedRoute>} />
@@ -71,6 +72,7 @@ function AppRoutes({ darkMode, onToggleDarkMode }) {
               <Route path="/change-password" element={<ProtectedRoute><LazyChangePassword /></ProtectedRoute>} />
               <Route path="/reports" element={<ProtectedRoute><LazyReportsPage /></ProtectedRoute>} />
               <Route path="/expenses" element={<ProtectedRoute><LazyExpensesPage /></ProtectedRoute>} />
+              <Route path="/simulator" element={<ProtectedRoute><LazyLoanSimulatorPage /></ProtectedRoute>} />
 
               {/* Borrower Routes */}
               <Route path="/borrowers" element={<ProtectedRoute><LazyBorrowerListPage /></ProtectedRoute>} />

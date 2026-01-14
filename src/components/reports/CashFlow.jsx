@@ -16,16 +16,6 @@ import {
   Card,
   CardContent,
 } from '@mui/material';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip as RechartsTooltip, 
-  ResponsiveContainer,
-  Cell
-} from 'recharts';
 import { alpha } from '@mui/material/styles';
 import { 
   ArrowDownward, 
@@ -54,6 +44,71 @@ const CashFlowMetric = ({ title, amount, icon, color }) => (
     </CardContent>
   </Card>
 );
+
+const CustomCashFlowChart = ({ data }) => {
+  const theme = useTheme();
+  
+  if (!data || data.length === 0) return null;
+
+  const maxVal = Math.max(...data.map(d => Math.abs(d.amount)), 1) * 1.1;
+  const width = 800;
+  const height = 300;
+  const margin = { top: 20, right: 20, bottom: 40, left: 60 };
+  const innerWidth = width - margin.left - margin.right;
+  const innerHeight = height - margin.top - margin.bottom;
+  const stepX = innerWidth / data.length;
+  const barWidth = stepX * 0.7;
+
+  return (
+    <Box sx={{ width: '100%', height: '100%' }}>
+      <svg viewBox={`0 0 ${width} ${height}`} width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+        {/* Grid Lines */}
+        {[0, 0.25, 0.5, 0.75, 1].map((tick, i) => (
+          <line 
+            key={i}
+            x1={margin.left} 
+            y1={innerHeight * (1 - tick) + margin.top} 
+            x2={width - margin.right} 
+            y2={innerHeight * (1 - tick) + margin.top}
+            stroke={theme.palette.divider}
+            strokeDasharray="4 4"
+          />
+        ))}
+
+        {/* Bars */}
+        {data.map((d, i) => {
+          const x = margin.left + i * stepX + (stepX - barWidth) / 2;
+          const barHeight = (Math.abs(d.amount) / maxVal) * innerHeight;
+          const color = d.amount >= 0 ? theme.palette.success.main : theme.palette.error.main;
+          
+          return (
+            <g key={i}>
+              <rect 
+                x={x} 
+                y={innerHeight - barHeight + margin.top} 
+                width={barWidth} 
+                height={barHeight} 
+                fill={color}
+                rx={4}
+              />
+              {data.length < 15 && (
+                <text 
+                  x={x + barWidth / 2} 
+                  y={innerHeight + margin.top + 20} 
+                  textAnchor="middle" 
+                  fontSize="10" 
+                  fill={theme.palette.text.secondary}
+                >
+                  {d.date.split('-').slice(1).join('/')}
+                </text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+    </Box>
+  );
+};
 
 export default function CashFlow({ cashFlowReport, exportCashFlow, exportCashFlowPdf }) {
   const theme = useTheme();
@@ -91,22 +146,7 @@ export default function CashFlow({ cashFlowReport, exportCashFlow, exportCashFlo
         <CardContent>
           <Typography variant="h6" fontWeight={700} gutterBottom>Transaction Timeline</Typography>
           <Box sx={{ height: 350, mt: 2 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={cashFlowReport.data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme.palette.divider} />
-                <XAxis dataKey="date" axisLine={false} tickLine={false} />
-                <YAxis axisLine={false} tickLine={false} />
-                <RechartsTooltip 
-                  contentStyle={{ borderRadius: 12, border: 'none', boxShadow: theme.shadows[3] }}
-                  cursor={{fill: alpha(theme.palette.divider, 0.1)}}
-                />
-                <Bar dataKey="amount" radius={[4, 4, 0, 0]}>
-                  {cashFlowReport.data.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.amount >= 0 ? theme.palette.success.main : theme.palette.error.main} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            <CustomCashFlowChart data={cashFlowReport.data} />
           </Box>
         </CardContent>
       </Card>

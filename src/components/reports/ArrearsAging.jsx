@@ -16,16 +16,9 @@ import {
   Box,
   useTheme,
 } from '@mui/material';
-import { 
-  PieChart, 
-  Pie, 
-  Cell, 
-  Tooltip as RechartsTooltip, 
-  Legend as RechartsLegend, 
-  ResponsiveContainer 
-} from 'recharts';
 import { alpha } from '@mui/material/styles';
 import { Assessment, ListAlt } from '@mui/icons-material';
+import { SimplePieChart } from '../charts/CustomSVGCharts';
 
 const PIE_CHART_COLORS = ['#FFC107', '#FF8F00', '#E65100', '#D84315'];
 
@@ -87,30 +80,7 @@ export default function ArrearsAging({ arrearsAgingReport, exportArrearsAging, e
           <CardContent>
             <Typography variant="h6" fontWeight={700} gutterBottom>Volume Distribution</Typography>
             <Box sx={{ height: 300, mt: 2 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie 
-                    data={arrearsAgingReport.chartData} 
-                    dataKey="value" 
-                    nameKey="name" 
-                    cx="50%" 
-                    cy="50%" 
-                    innerRadius={60}
-                    outerRadius={80} 
-                    paddingAngle={5}
-                    label
-                  >
-                    {arrearsAgingReport.chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={PIE_CHART_COLORS[index % PIE_CHART_COLORS.length]} stroke="none" />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip 
-                    contentStyle={{ borderRadius: 12, border: 'none', boxShadow: theme.shadows[3] }}
-                    formatter={(value) => [`ZMW ${value.toLocaleString()}`, 'Outstanding']}
-                  />
-                  <RechartsLegend verticalAlign="bottom" height={36} />
-                </PieChart>
-              </ResponsiveContainer>
+              <SimplePieChart data={arrearsAgingReport.chartData} colors={PIE_CHART_COLORS} size={250} innerRadius={60} />
             </Box>
           </CardContent>
         </Card>

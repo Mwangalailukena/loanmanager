@@ -1,52 +1,31 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, lazy, Suspense } from "react";
 import {
-  Box, Typography, useTheme, CircularProgress, Paper, 
+  Box, Typography, useTheme, Paper, 
   Tabs, Tab, alpha
 } from "@mui/material";
 import TrendingUpIcon from '@mui/icons-material/TrendingUpRounded';
 import WarningAmberIcon from '@mui/icons-material/GppMaybeRounded';
 import PeopleIcon from '@mui/icons-material/GroupsRounded';
-import { ResponsiveBar } from "@nivo/bar";
-import { ResponsiveLine } from '@nivo/line';
 import dayjs from "dayjs";
 import isBetween from 'dayjs/plugin/isBetween';
 import PropTypes from 'prop-types';
 import { motion, AnimatePresence } from 'framer-motion';
+import ChartsSkeleton from './dashboard/ChartsSkeleton';
+
+// Lazy Load Chart Components
+const GrowthChart = lazy(() => import('./charts/GrowthChart'));
+const RiskChart = lazy(() => import('./charts/RiskChart'));
+const TopBorrowersChart = lazy(() => import('./charts/TopBorrowersChart'));
 
 // Extend dayjs
 dayjs.extend(isBetween);
 
-// --- Constants & Themes ---
-const COLORS = {
-  revenue: "#4caf50",
-  costs: "#f44336",
-  performing: "#2196f3",
-  overdue: "#ff9800",
-  neutral: "#9e9e9e"
-};
-
-const getChartTheme = (theme) => ({
-  axis: {
-    ticks: { text: { fill: theme.palette.text.secondary, fontSize: 10 } },
-    legend: { text: { fill: theme.palette.text.primary, fontSize: 12, fontWeight: 600 } },
-  },
-  grid: { line: { stroke: theme.palette.divider, strokeDasharray: '4 4' } },
-  tooltip: {
-    container: { 
-      background: theme.palette.background.paper, 
-      color: theme.palette.text.primary, 
-      fontSize: 12, 
-      borderRadius: 8, 
-      boxShadow: theme.shadows[4], 
-      padding: '8px 12px',
-      border: `1px solid ${theme.palette.divider}`
-    },
-  },
-});
-
-const formatCurrency = (value) => new Intl.NumberFormat('en-US', {
-    style: 'currency', currency: 'ZMW', minimumFractionDigits: 0, maximumFractionDigits: 0,
-}).format(value);
+// --- Sub-Components ---
+const TabPanel = ({ children, value, index }) => (
+  <div role="tabpanel" hidden={value !== index}>
+    {value === index && <Box sx={{ pt: 3 }}>{children}</Box>}
+  </div>
+);
 
 const calcStatusAsOf = (loan, asOfDate) => {
   if ((loan.repaidAmount || 0) >= (loan.principal || 0)) return 'Paid';
@@ -59,27 +38,48 @@ const calcStatusAsOf = (loan, asOfDate) => {
   return 'Active';
 };
 
-// --- Sub-Components ---
-const TabPanel = ({ children, value, index }) => (
-  <div role="tabpanel" hidden={value !== index}>
-    {value === index && <Box sx={{ pt: 3 }}>{children}</Box>}
-  </div>
-);
-
 // --- Main Chart Component ---
 const Charts = ({ loans, borrowers, payments, expenses, selectedMonth }) => {
   const theme = useTheme();
   const [activeTab, setActiveTab] = useState(0);
   const [chartStartDate, setChartStartDate] = useState(dayjs().subtract(1, 'year').format('YYYY-MM-DD'));
   const [chartEndDate, setChartEndDate] = useState(dayjs().format('YYYY-MM-DD'));
+  const [isReady, setIsReady] = useState(false);
+
+  // --- Defer Rendering Logic ---
+  useEffect(() => {
+    let idleHandle;
+    const enableRendering = () => setIsReady(true);
+
+    // 1. Idle Callback with Fallback
+    if ('requestIdleCallback' in window) {
+      idleHandle = requestIdleCallback(enableRendering, { timeout: 3000 });
+    } else {
+      idleHandle = setTimeout(enableRendering, 2000);
+    }
+
+    // 2. User Interaction Trigger (optional, to speed up if user starts interacting)
+    // We use 'once: true' so it only fires the first time
+    const interactionEvents = ['touchstart', 'mousemove', 'scroll', 'keydown', 'click'];
+    const onInteract = () => {
+       enableRendering();
+       interactionEvents.forEach(e => window.removeEventListener(e, onInteract));
+    };
+    interactionEvents.forEach(e => window.addEventListener(e, onInteract, { passive: true, once: true }));
+
+    return () => {
+      if ('cancelIdleCallback' in window) cancelIdleCallback(idleHandle);
+      else clearTimeout(idleHandle);
+      interactionEvents.forEach(e => window.removeEventListener(e, onInteract));
+    };
+  }, []);
+
 
   useEffect(() => {
     if (selectedMonth) {
-      // If a specific month is selected, show a 6-month trend ending in that month
       setChartStartDate(dayjs(selectedMonth).subtract(5, 'month').startOf('month').format('YYYY-MM-DD'));
       setChartEndDate(dayjs(selectedMonth).endOf('month').format('YYYY-MM-DD'));
     } else {
-      // If "All Time" is selected, show the last 12 months
       setChartStartDate(dayjs().subtract(11, 'month').startOf('month').format('YYYY-MM-DD'));
       setChartEndDate(dayjs().endOf('month').format('YYYY-MM-DD'));
     }
@@ -87,11 +87,12 @@ const Charts = ({ loans, borrowers, payments, expenses, selectedMonth }) => {
 
   const isLoading = !loans || !borrowers || !payments || !expenses;
 
-  // Data Processing
+  // Data Processing - Memoized and Deferred
   const { growthData, riskData, topBorrowers } = useMemo(() => {
-    if (isLoading) return { growthData: [], riskData: [], topBorrowers: [] };
+    // Return empty if not ready or loading to save main thread
+    if (!isReady || isLoading) return { growthData: [], riskData: [], topBorrowers: [] };
 
-    // 1. Growth Data (Income vs Costs)
+    // 1. Growth Data
     const monthMap = new Map();
     const rangeStart = dayjs(chartStartDate).startOf('month');
     const rangeEnd = dayjs(chartEndDate).endOf('month');
@@ -118,7 +119,7 @@ const Charts = ({ loans, borrowers, payments, expenses, selectedMonth }) => {
       }
     });
 
-    // 2. Risk Data (Performing vs Overdue)
+    // 2. Risk Data
     const riskTrend = Array.from(monthMap.keys()).map(monthKey => {
       const asOf = dayjs(monthKey, 'MMM YY').endOf('month');
       let performing = 0, overdue = 0;
@@ -155,9 +156,10 @@ const Charts = ({ loans, borrowers, payments, expenses, selectedMonth }) => {
       riskData: riskTrend, 
       topBorrowers: sortedBorrowers 
     };
-  }, [loans, borrowers, payments, expenses, chartStartDate, chartEndDate, isLoading]);
+  }, [loans, borrowers, payments, expenses, chartStartDate, chartEndDate, isLoading, isReady]);
 
-  if (isLoading) return <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}><CircularProgress /></Box>;
+  // Show Skeleton until the browser is idle/ready
+  if (isLoading || !isReady) return <ChartsSkeleton />;
 
   return (
     <Box>
@@ -193,93 +195,19 @@ const Charts = ({ loans, borrowers, payments, expenses, selectedMonth }) => {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
           >
-            {/* --- GROWTH TAB --- */}
-            <TabPanel value={activeTab} index={0}>
-              <Box sx={{ height: 350 }}>
-                <ResponsiveLine
-                  data={[
-                    { id: 'Income', color: COLORS.revenue, data: growthData.map(d => ({ x: d.month, y: d.income })) },
-                    { id: 'Costs', color: COLORS.costs, data: growthData.map(d => ({ x: d.month, y: d.costs })) }
-                  ]}
-                  margin={{ top: 20, right: 30, bottom: 50, left: 60 }}
-                  xScale={{ type: 'point' }}
-                  yScale={{ type: 'linear', min: 'auto', max: 'auto', stacked: false }}
-                  curve="monotoneX"
-                  axisTop={null}
-                  axisRight={null}
-                  enableArea={true}
-                  areaOpacity={0.1}
-                  colors={d => d.color}
-                  enableGridX={false}
-                  pointSize={8}
-                  pointColor={{ from: 'color' }}
-                  pointBorderWidth={2}
-                  pointBorderColor={{ from: 'serieColor' }}
-                  useMesh={true}
-                  theme={getChartTheme(theme)}
-                  tooltip={({ point }) => (
-                    <Box sx={{ p: 1, bgcolor: 'background.paper', borderRadius: 1, boxShadow: 1 }}>
-                      <Typography variant="caption" fontWeight="bold">{point.serieId}</Typography>
-                      <Typography variant="body2">{formatCurrency(point.data.y)}</Typography>
-                    </Box>
-                  )}
-                />
-              </Box>
-            </TabPanel>
+            <Suspense fallback={<ChartsSkeleton />}>
+              <TabPanel value={activeTab} index={0}>
+                <GrowthChart data={growthData} />
+              </TabPanel>
 
-            {/* --- RISK TAB --- */}
-            <TabPanel value={activeTab} index={1}>
-              <Box sx={{ height: 350 }}>
-                <ResponsiveBar
-                  data={riskData}
-                  keys={['Performing', 'Overdue']}
-                  indexBy="month"
-                  margin={{ top: 20, right: 30, bottom: 50, left: 60 }}
-                  padding={0.4}
-                  valueScale={{ type: 'linear' }}
-                  indexScale={{ type: 'band', round: true }}
-                  colors={({ id }) => id === 'Performing' ? COLORS.performing : COLORS.overdue}
-                  borderRadius={4}
-                  theme={getChartTheme(theme)}
-                  enableLabel={false}
-                  axisTop={null}
-                  axisRight={null}
-                  enableGridY={true}
-                  tooltip={({ id, value, indexValue }) => (
-                    <Box sx={{ p: 1 }}>
-                      <Typography variant="caption">{indexValue}</Typography>
-                      <Typography variant="body2" fontWeight="bold" color={id === 'Performing' ? 'primary' : 'warning.main'}>
-                        {id}: {formatCurrency(value)}
-                      </Typography>
-                    </Box>
-                  )}
-                />
-              </Box>
-            </TabPanel>
+              <TabPanel value={activeTab} index={1}>
+                <RiskChart data={riskData} />
+              </TabPanel>
 
-            {/* --- BORROWERS TAB --- */}
-            <TabPanel value={activeTab} index={2}>
-              <Box sx={{ height: 350 }}>
-                <ResponsiveBar
-                  data={topBorrowers}
-                  keys={['value']}
-                  indexBy="name"
-                  layout="horizontal"
-                  margin={{ top: 20, right: 30, bottom: 50, left: 100 }}
-                  padding={0.3}
-                  colors={alpha(theme.palette.primary.main, 0.7)}
-                  borderRadius={4}
-                  theme={getChartTheme(theme)}
-                  enableLabel={true}
-                  labelFormat={v => formatCurrency(v)}
-                  labelSkipWidth={12}
-                  labelTextColor={{ from: 'color', modifiers: [['darker', 1.6]] }}
-                  axisTop={null}
-                  axisRight={null}
-                  axisBottom={{ format: v => `K${v/1000}k` }}
-                />
-              </Box>
-            </TabPanel>
+              <TabPanel value={activeTab} index={2}>
+                <TopBorrowersChart data={topBorrowers} />
+              </TabPanel>
+            </Suspense>
           </motion.div>
         </AnimatePresence>
       </Paper>

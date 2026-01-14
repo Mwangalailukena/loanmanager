@@ -73,8 +73,6 @@ import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import GuarantorDialog from '../components/GuarantorDialog';
 import { useCreditScore } from '../hooks/useCreditScore';
-import { ResponsiveLine } from '@nivo/line';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { calcStatus } from '../utils/loanUtils';
 import WhatsAppDialog from '../components/WhatsAppDialog';
 
@@ -85,84 +83,107 @@ const interestOptions = [
   { label: "4 Weeks", value: 4 },
 ];
 
-const CreditScoreHistoryChart = ({ history }) => {
+const CustomLineChart = ({ data }) => {
   const theme = useTheme();
-  const data = [
-    {
-      id: "Credit Score",
-      data: history.map(h => ({ x: h.date, y: h.score })),
-    },
-  ];
+  
+  if (!data || data.length === 0) return null;
+
+  const width = 600;
+  const height = 200;
+  const margin = { top: 20, right: 20, bottom: 30, left: 40 };
+  const innerWidth = width - margin.left - margin.right;
+  const innerHeight = height - margin.top - margin.bottom;
+
+  const minScore = Math.min(...data.map(d => d.score), 0);
+  const maxScore = Math.max(...data.map(d => d.score), 100);
+  const scoreRange = maxScore - minScore || 1;
+
+  const stepX = data.length > 1 ? innerWidth / (data.length - 1) : innerWidth;
+
+  const points = data.map((d, i) => {
+    const x = margin.left + i * stepX;
+    const y = innerHeight - ((d.score - minScore) / scoreRange) * innerHeight + margin.top;
+    return `${x},${y}`;
+  });
+
+  const linePath = `M` + points.join(' L');
+
+  return (
+    <Box sx={{ width: '100%', height: '100%' }}>
+      <svg viewBox={`0 0 ${width} ${height}`} width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+        {/* Y Grid */}
+        {[0, 0.5, 1].map((tick, i) => {
+          const y = innerHeight * (1 - tick) + margin.top;
+          return (
+            <line key={i} x1={margin.left} y1={y} x2={width - margin.right} y2={y} stroke={theme.palette.divider} strokeDasharray="4 4" />
+          );
+        })}
+        {/* Line */}
+        <path d={linePath} fill="none" stroke={theme.palette.primary.main} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        {/* Points */}
+        {data.map((d, i) => {
+          const [x, y] = points[i].split(',');
+          return (
+            <circle key={i} cx={x} cy={y} r="4" fill={theme.palette.primary.main} />
+          );
+        })}
+        {/* X Labels */}
+        {data.filter((_, i) => i === 0 || i === data.length - 1 || data.length < 5).map((d, i, arr) => {
+          const x = margin.left + data.indexOf(d) * stepX;
+          return (
+            <text key={i} x={x} y={innerHeight + margin.top + 20} textAnchor={i === 0 ? "start" : i === arr.length - 1 ? "end" : "middle"} fontSize="10" fill={theme.palette.text.secondary}>
+              {d.date}
+            </text>
+          );
+        })}
+      </svg>
+    </Box>
+  );
+};
+
+const CustomPieChart = ({ data, colors }) => {
+  const total = data.reduce((sum, d) => sum + d.value, 0);
+  let cumulativeAngle = 0;
+  const radius = 45;
+  const centerX = 50;
+  const centerY = 50;
+
+  if (total === 0) return <Typography variant="caption">No data</Typography>;
+
+  return (
+    <Box sx={{ width: '100%', height: 150, display: 'flex', justifyContent: 'center' }}>
+      <svg viewBox="0 0 100 100" height="100%">
+        {data.map((d, i) => {
+          const startAngle = cumulativeAngle;
+          const sliceAngle = (d.value / total) * 360;
+          cumulativeAngle += sliceAngle;
+
+          const x1 = centerX + radius * Math.cos((Math.PI * (startAngle - 90)) / 180);
+          const y1 = centerY + radius * Math.sin((Math.PI * (startAngle - 90)) / 180);
+          const x2 = centerX + radius * Math.cos((Math.PI * (startAngle + sliceAngle - 90)) / 180);
+          const y2 = centerY + radius * Math.sin((Math.PI * (startAngle + sliceAngle - 90)) / 180);
+
+          const largeArcFlag = sliceAngle > 180 ? 1 : 0;
+          const pathData = `M ${centerX} ${centerY} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
+
+          return <path key={i} d={pathData} fill={colors[i % colors.length]} />;
+        })}
+      </svg>
+    </Box>
+  );
+};
+
+const CreditScoreHistoryChart = ({ history }) => {
+  const data = history.map(h => ({ date: h.date, score: h.score }));
 
   return (
     <Paper variant="outlined" sx={{ p: 2, height: 300 }}>
       <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
         Credit Score History
       </Typography>
-      <ResponsiveLine
-        data={data}
-        margin={{ top: 20, right: 20, bottom: 60, left: 60 }}
-        xScale={{ type: 'point' }}
-        yScale={{
-          type: 'linear',
-          min: 'auto',
-          max: 'auto',
-          stacked: true,
-          reverse: false
-        }}
-        axisTop={null}
-        axisRight={null}
-        axisBottom={{
-          orient: 'bottom',
-          tickSize: 5,
-          tickPadding: 5,
-          tickRotation: 0,
-          legend: 'Date',
-          legendOffset: 36,
-          legendPosition: 'middle'
-        }}
-        axisLeft={{
-          orient: 'left',
-          tickSize: 5,
-          tickPadding: 5,
-          tickRotation: 0,
-          legend: 'Score',
-          legendOffset: -40,
-          legendPosition: 'middle'
-        }}
-        colors={{ scheme: 'category10' }}
-        pointSize={10}
-        pointColor={{ theme: 'background' }}
-        pointBorderWidth={2}
-        pointBorderColor={{ from: 'serieColor' }}
-        pointLabelYOffset={-12}
-        useMesh={true}
-        theme={{
-          axis: {
-            ticks: {
-              text: {
-                fill: theme.palette.text.secondary,
-              },
-            },
-            legend: {
-              text: {
-                fill: theme.palette.text.primary,
-              },
-            },
-          },
-          grid: {
-            line: {
-              stroke: theme.palette.divider,
-            },
-          },
-          tooltip: {
-            container: {
-              background: theme.palette.background.paper,
-              color: theme.palette.text.primary,
-            },
-          },
-        }}
-      />
+      <Box sx={{ height: 200 }}>
+        <CustomLineChart data={data} />
+      </Box>
     </Paper>
   );
 };
@@ -712,24 +733,7 @@ export default function BorrowerProfilePage() {
                     <Grid xs={12} md={6}>
                       <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
                         <CardHeader title="Financial Snapshot" sx={{ p: 0, pb: 1 }} titleTypographyProps={{ fontWeight: 'bold', variant: 'h6' }} />
-                        <ResponsiveContainer width="100%" height={150}>
-                            <PieChart>
-                                <Pie
-                                    data={chartData}
-                                    cx="50%"
-                                    cy="50%"
-                                    labelLine={false}
-                                    outerRadius={60}
-                                    fill="#8884d8"
-                                    dataKey="value">
-                                    {chartData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Pie>
-                                <Tooltip formatter={(value) => `ZMW ${value.toLocaleString()}`} />
-                                <Legend iconSize={10} />
-                            </PieChart>
-                        </ResponsiveContainer>
+                        <CustomPieChart data={chartData} colors={COLORS} />
                          <List dense disablePadding sx={{mt: 2}}>
                             <ListItem disableGutters>
                                 <ListItemText primary="Total Loaned" />
