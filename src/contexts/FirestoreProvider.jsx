@@ -1,6 +1,14 @@
 // src/contexts/FirestoreProvider.js
 
-import React, { createContext, useContext, useEffect, useState, useMemo } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useMemo,
+  useCallback,
+  useRef,
+} from "react";
 import {
   collection,
   query,
@@ -9,13 +17,14 @@ import {
   doc,
   where,
   limit,
-  getDocs, 
+  getDocs,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "./AuthProvider";
 import { useSnackbar } from "../components/SnackbarProvider";
 import localforage from "localforage";
 import useOfflineStatus from "../hooks/useOfflineStatus";
+
 import * as loanService from "../services/loanService";
 import * as paymentService from "../services/paymentService";
 import * as borrowerService from "../services/borrowerService";
@@ -29,12 +38,14 @@ import * as userService from "../services/userService";
 const FirestoreContext = createContext();
 export const useFirestore = () => useContext(FirestoreContext);
 
+const CACHE_KEYS = ["loans", "payments", "borrowers", "expenses"];
+
 export function FirestoreProvider({ children }) {
   const { currentUser, loading: authLoading } = useAuth();
   const showSnackbar = useSnackbar();
   const isOnline = useOfflineStatus();
 
-  // --- State ---
+  // ---- State ----
   const [loans, setLoans] = useState([]);
   const [payments, setPayments] = useState([]);
   const [borrowers, setBorrowers] = useState([]);
@@ -46,508 +57,290 @@ export function FirestoreProvider({ children }) {
   const [comments, setComments] = useState([]);
   const [guarantors, setGuarantors] = useState([]);
   const [expenses, setExpenses] = useState([]);
+
   const [loading, setLoading] = useState(true);
+  const [offlineReady, setOfflineReady] = useState(false);
+  const [lastSyncAt, setLastSyncAt] = useState(null);
+  const [syncStatus, setSyncStatus] = useState("idle"); // idle | syncing | synced | offline
 
-  // --- Data Fetching (Real-time Listeners) ---
-  useEffect(() => {
-    if (authLoading || !currentUser || !isOnline) {
-      setLoading(false);
-      if (!currentUser || !isOnline) {
-        setLoans([]);
-        setPayments([]);
-        setBorrowers([]);
-        setActivityLogs([]);
-        setComments([]);
-        setGuarantors([]);
-        setExpenses([]);
-      }
-      return;
+  const activeListeners = useRef(0);
+
+  // ---- Utilities ----
+  const toMillis = (t) => (t?.toMillis ? t.toMillis() : t?.seconds ? t.seconds * 1000 : 0);
+
+  const loadCachedData = useCallback(async () => {
+    try {
+      const results = await Promise.all(
+        CACHE_KEYS.map((k) => localforage.getItem(k))
+      );
+
+      const [cLoans, cPayments, cBorrowers, cExpenses] = results;
+
+      if (cLoans) setLoans(cLoans);
+      if (cPayments) setPayments(cPayments);
+      if (cBorrowers) setBorrowers(cBorrowers);
+      if (cExpenses) setExpenses(cExpenses);
+
+      setOfflineReady(true);
+    } catch (err) {
+      console.error("Failed to load offline cache", err);
     }
+  }, []);
 
-    setLoading(true);
-    const unsubscribes = [];
-    const collectionsConfig = {
-      loans: { setter: setLoans, cacheKey: "loans", orderByField: "startDate" },
-      payments: { setter: setPayments, cacheKey: "payments", orderByField: "date" },
-      borrowers: { setter: setBorrowers, cacheKey: "borrowers", orderByField: "name" },
-      guarantors: { setter: setGuarantors, cacheKey: null, orderByField: "name" },
-      expenses: { setter: setExpenses, cacheKey: "expenses", orderByField: "date" },
+  // ---- Real-time listeners ----
+  useEffect(() => {
+    let unsubscribes = [];
+
+    const setupListeners = async () => {
+      if (authLoading || !currentUser) return;
+
+      setLoading(true);
+
+      if (!isOnline) {
+        setSyncStatus("offline");
+        await loadCachedData();
+        setLoading(false);
+        return;
+      }
+
+      setSyncStatus("syncing");
+
+      const collectionsConfig = {
+        loans: { setter: setLoans, cacheKey: "loans", orderByField: "startDate" },
+        payments: { setter: setPayments, cacheKey: "payments", orderByField: "date" },
+        borrowers: { setter: setBorrowers, cacheKey: "borrowers", orderByField: "name" },
+        guarantors: { setter: setGuarantors, cacheKey: null, orderByField: "name" },
+        expenses: { setter: setExpenses, cacheKey: "expenses", orderByField: "date" },
+      };
+
+      activeListeners.current = 0;
+      const expectedListeners = Object.keys(collectionsConfig).length + 1;
+
+      const handleFirstSnapshot = () => {
+        activeListeners.current += 1;
+        if (activeListeners.current === expectedListeners) {
+          setLoading(false);
+          setSyncStatus("synced");
+          setLastSyncAt(new Date());
+        }
+      };
+
+      Object.entries(collectionsConfig).forEach(([colName, config]) => {
+        const q = query(
+          collection(db, colName),
+          where("userId", "==", currentUser.uid),
+          orderBy(config.orderByField, "desc")
+        );
+
+        const unsub = onSnapshot(
+          q,
+          (snap) => {
+            const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+            config.setter(data);
+            if (config.cacheKey) localforage.setItem(config.cacheKey, data);
+            handleFirstSnapshot();
+          },
+          (err) => console.error(`Error fetching ${colName}:`, err)
+        );
+
+        unsubscribes.push(unsub);
+      });
+
+      const settingsUnsub = onSnapshot(doc(db, "settings", "config"), (docSnap) => {
+        if (docSnap.exists()) setSettings(docSnap.data());
+        handleFirstSnapshot();
+      });
+
+      unsubscribes.push(settingsUnsub);
     };
 
-    Object.entries(collectionsConfig).forEach(([colName, config]) => {
+    setupListeners();
+
+    return () => {
+      unsubscribes.forEach((u) => u());
+    };
+  }, [currentUser, authLoading, isOnline, loadCachedData]);
+
+  // ---- On-demand fetching ----
+  const fetchActivityLogs = useCallback(
+    (limitCount = 100) => {
+      if (!currentUser) return () => {};
+
       const q = query(
-        collection(db, colName), 
-        where("userId", "==", currentUser.uid), 
-        orderBy(config.orderByField, "desc")
+        collection(db, "activityLogs"),
+        where("userId", "==", currentUser.uid),
+        orderBy("createdAt", "desc"),
+        limit(limitCount)
       );
-      
-      const unsub = onSnapshot(q, (snap) => {
+
+      return onSnapshot(q, (snap) => {
         const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        config.setter(data);
-        if (config.cacheKey) {
-          localforage.setItem(config.cacheKey, data);
-        }
-      }, (err) => console.error(`Error fetching ${colName}:`, err));
-      
-      unsubscribes.push(unsub);
-    });
+        setActivityLogs(data);
+      });
+    },
+    [currentUser]
+  );
 
-    const settingsUnsub = onSnapshot(doc(db, "settings", "config"), (docSnap) => {
-      if (docSnap.exists()) setSettings(docSnap.data());
-    });
-    unsubscribes.push(settingsUnsub);
+  const fetchComments = useCallback(
+    (filters = {}) => {
+      if (!currentUser) return () => {};
 
-    setLoading(false);
-    return () => unsubscribes.forEach((unsub) => unsub());
-  }, [currentUser, authLoading, isOnline]);
-  
-  // --- On-Demand Fetching ---
-  const fetchActivityLogs = React.useCallback((limitCount = 100) => {
-    if (!currentUser) return () => {};
-    const q = query(
-      collection(db, "activityLogs"),
-      where("userId", "==", currentUser.uid),
-      orderBy("createdAt", "desc"),
-      limit(limitCount) 
-    );
-    
-    const unsub = onSnapshot(q, (snap) => {
-      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setActivityLogs(data);
-    }, (err) => console.error("Error fetching activity logs:", err));
-    return unsub;
-  }, [currentUser]);
+      const constraints = [
+        where("userId", "==", currentUser.uid),
+        orderBy("createdAt", "desc"),
+      ];
 
-  const fetchComments = React.useCallback((filters = {}) => {
-    if (!currentUser) return () => {};
-    const constraints = [
-      where("userId", "==", currentUser.uid),
-      orderBy("createdAt", "desc")
-    ];
+      if (filters.loanId) constraints.push(where("loanId", "==", filters.loanId));
+      if (filters.borrowerId) constraints.push(where("borrowerId", "==", filters.borrowerId));
 
-    if (filters.loanId) constraints.push(where("loanId", "==", filters.loanId));
-    if (filters.borrowerId) constraints.push(where("borrowerId", "==", filters.borrowerId));
+      const q = query(collection(db, "comments"), ...constraints);
 
-    const q = query(collection(db, "comments"), ...constraints);
-    
-    const unsub = onSnapshot(q, (snap) => {
+      return onSnapshot(q, (snap) => {
         const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         setComments(data);
-    }, (err) => console.error("Error fetching comments:", err));
-    return unsub;
-  }, [currentUser]);
+      });
+    },
+    [currentUser]
+  );
 
-  const value = useMemo(() => ({
-    loans, payments, borrowers, settings, activityLogs, comments, guarantors, expenses, loading,
-    fetchActivityLogs, fetchComments,
+  // ---- Context value ----
+  const value = useMemo(
+    () => ({
+      // existing
+      loans,
+      payments,
+      borrowers,
+      settings,
+      activityLogs,
+      comments,
+      guarantors,
+      expenses,
+      loading,
 
-    addActivityLog: async (logEntry) => {
-      try {
-        await activityService.addActivityLog(db, logEntry, currentUser);
-      } catch (error) {
-        console.error("Failed to add activity log", error);
-      }
-    },
-    updateActivityLog: async (id, updates) => {
-       try {
-         await activityService.updateActivityLog(db, id, updates, currentUser);
-       } catch (error) {
-         console.error("Error updating activity log:", error);
-         throw error;
-       }
-    },
+      // new (phase 2)
+      offlineReady,
+      isOnline,
+      lastSyncAt,
+      syncStatus,
 
-    // --- Loan Services ---
-    addLoan: async (loan) => {
-      try {
-        const res = await loanService.addLoan(db, loan, borrowers, currentUser);
-        showSnackbar("Loan added successfully!", "success");
-        return res;
-      } catch (error) {
-        showSnackbar("Failed to add loan.", "error");
-        throw error;
-      }
-    },
-    updateLoan: async (id, updates) => {
-      try {
-        await loanService.updateLoan(db, id, updates, currentUser);
-        showSnackbar("Loan updated successfully!", "success");
-      } catch (error) {
-        showSnackbar("Failed to update loan.", "error");
-        throw error;
-      }
-    },
-    deleteLoan: async (id) => {
-      try {
-        await loanService.deleteLoan(db, id, currentUser);
-        showSnackbar("Loan deleted successfully!", "info");
-      } catch (error) {
-        showSnackbar("Failed to delete loan.", "error");
-        throw error;
-      }
-    },
-    markLoanAsDefaulted: async (loanId) => {
-      try {
-        await loanService.markLoanAsDefaulted(db, loanId, currentUser);
-        showSnackbar("Loan marked as defaulted!", "success");
-      } catch (error) {
-        showSnackbar("Failed to mark loan as defaulted.", "error");
-        throw error;
-      }
-    },
-    refinanceLoan: async (oldLoanId, newStartDate, newDueDate, newPrincipalAmount, newInterestDuration, manualInterestRate) => {
-      try {
-        const res = await loanService.refinanceLoan(db, oldLoanId, newStartDate, newDueDate, newPrincipalAmount, newInterestDuration, manualInterestRate, settings, currentUser);
-        showSnackbar("Loan refinanced successfully!", "success");
-        return res;
-      } catch (error) {
-        console.error("Error refinancing loan:", error);
-        showSnackbar(`Failed to refinance loan: ${error.message}`, "error");
-        throw error;
-      }
-    },
-    topUpLoan: async (loanId, topUpAmount) => {
-      try {
-        await loanService.topUpLoan(db, loanId, topUpAmount, currentUser);
-        showSnackbar("Loan topped up successfully!", "success");
-      } catch (error) {
-        console.error("Error topping up loan:", error);
-        showSnackbar(`Failed to top up loan: ${error.message}`, "error");
-        throw error;
-      }
-    },
-    undoLoanCreation: async (loanId, activityLogId) => {
-      try {
-        await loanService.undoLoanCreation(db, loanId, activityLogId, currentUser);
-        showSnackbar("Loan creation undone!", "info");
-      } catch (error) {
-        console.error("Error undoing loan creation:", error);
-        showSnackbar("Failed to undo loan creation.", "error");
-        throw error;
-      }
-    },
-    undoRefinanceLoan: async (newLoanId, oldLoanId, activityLogId) => {
-      try {
-        await loanService.undoRefinanceLoan(db, newLoanId, oldLoanId, activityLogId, currentUser);
-        showSnackbar("Loan refinance undone!", "info");
-      } catch (error) {
-        console.error("Error undoing loan refinance:", error);
-        showSnackbar("Failed to undo loan refinance.", "error");
-        throw error;
-      }
-    },
-    undoTopUpLoan: async (loanId, previousLoanData, activityLogId) => {
-      try {
-        await loanService.undoTopUpLoan(db, loanId, previousLoanData, activityLogId, currentUser);
-        showSnackbar("Top-up undone successfully!", "info");
-      } catch (error) {
-        console.error("Error undoing loan top-up:", error);
-        showSnackbar("Failed to undo loan top-up.", "error");
-        throw error;
-      }
-    },
-    undoDeleteLoan: async (loanData, activityLogId) => {
-      try {
-        await loanService.undoDeleteLoan(db, loanData, activityLogId, currentUser);
-        showSnackbar("Loan deletion undone!", "info");
-      } catch (error) {
-        console.error("Error undoing loan deletion:", error);
-        showSnackbar("Failed to undo loan deletion.", "error");
-        throw error;
-      }
-    },
-    undoUpdateLoan: async (loanId, previousLoanData, activityLogId) => {
-      try {
-        await loanService.undoUpdateLoan(db, loanId, previousLoanData, activityLogId, currentUser);
-        showSnackbar("Loan update undone!", "info");
-      } catch (error) {
-        console.error("Error undoing loan update:", error);
-        showSnackbar("Failed to undo loan update.", "error");
-        throw error;
-      }
-    },
+      fetchActivityLogs,
+      fetchComments,
 
-    // --- Payment Services ---
-    addPayment: async (loanId, amount) => {
-      try {
-        await paymentService.addPayment(db, loanId, amount, currentUser);
-        showSnackbar("Payment added successfully!", "success");
-      } catch (error) {
-        showSnackbar("Failed to add payment.", "error");
-        throw error;
-      }
-    },
-    getPaymentsByLoanId: async (loanId) => {
-      try {
-        return await paymentService.getPaymentsByLoanId(db, loanId, currentUser);
-      } catch (error) {
-        console.error("Error fetching payments by loan ID:", error);
-        showSnackbar("Failed to fetch payment history.", "error");
-        return [];
-      }
-    },
-    getLoanHistory: async (loanId) => {
-      if (!currentUser) return [];
-      try {
-        // 1. Fetch Payments
+      addActivityLog: (log) => activityService.addActivityLog(db, log, currentUser),
+      updateActivityLog: (id, u) => activityService.updateActivityLog(db, id, u, currentUser),
+
+      // ---- Loan Services ----
+      addLoan: (l) => loanService.addLoan(db, l, borrowers, currentUser),
+      updateLoan: (id, u) => loanService.updateLoan(db, id, u, currentUser),
+      deleteLoan: (id) => loanService.deleteLoan(db, id, currentUser),
+      markLoanAsDefaulted: (id) => loanService.markLoanAsDefaulted(db, id, currentUser),
+      refinanceLoan: (...args) =>
+        loanService.refinanceLoan(db, ...args, settings, currentUser),
+      topUpLoan: (id, amt) => loanService.topUpLoan(db, id, amt, currentUser),
+      undoLoanCreation: (...a) => loanService.undoLoanCreation(db, ...a, currentUser),
+      undoRefinanceLoan: (...a) => loanService.undoRefinanceLoan(db, ...a, currentUser),
+      undoTopUpLoan: (...a) => loanService.undoTopUpLoan(db, ...a, currentUser),
+      undoDeleteLoan: (...a) => loanService.undoDeleteLoan(db, ...a, currentUser),
+      undoUpdateLoan: (...a) => loanService.undoUpdateLoan(db, ...a, currentUser),
+
+      // ---- Payments ----
+      addPayment: (id, amt) => paymentService.addPayment(db, id, amt, currentUser),
+      getPaymentsByLoanId: (id) => paymentService.getPaymentsByLoanId(db, id, currentUser),
+
+      getLoanHistory: async (loanId) => {
+        if (!currentUser) return [];
         const paymentsQuery = query(
           collection(db, "payments"),
           where("userId", "==", currentUser.uid),
           where("loanId", "==", loanId)
         );
+
         const paymentSnaps = await getDocs(paymentsQuery);
-        const payments = paymentSnaps.docs.map(d => ({ 
-          id: d.id, 
-          ...d.data(), 
-          historyType: 'payment' 
+        const payments = paymentSnaps.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+          historyType: "payment",
         }));
 
-        // 2. Fetch Top-ups from Activity Logs
         const topupsQuery = query(
           collection(db, "activityLogs"),
           where("userId", "==", currentUser.uid),
           where("relatedId", "==", loanId),
           where("type", "==", "loan_top_up")
         );
+
         const topupSnaps = await getDocs(topupsQuery);
-        const topups = topupSnaps.docs.map(d => {
-          const data = d.data();
-          // Extract amount from description if not directly in fields
-          // Note: description usually looks like "Loan ID XYZ topped up by ZMW 500.00"
-          // If we saved 'amount' in the activity log, use it.
-          return {
-            id: d.id,
-            ...data,
-            date: data.createdAt, // use createdAt as the date
-            historyType: 'topup',
-            amount: data.amount || 0 // Assuming we saved 'amount' field in topUpLoan service
-          };
-        });
+        const topups = topupSnaps.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+          historyType: "topup",
+          date: d.data().createdAt,
+        }));
 
-        // 3. Combine and Sort
-        const combined = [...payments, ...topups].sort((a, b) => {
-          const dateA = a.date?.seconds || a.createdAt?.seconds || 0;
-          const dateB = b.date?.seconds || b.createdAt?.seconds || 0;
-          return dateB - dateA; // Descending (newest first)
-        });
+        return [...payments, ...topups].sort(
+          (a, b) => toMillis(b.date || b.createdAt) - toMillis(a.date || a.createdAt)
+        );
+      },
 
-        return combined;
-      } catch (error) {
-        console.error("Error fetching loan history:", error);
-        return [];
-      }
-    },
-    undoPayment: async (paymentId, loanId, paymentAmount, activityLogId) => {
-      try {
-        await paymentService.undoPayment(db, paymentId, loanId, paymentAmount, activityLogId, currentUser);
-        showSnackbar("Payment undone successfully!", "info");
-      } catch (error) {
-        console.error("Error undoing payment:", error);
-        showSnackbar("Failed to undo payment.", "error");
-        throw error;
-      }
-    },
+      undoPayment: (...a) => paymentService.undoPayment(db, ...a, currentUser),
 
-    // --- Borrower Services ---
-    addBorrower: async (borrower) => {
-      try {
-        const res = await borrowerService.addBorrower(db, borrower, currentUser);
-        showSnackbar("Borrower added successfully!", "success");
-        return res;
-      } catch (error) {
-        showSnackbar("Failed to add borrower.", "error");
-        throw error;
-      }
-    },
-    updateBorrower: async (id, updates) => {
-      try {
-        await borrowerService.updateBorrower(db, id, updates);
-        showSnackbar("Borrower updated!", "success");
-      } catch (error) {
-        console.error("Error updating borrower:", error);
-        showSnackbar("Failed to update borrower.", "error");
-        throw error;
-      }
-    },
-    undoBorrowerCreation: async (borrowerId, activityLogId) => {
-      try {
-        await borrowerService.undoBorrowerCreation(db, borrowerId, activityLogId, currentUser);
-        showSnackbar("Borrower creation undone!", "info");
-      } catch (error) {
-        console.error("Error undoing borrower creation:", error);
-        showSnackbar("Failed to undo borrower creation.", "error");
-        throw error;
-      }
-    },
+      // ---- Borrowers ----
+      addBorrower: (b) => borrowerService.addBorrower(db, b, currentUser),
+      updateBorrower: (id, u) => borrowerService.updateBorrower(db, id, u),
+      undoBorrowerCreation: (...a) =>
+        borrowerService.undoBorrowerCreation(db, ...a, currentUser),
 
-    // --- Expense Services ---
-    addExpense: async (expense) => {
-      try {
-        const res = await expenseService.addExpense(db, expense, currentUser);
-        showSnackbar("Expense added successfully!", "success");
-        return res;
-      } catch (error) {
-        showSnackbar("Failed to add expense.", "error");
-        throw error;
-      }
-    },
-    updateExpense: async (id, updates) => {
-      try {
-        await expenseService.updateExpense(db, id, updates, currentUser);
-        showSnackbar("Expense updated successfully!", "success");
-      } catch (error) {
-        showSnackbar("Failed to update expense.", "error");
-        throw error;
-      }
-    },
-    deleteExpense: async (id) => {
-      try {
-        await expenseService.deleteExpense(db, id, currentUser);
-        showSnackbar("Expense deleted successfully!", "info");
-      } catch (error) {
-        showSnackbar("Failed to delete expense.", "error");
-        throw error;
-      }
-    },
-    undoExpenseCreation: async (expenseId, activityLogId) => {
-      try {
-        await expenseService.undoExpenseCreation(db, expenseId, activityLogId, currentUser);
-        showSnackbar("Expense creation undone!", "info");
-      } catch (error) {
-        console.error("Error undoing expense creation:", error);
-        showSnackbar("Failed to undo expense creation.", "error");
-        throw error;
-      }
-    },
-    undoExpenseDeletion: async (expenseData, activityLogId) => {
-      try {
-        await expenseService.undoExpenseDeletion(db, expenseData, activityLogId, currentUser);
-        showSnackbar("Expense deletion undone!", "info");
-      } catch (error) {
-        console.error("Error undoing expense deletion:", error);
-        showSnackbar("Failed to undo expense deletion.", "error");
-        throw error;
-      }
-    },
+      // ---- Expenses ----
+      addExpense: (e) => expenseService.addExpense(db, e, currentUser),
+      updateExpense: (id, u) => expenseService.updateExpense(db, id, u, currentUser),
+      deleteExpense: (id) => expenseService.deleteExpense(db, id, currentUser),
+      undoExpenseCreation: (...a) =>
+        expenseService.undoExpenseCreation(db, ...a, currentUser),
+      undoExpenseDeletion: (...a) =>
+        expenseService.undoExpenseDeletion(db, ...a, currentUser),
 
-    // --- Guarantor Services ---
-    addGuarantor: async (guarantor) => {
-      try {
-        const res = await guarantorService.addGuarantor(db, guarantor, currentUser);
-        showSnackbar("Guarantor added successfully!", "success");
-        return res;
-      } catch (error) {
-        showSnackbar("Failed to add guarantor.", "error");
-        throw error;
-      }
-    },
-    updateGuarantor: async (id, updates) => {
-      try {
-        await guarantorService.updateGuarantor(db, id, updates, currentUser);
-        showSnackbar("Guarantor updated successfully!", "success");
-      } catch (error) {
-        showSnackbar("Failed to update guarantor.", "error");
-        throw error;
-      }
-    },
-    deleteGuarantor: async (id) => {
-      try {
-        await guarantorService.deleteGuarantor(db, id, currentUser);
-        showSnackbar("Guarantor deleted successfully!", "info");
-      } catch (error) {
-        showSnackbar("Failed to delete guarantor.", "error");
-        throw error;
-      }
-    },
-    undoGuarantorCreation: async (guarantorId, activityLogId) => {
-      try {
-        await guarantorService.undoGuarantorCreation(db, guarantorId, activityLogId, currentUser);
-        showSnackbar("Guarantor creation undone!", "info");
-      } catch (error) {
-        console.error("Error undoing guarantor creation:", error);
-        showSnackbar("Failed to undo guarantor creation.", "error");
-        throw error;
-      }
-    },
-    undoGuarantorDeletion: async (guarantorData, activityLogId) => {
-      try {
-        await guarantorService.undoGuarantorDeletion(db, guarantorData, activityLogId, currentUser);
-        showSnackbar("Guarantor deletion undone!", "info");
-      } catch (error) {
-        console.error("Error undoing guarantor deletion:", error);
-        showSnackbar("Failed to undo guarantor deletion.", "error");
-        throw error;
-      }
-    },
+      // ---- Guarantors ----
+      addGuarantor: (g) => guarantorService.addGuarantor(db, g, currentUser),
+      updateGuarantor: (id, u) => guarantorService.updateGuarantor(db, id, u, currentUser),
+      deleteGuarantor: (id) => guarantorService.deleteGuarantor(db, id, currentUser),
+      undoGuarantorCreation: (...a) =>
+        guarantorService.undoGuarantorCreation(db, ...a, currentUser),
+      undoGuarantorDeletion: (...a) =>
+        guarantorService.undoGuarantorDeletion(db, ...a, currentUser),
 
-    // --- Comment Services ---
-    addComment: async (comment) => {
-      try {
-        const res = await commentService.addComment(db, comment, currentUser);
-        showSnackbar("Comment added successfully!", "success");
-        return res;
-      } catch (error)
-      {
-        showSnackbar("Failed to add comment.", "error");
-        throw error;
-      }
-    },
-    deleteComment: async (id) => {
-      try {
-        await commentService.deleteComment(db, id, currentUser);
-        showSnackbar("Comment deleted successfully!", "info");
-      } catch (error) {
-        showSnackbar("Failed to delete comment.", "error");
-        throw error;
-      }
-    },
-    undoCommentCreation: async (commentId, activityLogId) => {
-      try {
-        await commentService.undoCommentCreation(db, commentId, activityLogId, currentUser);
-        showSnackbar("Comment creation undone!", "info");
-      } catch (error) {
-        console.error("Error undoing comment creation:", error);
-        showSnackbar("Failed to undo comment creation.", "error");
-        throw error;
-      }
-    },
-    undoCommentDeletion: async (commentData, activityLogId) => {
-      try {
-        await commentService.undoCommentDeletion(db, commentData, activityLogId, currentUser);
-        showSnackbar("Comment deletion undone!", "info");
-      } catch (error) {
-        console.error("Error undoing comment deletion:", error);
-        showSnackbar("Failed to undo comment deletion.", "error");
-        throw error;
-      }
-    },
+      // ---- Comments ----
+      addComment: (c) => commentService.addComment(db, c, currentUser),
+      deleteComment: (id) => commentService.deleteComment(db, id, currentUser),
+      undoCommentCreation: (...a) =>
+        commentService.undoCommentCreation(db, ...a, currentUser),
+      undoCommentDeletion: (...a) =>
+        commentService.undoCommentDeletion(db, ...a, currentUser),
 
-    // --- Settings Services ---
-    updateSettings: async (newSettings) => {
-      try {
-        await settingsService.updateSettings(db, newSettings, currentUser);
-        showSnackbar("Settings updated successfully!", "success");
-      } catch (error) {
-        showSnackbar("Failed to update settings.", "error");
-        throw error;
-      }
-    },
+      // ---- Settings ----
+      updateSettings: (s) => settingsService.updateSettings(db, s, currentUser),
 
-    // --- User Services ---
-    updateUser: async (updates) => {
-      try {
-        await userService.updateUser(db, updates, currentUser);
-        showSnackbar("User profile updated successfully!", "success");
-      } catch (error) {
-        console.error("Error updating user profile:", error);
-        showSnackbar("Failed to update user profile.", "error");
-        throw error;
-      }
-    }
-  }), [
-    loans, payments, borrowers, settings, activityLogs, comments, guarantors, expenses, loading,
-    currentUser, showSnackbar, fetchActivityLogs, fetchComments
-  ]);
+      // ---- User ----
+      updateUser: (u) => userService.updateUser(db, u, currentUser),
+    }),
+    [
+      loans,
+      payments,
+      borrowers,
+      settings,
+      activityLogs,
+      comments,
+      guarantors,
+      expenses,
+      loading,
+      offlineReady,
+      isOnline,
+      lastSyncAt,
+      syncStatus,
+      currentUser,
+      fetchActivityLogs,
+      fetchComments,
+    ]
+  );
 
   return (
     <FirestoreContext.Provider value={value}>
