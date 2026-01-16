@@ -1,5 +1,3 @@
-// src/contexts/FirestoreProvider.js
-
 import React, {
   createContext,
   useContext,
@@ -7,7 +5,6 @@ import React, {
   useState,
   useMemo,
   useCallback,
-  useRef,
 } from "react";
 import {
   collection,
@@ -38,14 +35,12 @@ import * as userService from "../services/userService";
 const FirestoreContext = createContext();
 export const useFirestore = () => useContext(FirestoreContext);
 
-const CACHE_KEYS = ["loans", "payments", "borrowers", "expenses"];
-
 export function FirestoreProvider({ children }) {
   const { currentUser, loading: authLoading } = useAuth();
   const showSnackbar = useSnackbar();
   const isOnline = useOfflineStatus();
 
-  // ---- State ----
+  // --- State ---
   const [loans, setLoans] = useState([]);
   const [payments, setPayments] = useState([]);
   const [borrowers, setBorrowers] = useState([]);
@@ -57,111 +52,66 @@ export function FirestoreProvider({ children }) {
   const [comments, setComments] = useState([]);
   const [guarantors, setGuarantors] = useState([]);
   const [expenses, setExpenses] = useState([]);
-
   const [loading, setLoading] = useState(true);
-  const [offlineReady, setOfflineReady] = useState(false);
-  const [lastSyncAt, setLastSyncAt] = useState(null);
-  const [syncStatus, setSyncStatus] = useState("idle"); // idle | syncing | synced | offline
 
-  const activeListeners = useRef(0);
+  // --- Real-time listeners ---
+  useEffect(() => {
+    if (authLoading || !currentUser || !isOnline) {
+      setLoading(false);
 
-  // ---- Utilities ----
-  const toMillis = (t) => (t?.toMillis ? t.toMillis() : t?.seconds ? t.seconds * 1000 : 0);
+      if (!currentUser || !isOnline) {
+        setLoans([]);
+        setPayments([]);
+        setBorrowers([]);
+        setActivityLogs([]);
+        setComments([]);
+        setGuarantors([]);
+        setExpenses([]);
+      }
+      return;
+    }
 
-  const loadCachedData = useCallback(async () => {
-    try {
-      const results = await Promise.all(
-        CACHE_KEYS.map((k) => localforage.getItem(k))
+    setLoading(true);
+    const unsubscribes = [];
+
+    const collectionsConfig = {
+      loans: { setter: setLoans, cacheKey: "loans", orderByField: "startDate" },
+      payments: { setter: setPayments, cacheKey: "payments", orderByField: "date" },
+      borrowers: { setter: setBorrowers, cacheKey: "borrowers", orderByField: "name" },
+      guarantors: { setter: setGuarantors, cacheKey: null, orderByField: "name" },
+      expenses: { setter: setExpenses, cacheKey: "expenses", orderByField: "date" },
+    };
+
+    Object.entries(collectionsConfig).forEach(([colName, config]) => {
+      const q = query(
+        collection(db, colName),
+        where("userId", "==", currentUser.uid),
+        orderBy(config.orderByField, "desc")
       );
 
-      const [cLoans, cPayments, cBorrowers, cExpenses] = results;
+      const unsub = onSnapshot(
+        q,
+        (snap) => {
+          const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          config.setter(data);
+          if (config.cacheKey) localforage.setItem(config.cacheKey, data);
+        },
+        (err) => console.error(`Error fetching ${colName}:`, err)
+      );
 
-      if (cLoans) setLoans(cLoans);
-      if (cPayments) setPayments(cPayments);
-      if (cBorrowers) setBorrowers(cBorrowers);
-      if (cExpenses) setExpenses(cExpenses);
+      unsubscribes.push(unsub);
+    });
 
-      setOfflineReady(true);
-    } catch (err) {
-      console.error("Failed to load offline cache", err);
-    }
-  }, []);
+    const settingsUnsub = onSnapshot(doc(db, "settings", "config"), (docSnap) => {
+      if (docSnap.exists()) setSettings(docSnap.data());
+    });
+    unsubscribes.push(settingsUnsub);
 
-  // ---- Real-time listeners ----
-  useEffect(() => {
-    let unsubscribes = [];
+    setLoading(false);
+    return () => unsubscribes.forEach((u) => u());
+  }, [currentUser, authLoading, isOnline]);
 
-    const setupListeners = async () => {
-      if (authLoading || !currentUser) return;
-
-      setLoading(true);
-
-      if (!isOnline) {
-        setSyncStatus("offline");
-        await loadCachedData();
-        setLoading(false);
-        return;
-      }
-
-      setSyncStatus("syncing");
-
-      const collectionsConfig = {
-        loans: { setter: setLoans, cacheKey: "loans", orderByField: "startDate" },
-        payments: { setter: setPayments, cacheKey: "payments", orderByField: "date" },
-        borrowers: { setter: setBorrowers, cacheKey: "borrowers", orderByField: "name" },
-        guarantors: { setter: setGuarantors, cacheKey: null, orderByField: "name" },
-        expenses: { setter: setExpenses, cacheKey: "expenses", orderByField: "date" },
-      };
-
-      activeListeners.current = 0;
-      const expectedListeners = Object.keys(collectionsConfig).length + 1;
-
-      const handleFirstSnapshot = () => {
-        activeListeners.current += 1;
-        if (activeListeners.current === expectedListeners) {
-          setLoading(false);
-          setSyncStatus("synced");
-          setLastSyncAt(new Date());
-        }
-      };
-
-      Object.entries(collectionsConfig).forEach(([colName, config]) => {
-        const q = query(
-          collection(db, colName),
-          where("userId", "==", currentUser.uid),
-          orderBy(config.orderByField, "desc")
-        );
-
-        const unsub = onSnapshot(
-          q,
-          (snap) => {
-            const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-            config.setter(data);
-            if (config.cacheKey) localforage.setItem(config.cacheKey, data);
-            handleFirstSnapshot();
-          },
-          (err) => console.error(`Error fetching ${colName}:`, err)
-        );
-
-        unsubscribes.push(unsub);
-      });
-
-      const settingsUnsub = onSnapshot(doc(db, "settings", "config"), (docSnap) => {
-        if (docSnap.exists()) setSettings(docSnap.data());
-        handleFirstSnapshot();
-      });
-
-      unsubscribes.push(settingsUnsub);
-    };
-
-    setupListeners();
-
-    return () => {
-      unsubscribes.forEach((u) => u());
-    };
-  }, [currentUser, authLoading, isOnline, loadCachedData]);
-
-  // ---- On-demand fetching ----
+  // --- On-demand fetching ---
   const fetchActivityLogs = useCallback(
     (limitCount = 100) => {
       if (!currentUser) return () => {};
@@ -173,10 +123,14 @@ export function FirestoreProvider({ children }) {
         limit(limitCount)
       );
 
-      return onSnapshot(q, (snap) => {
-        const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        setActivityLogs(data);
-      });
+      return onSnapshot(
+        q,
+        (snap) => {
+          const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          setActivityLogs(data);
+        },
+        (err) => console.error("Error fetching activity logs:", err)
+      );
     },
     [currentUser]
   );
@@ -191,22 +145,26 @@ export function FirestoreProvider({ children }) {
       ];
 
       if (filters.loanId) constraints.push(where("loanId", "==", filters.loanId));
-      if (filters.borrowerId) constraints.push(where("borrowerId", "==", filters.borrowerId));
+      if (filters.borrowerId)
+        constraints.push(where("borrowerId", "==", filters.borrowerId));
 
       const q = query(collection(db, "comments"), ...constraints);
 
-      return onSnapshot(q, (snap) => {
-        const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        setComments(data);
-      });
+      return onSnapshot(
+        q,
+        (snap) => {
+          const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          setComments(data);
+        },
+        (err) => console.error("Error fetching comments:", err)
+      );
     },
     [currentUser]
   );
 
-  // ---- Context value ----
+  // --- Context value ---
   const value = useMemo(
     () => ({
-      // existing
       loans,
       payments,
       borrowers,
@@ -216,111 +174,171 @@ export function FirestoreProvider({ children }) {
       guarantors,
       expenses,
       loading,
-
-      // new (phase 2)
-      offlineReady,
-      isOnline,
-      lastSyncAt,
-      syncStatus,
-
       fetchActivityLogs,
       fetchComments,
 
-      addActivityLog: (log) => activityService.addActivityLog(db, log, currentUser),
-      updateActivityLog: (id, u) => activityService.updateActivityLog(db, id, u, currentUser),
-
-      // ---- Loan Services ----
-      addLoan: (l) => loanService.addLoan(db, l, borrowers, currentUser),
-      updateLoan: (id, u) => loanService.updateLoan(db, id, u, currentUser),
-      deleteLoan: (id) => loanService.deleteLoan(db, id, currentUser),
-      markLoanAsDefaulted: (id) => loanService.markLoanAsDefaulted(db, id, currentUser),
-      refinanceLoan: (...args) =>
-        loanService.refinanceLoan(db, ...args, settings, currentUser),
-      topUpLoan: (id, amt) => loanService.topUpLoan(db, id, amt, currentUser),
-      undoLoanCreation: (...a) => loanService.undoLoanCreation(db, ...a, currentUser),
-      undoRefinanceLoan: (...a) => loanService.undoRefinanceLoan(db, ...a, currentUser),
-      undoTopUpLoan: (...a) => loanService.undoTopUpLoan(db, ...a, currentUser),
-      undoDeleteLoan: (...a) => loanService.undoDeleteLoan(db, ...a, currentUser),
-      undoUpdateLoan: (...a) => loanService.undoUpdateLoan(db, ...a, currentUser),
-
-      // ---- Payments ----
-      addPayment: (id, amt) => paymentService.addPayment(db, id, amt, currentUser),
-      getPaymentsByLoanId: (id) => paymentService.getPaymentsByLoanId(db, id, currentUser),
-
-      getLoanHistory: async (loanId) => {
-        if (!currentUser) return [];
-        const paymentsQuery = query(
-          collection(db, "payments"),
-          where("userId", "==", currentUser.uid),
-          where("loanId", "==", loanId)
-        );
-
-        const paymentSnaps = await getDocs(paymentsQuery);
-        const payments = paymentSnaps.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-          historyType: "payment",
-        }));
-
-        const topupsQuery = query(
-          collection(db, "activityLogs"),
-          where("userId", "==", currentUser.uid),
-          where("relatedId", "==", loanId),
-          where("type", "==", "loan_top_up")
-        );
-
-        const topupSnaps = await getDocs(topupsQuery);
-        const topups = topupSnaps.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-          historyType: "topup",
-          date: d.data().createdAt,
-        }));
-
-        return [...payments, ...topups].sort(
-          (a, b) => toMillis(b.date || b.createdAt) - toMillis(a.date || a.createdAt)
-        );
+      addActivityLog: async (logEntry) => {
+        try {
+          await activityService.addActivityLog(db, logEntry, currentUser);
+        } catch (error) {
+          console.error("Failed to add activity log", error);
+        }
       },
 
-      undoPayment: (...a) => paymentService.undoPayment(db, ...a, currentUser),
+      updateActivityLog: async (id, updates) => {
+        try {
+          await activityService.updateActivityLog(db, id, updates, currentUser);
+        } catch (error) {
+          console.error("Error updating activity log:", error);
+          throw error;
+        }
+      },
 
-      // ---- Borrowers ----
-      addBorrower: (b) => borrowerService.addBorrower(db, b, currentUser),
-      updateBorrower: (id, u) => borrowerService.updateBorrower(db, id, u),
-      undoBorrowerCreation: (...a) =>
-        borrowerService.undoBorrowerCreation(db, ...a, currentUser),
+      // ---------------- Loans ----------------
+      addLoan: async (loan) => {
+        try {
+          const res = await loanService.addLoan(db, loan, borrowers, currentUser);
+          showSnackbar("Loan added successfully!", "success");
+          return res;
+        } catch (error) {
+          showSnackbar("Failed to add loan.", "error");
+          throw error;
+        }
+      },
 
-      // ---- Expenses ----
-      addExpense: (e) => expenseService.addExpense(db, e, currentUser),
-      updateExpense: (id, u) => expenseService.updateExpense(db, id, u, currentUser),
-      deleteExpense: (id) => expenseService.deleteExpense(db, id, currentUser),
-      undoExpenseCreation: (...a) =>
-        expenseService.undoExpenseCreation(db, ...a, currentUser),
-      undoExpenseDeletion: (...a) =>
-        expenseService.undoExpenseDeletion(db, ...a, currentUser),
+      updateLoan: async (id, updates) => {
+        try {
+          await loanService.updateLoan(db, id, updates, currentUser);
+          showSnackbar("Loan updated successfully!", "success");
+        } catch (error) {
+          showSnackbar("Failed to update loan.", "error");
+          throw error;
+        }
+      },
 
-      // ---- Guarantors ----
-      addGuarantor: (g) => guarantorService.addGuarantor(db, g, currentUser),
-      updateGuarantor: (id, u) => guarantorService.updateGuarantor(db, id, u, currentUser),
-      deleteGuarantor: (id) => guarantorService.deleteGuarantor(db, id, currentUser),
-      undoGuarantorCreation: (...a) =>
-        guarantorService.undoGuarantorCreation(db, ...a, currentUser),
-      undoGuarantorDeletion: (...a) =>
-        guarantorService.undoGuarantorDeletion(db, ...a, currentUser),
+      deleteLoan: async (id) => {
+        try {
+          await loanService.deleteLoan(db, id, currentUser);
+          showSnackbar("Loan deleted successfully!", "info");
+        } catch (error) {
+          showSnackbar("Failed to delete loan.", "error");
+          throw error;
+        }
+      },
 
-      // ---- Comments ----
-      addComment: (c) => commentService.addComment(db, c, currentUser),
-      deleteComment: (id) => commentService.deleteComment(db, id, currentUser),
-      undoCommentCreation: (...a) =>
-        commentService.undoCommentCreation(db, ...a, currentUser),
-      undoCommentDeletion: (...a) =>
-        commentService.undoCommentDeletion(db, ...a, currentUser),
+      markLoanAsDefaulted: async (loanId) => {
+        try {
+          await loanService.markLoanAsDefaulted(db, loanId, currentUser);
+          showSnackbar("Loan marked as defaulted!", "success");
+        } catch (error) {
+          showSnackbar("Failed to mark loan as defaulted.", "error");
+          throw error;
+        }
+      },
 
-      // ---- Settings ----
-      updateSettings: (s) => settingsService.updateSettings(db, s, currentUser),
+      refinanceLoan: async (
+        oldLoanId,
+        newStartDate,
+        newDueDate,
+        newPrincipalAmount,
+        newInterestDuration,
+        manualInterestRate
+      ) => {
+        try {
+          const res = await loanService.refinanceLoan(
+            db,
+            oldLoanId,
+            newStartDate,
+            newDueDate,
+            newPrincipalAmount,
+            newInterestDuration,
+            manualInterestRate,
+            settings,
+            currentUser
+          );
+          showSnackbar("Loan refinanced successfully!", "success");
+          return res;
+        } catch (error) {
+          showSnackbar(`Failed to refinance loan: ${error.message}`, "error");
+          throw error;
+        }
+      },
 
-      // ---- User ----
-      updateUser: (u) => userService.updateUser(db, u, currentUser),
+      topUpLoan: async (loanId, topUpAmount) => {
+        try {
+          await loanService.topUpLoan(db, loanId, topUpAmount, currentUser);
+          showSnackbar("Loan topped up successfully!", "success");
+        } catch (error) {
+          showSnackbar(`Failed to top up loan: ${error.message}`, "error");
+          throw error;
+        }
+      },
+
+      // ---------------- Payments ----------------
+      addPayment: async (loanId, amount) => {
+        try {
+          await paymentService.addPayment(db, loanId, amount, currentUser);
+          showSnackbar("Payment added successfully!", "success");
+        } catch (error) {
+          showSnackbar("Failed to add payment.", "error");
+          throw error;
+        }
+      },
+
+      getPaymentsByLoanId: async (loanId) => {
+        try {
+          return await paymentService.getPaymentsByLoanId(db, loanId, currentUser);
+        } catch (error) {
+          showSnackbar("Failed to fetch payment history.", "error");
+          return [];
+        }
+      },
+
+      // ---------------- Borrowers ----------------
+      addBorrower: async (borrower) => {
+        try {
+          const res = await borrowerService.addBorrower(db, borrower, currentUser);
+          showSnackbar("Borrower added successfully!", "success");
+          return res;
+        } catch (error) {
+          showSnackbar("Failed to add borrower.", "error");
+          throw error;
+        }
+      },
+
+      // ---------------- Expenses ----------------
+      addExpense: async (expense) => {
+        try {
+          const res = await expenseService.addExpense(db, expense, currentUser);
+          showSnackbar("Expense added successfully!", "success");
+          return res;
+        } catch (error) {
+          showSnackbar("Failed to add expense.", "error");
+          throw error;
+        }
+      },
+
+      // ---------------- Settings ----------------
+      updateSettings: async (newSettings) => {
+        try {
+          await settingsService.updateSettings(db, newSettings, currentUser);
+          showSnackbar("Settings updated successfully!", "success");
+        } catch (error) {
+          showSnackbar("Failed to update settings.", "error");
+          throw error;
+        }
+      },
+
+      // ---------------- User ----------------
+      updateUser: async (updates) => {
+        try {
+          await userService.updateUser(db, updates, currentUser);
+          showSnackbar("User profile updated successfully!", "success");
+        } catch (error) {
+          showSnackbar("Failed to update user profile.", "error");
+          throw error;
+        }
+      },
     }),
     [
       loans,
@@ -332,11 +350,8 @@ export function FirestoreProvider({ children }) {
       guarantors,
       expenses,
       loading,
-      offlineReady,
-      isOnline,
-      lastSyncAt,
-      syncStatus,
       currentUser,
+      showSnackbar,
       fetchActivityLogs,
       fetchComments,
     ]
