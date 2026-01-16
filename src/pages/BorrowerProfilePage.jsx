@@ -225,7 +225,7 @@ const getStatusChipColor = (status, theme) => {
   }
 };
 
-const CreditScoreCard = ({ score, remarks, positiveFactors, negativeFactors, stats }) => {
+const CreditScoreCard = ({ score, remarks, positiveFactors, negativeFactors, stats, theme }) => {
   const getScoreColor = (score) => {
     if (score >= 80) return 'success.main';
     if (score >= 60) return 'warning.main';
