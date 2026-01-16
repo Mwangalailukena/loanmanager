@@ -111,7 +111,7 @@ workbox.routing.registerRoute(
     {
       denylist: [
         /^\/_/, // Firebase reserved URLs
-        /\/[^\/?]+\.[^\/]+$/ // Files with extensions
+        /\/[^/?]+\.[^/]+$/ // Files with extensions
       ],
     }
   )
