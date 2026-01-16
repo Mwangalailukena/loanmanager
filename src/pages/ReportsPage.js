@@ -1,35 +1,35 @@
-import React, { useState } from "react";
-import {
-  Box,
-  Typography,
-  useMediaQuery,
-  useTheme,
-  FormControlLabel,
-  Checkbox,
-  Tabs,
-  Tab,
-  Grid,
-  Stack,
-  Button,
-  Autocomplete,
-  Switch,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  FormGroup,
-  Chip,
-  Skeleton,
-  ToggleButtonGroup,
-  ToggleButton,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  SpeedDial,
-  SpeedDialAction,
-  SpeedDialIcon,
-  TextField,
-} from "@mui/material";
+import React, { useState, lazy, Suspense } from "react";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import { useTheme, alpha } from "@mui/material/styles";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Checkbox from "@mui/material/Checkbox";
+import Tabs from "@mui/material/Tabs";
+import Tab from "@mui/material/Tab";
+import Grid from "@mui/material/Grid";
+import Stack from "@mui/material/Stack";
+import Button from "@mui/material/Button";
+import Autocomplete from "@mui/material/Autocomplete";
+import Switch from "@mui/material/Switch";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import FormGroup from "@mui/material/FormGroup";
+import Chip from "@mui/material/Chip";
+import Skeleton from "@mui/material/Skeleton";
+import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
+import ToggleButton from "@mui/material/ToggleButton";
+import Accordion from "@mui/material/Accordion";
+import AccordionSummary from "@mui/material/AccordionSummary";
+import AccordionDetails from "@mui/material/AccordionDetails";
+import SpeedDial from "@mui/material/SpeedDial";
+import SpeedDialAction from "@mui/material/SpeedDialAction";
+import SpeedDialIcon from "@mui/material/SpeedDialIcon";
+import TextField from "@mui/material/TextField";
+import LinearProgress from "@mui/material/LinearProgress";
+
 import {
   FilterList,
   ExpandMore as ExpandMoreIcon,
@@ -49,14 +49,20 @@ import dayjs from "dayjs";
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { alpha } from '@mui/material/styles';
 
-// Modular Components
-import PortfolioSummary from '../components/reports/PortfolioSummary';
-import ArrearsAging from '../components/reports/ArrearsAging';
-import CashFlow from '../components/reports/CashFlow';
-import DetailedLoanList from '../components/reports/DetailedLoanList';
-import CostOfDefault from '../components/reports/CostOfDefault';
+// Lazy Load Modular Components to reduce Reports chunk size
+const PortfolioSummary = lazy(() => import('../components/reports/PortfolioSummary'));
+const ArrearsAging = lazy(() => import('../components/reports/ArrearsAging'));
+const CashFlow = lazy(() => import('../components/reports/CashFlow'));
+const DetailedLoanList = lazy(() => import('../components/reports/DetailedLoanList'));
+const CostOfDefault = lazy(() => import('../components/reports/CostOfDefault'));
+
+const ComponentLoader = () => (
+  <Box sx={{ width: '100%', py: 4, textAlign: 'center' }}>
+    <LinearProgress color="secondary" />
+    <Typography variant="caption" sx={{ mt: 1, display: 'block' }}>Loading component...</Typography>
+  </Box>
+);
 
 export default function ReportsPage() {
   const { loans, loadingLoans, payments, loadingPayments, borrowers } = useFirestore();
@@ -319,37 +325,39 @@ export default function ReportsPage() {
             </Tabs>
 
             <Box sx={{ mt: 2 }}>
-              {activeTab === 0 && (
-                <PortfolioSummary 
-                  portfolioSummary={portfolioSummary} 
-                  arrearsAgingReport={arrearsAging}
-                  prevPeriodSummary={prevPeriodSummary}
-                  exportPortfolioSummary={() => exportToCsv('Summary.csv', [portfolioSummary])}
-                  exportPortfolioSummaryPdf={exportSummaryPdf}
-                />
-              )}
-              {activeTab === 1 && (
-                <ArrearsAging 
-                  arrearsAgingReport={arrearsAging}
-                  exportArrearsAging={() => exportToCsv('Arrears.csv', arrearsAging.list)}
-                  exportArrearsAgingPdf={() => triggerPdfExport('Arrears', [['Name', 'Amount']], arrearsAging.list.map(l => [l.borrower, l.outstanding]), 'Arrears.pdf')}
-                />
-              )}
-              {activeTab === 2 && (
-                <CashFlow 
-                  cashFlowReport={cashFlow}
-                  exportCashFlow={() => exportToCsv('Cashflow.csv', cashFlow.data)}
-                  exportCashFlowPdf={() => triggerPdfExport('Cash Flow', [['Date', 'Amount']], cashFlow.data.map(d => [d.date, d.amount]), 'Cashflow.pdf')}
-                />
-              )}
-              {activeTab === 3 && (
-                <DetailedLoanList 
-                  detailedLoanListReport={detailedLoanList}
-                  exportDetailedLoanList={() => exportToCsv('Loans.csv', detailedLoanList)}
-                  exportDetailedLoanListPdf={() => triggerPdfExport('Detailed Loans', [['ID', 'Name']], detailedLoanList.map(l => [l.id, l.borrowerName]), 'Loans.pdf')}
-                />
-              )}
-              {activeTab === 4 && <CostOfDefault loans={loans.filter(l => l.status === 'Defaulted')} />}
+              <Suspense fallback={<ComponentLoader />}>
+                {activeTab === 0 && (
+                  <PortfolioSummary 
+                    portfolioSummary={portfolioSummary} 
+                    arrearsAgingReport={arrearsAging}
+                    prevPeriodSummary={prevPeriodSummary}
+                    exportPortfolioSummary={() => exportToCsv('Summary.csv', [portfolioSummary])}
+                    exportPortfolioSummaryPdf={exportSummaryPdf}
+                  />
+                )}
+                {activeTab === 1 && (
+                  <ArrearsAging 
+                    arrearsAgingReport={arrearsAging}
+                    exportArrearsAging={() => exportToCsv('Arrears.csv', arrearsAging.list)}
+                    exportArrearsAgingPdf={() => triggerPdfExport('Arrears', [['Name', 'Amount']], arrearsAging.list.map(l => [l.borrower, l.outstanding]), 'Arrears.pdf')}
+                  />
+                )}
+                {activeTab === 2 && (
+                  <CashFlow 
+                    cashFlowReport={cashFlow}
+                    exportCashFlow={() => exportToCsv('Cashflow.csv', cashFlow.data)}
+                    exportCashFlowPdf={() => triggerPdfExport('Cash Flow', [['Date', 'Amount']], cashFlow.data.map(d => [d.date, d.amount]), 'Cashflow.pdf')}
+                  />
+                )}
+                {activeTab === 3 && (
+                  <DetailedLoanList 
+                    detailedLoanListReport={detailedLoanList}
+                    exportDetailedLoanList={() => exportToCsv('Loans.csv', detailedLoanList)}
+                    exportDetailedLoanListPdf={() => triggerPdfExport('Detailed Loans', [['ID', 'Name']], detailedLoanList.map(l => [l.id, l.borrowerName]), 'Loans.pdf')}
+                  />
+                )}
+                {activeTab === 4 && <CostOfDefault loans={loans.filter(l => l.status === 'Defaulted')} />}
+              </Suspense>
             </Box>
           </Box>
         )}

@@ -4,61 +4,60 @@ import { useSearch } from "../contexts/SearchContext";
 // src/components/LoanList.jsx
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import {
-  Box,
-  Typography,
-  TextField,
-  Select,
-  MenuItem,
-  InputLabel,
-  FormControl,
-  Table,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-  TableFooter,
-  IconButton,
-  Collapse,
-  Stack,
-  Button,
-  useMediaQuery,
-  useTheme,
-  CircularProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Alert,
-  Checkbox,
-  Tooltip,
-  Chip,
-  TableSortLabel,
-  InputAdornment,
-  Skeleton,
-  LinearProgress,
-  Menu,
-  Tabs,
-  Tab,
-  alpha,
-  Paper, // Ensuring Paper is imported if not already
-} from "@mui/material";
-import {
-  KeyboardArrowDown,
-  KeyboardArrowUp,
-  Edit,
-  Delete,
-  Payment,
-  History,
-  Info as InfoIcon,
-  Close as CloseIcon,
-  AddCircleOutline as AddCircleOutlineIcon,
-  Autorenew as AutorenewIcon,
-  AttachMoney as AttachMoneyIcon,
-  MoreVert as MoreVertIcon,
-  CheckCircleOutline as CheckCircleOutlineIcon,
-  Warning as WarningIcon,
-} from "@mui/icons-material";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import TextField from "@mui/material/TextField";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
+import InputLabel from "@mui/material/InputLabel";
+import FormControl from "@mui/material/FormControl";
+import Table from "@mui/material/Table";
+import TableHead from "@mui/material/TableHead";
+import TableBody from "@mui/material/TableBody";
+import TableRow from "@mui/material/TableRow";
+import TableCell from "@mui/material/TableCell";
+import TableFooter from "@mui/material/TableFooter";
+import IconButton from "@mui/material/IconButton";
+import Collapse from "@mui/material/Collapse";
+import Stack from "@mui/material/Stack";
+import Button from "@mui/material/Button";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import { useTheme, alpha } from "@mui/material/styles";
+import CircularProgress from "@mui/material/CircularProgress";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import Alert from "@mui/material/Alert";
+import Checkbox from "@mui/material/Checkbox";
+import Tooltip from "@mui/material/Tooltip";
+import Chip from "@mui/material/Chip";
+import TableSortLabel from "@mui/material/TableSortLabel";
+import InputAdornment from "@mui/material/InputAdornment";
+import Skeleton from "@mui/material/Skeleton";
+import LinearProgress from "@mui/material/LinearProgress";
+import Menu from "@mui/material/Menu";
+import Tabs from "@mui/material/Tabs";
+import Tab from "@mui/material/Tab";
+import Paper from "@mui/material/Paper";
+import Grid from "@mui/material/Grid";
+
+// Icons with direct path imports
+import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
+import KeyboardArrowUp from "@mui/icons-material/KeyboardArrowUp";
+import Edit from "@mui/icons-material/Edit";
+import Delete from "@mui/icons-material/Delete";
+import Payment from "@mui/icons-material/Payment";
+import History from "@mui/icons-material/History";
+import InfoIcon from "@mui/icons-material/Info";
+import CloseIcon from "@mui/icons-material/Close";
+import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
+import AutorenewIcon from "@mui/icons-material/Autorenew";
+import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import WarningIcon from "@mui/icons-material/Warning";
+
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { useSnackbar } from "../components/SnackbarProvider";
 import { exportToCsv } from "../utils/exportCSV";
@@ -68,7 +67,6 @@ import dayjs from "dayjs";
 import { useSearchParams, Link } from "react-router-dom";
 import { visuallyHidden } from '@mui/utils';
 import TopUpLoanDialog from '../components/TopUpLoanDialog';
-import { Grid } from "@mui/material";
 
 const PAGE_SIZE = 10;
 

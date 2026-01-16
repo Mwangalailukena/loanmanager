@@ -5,14 +5,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import AppLayout from './components/AppLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 
-// Import Critical Routes Statically
-import Login from './pages/Login';
-import Register from './pages/Register';
+// Import Material-UI components for the loader directly to reduce bundle size
+import Box from '@mui/material/Box';
+import LinearProgress from '@mui/material/LinearProgress';
+import { useTheme } from '@mui/material/styles';
 
-// Import Material-UI components for the loader
-import { Box, LinearProgress, useTheme } from '@mui/material';
-
-// Lazy Load Routes
+// Lazy Load ALL Routes to reduce initial bundle
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
 const LazyDashboard = lazy(() => import('./pages/Dashboard'));
 const LazyLoanList = lazy(() => import('./pages/LoanList'));
 const LazyActivityPage = lazy(() => import('./pages/ActivityPage'));
@@ -58,12 +58,10 @@ function AppRoutes({ darkMode, onToggleDarkMode }) {
             }
           >
             <Routes location={location}>
-              {/* Critical Routes */}
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<LazyForgotPassword />} />
               
-              {/* Protected Routes */}
               <Route path="/dashboard" element={<ProtectedRoute><LazyDashboard /></ProtectedRoute>} />
               <Route path="/loans" element={<ProtectedRoute><LazyLoanList /></ProtectedRoute>} />
               <Route path="/activity" element={<ProtectedRoute><LazyActivityPage /></ProtectedRoute>} />
@@ -74,7 +72,6 @@ function AppRoutes({ darkMode, onToggleDarkMode }) {
               <Route path="/expenses" element={<ProtectedRoute><LazyExpensesPage /></ProtectedRoute>} />
               <Route path="/simulator" element={<ProtectedRoute><LazyLoanSimulatorPage /></ProtectedRoute>} />
 
-              {/* Borrower Routes */}
               <Route path="/borrowers" element={<ProtectedRoute><LazyBorrowerListPage /></ProtectedRoute>} />
               <Route path="/borrowers/:id" element={<ProtectedRoute><LazyBorrowerProfilePage /></ProtectedRoute>} />
               <Route path="/borrowers/:id/edit" element={<ProtectedRoute><LazyEditBorrowerPage /></ProtectedRoute>} />
