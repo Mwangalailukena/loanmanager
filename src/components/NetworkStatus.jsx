@@ -13,10 +13,10 @@ export default function NetworkStatus() {
   useEffect(() => {
     if (!isOnline) {
       wasOffline.current = true;
-      showSnackbar("Working offline. Actions will be queued.", "warning");
+      showSnackbar("Working offline. Changes will sync when online.", "warning");
     } else if (isOnline && wasOffline.current) {
       wasOffline.current = false;
-      showSnackbar("Connection restored. Syncing changes...", "info");
+      showSnackbar("Back online. Syncing changes with server...", "success");
     }
   }, [isOnline, showSnackbar]);
 

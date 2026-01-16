@@ -12,7 +12,6 @@ import AppRoutes from './AppRoutes';
 import InstallPrompt from './components/InstallPrompt';
 import SplashScreen from './components/SplashScreen';
 import NetworkStatus from './components/NetworkStatus';
-import OfflineQueueProcessor from './components/OfflineQueueProcessor';
 import UpdateToast from './components/UpdateToast'; // Import the new component
 
 function App() {
@@ -27,7 +26,6 @@ function App() {
     <FirestoreProvider>
       <Router>
         <NetworkStatus />
-        <OfflineQueueProcessor />
         <UpdateToast /> {/* Add the UpdateToast component here */}
         <SearchProvider>
           {/* Pass currentUser if AppRoutes needs it, otherwise it's fine as is */}

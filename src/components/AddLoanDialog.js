@@ -40,8 +40,6 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { useSnackbar } from "./SnackbarProvider";
 import dayjs from "dayjs";
-import useOfflineStatus from "../hooks/useOfflineStatus";
-import { enqueueRequest } from "../utils/offlineQueue";
 
 const interestOptions = [
   { label: "1 Week", value: 1 },
@@ -111,7 +109,6 @@ export default function AddLoanDialog({ open, onClose, borrowerId }) {
   const theme = useTheme();
   const { borrowers, addLoan, addActivityLog, settings } = useFirestore();
   const showSnackbar = useSnackbar();
-  const isOffline = useOfflineStatus();
   const textFieldStyles = getTextFieldStyles(theme);
 
   // --- Unified State ---
@@ -261,24 +258,6 @@ export default function AddLoanDialog({ open, onClose, borrowerId }) {
       phone: selectedBorrower.phone,
       outstandingBalance: totalRepayable
     };
-
-    if (isOffline) {
-      try {
-        await enqueueRequest({ type: 'addLoan', data: loanData });
-        await addActivityLog({
-          action: "Loan Created",
-          details: `Loan created for ${selectedBorrower?.name} (ZMW ${principal.toLocaleString()})`,
-          timestamp: new Date().toISOString(),
-        });
-        showSnackbar("Offline: Loan queued successfully!", "info");
-        onClose();
-      } catch (err) {
-        setError("Failed to queue loan offline.");
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
 
     try {
       await addLoan(loanData);
