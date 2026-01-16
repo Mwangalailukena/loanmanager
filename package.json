@@ -39,22 +39,12 @@
     "xlsx": "^0.18.5"
   },
   "scripts": {
-    "start": "concurrently \"npm:watch-sw\" \"craco start\"",
+    "start": "craco start",
     "build": "craco build",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build",
     "test": "craco test",
-    "eject": "react-scripts eject",
-    "build-sw:dev": "workbox injectManifest workbox-config.dev.js",
-    "watch-sw": "npm-watch build-sw:dev"
-  },
-  "watch": {
-    "build-sw:dev": {
-      "patterns": [
-        "src/custom-sw.js"
-      ],
-      "extensions": "js"
-    }
+    "eject": "react-scripts eject"
   },
   "browserslist": {
     "production": [

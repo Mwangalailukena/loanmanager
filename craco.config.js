@@ -4,11 +4,11 @@ module.exports = {
   webpack: {
     plugins: {
       add: [
-        process.env.NODE_ENV === 'production' &&
-          new WorkboxWebpackPlugin.InjectManifest({
-            swSrc: './src/custom-sw.js',
-            swDest: 'service-worker.js',
-          }),
+        new WorkboxWebpackPlugin.InjectManifest({
+          swSrc: './src/custom-sw.js',
+          swDest: 'service-worker.js',
+          maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
+        }),
       ].filter(Boolean),
     },
     configure: (webpackConfig, { env, paths }) => {
