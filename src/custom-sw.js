@@ -63,7 +63,8 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
       // This part handles the cleanup of old runtime caches.
-      const currentRuntimeCaches = new Set(['app-shell-pages', 'api-cache', 'static-assets']);
+      // Removed 'app-shell-pages' as we now use the precached index.html (App Shell)
+      const currentRuntimeCaches = new Set(['api-cache', 'static-assets']);
       const cacheNames = await caches.keys();
       for (const cacheName of cacheNames) {
         if (!cacheName.startsWith('workbox-') && !currentRuntimeCaches.has(cacheName)) {
@@ -103,15 +104,17 @@ const IMAGE_PLACEHOLDER_DATA_URI = 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwg
 
 // --- Routing ---
 
+// App Shell Pattern: Serve index.html for all navigation requests
 workbox.routing.registerRoute(
-  ({ request }) => request.mode === 'navigate',
-  new workbox.strategies.CacheFirst({
-    cacheName: 'app-shell-pages',
-    plugins: [
-      new workbox.cacheableResponse.CacheableResponsePlugin({ statuses: [0, 200] }),
-      new workbox.expiration.ExpirationPlugin({ maxEntries: 50, maxAgeSeconds: 24 * 60 * 60 }),
-    ],
-  })
+  new workbox.routing.NavigationRoute(
+    workbox.precaching.createHandlerBoundToURL('/index.html'),
+    {
+      denylist: [
+        /^\/_/, // Firebase reserved URLs
+        /\/[^\/?]+\.[^\/]+$/ // Files with extensions
+      ],
+    }
+  )
 );
 
 const bgSyncPlugin = new workbox.backgroundSync.BackgroundSyncPlugin('loanManagerQueue', {
@@ -149,7 +152,8 @@ workbox.routing.registerRoute(
             const response = await fetch(IMAGE_PLACEHOLDER_DATA_URI);
             return response;
           }
-          return Response.error();
+          // Return undefined to let the browser handle the error or fallback to the catch handler
+          return undefined;
         },
       },
     ],
