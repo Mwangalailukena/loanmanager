@@ -14,8 +14,6 @@ import {
 import { db } from "../firebase";
 import { useAuth } from "./AuthProvider";
 import { useSnackbar } from "../components/SnackbarProvider";
-import localforage from "localforage";
-import useOfflineStatus from "../hooks/useOfflineStatus";
 import * as loanService from "../services/loanService";
 import * as paymentService from "../services/paymentService";
 import * as borrowerService from "../services/borrowerService";
@@ -32,7 +30,6 @@ export const useFirestore = () => useContext(FirestoreContext);
 export function FirestoreProvider({ children }) {
   const { currentUser, loading: authLoading } = useAuth();
   const showSnackbar = useSnackbar();
-  const isOnline = useOfflineStatus();
 
   // --- State ---
   const [loans, setLoans] = useState([]);
@@ -50,9 +47,10 @@ export function FirestoreProvider({ children }) {
 
   // --- Data Fetching (Real-time Listeners) ---
   useEffect(() => {
-    if (authLoading || !currentUser || !isOnline) {
+    if (authLoading || !currentUser) {
       setLoading(false);
-      if (!currentUser || !isOnline) {
+      if (!currentUser) {
+        // Clear data when no user is logged in
         setLoans([]);
         setPayments([]);
         setBorrowers([]);
@@ -66,12 +64,13 @@ export function FirestoreProvider({ children }) {
 
     setLoading(true);
     const unsubscribes = [];
+    
     const collectionsConfig = {
-      loans: { setter: setLoans, cacheKey: "loans", orderByField: "startDate" },
-      payments: { setter: setPayments, cacheKey: "payments", orderByField: "date" },
-      borrowers: { setter: setBorrowers, cacheKey: "borrowers", orderByField: "name" },
-      guarantors: { setter: setGuarantors, cacheKey: null, orderByField: "name" },
-      expenses: { setter: setExpenses, cacheKey: "expenses", orderByField: "date" },
+      loans: { setter: setLoans, orderByField: "startDate" },
+      payments: { setter: setPayments, orderByField: "date" },
+      borrowers: { setter: setBorrowers, orderByField: "name" },
+      guarantors: { setter: setGuarantors, orderByField: "name" },
+      expenses: { setter: setExpenses, orderByField: "date" },
     };
 
     Object.entries(collectionsConfig).forEach(([colName, config]) => {
@@ -81,25 +80,35 @@ export function FirestoreProvider({ children }) {
         orderBy(config.orderByField, "desc")
       );
       
-      const unsub = onSnapshot(q, (snap) => {
-        const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        config.setter(data);
-        if (config.cacheKey) {
-          localforage.setItem(config.cacheKey, data);
+      const unsub = onSnapshot(
+        q, 
+        (snap) => {
+          const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          config.setter(data);
+          // Firebase persistence handles caching automatically
+        },
+        (err) => {
+          console.error(`Error fetching ${colName}:`, err);
+          // Firebase will serve cached data if available
         }
-      }, (err) => console.error(`Error fetching ${colName}:`, err));
+      );
       
       unsubscribes.push(unsub);
     });
 
-    const settingsUnsub = onSnapshot(doc(db, "settings", "config"), (docSnap) => {
-      if (docSnap.exists()) setSettings(docSnap.data());
-    });
+    // Settings listener with error handling
+    const settingsUnsub = onSnapshot(
+      doc(db, "settings", "config"), 
+      (docSnap) => {
+        if (docSnap.exists()) setSettings(docSnap.data());
+      },
+      (err) => console.error("Error fetching settings:", err)
+    );
     unsubscribes.push(settingsUnsub);
 
     setLoading(false);
     return () => unsubscribes.forEach((unsub) => unsub());
-  }, [currentUser, authLoading, isOnline]);
+  }, [currentUser, authLoading]);
   
   // --- On-Demand Fetching ---
   const fetchActivityLogs = React.useCallback((limitCount = 100) => {
@@ -111,10 +120,14 @@ export function FirestoreProvider({ children }) {
       limit(limitCount) 
     );
     
-    const unsub = onSnapshot(q, (snap) => {
-      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setActivityLogs(data);
-    }, (err) => console.error("Error fetching activity logs:", err));
+    const unsub = onSnapshot(
+      q, 
+      (snap) => {
+        const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setActivityLogs(data);
+      }, 
+      (err) => console.error("Error fetching activity logs:", err)
+    );
     return unsub;
   }, [currentUser]);
 
@@ -130,10 +143,14 @@ export function FirestoreProvider({ children }) {
 
     const q = query(collection(db, "comments"), ...constraints);
     
-    const unsub = onSnapshot(q, (snap) => {
+    const unsub = onSnapshot(
+      q, 
+      (snap) => {
         const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         setComments(data);
-    }, (err) => console.error("Error fetching comments:", err));
+      }, 
+      (err) => console.error("Error fetching comments:", err)
+    );
     return unsub;
   }, [currentUser]);
 
@@ -312,15 +329,12 @@ export function FirestoreProvider({ children }) {
         const topupSnaps = await getDocs(topupsQuery);
         const topups = topupSnaps.docs.map(d => {
           const data = d.data();
-          // Extract amount from description if not directly in fields
-          // Note: description usually looks like "Loan ID XYZ topped up by ZMW 500.00"
-          // If we saved 'amount' in the activity log, use it.
           return {
             id: d.id,
             ...data,
-            date: data.createdAt, // use createdAt as the date
+            date: data.createdAt,
             historyType: 'topup',
-            amount: data.amount || 0 // Assuming we saved 'amount' field in topUpLoan service
+            amount: data.amount || 0
           };
         });
 
@@ -486,8 +500,7 @@ export function FirestoreProvider({ children }) {
         const res = await commentService.addComment(db, comment, currentUser);
         showSnackbar("Comment added successfully!", "success");
         return res;
-      } catch (error)
-      {
+      } catch (error) {
         showSnackbar("Failed to add comment.", "error");
         throw error;
       }
