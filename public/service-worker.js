@@ -1,4 +1,5 @@
 /* eslint-disable no-restricted-globals */
+/* global firebase */
 
 /**
  * Senior Architect Audit Fix:
