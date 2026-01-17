@@ -1,5 +1,7 @@
 import React from 'react';
-import { List, ListItem, ListItemText } from '@mui/material';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemText from '@mui/material/ListItemText';
 
 const SearchResultsList = ({ filteredBorrowers, filteredLoans, onBorrowerClick, onLoanClick }) => {
   if (filteredBorrowers.length === 0 && filteredLoans.length === 0) {

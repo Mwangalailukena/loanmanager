@@ -1,5 +1,8 @@
 import React from 'react';
-import { Paper, Box, Skeleton, Stack } from '@mui/material';
+import Paper from '@mui/material/Paper';
+import Box from '@mui/material/Box';
+import Skeleton from '@mui/material/Skeleton';
+import Stack from '@mui/material/Stack';
 
 const ChartsSkeleton = () => {
   return (

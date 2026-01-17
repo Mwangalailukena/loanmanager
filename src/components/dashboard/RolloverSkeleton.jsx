@@ -1,5 +1,7 @@
 import React from 'react';
-import { Paper, Box, Skeleton } from '@mui/material';
+import Paper from '@mui/material/Paper';
+import Box from '@mui/material/Box';
+import Skeleton from '@mui/material/Skeleton';
 
 const RolloverSkeleton = () => {
   return (

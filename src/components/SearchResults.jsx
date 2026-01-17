@@ -1,5 +1,6 @@
 import React from 'react';
-import { Popover, Paper } from '@mui/material';
+import Popover from '@mui/material/Popover';
+import Paper from '@mui/material/Paper';
 import { useSearch } from '../contexts/SearchContext';
 import { useFirestore } from '../contexts/FirestoreProvider';
 import { useNavigate } from 'react-router-dom';

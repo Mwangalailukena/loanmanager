@@ -1,5 +1,9 @@
 import React from 'react';
-import { Card, CardContent, Grid, Skeleton, Box } from '@mui/material';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Grid from '@mui/material/Grid';
+import Skeleton from '@mui/material/Skeleton';
+import Box from '@mui/material/Box';
 
 const DashboardCardSkeleton = () => {
   return (

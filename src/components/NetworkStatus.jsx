@@ -1,7 +1,10 @@
 import React, { useEffect, useRef } from "react";
 import useOfflineStatus from "../hooks/useOfflineStatus";
 import { useSnackbar } from "./SnackbarProvider";
-import { Box, Typography, Fade, useTheme, alpha } from "@mui/material";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Fade from "@mui/material/Fade";
+import { useTheme, alpha } from "@mui/material/styles";
 import WifiOffIcon from '@mui/icons-material/WifiOff';
 
 export default function NetworkStatus() {

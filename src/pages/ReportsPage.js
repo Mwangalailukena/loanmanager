@@ -30,16 +30,14 @@ import SpeedDialIcon from "@mui/material/SpeedDialIcon";
 import TextField from "@mui/material/TextField";
 import LinearProgress from "@mui/material/LinearProgress";
 
-import {
-  FilterList,
-  ExpandMore as ExpandMoreIcon,
-  PictureAsPdf as PdfIcon,
-  CameraAlt as CameraIcon,
-  WhatsApp as WhatsAppIcon,
-  GetApp as DownloadIcon,
-  ClearAll,
-  Refresh,
-} from '@mui/icons-material';
+import FilterList from '@mui/icons-material/FilterList';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import PdfIcon from '@mui/icons-material/PictureAsPdf';
+import CameraIcon from '@mui/icons-material/CameraAlt';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
+import DownloadIcon from '@mui/icons-material/GetApp';
+import ClearAll from '@mui/icons-material/ClearAll';
+import Refresh from '@mui/icons-material/Refresh';
 import { useFirestore } from "../contexts/FirestoreProvider";
 import { useSnackbar } from "../components/SnackbarProvider";
 import { useReportCalculations } from "../hooks/useReportCalculations";

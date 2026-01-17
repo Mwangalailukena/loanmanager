@@ -1,5 +1,7 @@
 import React from 'react';
-import { Box, Typography, useTheme } from "@mui/material";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import { useTheme } from "@mui/material/styles";
 
 export const SimplePieChart = ({ data, colors, size = 200, innerRadius = 0 }) => {
   const total = data.reduce((sum, d) => sum + d.value, 0);

@@ -1,5 +1,7 @@
 import React, { useMemo } from 'react';
-import { Box, useTheme, Typography } from "@mui/material";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import { useTheme } from "@mui/material/styles";
 import { COLORS } from './chartUtils';
 
 const RiskChart = ({ data }) => {

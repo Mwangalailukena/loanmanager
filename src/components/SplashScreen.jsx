@@ -1,6 +1,9 @@
 // src/components/SplashScreen.jsx
 import React, { useState, useEffect } from 'react';
-import { Box, CircularProgress, Typography, keyframes } from '@mui/material';
+import Box from '@mui/material/Box';
+import CircularProgress from '@mui/material/CircularProgress';
+import Typography from '@mui/material/Typography';
+import { keyframes } from '@mui/system';
 
 // --- Animations ---
 const fadeIn = keyframes`

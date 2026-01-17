@@ -1,5 +1,11 @@
 import React from 'react';
-import { Card, CardContent, Typography, Button, Box, useTheme, IconButton } from '@mui/material';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import Box from '@mui/material/Box';
+import IconButton from '@mui/material/IconButton';
+import { useTheme } from '@mui/material/styles';
 import PsychologyAltRoundedIcon from '@mui/icons-material/PsychologyAltRounded';
 import BoltRoundedIcon from '@mui/icons-material/BoltRounded';
 import EmojiEventsRoundedIcon from '@mui/icons-material/EmojiEventsRounded';

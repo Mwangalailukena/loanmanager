@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Fab } from "@mui/material";
+import Fab from "@mui/material/Fab";
 import InstallMobileIcon from '@mui/icons-material/InstallMobile';
 
 const InstallPrompt = () => {

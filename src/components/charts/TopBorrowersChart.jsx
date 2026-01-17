@@ -1,5 +1,7 @@
 import React from 'react';
-import { Box, Typography, useTheme, alpha } from "@mui/material";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import { useTheme, alpha } from "@mui/material/styles";
 import { formatCurrency } from './chartUtils';
 
 const TopBorrowersChart = ({ data }) => {

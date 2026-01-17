@@ -1,6 +1,10 @@
 
 import React, { useState } from 'react';
-import { Box, Typography, TextField, Grid, Paper } from '@mui/material';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import TextField from '@mui/material/TextField';
+import Grid from '@mui/material/Grid';
+import Paper from '@mui/material/Paper';
 import { useFirestore } from '../contexts/FirestoreProvider';
 import { usePortfolioCalculations } from '../hooks/dashboard/usePortfolioCalculations';
 import dayjs from 'dayjs';

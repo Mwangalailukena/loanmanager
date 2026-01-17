@@ -1,31 +1,40 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import {
-  Box,
-  Typography,
-  TextField,
-  Stack,
-  Select,
-  MenuItem,
-  InputLabel,
-  FormControl,
-  ListItemText,
-  CircularProgress,
-  Tooltip,
-  Fade,
-  Chip,
-  Paper,
-  Switch,
-  IconButton,
-  FormControlLabel,
-} from "@mui/material";
-import {
-  Timeline,
-  TimelineItem,
-  TimelineSeparator,
-  TimelineConnector,
-  TimelineContent,
-  TimelineDot,
-} from "@mui/lab";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import TextField from "@mui/material/TextField";
+import Stack from "@mui/material/Stack";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
+import InputLabel from "@mui/material/InputLabel";
+import FormControl from "@mui/material/FormControl";
+import ListItemText from "@mui/material/ListItemText";
+import CircularProgress from "@mui/material/CircularProgress";
+import Tooltip from "@mui/material/Tooltip";
+import Fade from "@mui/material/Fade";
+import Chip from "@mui/material/Chip";
+import Paper from "@mui/material/Paper";
+import Switch from "@mui/material/Switch";
+import IconButton from "@mui/material/IconButton";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Button from "@mui/material/Button";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogContentText from "@mui/material/DialogContentText";
+import DialogTitle from "@mui/material/DialogTitle";
+import { useTheme, alpha } from "@mui/material/styles";
+import useMediaQuery from "@mui/material/useMediaQuery";
+
+import { useFirestore } from "../contexts/FirestoreProvider";
+import { motion, AnimatePresence } from "framer-motion";
+
+import Timeline from "@mui/lab/Timeline";
+import TimelineItem from "@mui/lab/TimelineItem";
+import TimelineSeparator from "@mui/lab/TimelineSeparator";
+import TimelineConnector from "@mui/lab/TimelineConnector";
+import TimelineContent from "@mui/lab/TimelineContent";
+import TimelineDot from "@mui/lab/TimelineDot";
+
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import EditIcon from "@mui/icons-material/Edit";
 import PaymentIcon from "@mui/icons-material/Payment";
@@ -41,17 +50,6 @@ import PeopleIcon from "@mui/icons-material/People";
 import ReceiptIcon from "@mui/icons-material/Receipt";
 import SecurityIcon from "@mui/icons-material/Security";
 import CommentIcon from "@mui/icons-material/Comment";
-import {
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-} from "@mui/material";
-import { useFirestore } from "../contexts/FirestoreProvider";
-import { motion, AnimatePresence } from "framer-motion";
-import { useTheme, useMediaQuery, alpha } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
