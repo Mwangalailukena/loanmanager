@@ -44,6 +44,7 @@ import { useAuth } from "../contexts/AuthProvider";
 import { useSearch } from "../contexts/SearchContext";
 import { useNotifications } from "../hooks/useNotifications";
 import { generateWhatsAppLink } from "../utils/whatsapp";
+import { deleteTokenFromFirestore } from "../utils/push";
 import { motion, AnimatePresence } from "framer-motion";
 
 import SettingsPage from "../pages/SettingsPage";
@@ -120,7 +121,12 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode, onOpenAddLoan, onOpenAddPa
     { text: "Activity", icon: <HistoryIcon />, path: "/activity" },
   ];
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await deleteTokenFromFirestore();
+    } catch (err) {
+      console.warn("Non-critical: FCM token cleanup failed", err);
+    }
     signOut(auth).then(() => navigate("/login"));
   };
   const handleSettingsClick = () => setSettingsOpen(true);

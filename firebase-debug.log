@@ -1,0 +1,134 @@
+[debug] [2026-01-17T00:16:26.329Z] ----------------------------------------------------------------------
+[debug] [2026-01-17T00:16:26.333Z] Command:       /home/mwangala/.nvm/versions/node/v22.17.0/bin/node /home/mwangala/.nvm/versions/node/v22.17.0/bin/firebase deploy --only functions
+[debug] [2026-01-17T00:16:26.333Z] CLI Version:   14.15.1
+[debug] [2026-01-17T00:16:26.334Z] Platform:      linux
+[debug] [2026-01-17T00:16:26.334Z] Node Version:  v22.17.0
+[debug] [2026-01-17T00:16:26.334Z] Time:          Sat Jan 17 2026 02:16:26 GMT+0200 (Central Africa Time)
+[debug] [2026-01-17T00:16:26.335Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-01-17T00:16:26.338Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2026-01-17T00:16:26.813Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-17T00:16:26.813Z] > authorizing via signed-in user (ilukenamwangala@gmail.com)
+[debug] [2026-01-17T00:16:26.813Z] [iam] checking project ilukenas-loan-management for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
+[debug] [2026-01-17T00:16:26.814Z] Checked if tokens are valid: false, expires at: 1768068992045
+[debug] [2026-01-17T00:16:26.814Z] Checked if tokens are valid: false, expires at: 1768068992045
+[debug] [2026-01-17T00:16:26.815Z] > refreshing access token with scopes: []
+[debug] [2026-01-17T00:16:26.816Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-01-17T00:16:26.816Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-01-17T00:16:27.516Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-01-17T00:16:27.517Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-01-17T00:16:27.681Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/ilukenas-loan-management:testIamPermissions [none]
+[debug] [2026-01-17T00:16:27.681Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/ilukenas-loan-management:testIamPermissions x-goog-quota-user=projects/ilukenas-loan-management
+[debug] [2026-01-17T00:16:27.681Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/ilukenas-loan-management:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-01-17T00:16:27.685Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2026-01-17T00:16:27.685Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2026-01-17T00:16:29.982Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/ilukenas-loan-management:testIamPermissions 200
+[debug] [2026-01-17T00:16:29.982Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/ilukenas-loan-management:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-01-17T00:16:29.984Z] Checked if tokens are valid: true, expires at: 1768612586517
+[debug] [2026-01-17T00:16:29.985Z] Checked if tokens are valid: true, expires at: 1768612586517
+[debug] [2026-01-17T00:16:29.985Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/ilukenas-loan-management/serviceAccounts/ilukenas-loan-management@appspot.gserviceaccount.com:testIamPermissions [none]
+[debug] [2026-01-17T00:16:29.985Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/ilukenas-loan-management/serviceAccounts/ilukenas-loan-management@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[debug] [2026-01-17T00:16:32.363Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/ilukenas-loan-management/serviceAccounts/ilukenas-loan-management@appspot.gserviceaccount.com:testIamPermissions 200
+[debug] [2026-01-17T00:16:32.364Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/ilukenas-loan-management/serviceAccounts/ilukenas-loan-management@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[info] 
+[info] === Deploying to 'ilukenas-loan-management'...
+[info] 
+[info] i  deploying functions 
+[info] ✔  functions: Finished running predeploy script. 
+[debug] [2026-01-17T00:16:32.382Z] Checked if tokens are valid: true, expires at: 1768612586517
+[debug] [2026-01-17T00:16:32.382Z] Checked if tokens are valid: true, expires at: 1768612586517
+[debug] [2026-01-17T00:16:32.383Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/ilukenas-loan-management [none]
+[debug] [2026-01-17T00:16:32.977Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/ilukenas-loan-management 200
+[debug] [2026-01-17T00:16:32.977Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/ilukenas-loan-management {"projectNumber":"714108438492","projectId":"ilukenas-loan-management","lifecycleState":"ACTIVE","name":"ilukenas-loan-management","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2025-07-23T07:56:18.768570Z"}
+[info] i  functions: preparing codebase default for deployment 
+[info] i  functions: ensuring required API cloudfunctions.googleapis.com is enabled... 
+[info] i  functions: ensuring required API cloudbuild.googleapis.com is enabled... 
+[info] i  artifactregistry: ensuring required API artifactregistry.googleapis.com is enabled... 
+[debug] [2026-01-17T00:16:32.983Z] Checked if tokens are valid: true, expires at: 1768612586517
+[debug] [2026-01-17T00:16:32.983Z] Checked if tokens are valid: true, expires at: 1768612586517
+[debug] [2026-01-17T00:16:32.984Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/ilukenas-loan-management/adminSdkConfig [none]
+[debug] [2026-01-17T00:16:34.409Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/ilukenas-loan-management/adminSdkConfig 200
+[debug] [2026-01-17T00:16:34.409Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/ilukenas-loan-management/adminSdkConfig {"projectId":"ilukenas-loan-management","storageBucket":"ilukenas-loan-management.firebasestorage.app"}
+[debug] [2026-01-17T00:16:34.410Z] Checked if tokens are valid: true, expires at: 1768612586517
+[debug] [2026-01-17T00:16:34.410Z] Checked if tokens are valid: true, expires at: 1768612586517
+[debug] [2026-01-17T00:16:34.410Z] >>> [apiv2][query] GET https://runtimeconfig.googleapis.com/v1beta1/projects/ilukenas-loan-management/configs [none]
+[debug] [2026-01-17T00:16:35.536Z] <<< [apiv2][status] GET https://runtimeconfig.googleapis.com/v1beta1/projects/ilukenas-loan-management/configs 200
+[debug] [2026-01-17T00:16:35.536Z] <<< [apiv2][body] GET https://runtimeconfig.googleapis.com/v1beta1/projects/ilukenas-loan-management/configs {"configs":[{"name":"projects/ilukenas-loan-management/configs/vapid"},{"name":"projects/ilukenas-loan-management/configs/gemini"},{"name":"projects/ilukenas-loan-management/configs/onesignal"}]}
+[debug] [2026-01-17T00:16:35.538Z] Checked if tokens are valid: true, expires at: 1768612586517
+[debug] [2026-01-17T00:16:35.538Z] Checked if tokens are valid: true, expires at: 1768612586517
+[debug] [2026-01-17T00:16:35.538Z] Checked if tokens are valid: true, expires at: 1768612586517
+[debug] [2026-01-17T00:16:35.538Z] Checked if tokens are valid: true, expires at: 1768612586517
+[debug] [2026-01-17T00:16:35.539Z] Checked if tokens are valid: true, expires at: 1768612586517
+[debug] [2026-01-17T00:16:35.539Z] Checked if tokens are valid: true, expires at: 1768612586517
+[debug] [2026-01-17T00:16:35.539Z] >>> [apiv2][query] GET https://runtimeconfig.googleapis.com/v1beta1/projects/ilukenas-loan-management/configs/vapid/variables [none]
+[debug] [2026-01-17T00:16:35.541Z] >>> [apiv2][query] GET https://runtimeconfig.googleapis.com/v1beta1/projects/ilukenas-loan-management/configs/gemini/variables [none]
+[debug] [2026-01-17T00:16:35.549Z] >>> [apiv2][query] GET https://runtimeconfig.googleapis.com/v1beta1/projects/ilukenas-loan-management/configs/onesignal/variables [none]
+[debug] [2026-01-17T00:16:36.001Z] <<< [apiv2][status] GET https://runtimeconfig.googleapis.com/v1beta1/projects/ilukenas-loan-management/configs/vapid/variables 200
+[debug] [2026-01-17T00:16:36.002Z] <<< [apiv2][body] GET https://runtimeconfig.googleapis.com/v1beta1/projects/ilukenas-loan-management/configs/vapid/variables {"variables":[{"name":"projects/ilukenas-loan-management/configs/vapid/variables/private_key","updateTime":"2025-09-18T14:13:06.815781281Z"},{"name":"projects/ilukenas-loan-management/configs/vapid/variables/public_key","updateTime":"2025-09-18T14:13:07.077562104Z"}]}
+[debug] [2026-01-17T00:16:36.003Z] Checked if tokens are valid: true, expires at: 1768612586517
+[debug] [2026-01-17T00:16:36.003Z] Checked if tokens are valid: true, expires at: 1768612586517
+[debug] [2026-01-17T00:16:36.004Z] Checked if tokens are valid: true, expires at: 1768612586517
+[debug] [2026-01-17T00:16:36.004Z] Checked if tokens are valid: true, expires at: 1768612586517
+[debug] [2026-01-17T00:16:36.005Z] >>> [apiv2][query] GET https://runtimeconfig.googleapis.com/v1beta1/projects/ilukenas-loan-management/configs/vapid/variables/private_key [none]
+[debug] [2026-01-17T00:16:36.006Z] >>> [apiv2][query] GET https://runtimeconfig.googleapis.com/v1beta1/projects/ilukenas-loan-management/configs/vapid/variables/public_key [none]
+[debug] [2026-01-17T00:16:36.397Z] <<< [apiv2][status] GET https://runtimeconfig.googleapis.com/v1beta1/projects/ilukenas-loan-management/configs/gemini/variables 200
+[debug] [2026-01-17T00:16:36.397Z] <<< [apiv2][body] GET https://runtimeconfig.googleapis.com/v1beta1/projects/ilukenas-loan-management/configs/gemini/variables {"variables":[{"name":"projects/ilukenas-loan-management/configs/gemini/variables/api_key","updateTime":"2026-01-01T13:08:58.714536315Z"}]}
+[debug] [2026-01-17T00:16:36.399Z] Checked if tokens are valid: true, expires at: 1768612586517
+[debug] [2026-01-17T00:16:36.399Z] Checked if tokens are valid: true, expires at: 1768612586517
+[debug] [2026-01-17T00:16:36.399Z] >>> [apiv2][query] GET https://runtimeconfig.googleapis.com/v1beta1/projects/ilukenas-loan-management/configs/gemini/variables/api_key [none]
+[debug] [2026-01-17T00:16:36.408Z] <<< [apiv2][status] GET https://runtimeconfig.googleapis.com/v1beta1/projects/ilukenas-loan-management/configs/vapid/variables/private_key 200
+[debug] [2026-01-17T00:16:36.408Z] <<< [apiv2][body] GET https://runtimeconfig.googleapis.com/v1beta1/projects/ilukenas-loan-management/configs/vapid/variables/private_key {"name":"projects/ilukenas-loan-management/configs/vapid/variables/private_key","updateTime":"2025-09-18T14:13:06.815781281Z","text":"fz-3g-lsZCJULJnaxYLkzNxuis2PNOgMDvovTHKS0UQ"}
+[debug] [2026-01-17T00:16:36.563Z] <<< [apiv2][status] GET https://runtimeconfig.googleapis.com/v1beta1/projects/ilukenas-loan-management/configs/onesignal/variables 200
+[debug] [2026-01-17T00:16:36.564Z] <<< [apiv2][body] GET https://runtimeconfig.googleapis.com/v1beta1/projects/ilukenas-loan-management/configs/onesignal/variables {"variables":[{"name":"projects/ilukenas-loan-management/configs/onesignal/variables/api_key","updateTime":"2025-12-28T21:42:16.570342501Z"},{"name":"projects/ilukenas-loan-management/configs/onesignal/variables/app_id","updateTime":"2025-12-28T21:40:17.292303088Z"}]}
+[debug] [2026-01-17T00:16:36.564Z] Checked if tokens are valid: true, expires at: 1768612586517
+[debug] [2026-01-17T00:16:36.564Z] Checked if tokens are valid: true, expires at: 1768612586517
+[debug] [2026-01-17T00:16:36.565Z] Checked if tokens are valid: true, expires at: 1768612586517
+[debug] [2026-01-17T00:16:36.565Z] Checked if tokens are valid: true, expires at: 1768612586517
+[debug] [2026-01-17T00:16:36.565Z] >>> [apiv2][query] GET https://runtimeconfig.googleapis.com/v1beta1/projects/ilukenas-loan-management/configs/onesignal/variables/api_key [none]
+[debug] [2026-01-17T00:16:36.566Z] >>> [apiv2][query] GET https://runtimeconfig.googleapis.com/v1beta1/projects/ilukenas-loan-management/configs/onesignal/variables/app_id [none]
+[debug] [2026-01-17T00:16:36.764Z] <<< [apiv2][status] GET https://runtimeconfig.googleapis.com/v1beta1/projects/ilukenas-loan-management/configs/vapid/variables/public_key 200
+[debug] [2026-01-17T00:16:36.765Z] <<< [apiv2][body] GET https://runtimeconfig.googleapis.com/v1beta1/projects/ilukenas-loan-management/configs/vapid/variables/public_key {"name":"projects/ilukenas-loan-management/configs/vapid/variables/public_key","updateTime":"2025-09-18T14:13:07.077562104Z","text":"BLhTaeVO0q0o3uGgFxqlqp1NfMr1VkkmGAizcz195oGI07WWF9NhrEvsw0EDuKOxAJhGaUD9_WvrkcA8AQUnfvI"}
+[debug] [2026-01-17T00:16:36.818Z] <<< [apiv2][status] GET https://runtimeconfig.googleapis.com/v1beta1/projects/ilukenas-loan-management/configs/gemini/variables/api_key 200
+[debug] [2026-01-17T00:16:36.818Z] <<< [apiv2][body] GET https://runtimeconfig.googleapis.com/v1beta1/projects/ilukenas-loan-management/configs/gemini/variables/api_key {"name":"projects/ilukenas-loan-management/configs/gemini/variables/api_key","updateTime":"2026-01-01T13:08:58.714536315Z","text":"AIzaSyCYPaCF4F-Ne_6IGB0U8YU3UztNXwyQ0kE"}
+[debug] [2026-01-17T00:16:36.974Z] <<< [apiv2][status] GET https://runtimeconfig.googleapis.com/v1beta1/projects/ilukenas-loan-management/configs/onesignal/variables/app_id 200
+[debug] [2026-01-17T00:16:36.974Z] <<< [apiv2][body] GET https://runtimeconfig.googleapis.com/v1beta1/projects/ilukenas-loan-management/configs/onesignal/variables/app_id {"name":"projects/ilukenas-loan-management/configs/onesignal/variables/app_id","updateTime":"2025-12-28T21:40:17.292303088Z","text":"85fb7b5e-ca58-4a5a-9223-6477f32c4992"}
+[debug] [2026-01-17T00:16:37.072Z] <<< [apiv2][status] GET https://runtimeconfig.googleapis.com/v1beta1/projects/ilukenas-loan-management/configs/onesignal/variables/api_key 200
+[debug] [2026-01-17T00:16:37.072Z] <<< [apiv2][body] GET https://runtimeconfig.googleapis.com/v1beta1/projects/ilukenas-loan-management/configs/onesignal/variables/api_key {"name":"projects/ilukenas-loan-management/configs/onesignal/variables/api_key","updateTime":"2025-12-28T21:42:16.570342501Z","text":"os_v2_app_qx5xwxwklbffverdmr37glcjsina75qrcjeuxd4oc7ggv3itbw2uov5h72tazybcls4e7jl3oj7vnyzhknzgeuyxdtwegss7m4r76ha"}
+[debug] [2026-01-17T00:16:37.076Z] Validating nodejs source
+[warn] ⚠  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory. 
+[warn] ⚠  functions: Please note that there will be breaking changes when you upgrade. 
+[debug] [2026-01-17T00:16:40.167Z] > [functions] package.json contents: {
+  "name": "functions",
+  "description": "Cloud Functions for Firebase",
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "firebase-admin": "12.1.0",
+    "firebase-functions": "^5.1.0",
+    "web-push": "^3.6.7",
+    "@google/generative-ai": "^0.1.0"
+  },
+  "devDependencies": {
+    "firebase-functions-test": "^0.2.0"
+  },
+  "private": true
+}
+[debug] [2026-01-17T00:16:40.167Z] Building nodejs source
+[info] i  functions: Loading and analyzing source code for codebase default to determine what to deploy 
+[debug] [2026-01-17T00:16:40.170Z] Could not find functions.yaml. Must use http discovery
+[debug] [2026-01-17T00:16:40.179Z] Found firebase-functions binary at '/home/mwangala/Desktop/PROJECTS/loanmanager/functions/node_modules/.bin/firebase-functions'
+[debug] [2026-01-17T00:16:40.189Z] Error: spawn /home/mwangala/Desktop/PROJECTS/loanmanager/functions/node_modules/.bin/firebase-functions EACCES
+    at ChildProcess._handle.onexit (node:internal/child_process:285:19)
+    at onErrorNT (node:internal/child_process:483:16)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+[error] 
+[error] Error: An unexpected error has occurred.

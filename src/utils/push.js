@@ -1,9 +1,8 @@
-import { getToken, onMessage } from "firebase/messaging";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { getToken, onMessage, deleteToken } from "firebase/messaging";
+import { doc, setDoc, serverTimestamp, deleteDoc } from "firebase/firestore";
 import { messaging, db, auth } from "../firebase";
 
-// IMPORTANT: Replace this with the VAPID key from your Firebase project settings.
-const VAPID_KEY = "BCSVuLFfJvnlwgba2EK1HejWcNn0M2_NvCI2WC_dmy9a-orAHWjpKVu_VtG7yKB957dJTwf4avDYxA5ZTqElXy0";
+const VAPID_KEY = process.env.REACT_APP_VAPID_KEY;
 
 /**
  * Requests permission to show notifications and saves the token to Firestore.
@@ -29,8 +28,8 @@ export const requestNotificationPermission = async () => {
  */
 const saveTokenToFirestore = async () => {
   try {
-    if (VAPID_KEY.includes('YOUR_VAPID_PUBLIC_KEY')) {
-      console.error('VAPID Key is a placeholder. Push notifications will not work.');
+    if (!VAPID_KEY || VAPID_KEY === "YOUR_VAPID_PUBLIC_KEY") {
+      console.error('VAPID Key is missing or default. Check your .env file.');
       return null;
     }
     if (!('serviceWorker' in navigator)) {
@@ -73,6 +72,33 @@ const saveTokenToFirestore = async () => {
   } catch (err) {
     console.error('An error occurred while retrieving token.', err);
     return null;
+  }
+};
+
+/**
+ * Deletes the current FCM token from Firestore and Firebase Messaging.
+ * Should be called when the user logs out.
+ */
+export const deleteTokenFromFirestore = async () => {
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const currentToken = await getToken(messaging, {
+      vapidKey: VAPID_KEY,
+      serviceWorkerRegistration: registration,
+    });
+
+    if (currentToken) {
+      // 1. Remove from Firestore
+      const tokenRef = doc(db, 'fcmTokens', currentToken);
+      await deleteDoc(tokenRef);
+
+      // 2. Remove from Firebase Messaging instance
+      await deleteToken(messaging);
+      
+      console.log('FCM Token successfully removed.');
+    }
+  } catch (err) {
+    console.error('Error deleting FCM token:', err);
   }
 };
 

@@ -160,80 +160,114 @@ exports.getMonthlyProjectionAI = functions.runWith({ secrets: ["GEMINI_API_KEY"]
     }
 });
 
-// Scheduled function to check for loan reminders (Preserved)
-exports.checkLoanReminders = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
-  const now = admin.firestore.Timestamp.now();
+// Scheduled function to check for loan reminders (Runs every morning at 8:00 AM)
+exports.checkLoanReminders = functions.pubsub.schedule('0 8 * * *').onRun(async (context) => {
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0]; // "YYYY-MM-DD"
+  
+  const sevenDaysFromNow = new Date();
+  sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+  const sevenDaysFromNowStr = sevenDaysFromNow.toISOString().split('T')[0];
+
   const loansRef = db.collection('loans');
-
-  // Overdue loans check
-  const overdueLoansSnapshot = await loansRef
-    .where('dueDate', '<', now)
-    .where('status', '==', 'Active')
-    .get();
-
   const notificationPromises = [];
+
+  // 1. Overdue loans check (dueDate < todayStr)
+  const overdueLoansSnapshot = await loansRef
+    .where('status', '==', 'Active')
+    .where('dueDate', '<', todayStr)
+    .get();
 
   overdueLoansSnapshot.forEach(doc => {
     const loan = doc.data();
-    const payload = {
-      notification: {
-        title: 'Overdue Loan Alert',
-        body: `Loan for ${loan.borrowerName || 'a borrower'} is overdue! Amount: ${loan.totalRepayable - (loan.repaidAmount || 0)}`,
-      },
-      data: { url: `/loans/${doc.id}` }
-    };
-    notificationPromises.push(sendNotificationToUser(loan.userId, payload));
+    const outstanding = (loan.totalRepayable || 0) - (loan.repaidAmount || 0);
+    
+    if (outstanding > 0) {
+      const payload = {
+        notification: {
+          title: '🚨 Overdue Loan Alert',
+          body: `Loan for ${loan.borrower || 'a borrower'} is overdue! Balance: ZMW ${outstanding.toLocaleString()}`,
+        },
+        data: { 
+          url: `/borrowers/${loan.borrowerId}`,
+          loanId: doc.id 
+        }
+      };
+      notificationPromises.push(sendNotificationToUser(loan.userId, payload, 'overdue'));
+    }
   });
   
-  // Upcoming payments check
-  const sevenDaysFromNow = new Date();
-  sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
-  const sevenDaysFromNowTimestamp = admin.firestore.Timestamp.fromDate(sevenDaysFromNow);
-
+  // 2. Upcoming payments check (todayStr <= dueDate <= sevenDaysFromNowStr)
   const upcomingLoansSnapshot = await loansRef
-    .where('dueDate', '>', now)
-    .where('dueDate', '<=', sevenDaysFromNowTimestamp)
     .where('status', '==', 'Active')
+    .where('dueDate', '>=', todayStr)
+    .where('dueDate', '<=', sevenDaysFromNowStr)
     .get();
 
   upcomingLoansSnapshot.forEach(doc => {
     const loan = doc.data();
-    const payload = {
-      notification: {
-        title: 'Upcoming Payment Reminder',
-        body: `Your loan for ${loan.borrowerName || 'a borrower'} is due on ${loan.dueDate.toDate().toLocaleDateString()}.`,
-      },
-      data: { url: `/loans/${doc.id}` }
-    };
-    notificationPromises.push(sendNotificationToUser(loan.userId, payload));
+    const outstanding = (loan.totalRepayable || 0) - (loan.repaidAmount || 0);
+
+    if (outstanding > 0) {
+      const payload = {
+        notification: {
+          title: '📅 Upcoming Payment Reminder',
+          body: `Loan for ${loan.borrower || 'a borrower'} is due on ${loan.dueDate}. Balance: ZMW ${outstanding.toLocaleString()}`,
+        },
+        data: { 
+          url: `/borrowers/${loan.borrowerId}`,
+          loanId: doc.id 
+        }
+      };
+      notificationPromises.push(sendNotificationToUser(loan.userId, payload, 'upcoming'));
+    }
   });
 
   await Promise.all(notificationPromises);
-  console.log('Loan reminder check complete.');
+  console.log(`Loan reminder check complete. Processed ${notificationPromises.length} notifications.`);
   return null;
 });
 
-async function sendNotificationToUser(userId, payload) {
-  const userDoc = await db.collection('users').doc(userId).get();
-  if (!userDoc.exists || !userDoc.data().notificationPreferences?.overdue) {
-    return; // User doesn't exist or has disabled these notifications
-  }
+async function sendNotificationToUser(userId, payload, type) {
+  try {
+    const userDoc = await db.collection('users').doc(userId).get();
+    if (!userDoc.exists) return;
 
-  const tokensSnapshot = await db.collection("fcmTokens").where("userId", "==", userId).get();
-  if (tokensSnapshot.empty) {
-    return; // No devices to send to
-  }
+    const userData = userDoc.data();
+    const prefs = userData.notificationPreferences || { overdue: true, upcoming: true };
+    
+    // Check if user has disabled this specific type of notification
+    if (type === 'overdue' && prefs.overdue === false) return;
+    if (type === 'upcoming' && prefs.upcoming === false) return;
 
-  const tokens = tokensSnapshot.docs.map(doc => doc.id);
-  const response = await admin.messaging().sendToDevice(tokens, payload);
-
-  // Clean up invalid tokens
-  const tokensToRemove = [];
-  response.results.forEach((result, index) => {
-    const error = result.error;
-    if (error && (error.code === 'messaging/invalid-registration-token' || error.code === 'messaging/registration-token-not-registered')) {
-      tokensToRemove.push(db.collection('fcmTokens').doc(tokens[index]).delete());
+    const tokensSnapshot = await db.collection("fcmTokens").where("userId", "==", userId).get();
+    if (tokensSnapshot.empty) {
+      console.log(`No FCM tokens for user ${userId}`);
+      return;
     }
-  });
-  await Promise.all(tokensToRemove);
+
+    const tokens = tokensSnapshot.docs.map(doc => doc.id);
+    
+    // Using sendToDevice (Legacy but robust for multiple tokens) 
+    // or admin.messaging().sendEachForMulticast(message) for V1
+    const response = await admin.messaging().sendToDevice(tokens, payload);
+
+    // Clean up invalid tokens
+    const tokensToRemove = [];
+    response.results.forEach((result, index) => {
+      const error = result.error;
+      if (error && (
+        error.code === 'messaging/invalid-registration-token' || 
+        error.code === 'messaging/registration-token-not-registered'
+      )) {
+        tokensToRemove.push(db.collection('fcmTokens').doc(tokens[index]).delete());
+      }
+    });
+    
+    if (tokensToRemove.length > 0) {
+      await Promise.all(tokensToRemove);
+    }
+  } catch (err) {
+    console.error(`Error sending notification to user ${userId}:`, err);
+  }
 }
