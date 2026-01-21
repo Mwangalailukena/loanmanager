@@ -1,18 +1,36 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { useFirestore } from '../contexts/FirestoreProvider';
 import { useAuth } from '../contexts/AuthProvider';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
+import { useSnackbar } from '../components/SnackbarProvider';
 
 dayjs.extend(relativeTime);
 
 export const useNotifications = () => {
   const { loans, borrowers } = useFirestore();
   const { currentUser } = useAuth();
+  const showSnackbar = useSnackbar();
+  
   const [readNotifications, setReadNotifications] = useState([]);
-  const [snoozedNotifications, setSnoozedNotifications] = useState({});
+  
+  // Initialize snoozed state from localStorage
+  const [snoozedNotifications, setSnoozedNotifications] = useState(() => {
+    try {
+      const stored = localStorage.getItem('snoozedNotifications');
+      return stored ? JSON.parse(stored) : {};
+    } catch (e) {
+      console.warn("Failed to load snoozed notifications", e);
+      return {};
+    }
+  });
+
+  // Persist snoozed state to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('snoozedNotifications', JSON.stringify(snoozedNotifications));
+  }, [snoozedNotifications]);
 
   // Fetch read states from Firestore for cross-device sync
   useEffect(() => {
@@ -107,6 +125,25 @@ export const useNotifications = () => {
     [allNotifications, readNotifications]
   );
 
+  // Effect to trigger toast for NEW critical notifications
+  const prevCriticalCountRef = useRef(0);
+  
+  useEffect(() => {
+    const criticalNotes = unreadNotifications.filter(n => n.type === 'overdue' || n.type === 'urgent');
+    if (criticalNotes.length > prevCriticalCountRef.current) {
+        // We have NEW critical notifications
+        const diff = criticalNotes.length - prevCriticalCountRef.current;
+        if (diff === 1) {
+            const latest = criticalNotes[0]; // Simplified: just show one
+            showSnackbar(`Alert: ${latest.message}`, 'error');
+        } else {
+            showSnackbar(`Alert: ${diff} new critical loan updates.`, 'error');
+        }
+    }
+    prevCriticalCountRef.current = criticalNotes.length;
+  }, [unreadNotifications, showSnackbar]);
+
+
   const markAsRead = useCallback(async (id) => {
     if (!currentUser) return;
     const newRead = [...new Set([...readNotifications, id])];
@@ -125,7 +162,8 @@ export const useNotifications = () => {
       ...prev,
       [loanId]: dayjs().add(hours, 'hour').toISOString()
     }));
-  }, []);
+    showSnackbar("Notification snoozed for 24 hours", "info");
+  }, [showSnackbar]);
 
   return {
     allNotifications,
