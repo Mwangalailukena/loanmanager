@@ -405,13 +405,13 @@ export default function AddLoanDialog({ open, onClose, borrowerId }) {
               <Typography variant="subtitle2" gutterBottom color="text.secondary">Step 3: Review and Confirm</Typography>
               <Paper variant="outlined" sx={{ p: 2, mt: 1 }}>
                 <Grid container spacing={2}>
-                  <Grid item xs={6}><Typography variant="caption" color="text.secondary">Borrower</Typography><Typography variant="body2" fontWeight="bold">{selectedBorrower?.name}</Typography></Grid>
-                  <Grid item xs={6}><Typography variant="caption" color="text.secondary">Principal</Typography><Typography variant="body2" fontWeight="bold">ZMW {Number(amount).toLocaleString()}</Typography></Grid>
-                  <Grid item xs={6}><Typography variant="caption" color="text.secondary">Interest</Typography><Typography variant="body2" fontWeight="bold">ZMW {displayInterest.toLocaleString()}</Typography></Grid>
-                  <Grid item xs={6}><Typography variant="caption" color="text.secondary">Total Due</Typography><Typography variant="body2" fontWeight="bold" color="primary">ZMW {displayTotalRepayable.toLocaleString()}</Typography></Grid>
+                  <Grid size={{ xs: 6 }}><Typography variant="caption" color="text.secondary">Borrower</Typography><Typography variant="body2" fontWeight="bold">{selectedBorrower?.name}</Typography></Grid>
+                  <Grid size={{ xs: 6 }}><Typography variant="caption" color="text.secondary">Principal</Typography><Typography variant="body2" fontWeight="bold">ZMW {Number(amount).toLocaleString()}</Typography></Grid>
+                  <Grid size={{ xs: 6 }}><Typography variant="caption" color="text.secondary">Interest</Typography><Typography variant="body2" fontWeight="bold">ZMW {displayInterest.toLocaleString()}</Typography></Grid>
+                  <Grid size={{ xs: 6 }}><Typography variant="caption" color="text.secondary">Total Due</Typography><Typography variant="body2" fontWeight="bold" color="primary">ZMW {displayTotalRepayable.toLocaleString()}</Typography></Grid>
                   <Grid item xs={12}><Divider /></Grid>
-                  <Grid item xs={6}><Typography variant="caption" color="text.secondary">Start Date</Typography><Typography variant="body2">{selectedTab === 0 ? dayjs().format("YYYY-MM-DD") : startDate.format("YYYY-MM-DD")}</Typography></Grid>
-                  <Grid item xs={6}><Typography variant="caption" color="text.secondary">Due Date</Typography><Typography variant="body2">{selectedTab === 0 ? dayjs().add(interestDuration * 7, "day").format("YYYY-MM-DD") : dueDate.format("YYYY-MM-DD")}</Typography></Grid>
+                  <Grid size={{ xs: 6 }}><Typography variant="caption" color="text.secondary">Start Date</Typography><Typography variant="body2">{selectedTab === 0 ? dayjs().format("YYYY-MM-DD") : startDate.format("YYYY-MM-DD")}</Typography></Grid>
+                  <Grid size={{ xs: 6 }}><Typography variant="caption" color="text.secondary">Due Date</Typography><Typography variant="body2">{selectedTab === 0 ? dayjs().add(interestDuration * 7, "day").format("YYYY-MM-DD") : dueDate.format("YYYY-MM-DD")}</Typography></Grid>
                 </Grid>
               </Paper>
               <Alert severity="info" sx={{ mt: 2 }}>Click 'Confirm & Disburse' to finalize this loan record.</Alert>

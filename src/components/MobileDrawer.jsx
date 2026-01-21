@@ -199,7 +199,11 @@ const MobileDrawer = ({
         }}>
           {!mini && (
             <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0, py: 0.5 }}>
-              <Avatar sx={{ width: 32, height: 32, mr: 1.5, flexShrink: 0 }} src={currentUser?.photoURL || ''}>
+              <Avatar
+                sx={{ width: 32, height: 32, mr: 1.5, flexShrink: 0 }}
+                src={currentUser?.photoURL || ''}
+                imgProps={{ referrerPolicy: "no-referrer" }}
+              >
                 {stringToInitials(currentUser?.displayName || "U")}
               </Avatar>
               <Box sx={{ minWidth: 0 }}>

@@ -108,7 +108,7 @@ export default function LoanSimulatorDialog({ open, onClose }) {
               onChange={(e) => setPrincipal(Number(e.target.value))}
             />
           </Grid>
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <FormControl fullWidth>
               <InputLabel>Loan Duration</InputLabel>
               <Select
@@ -123,24 +123,24 @@ export default function LoanSimulatorDialog({ open, onClose }) {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <Box sx={{ bgcolor: 'background.default', p: 2, borderRadius: 2 }}>
               <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                 Financial Breakdown
               </Typography>
               <Grid container spacing={2}>
-                 <Grid item xs={6}>
+                 <Grid size={{ xs: 6 }}>
                     <Typography variant="caption" display="block">Interest</Typography>
                     <Typography variant="body1" fontWeight="bold">ZMW {interest.toFixed(2)}</Typography>
                  </Grid>
-                 <Grid item xs={6}>
+                 <Grid size={{ xs: 6 }}>
                     <Typography variant="caption" display="block">Total Repayable</Typography>
                     <Typography variant="body1" fontWeight="bold" color="primary">ZMW {totalRepayable.toFixed(2)}</Typography>
                  </Grid>
               </Grid>
             </Box>
           </Grid>
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
              <Alert severity="info" sx={{ mt: 1 }}>
                 <Typography variant="subtitle2" fontWeight="bold">
                    Projected Credit Score: {hypotheticalScore} ({hypotheticalRemarks})

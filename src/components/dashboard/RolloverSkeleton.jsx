@@ -21,7 +21,7 @@ const RolloverSkeleton = () => {
         <Skeleton variant="text" width="40%" height={24} />
         <Skeleton variant="text" width="70%" height={20} />
       </Box>
-      <Skeleton variant="rectangular" width={120} height={32} borderRadius={1} />
+      <Skeleton variant="rectangular" width={120} height={32} sx={{ borderRadius: 1 }} />
     </Paper>
   );
 };

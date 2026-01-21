@@ -137,7 +137,7 @@ export default function PortfolioSummary({
 
   return (
     <Grid container spacing={3}>
-      <Grid item xs={12} sm={6} md={3}>
+      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
         <MetricCard 
           title="Total Disbursed" 
           value={portfolioSummary.totalPrincipalDisbursed} 
@@ -146,7 +146,7 @@ export default function PortfolioSummary({
           color={theme.palette.primary.main}
         />
       </Grid>
-      <Grid item xs={12} sm={6} md={3}>
+      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
         <MetricCard 
           title="Total Repaid" 
           value={portfolioSummary.totalRepaid} 
@@ -155,7 +155,7 @@ export default function PortfolioSummary({
           color={theme.palette.success.main}
         />
       </Grid>
-      <Grid item xs={12} sm={6} md={3}>
+      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
         <MetricCard 
           title="Interest Accrued" 
           value={portfolioSummary.totalInterestAccrued} 
@@ -164,7 +164,7 @@ export default function PortfolioSummary({
           color={theme.palette.secondary.main}
         />
       </Grid>
-      <Grid item xs={12} sm={6} md={3}>
+      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
         <MetricCard 
           title="Outstanding" 
           value={portfolioSummary.totalOutstanding} 
@@ -173,7 +173,7 @@ export default function PortfolioSummary({
         />
       </Grid>
 
-      <Grid item xs={12} md={8}>
+      <Grid size={{ xs: 12, md: 8 }}>
         <Card elevation={0} sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: 3, height: '100%' }}>
           <CardContent>
             <Typography variant="h6" fontWeight={700} gutterBottom>Financial Overview</Typography>
@@ -184,7 +184,7 @@ export default function PortfolioSummary({
         </Card>
       </Grid>
 
-      <Grid item xs={12} md={4}>
+      <Grid size={{ xs: 12, md: 4 }}>
         <Stack spacing={3} sx={{ height: '100%' }}>
           <Card elevation={0} sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
             <CardContent>
@@ -230,7 +230,7 @@ export default function PortfolioSummary({
         </Stack>
       </Grid>
 
-      <Grid item xs={12}>
+      <Grid size={{ xs: 12 }}>
         <Stack direction="row" spacing={2} justifyContent="flex-end">
           <Button variant="outlined" color="secondary" onClick={exportPortfolioSummary} startIcon={<Assessment />}>Export CSV</Button>
           <Button variant="contained" color="secondary" onClick={exportPortfolioSummaryPdf} startIcon={<Assessment />}>Export PDF</Button>

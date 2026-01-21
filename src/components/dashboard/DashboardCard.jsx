@@ -72,11 +72,7 @@ const DashboardCard = ({
 
   return (
     <Grid
-      item
-      xs={isMobile ? 6 : 6}
-      sm={6}
-      md={4}
-      lg={3}
+      size={{ xs: isMobile ? 6 : 6, sm: 6, md: 4, lg: 3 }}
       onClick={() => handleCardClick && handleCardClick(card.filter)}
       sx={{ cursor: 'pointer' }}
       ref={provided?.innerRef}

@@ -243,7 +243,7 @@ export default function SettingsPage({ onClose }) {
       <TabPanel value={tabIndex} index={0}>
         <form onSubmit={handleFinancialSubmit}>
             <Grid container spacing={2} sx={{ mb: 2 }}>
-                <Grid item xs={6}>
+                <Grid size={{ xs: 6 }}>
                     <FormControl fullWidth size="small">
                         <InputLabel>Year</InputLabel>
                         <Select
@@ -257,7 +257,7 @@ export default function SettingsPage({ onClose }) {
                         </Select>
                     </FormControl>
                 </Grid>
-                <Grid item xs={6}>
+                <Grid size={{ xs: 6 }}>
                     <FormControl fullWidth size="small">
                         <InputLabel>Month</InputLabel>
                         <Select
@@ -286,7 +286,7 @@ export default function SettingsPage({ onClose }) {
             <Typography variant="subtitle2" sx={{ mt: 1 }}>Interest Rates (%)</Typography>
             <Grid container spacing={2}>
               {[1, 2, 3, 4].map((weeks) => (
-                <Grid item xs={6} key={weeks}>
+                <Grid size={{ xs: 6 }} key={weeks}>
                   <TextField
                     label={`${weeks} Week${weeks > 1 ? 's' : ''}`}
                     type="number"

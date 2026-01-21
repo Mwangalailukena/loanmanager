@@ -223,7 +223,7 @@ const BorrowerCard = React.memo(({
 const BorrowerSkeleton = () => (
   <Grid container spacing={2}>
     {[1, 2, 3, 4, 5, 6].map((i) => (
-      <Grid item xs={12} sm={6} md={4} key={i}>
+      <Grid size={{ xs: 12, sm: 6, md: 4 }} key={i}>
         <Card sx={{ height: '100%', p: 2 }}>
           <Stack direction="row" spacing={2} alignItems="center" mb={2}>
             <Skeleton variant="circular" width={48} height={48} />
@@ -483,7 +483,7 @@ export default function BorrowerListPage() {
       ) : sortedAndFilteredBorrowers.length > 0 ? (
         <Grid container spacing={2}>
           {sortedAndFilteredBorrowers.map((borrower) => (
-            <Grid item xs={12} sm={6} md={4} key={borrower.id}>
+            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={borrower.id}>
               <BorrowerCard 
                 borrower={borrower} 
                 associatedLoans={borrower.bLoans}

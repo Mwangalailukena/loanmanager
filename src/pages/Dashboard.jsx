@@ -515,11 +515,11 @@ export default function Dashboard() {
                 <Grid container spacing={2}>
                     {loading ? (
                         [1, 2].map(i => (
-                            <Grid item xs={12} key={i} sx={{ mb: 4 }}>
+                            <Grid size={{ xs: 12 }} key={i} sx={{ mb: 4 }}>
                                 <Skeleton variant="text" width="150px" height={32} sx={{ mb: 1, ml: 2 }} />
                                 <Grid container spacing={2}>
                                     {[1, 2, 3, 4].map(j => (
-                                        <Grid item xs={6} md={3} key={j}>
+                                        <Grid size={{ xs: 6, md: 3 }} key={j}>
                                             <Skeleton variant="rectangular" height={140} sx={{ borderRadius: 2 }} />
                                         </Grid>
                                     ))}
@@ -528,7 +528,7 @@ export default function Dashboard() {
                         ))
                     ) : (
                         cardsToRender.filter(group => group.cards.some(card => !EXECUTIVE_SUMMARY_IDS.includes(card.id))).map(group => (
-                            <Grid item xs={12} key={group.name}>
+                            <Grid size={{ xs: 12 }} key={group.name}>
                                 <Box sx={{ mb: 4 }}>
                                     <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 1, px: 2, fontWeight: 'bold' }}>
                                         {group.name}
@@ -567,7 +567,7 @@ export default function Dashboard() {
                 loading ? <InsightsSkeleton /> : (
                     <Grid container spacing={2}>
                         {visibleInsights.filter(insight => !insight.action).map((insight, index) => (
-                            <Grid item xs={12} sm={6} md={4} key={index}>
+                            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={index}>
                                 <InsightCard insight={insight} onDismiss={handleDismissInsight} />
                             </Grid>
                         ))}

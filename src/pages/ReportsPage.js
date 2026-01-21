@@ -212,7 +212,7 @@ export default function ReportsPage() {
           </AccordionSummary>
           <AccordionDetails sx={{ pt: 0, px: 3, pb: 3 }}>
             <Grid container spacing={3}>
-              <Grid item xs={12} md={4}>
+              <Grid size={{ xs: 12, md: 4 }}>
                 <Typography variant="caption" fontWeight={700} color="text.secondary" gutterBottom display="block" sx={{ textTransform: 'uppercase' }}>
                   Date Range
                 </Typography>
@@ -245,7 +245,7 @@ export default function ReportsPage() {
                 </Stack>
               </Grid>
 
-              <Grid item xs={12} md={4}>
+              <Grid size={{ xs: 12, md: 4 }}>
                 <Typography variant="caption" fontWeight={700} color="text.secondary" gutterBottom display="block" sx={{ textTransform: 'uppercase' }}>
                   Borrower & Comparison
                 </Typography>
@@ -263,7 +263,7 @@ export default function ReportsPage() {
                 />
               </Grid>
 
-              <Grid item xs={12} md={4}>
+              <Grid size={{ xs: 12, md: 4 }}>
                 <Typography variant="caption" fontWeight={700} color="text.secondary" gutterBottom display="block" sx={{ textTransform: 'uppercase' }}>
                   Loan Status
                 </Typography>
@@ -298,9 +298,9 @@ export default function ReportsPage() {
 
         {isLoading ? (
           <Grid container spacing={3}>
-            <Grid item xs={12} md={8}><Skeleton variant="rounded" height={200} sx={{ borderRadius: 4 }} /></Grid>
-            <Grid item xs={12} md={4}><Skeleton variant="rounded" height={200} sx={{ borderRadius: 4 }} /></Grid>
-            <Grid item xs={12}><Skeleton variant="rounded" height={400} sx={{ borderRadius: 4 }} /></Grid>
+            <Grid size={{ xs: 12, md: 8 }}><Skeleton variant="rounded" height={200} sx={{ borderRadius: 4 }} /></Grid>
+            <Grid size={{ xs: 12, md: 4 }}><Skeleton variant="rounded" height={200} sx={{ borderRadius: 4 }} /></Grid>
+            <Grid size={{ xs: 12 }}><Skeleton variant="rounded" height={400} sx={{ borderRadius: 4 }} /></Grid>
           </Grid>
         ) : (
           <Box className={screenshotMode ? "screenshot-container" : ""}>

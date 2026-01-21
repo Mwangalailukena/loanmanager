@@ -230,27 +230,27 @@ const LoanMobileCard = React.memo(({
         >
           <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
             <Grid container spacing={2}>
-              <Grid xs={6}>
+              <Grid size={{ xs: 6 }}>
                 <Typography variant="caption" color="text.secondary">Principal</Typography>
                 <Typography variant="body2" fontWeight="bold">ZMW {Number(loan.principal).toFixed(2)}</Typography>
               </Grid>
-              <Grid xs={6}>
+              <Grid size={{ xs: 6 }}>
                 <Typography variant="caption" color="text.secondary">Interest</Typography>
                 <Typography variant="body2" fontWeight="bold">ZMW {Number(loan.interest).toFixed(2)}</Typography>
               </Grid>
-              <Grid xs={6}>
+              <Grid size={{ xs: 6 }}>
                 <Typography variant="caption" color="text.secondary">Total Repayable</Typography>
                 <Typography variant="body2" fontWeight="bold">ZMW {Number(loan.totalRepayable).toFixed(2)}</Typography>
               </Grid>
-              <Grid xs={6}>
+              <Grid size={{ xs: 6 }}>
                 <Typography variant="caption" color="text.secondary">Outstanding</Typography>
                 <Typography variant="body2" fontWeight="bold" color="secondary.main">{outstanding.toFixed(2)}</Typography>
               </Grid>
-              <Grid xs={6}>
+              <Grid size={{ xs: 6 }}>
                 <Typography variant="caption" color="text.secondary">Start Date</Typography>
                 <Typography variant="body2">{loan.startDate}</Typography>
               </Grid>
-              <Grid xs={6}>
+              <Grid size={{ xs: 6 }}>
                 <Typography variant="caption" color="text.secondary">Due Date</Typography>
                 <Typography variant="body2">{loan.dueDate}</Typography>
               </Grid>

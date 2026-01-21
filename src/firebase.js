@@ -2,8 +2,9 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import {
-  getFirestore,
-  enableIndexedDbPersistence,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager
 } from "firebase/firestore";
 import { getMessaging } from "firebase/messaging";
 
@@ -20,17 +21,11 @@ const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 
-export const db = getFirestore(app);
-
-// ---- Enable offline persistence (safe) ----
-enableIndexedDbPersistence(db).catch((err) => {
-  if (err.code === "failed-precondition") {
-    console.warn("Firestore persistence failed: multiple tabs open");
-  } else if (err.code === "unimplemented") {
-    console.warn("Firestore persistence not supported by browser");
-  } else {
-    console.warn("Firestore persistence error:", err);
-  }
+// Initialize Firestore with persistent caching
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager()
+  })
 });
 
 export const messaging = getMessaging(app);

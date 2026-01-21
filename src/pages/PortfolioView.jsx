@@ -20,7 +20,7 @@ export default function PortfolioView() {
     <Box>
       <Typography variant="h5" gutterBottom>Portfolio View</Typography>
       <Grid container spacing={2} sx={{ mb: 2 }}>
-        <Grid xs={6}>
+        <Grid size={{ xs: 6 }}>
           <TextField
             label="Start Date"
             type="date"
@@ -30,7 +30,7 @@ export default function PortfolioView() {
             InputLabelProps={{ shrink: true }}
           />
         </Grid>
-        <Grid xs={6}>
+        <Grid size={{ xs: 6 }}>
           <TextField
             label="End Date"
             type="date"
@@ -44,7 +44,7 @@ export default function PortfolioView() {
 
       {portfolioData && (
         <Grid container spacing={2}>
-          <Grid xs={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <Paper sx={{ p: 2 }}>
               <Typography variant="h6">Global Metrics</Typography>
               <Typography>Total Disbursed: {portfolioData.totalDisbursed}</Typography>
@@ -54,7 +54,7 @@ export default function PortfolioView() {
               <Typography>Average Loan Duration: {portfolioData.averageLoanDuration}</Typography>
             </Paper>
           </Grid>
-          <Grid xs={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <Paper sx={{ p: 2 }}>
               <Typography variant="h6">Portfolio Health</Typography>
               <Typography>Portfolio Yield (Annualized): {portfolioData.portfolioYield}</Typography>
@@ -62,7 +62,7 @@ export default function PortfolioView() {
               <Typography>Default Rate: {portfolioData.defaultRate}</Typography>
             </Paper>
           </Grid>
-          <Grid xs={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <Paper sx={{ p: 2 }}>
               <Typography variant="h6">Risks</Typography>
               <Typography>Number of Overdue Loans: {portfolioData.numberOfOverdueLoans}</Typography>

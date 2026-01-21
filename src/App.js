@@ -6,6 +6,8 @@ import AppThemeProvider, { useThemeContext } from './contexts/ThemeProvider.jsx'
 import { AuthProvider, useAuth } from './contexts/AuthProvider';
 import { FirestoreProvider } from './contexts/FirestoreProvider';
 import { SearchProvider } from './contexts/SearchContext';
+import { SettingsProvider } from './contexts/SettingsContext';
+import { BorrowerProvider } from './contexts/BorrowerContext';
 
 // Component Imports
 import AppRoutes from './AppRoutes';
@@ -23,17 +25,21 @@ function App() {
   }
 
   return (
-    <FirestoreProvider>
-      <Router>
-        <NetworkStatus />
-        <UpdateToast /> {/* Add the UpdateToast component here */}
-        <SearchProvider>
-          {/* Pass currentUser if AppRoutes needs it, otherwise it's fine as is */}
-          <AppRoutes darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} />
-        </SearchProvider>
-        <InstallPrompt />
-      </Router>
-    </FirestoreProvider>
+    <SettingsProvider>
+      <BorrowerProvider>
+        <FirestoreProvider>
+          <Router>
+            <NetworkStatus />
+            <UpdateToast /> {/* Add the UpdateToast component here */}
+            <SearchProvider>
+              {/* Pass currentUser if AppRoutes needs it, otherwise it's fine as is */}
+              <AppRoutes darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} />
+            </SearchProvider>
+            <InstallPrompt />
+          </Router>
+        </FirestoreProvider>
+      </BorrowerProvider>
+    </SettingsProvider>
   );
 }
 

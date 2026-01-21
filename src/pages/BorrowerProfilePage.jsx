@@ -659,7 +659,7 @@ export default function BorrowerProfilePage() {
     <>
       <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 4 }}>
         <Grid container spacing={3}>
-          <Grid xs={12} md={3}>
+          <Grid size={{ xs: 12, md: 3 }}>
             <Paper elevation={4} sx={{ p: 3 }}>
               <Stack direction="column" alignItems="center" spacing={2}>
                 <Avatar sx={{ width: 80, height: 80, bgcolor: 'secondary.main' }}><PersonIcon sx={{ fontSize: 50 }} /></Avatar>
@@ -713,7 +713,7 @@ export default function BorrowerProfilePage() {
             </Paper>
           </Grid>
 
-          <Grid xs={12} md={9}>
+          <Grid size={{ xs: 12, md: 9 }}>
             <Paper elevation={4}>
               <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
                 <Tabs value={activeTab} onChange={handleTabChange} aria-label="borrower profile tabs">
@@ -727,10 +727,10 @@ export default function BorrowerProfilePage() {
               <Box sx={{ minHeight: { xs: 'auto', md: 500 } }}>
                 <TabPanel value={activeTab} index={0}>
                   <Grid container spacing={3}>
-                    <Grid xs={12} md={6}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                       <CreditScoreCard {...creditScoreData} theme={theme} />
                     </Grid>
-                    <Grid xs={12} md={6}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                       <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
                         <CardHeader title="Financial Snapshot" sx={{ p: 0, pb: 1 }} titleTypographyProps={{ fontWeight: 'bold', variant: 'h6' }} />
                         <CustomPieChart data={chartData} colors={COLORS} />
@@ -750,7 +750,7 @@ export default function BorrowerProfilePage() {
                         </List>
                       </Paper>
                     </Grid>
-                    <Grid xs={12}>
+                    <Grid size={{ xs: 12 }}>
                       <CreditScoreHistoryChart history={creditScoreData.history} />
                     </Grid>
                   </Grid>

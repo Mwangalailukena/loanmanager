@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { 
   addDoc, 
   collection, 
@@ -12,9 +13,27 @@ import {
 import { addActivityLog } from "./activityService";
 import dayjs from "dayjs";
 
+const loanSchema = z.object({
+  borrowerId: z.string().min(1, "Borrower ID is required"),
+  principal: z.number().positive("Principal must be positive"),
+  interest: z.number().min(0, "Interest cannot be negative"),
+  totalRepayable: z.number().positive("Total repayable must be positive"),
+  startDate: z.string().min(1, "Start date is required"),
+  dueDate: z.string().min(1, "Due date is required"),
+  repaidAmount: z.number().default(0),
+  status: z.string().optional(),
+  interestDuration: z.number().nullable().optional(),
+  manualInterestRate: z.number().nullable().optional(),
+  borrower: z.string().optional(), // Denormalized name
+  phone: z.string().optional(),   // Denormalized phone
+  outstandingBalance: z.number().optional()
+}).passthrough(); // Allow other fields like repaymentSchedule if added later
+
 export const addLoan = async (db, loan, borrowers, currentUser) => {
+  const validatedLoan = loanSchema.parse(loan);
+
   const docRef = await addDoc(collection(db, "loans"), { 
-    ...loan, 
+    ...validatedLoan, 
     userId: currentUser.uid, 
     createdAt: serverTimestamp(), 
     updatedAt: serverTimestamp() 

@@ -34,7 +34,7 @@ export default function ArrearsAging({ arrearsAgingReport, exportArrearsAging, e
 
   return (
     <Grid container spacing={3}>
-      <Grid item xs={12} md={7}>
+      <Grid size={{ xs: 12, md: 7 }}>
         <Card elevation={0} sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
           <CardContent>
             <Typography variant="h6" fontWeight={700} gutterBottom>Arrears Aging Details</Typography>
@@ -75,7 +75,7 @@ export default function ArrearsAging({ arrearsAgingReport, exportArrearsAging, e
         </Card>
       </Grid>
 
-      <Grid item xs={12} md={5}>
+      <Grid size={{ xs: 12, md: 5 }}>
         <Card elevation={0} sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: 3, height: '100%' }}>
           <CardContent>
             <Typography variant="h6" fontWeight={700} gutterBottom>Volume Distribution</Typography>
@@ -86,7 +86,7 @@ export default function ArrearsAging({ arrearsAgingReport, exportArrearsAging, e
         </Card>
       </Grid>
 
-      <Grid item xs={12}>
+      <Grid size={{ xs: 12 }}>
         <Card elevation={0} sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
           <CardContent>
             <Typography variant="h6" fontWeight={700} gutterBottom>Overdue Loans List</Typography>
@@ -131,7 +131,7 @@ export default function ArrearsAging({ arrearsAgingReport, exportArrearsAging, e
         </Card>
       </Grid>
 
-      <Grid item xs={12}>
+      <Grid size={{ xs: 12 }}>
         <Stack direction="row" spacing={2} justifyContent="flex-end">
           <Button variant="outlined" color="secondary" onClick={exportArrearsAging} startIcon={<ListAlt />}>Export CSV</Button>
           <Button variant="contained" color="secondary" onClick={exportArrearsAgingPdf} startIcon={<Assessment />}>Export PDF</Button>

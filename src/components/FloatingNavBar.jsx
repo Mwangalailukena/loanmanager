@@ -262,6 +262,7 @@ const FloatingNavBar = ({ darkMode, onToggleDarkMode, onOpenAddLoan, onOpenAddPa
               <Avatar
                 sx={{ width: 24, height: 24, fontSize: "0.75rem", bgcolor: theme.palette.primary.main, color: theme.palette.primary.contrastText }}
                 src={currentUser?.photoURL || ''}
+                imgProps={{ referrerPolicy: "no-referrer" }}
               >
                 {stringToInitials(currentUser?.displayName || "U")}
               </Avatar>

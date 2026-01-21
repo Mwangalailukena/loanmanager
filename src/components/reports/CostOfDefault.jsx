@@ -37,7 +37,7 @@ export default function CostOfDefault({ loans }) {
   return (
     <Box>
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} md={4}>
+        <Grid size={{ xs: 12, md: 4 }}>
           <Card elevation={0} sx={{ border: `1px solid ${theme.palette.error.main}`, bgcolor: alpha(theme.palette.error.main, 0.02), borderRadius: 3 }}>
             <CardContent>
               <Stack direction="row" spacing={2} alignItems="center">
@@ -56,7 +56,7 @@ export default function CostOfDefault({ loans }) {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={4}>
+        <Grid size={{ xs: 12, md: 4 }}>
           <Card elevation={0} sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
             <CardContent>
               <Stack direction="row" spacing={2} alignItems="center">
@@ -75,7 +75,7 @@ export default function CostOfDefault({ loans }) {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={4}>
+        <Grid size={{ xs: 12, md: 4 }}>
           <Card elevation={0} sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
             <CardContent>
               <Stack direction="row" spacing={2} alignItems="center">

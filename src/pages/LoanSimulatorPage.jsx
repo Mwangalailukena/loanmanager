@@ -63,7 +63,7 @@ export default function LoanSimulatorPage() {
         Loan Simulator
       </Typography>
       <Grid container spacing={3}>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <Typography gutterBottom>Loan Amount (ZMW)</Typography>
           <Slider
             value={principal}
@@ -83,7 +83,7 @@ export default function LoanSimulatorPage() {
             onChange={(e) => setPrincipal(Number(e.target.value))}
           />
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <FormControl fullWidth>
             <InputLabel>Loan Duration</InputLabel>
             <Select
@@ -99,14 +99,14 @@ export default function LoanSimulatorPage() {
             </Select>
           </FormControl>
         </Grid>
-        <Grid xs={12}>
+        <Grid size={{ xs: 12 }}>
           <Typography variant="h6">Results</Typography>
           <Box sx={{ mt: 2 }}>
             <Typography>Interest: ZMW {interest.toFixed(2)}</Typography>
             <Typography>Total Repayable: ZMW {totalRepayable.toFixed(2)}</Typography>
           </Box>
         </Grid>
-        <Grid xs={12}>
+        <Grid size={{ xs: 12 }}>
           <Typography variant="h6">What If Scenario (Credit Score)</Typography>
           <Box sx={{ mt: 2 }}>
             <Typography>Hypothetical Credit Score: {hypotheticalScore} ({hypotheticalRemarks})</Typography>

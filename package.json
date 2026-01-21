@@ -36,7 +36,8 @@
     "web-push": "^3.3.0",
     "web-vitals": "^2.1.4",
     "workbox-window": "^7.4.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "zod": "^4.3.5"
   },
   "scripts": {
     "start": "concurrently \"npm:watch-sw\" \"craco start\"",

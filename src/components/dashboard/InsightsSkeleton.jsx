@@ -9,7 +9,7 @@ const InsightsSkeleton = () => {
   return (
     <Grid container spacing={2}>
       {[1, 2, 3].map((i) => (
-        <Grid item xs={12} sm={6} md={4} key={i}>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }} key={i}>
           <Card sx={{ mb: 2, borderRadius: 2 }}>
             <CardContent>
               <Box display="flex" alignItems="center" mb={1}>

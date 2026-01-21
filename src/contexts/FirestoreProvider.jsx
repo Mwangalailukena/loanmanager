@@ -6,7 +6,6 @@ import {
   query,
   orderBy,
   onSnapshot,
-  doc,
   where,
   limit,
   getDocs, 
@@ -14,13 +13,14 @@ import {
 import { db } from "../firebase";
 import { useAuth } from "./AuthProvider";
 import { useSnackbar } from "../components/SnackbarProvider";
+import { useSettings } from "./SettingsContext";
+import { useBorrowers } from "./BorrowerContext";
+
 import * as loanService from "../services/loanService";
 import * as paymentService from "../services/paymentService";
-import * as borrowerService from "../services/borrowerService";
 import * as expenseService from "../services/expenseService";
 import * as guarantorService from "../services/guarantorService";
 import * as commentService from "../services/commentService";
-import * as settingsService from "../services/settingsService";
 import * as activityService from "../services/activityService";
 import * as userService from "../services/userService";
 
@@ -31,14 +31,21 @@ export function FirestoreProvider({ children }) {
   const { currentUser, loading: authLoading } = useAuth();
   const showSnackbar = useSnackbar();
 
+  // Consume child contexts
+  const { settings, loading: settingsLoading, updateSettings } = useSettings();
+  const { 
+    borrowers, 
+    loading: borrowersLoading, 
+    addBorrower, 
+    updateBorrower, 
+    undoBorrowerCreation 
+  } = useBorrowers();
+
   // --- State ---
   const [loans, setLoans] = useState([]);
   const [payments, setPayments] = useState([]);
-  const [borrowers, setBorrowers] = useState([]);
-  const [settings, setSettings] = useState({
-    initialCapital: 50000,
-    interestRates: { 1: 0.15, 2: 0.2, 3: 0.3, 4: 0.3 },
-  });
+  // borrowers state removed -> comes from useBorrowers
+  // settings state removed -> comes from useSettings
   const [activityLogs, setActivityLogs] = useState([]);
   const [comments, setComments] = useState([]);
   const [guarantors, setGuarantors] = useState([]);
@@ -53,7 +60,7 @@ export function FirestoreProvider({ children }) {
         // Clear data when no user is logged in
         setLoans([]);
         setPayments([]);
-        setBorrowers([]);
+        // setBorrowers([]); // Handled by BorrowerContext
         setActivityLogs([]);
         setComments([]);
         setGuarantors([]);
@@ -65,10 +72,10 @@ export function FirestoreProvider({ children }) {
     setLoading(true);
     const unsubscribes = [];
     
+    // Removed 'borrowers' from here
     const collectionsConfig = {
       loans: { setter: setLoans, orderByField: "startDate" },
       payments: { setter: setPayments, orderByField: "date" },
-      borrowers: { setter: setBorrowers, orderByField: "name" },
       guarantors: { setter: setGuarantors, orderByField: "name" },
       expenses: { setter: setExpenses, orderByField: "date" },
     };
@@ -85,26 +92,16 @@ export function FirestoreProvider({ children }) {
         (snap) => {
           const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
           config.setter(data);
-          // Firebase persistence handles caching automatically
         },
         (err) => {
           console.error(`Error fetching ${colName}:`, err);
-          // Firebase will serve cached data if available
         }
       );
       
       unsubscribes.push(unsub);
     });
 
-    // Settings listener with error handling
-    const settingsUnsub = onSnapshot(
-      doc(db, "settings", "config"), 
-      (docSnap) => {
-        if (docSnap.exists()) setSettings(docSnap.data());
-      },
-      (err) => console.error("Error fetching settings:", err)
-    );
-    unsubscribes.push(settingsUnsub);
+    // Settings listener removed -> handled by SettingsContext
 
     setLoading(false);
     return () => unsubscribes.forEach((unsub) => unsub());
@@ -155,8 +152,19 @@ export function FirestoreProvider({ children }) {
   }, [currentUser]);
 
   const value = useMemo(() => ({
-    loans, payments, borrowers, settings, activityLogs, comments, guarantors, expenses, loading,
-    fetchActivityLogs, fetchComments,
+    // Composed state
+    loans, 
+    payments, 
+    borrowers, // from context
+    settings, // from context
+    activityLogs, 
+    comments, 
+    guarantors, 
+    expenses, 
+    loading: loading || settingsLoading || borrowersLoading, // Aggregate loading state
+
+    fetchActivityLogs, 
+    fetchComments,
 
     addActivityLog: async (logEntry) => {
       try {
@@ -362,37 +370,10 @@ export function FirestoreProvider({ children }) {
       }
     },
 
-    // --- Borrower Services ---
-    addBorrower: async (borrower) => {
-      try {
-        const res = await borrowerService.addBorrower(db, borrower, currentUser);
-        showSnackbar("Borrower added successfully!", "success");
-        return res;
-      } catch (error) {
-        showSnackbar("Failed to add borrower.", "error");
-        throw error;
-      }
-    },
-    updateBorrower: async (id, updates) => {
-      try {
-        await borrowerService.updateBorrower(db, id, updates);
-        showSnackbar("Borrower updated!", "success");
-      } catch (error) {
-        console.error("Error updating borrower:", error);
-        showSnackbar("Failed to update borrower.", "error");
-        throw error;
-      }
-    },
-    undoBorrowerCreation: async (borrowerId, activityLogId) => {
-      try {
-        await borrowerService.undoBorrowerCreation(db, borrowerId, activityLogId, currentUser);
-        showSnackbar("Borrower creation undone!", "info");
-      } catch (error) {
-        console.error("Error undoing borrower creation:", error);
-        showSnackbar("Failed to undo borrower creation.", "error");
-        throw error;
-      }
-    },
+    // --- Borrower Services (Proxied from context) ---
+    addBorrower, 
+    updateBorrower, 
+    undoBorrowerCreation,
 
     // --- Expense Services ---
     addExpense: async (expense) => {
@@ -535,16 +516,8 @@ export function FirestoreProvider({ children }) {
       }
     },
 
-    // --- Settings Services ---
-    updateSettings: async (newSettings) => {
-      try {
-        await settingsService.updateSettings(db, newSettings, currentUser);
-        showSnackbar("Settings updated successfully!", "success");
-      } catch (error) {
-        showSnackbar("Failed to update settings.", "error");
-        throw error;
-      }
-    },
+    // --- Settings Services (Proxied from context) ---
+    updateSettings,
 
     // --- User Services ---
     updateUser: async (updates) => {
@@ -559,7 +532,9 @@ export function FirestoreProvider({ children }) {
     }
   }), [
     loans, payments, borrowers, settings, activityLogs, comments, guarantors, expenses, loading,
-    currentUser, showSnackbar, fetchActivityLogs, fetchComments
+    settingsLoading, borrowersLoading,
+    currentUser, showSnackbar, fetchActivityLogs, fetchComments,
+    updateSettings, addBorrower, updateBorrower, undoBorrowerCreation
   ]);
 
   return (
